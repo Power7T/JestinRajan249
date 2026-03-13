@@ -1,5 +1,23 @@
-# fetch_events.py uses Python stdlib only (urllib, json, argparse, os, sys).
-# No third-party packages are required.
-#
-# If you prefer to use `requests` instead of urllib, uncomment:
-# requests>=2.31.0
+# fetch_events.py — Python stdlib only (urllib, json, argparse, os, sys)
+# No extra packages needed for that script.
+
+# ── Automated Pipeline (Options 3 + 4) ────────────────────────────────────
+
+# Claude API client
+anthropic>=0.25.0
+
+# FastAPI + ASGI server (response_router.py)
+fastapi>=0.111.0
+uvicorn>=0.30.0
+
+# IMAP client for email_watcher.py
+imapclient>=2.3.1
+
+# HTML email parsing
+beautifulsoup4>=4.12.0
+
+# HTTP requests (email_watcher → router, router notifications)
+requests>=2.31.0
+
+# Environment variable loading
+python-dotenv>=1.0.0

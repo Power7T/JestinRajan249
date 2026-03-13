@@ -162,6 +162,113 @@ You:    *Complaint — AC issue / refund request*
 
 ---
 
+## Automated Pipeline (Options 3 + 4 combined)
+
+This skill ships with a background automation layer that handles guest
+messages from two channels — **email** (Airbnb notification emails) and
+**WhatsApp** (guests messaging the host's personal number) — without the
+host needing to manually trigger commands.
+
+### Architecture
+
+```
+ Airbnb notification email          Guest WhatsApp message
+        │                                    │
+        ▼                                    ▼
+  email_watcher.py              whatsapp/bot.js (companion)
+  (IMAP poll every 30 s)        (whatsapp-web.js, QR paired)
+        │                                    │
+        └──────────────┬─────────────────────┘
+                       ▼
+             response_router.py  (FastAPI, port 7771)
+             ┌─────────────────────────────────────┐
+             │ 1. Classify: routine vs complex      │
+             │ 2. Call Claude API with SKILL.md     │
+             │ 3. Return draft + type               │
+             └─────────────────────────────────────┘
+                       │
+           ┌───────────┴────────────┐
+           │                        │
+      ROUTINE                   COMPLEX
+   (WiFi, parking,          (complaints, refunds,
+    check-in time, ETA)      damage, negative tone)
+           │                        │
+    Auto-send reply         Send draft to host
+    immediately             via WhatsApp:
+                            ┌──────────────────────────────┐
+                            │ 📋 Draft reply — Email/WA    │
+                            │ Guest: *Name*                │
+                            │                              │
+                            │ <AI-drafted reply>           │
+                            │                              │
+                            │ APPROVE <id>                 │
+                            │ EDIT <id>: <revised text>    │
+                            │ SKIP <id>                    │
+                            └──────────────────────────────┘
+                                       │
+                              Host replies on WhatsApp
+                                       │
+                            Send / edit / discard
+```
+
+### Classification — Routine vs Complex
+
+| Routine (auto-send) | Complex (host approval) |
+|---|---|
+| WiFi password, parking | Refund requests |
+| Check-in / check-out time | Damage complaints |
+| Access codes, directions | Negative sentiment |
+| ETA questions | "Not as described" claims |
+| Amenity availability | Airbnb support mentions |
+| General welcome messages | Anything ambiguous |
+
+When in doubt, the router defaults to **complex** so the host stays in control.
+
+### Host Approval Commands
+
+Reply to the draft notification with one of:
+
+| Reply | Effect |
+|---|---|
+| `APPROVE <draft_id>` | Send the AI draft as-is |
+| `EDIT <draft_id>: <your text>` | Send your revised version |
+| `SKIP <draft_id>` | Don't reply to this message |
+
+### Setup
+
+```bash
+# 1. Copy config template and fill in values
+cd airbnb-host/scripts
+cp .env.example .env
+# Edit .env: ANTHROPIC_API_KEY, EMAIL_*, HOST_WHATSAPP_NUMBER
+
+# 2. Start everything
+./start.sh
+# First run: scan the QR code in the terminal to link your WhatsApp
+```
+
+Required environment variables:
+
+| Variable | Description |
+|---|---|
+| `ANTHROPIC_API_KEY` | Claude API key |
+| `EMAIL_IMAP_HOST` | IMAP server (e.g. `imap.gmail.com`) |
+| `EMAIL_SMTP_HOST` | SMTP server (e.g. `smtp.gmail.com`) |
+| `EMAIL_ADDRESS` | Your email address |
+| `EMAIL_PASSWORD` | App password (not your login password) |
+| `HOST_WHATSAPP_NUMBER` | Your WhatsApp number in E.164 format |
+
+### Email Provider Quick Reference
+
+| Provider | IMAP host | SMTP host | Password type |
+|---|---|---|---|
+| Gmail | `imap.gmail.com` | `smtp.gmail.com` | App Password |
+| Outlook | `outlook.office365.com` | `smtp-mail.outlook.com` | Regular or App Password |
+| Yahoo | `imap.mail.yahoo.com` | `smtp.mail.yahoo.com` | App Password |
+| Other | Check provider docs | Check provider docs | — |
+
+---
+
 ## /reply — Draft a Guest Message Reply
 
 **Trigger:** `/reply` or "draft a reply to my guest" or "respond to guest message"
