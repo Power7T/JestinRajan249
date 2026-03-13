@@ -136,22 +136,41 @@ _MAX_RETRIES = 3
 _RETRY_DELAYS = [2, 4, 8]
 
 
-def generate_draft(guest_name: str, message: str, msg_type: str) -> str:
-    skill = "/reply" if msg_type == "routine" else "/complaint"
+_SKILL_CMD_MAP = {
+    "checkin":       "/checkin",
+    "cleaner-brief": "/cleaner-brief",
+    "reply":         "/reply",
+    "complaint":     "/complaint",
+}
+
+# Calendar-triggered drafts get more tokens (check-in instructions are long)
+_CALENDAR_SKILLS = {"checkin", "cleaner-brief"}
+
+
+def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = None) -> str:
+    if skill and skill in _SKILL_CMD_MAP:
+        skill_cmd = _SKILL_CMD_MAP[skill]
+    elif msg_type == "routine":
+        skill_cmd = "/reply"
+    else:
+        skill_cmd = "/complaint"
+
+    max_tokens = 1024 if skill in _CALENDAR_SKILLS else 512
+
     # Wrap guest content in XML-style delimiters to prevent prompt injection
     user_content = (
-        f"[Automated pipeline — {msg_type} guest message — use {skill} flow]\n\n"
+        f"[Automated pipeline — use {skill_cmd} flow]\n\n"
         f"<guest_name>{guest_name}</guest_name>\n\n"
-        f"<guest_message>\n{message}\n</guest_message>\n\n"
-        "Return ONLY the reply text ready to send. No headings, no meta-commentary, "
-        "no 'Here is a draft:' preamble. Just the message itself."
+        f"<context>\n{message}\n</context>\n\n"
+        "Return ONLY the output text ready to send or use. No headings, no meta-commentary, "
+        "no 'Here is a draft:' preamble. Just the content itself."
     )
     last_exc = None
     for attempt, delay in enumerate(zip(range(_MAX_RETRIES), _RETRY_DELAYS), 1):
         try:
             response = _client.messages.create(
                 model="claude-sonnet-4-6",
-                max_tokens=512,
+                max_tokens=max_tokens,
                 system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_content}],
             )
@@ -172,10 +191,11 @@ app = FastAPI(title="Airbnb Host Response Router", version="1.1.0")
 
 
 class ClassifyRequest(BaseModel):
-    source: str           # "email" or "whatsapp"
+    source: str           # "email", "whatsapp", or "calendar"
     guest_name: str
     message: str
     reply_to: Optional[str] = None
+    skill: Optional[str] = None   # override: "checkin", "cleaner-brief", "reply", "complaint"
 
 
 class ClassifyResponse(BaseModel):
@@ -205,9 +225,10 @@ def classify(req: ClassifyRequest, request: Request):
     if len(req.message) > 4000:
         req = req.model_copy(update={"message": req.message[:4000]})
 
-    msg_type = classify_message(req.message)
+    # Calendar triggers always go to host for approval (never auto-send)
+    msg_type = "complex" if req.source == "calendar" else classify_message(req.message)
     try:
-        draft = generate_draft(req.guest_name, req.message, msg_type)
+        draft = generate_draft(req.guest_name, req.message, msg_type, skill=req.skill)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 

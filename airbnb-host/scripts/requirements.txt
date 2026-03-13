@@ -24,3 +24,6 @@ requests>=2.31.0
 
 # Environment variable loading
 python-dotenv>=1.0.0
+
+# iCal parsing for calendar_watcher.py
+icalendar>=5.0.12

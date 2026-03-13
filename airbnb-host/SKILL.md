@@ -258,6 +258,32 @@ Required environment variables:
 | `EMAIL_PASSWORD` | App password (not your login password) |
 | `HOST_WHATSAPP_NUMBER` | Your WhatsApp number in E.164 format |
 
+### Calendar Watcher — iCal Integration
+
+The `calendar_watcher.py` script polls your Airbnb iCal feed and automatically
+triggers proactive drafts — no guest message needed.
+
+**How to get your iCal URL:**
+Airbnb app → Calendar → gear icon → Availability settings → Export Calendar → copy the `.ics` link
+
+**What it triggers automatically:**
+
+| Event | When | Draft sent to host |
+|---|---|---|
+| **Check-in instructions** | `CHECKIN_NOTICE_HOURS` before arrival (default: 24h) | Full guest-ready check-in message via `/checkin` |
+| **Cleaner brief** | On checkout day at `CHECKOUT_BRIEF_HOUR` (default: 11 AM) | Room-by-room checklist + flag section via `/cleaner-brief` |
+
+Both always go to the host as APPROVE/EDIT/SKIP prompts — the host reviews before forwarding to the guest or cleaner.
+
+**Context injected into each draft:**
+
+For check-in: guest name, check-in date, check-out date, length of stay, property name.
+For cleaner brief: guest who stayed, checkout date, nights stayed, property name.
+
+**Multiple listings:** Set `AIRBNB_ICAL_URLS` as comma-separated URLs and `PROPERTY_NAMES` as matching comma-separated names. Each listing gets independent tracking.
+
+---
+
 ### Email Provider Quick Reference
 
 | Provider | IMAP host | SMTP host | Password type |

@@ -102,7 +102,18 @@ PIDS+=($!)
 # Give the HTTP server a moment to bind
 sleep 2
 
-# ── 3. Start email_watcher.py (foreground — shows live log) ─
+# ── 3. Start calendar_watcher.py (if iCal URL is configured) ─────────────
+if [[ -n "${AIRBNB_ICAL_URL:-}${AIRBNB_ICAL_URLS:-}" ]]; then
+  info "Starting calendar watcher (iCal → check-in + cleaner brief)..."
+  python3 calendar_watcher.py &
+  PIDS+=($!)
+  sleep 1
+else
+  warn "AIRBNB_ICAL_URL not set — calendar watcher skipped."
+  warn "Set it in .env to enable auto check-in + cleaner brief drafts."
+fi
+
+# ── 4. Start email_watcher.py (foreground — shows live log) ─
 info "Starting email watcher (${EMAIL_ADDRESS})..."
 info "Press Ctrl+C to stop all services."
 echo ""
