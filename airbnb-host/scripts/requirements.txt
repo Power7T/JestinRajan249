@@ -1,0 +1,5 @@
+# fetch_events.py uses Python stdlib only (urllib, json, argparse, os, sys).
+# No third-party packages are required.
+#
+# If you prefer to use `requests` instead of urllib, uncomment:
+# requests>=2.31.0
