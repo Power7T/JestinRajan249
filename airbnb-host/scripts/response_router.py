@@ -129,6 +129,17 @@ def classify_message(text: str) -> str:
         return "routine"
     return "complex"
 
+# Vendor-type detection — which maintenance category does the message indicate?
+_AC_PATTERNS        = [r"\bac\b", r"\bair.?con", r"\bhvac\b", r"\bcooling\b", r"\bheat(ing)?\b", r"\bfurnace\b", r"\bthermostat\b"]
+_PLUMBING_PATTERNS  = [r"\bleak\b", r"\bwater\b", r"\bpipe\b", r"\btoilet\b", r"\bplumb"]
+
+
+def detect_vendor_type(text: str) -> str | None:
+    lower = text.lower()
+    if any(re.search(p, lower) for p in _AC_PATTERNS):
+        return "ac_technicians"
+    return None
+
 # ---------------------------------------------------------------------------
 # AI draft generation — with retry and structured delimiters (anti-injection)
 # ---------------------------------------------------------------------------
@@ -202,6 +213,7 @@ class ClassifyResponse(BaseModel):
     draft_id: str
     msg_type: str
     draft: str
+    vendor_type: Optional[str] = None   # "ac_technicians" if maintenance issue detected
 
 
 class ApproveRequest(BaseModel):
@@ -226,7 +238,8 @@ def classify(req: ClassifyRequest, request: Request):
         req = req.model_copy(update={"message": req.message[:4000]})
 
     # Calendar triggers always go to host for approval (never auto-send)
-    msg_type = "complex" if req.source == "calendar" else classify_message(req.message)
+    msg_type    = "complex" if req.source == "calendar" else classify_message(req.message)
+    vendor_type = detect_vendor_type(req.message) if msg_type == "complex" else None
     try:
         draft = generate_draft(req.guest_name, req.message, msg_type, skill=req.skill)
     except RuntimeError as exc:
@@ -235,18 +248,20 @@ def classify(req: ClassifyRequest, request: Request):
     draft_id = f"{req.source}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}"
     pending  = _load_pending()
     pending[draft_id] = {
-        "source":     req.source,
-        "guest_name": req.guest_name,
-        "message":    req.message,
-        "reply_to":   req.reply_to,
-        "msg_type":   msg_type,
-        "draft":      draft,
-        "status":     "pending",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "source":      req.source,
+        "guest_name":  req.guest_name,
+        "message":     req.message,
+        "reply_to":    req.reply_to,
+        "msg_type":    msg_type,
+        "vendor_type": vendor_type,
+        "draft":       draft,
+        "status":      "pending",
+        "created_at":  datetime.now(timezone.utc).isoformat(),
     }
     _save_pending(pending)
-    log.info("Classified [%s] from %s (%s) → %s", msg_type, req.guest_name, req.source, draft_id)
-    return ClassifyResponse(draft_id=draft_id, msg_type=msg_type, draft=draft)
+    log.info("Classified [%s] vendor=%s from %s (%s) → %s",
+             msg_type, vendor_type, req.guest_name, req.source, draft_id)
+    return ClassifyResponse(draft_id=draft_id, msg_type=msg_type, draft=draft, vendor_type=vendor_type)
 
 
 @app.post("/approve")

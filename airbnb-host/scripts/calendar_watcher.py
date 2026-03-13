@@ -46,10 +46,13 @@ PROPERTY_NAMES = [n.strip() for n in _raw_names.split(",") if n.strip()]
 CHECKIN_NOTICE_HOURS  = int(os.getenv("CHECKIN_NOTICE_HOURS", "24"))
 CHECKOUT_BRIEF_HOUR   = int(os.getenv("CHECKOUT_BRIEF_HOUR", "11"))    # local hour (0-23)
 DEFAULT_CHECKIN_HOUR  = int(os.getenv("DEFAULT_CHECKIN_HOUR", "15"))   # assume 3 PM check-in
+EXTENSION_OFFER_HOUR  = int(os.getenv("EXTENSION_OFFER_HOUR",          # 2h before checkout
+                             str(max(0, int(os.getenv("CHECKOUT_BRIEF_HOUR", "11")) - 2))))
 POLL_MINUTES          = int(os.getenv("CALENDAR_POLL_MINUTES", "30"))
 
 ROUTER_URL     = f"http://127.0.0.1:{os.getenv('ROUTER_PORT', '7771')}"
-WA_NOTIFY_URL  = f"http://127.0.0.1:{os.getenv('WA_BOT_PORT', '7772')}/notify-host"
+WA_BOT_URL     = f"http://127.0.0.1:{os.getenv('WA_BOT_PORT', '7772')}"
+WA_NOTIFY_URL  = f"{WA_BOT_URL}/notify-host"
 INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
 
 STATE_FILE = pathlib.Path(__file__).parent / "calendar_state.json"
@@ -65,7 +68,13 @@ def _load_state() -> dict:
             return json.loads(STATE_FILE.read_text())
         except Exception:
             log.warning("calendar_state.json unreadable — starting fresh")
-    return {"notified_checkin": [], "notified_cleaner": []}
+    return {
+        "notified_checkin":       [],   # check-in instructions draft (24h before)
+        "notified_cleaner":       [],   # cleaner brief draft (checkout day)
+        "guest_arrival_notified": [],   # host notified guest arrived + asked for WA
+        "extension_offered":      [],   # extension offer sent to guest
+        "post_checkout_triggered":[],   # review request + cleaner contact triggered
+    }
 
 
 def _save_state(state: dict):
@@ -256,6 +265,90 @@ def check_cleaner_brief(booking: dict, property_label: str, state: dict, now: da
             _save_state(state)
 
 # ---------------------------------------------------------------------------
+# Helper: call bot.js HTTP endpoints
+# ---------------------------------------------------------------------------
+
+def _call_bot(endpoint: str, payload: dict):
+    try:
+        r = requests.post(
+            f"{WA_BOT_URL}/{endpoint}",
+            json=payload,
+            headers=_auth_headers(),
+            timeout=10,
+        )
+        r.raise_for_status()
+        log.info("Bot /%s called OK", endpoint)
+    except Exception as exc:
+        log.warning("Bot /%s call failed: %s", endpoint, exc)
+
+# ---------------------------------------------------------------------------
+# Trigger: host notified guest has arrived + asked for guest WhatsApp
+# ---------------------------------------------------------------------------
+
+def check_guest_arrival(booking: dict, property_label: str, state: dict, now: datetime):
+    state_uid = f"arrival:{booking['uid']}"
+    if state_uid in state.get("guest_arrival_notified", []):
+        return
+    today              = now.date()
+    is_checkin_day     = booking["checkin"] == today
+    past_checkin_hour  = now.hour >= DEFAULT_CHECKIN_HOUR
+    if is_checkin_day and past_checkin_hour:
+        log.info("[%s] Check-in day for %s — notifying host", property_label, booking["guest_name"])
+        _call_bot("guest-checkin", {
+            "booking_uid": booking["uid"],
+            "guest_name":  booking["guest_name"],
+            "property":    property_label,
+            "checkin":     booking["checkin"].isoformat(),
+            "checkout":    booking["checkout"].isoformat(),
+        })
+        state.setdefault("guest_arrival_notified", []).append(state_uid)
+        _save_state(state)
+
+# ---------------------------------------------------------------------------
+# Trigger: extension offer sent to guest 2h before checkout
+# ---------------------------------------------------------------------------
+
+def check_extension_offer(booking: dict, property_label: str, state: dict, now: datetime):
+    state_uid = f"extension:{booking['uid']}"
+    if state_uid in state.get("extension_offered", []):
+        return
+    today              = now.date()
+    is_checkout_day    = booking["checkout"] == today
+    past_offer_hour    = now.hour >= EXTENSION_OFFER_HOUR
+    before_checkout    = now.hour < CHECKOUT_BRIEF_HOUR
+    if is_checkout_day and past_offer_hour and before_checkout:
+        log.info("[%s] Offering extension to %s", property_label, booking["guest_name"])
+        _call_bot("offer-extension", {
+            "booking_uid": booking["uid"],
+            "guest_name":  booking["guest_name"],
+            "property":    property_label,
+            "checkout":    booking["checkout"].isoformat(),
+        })
+        state.setdefault("extension_offered", []).append(state_uid)
+        _save_state(state)
+
+# ---------------------------------------------------------------------------
+# Trigger: post-checkout — review request to guest + cleaner cascade
+# ---------------------------------------------------------------------------
+
+def check_post_checkout(booking: dict, property_label: str, state: dict, now: datetime):
+    state_uid = f"post_checkout:{booking['uid']}"
+    if state_uid in state.get("post_checkout_triggered", []):
+        return
+    today             = now.date()
+    is_checkout_day   = booking["checkout"] == today
+    past_checkout     = now.hour >= CHECKOUT_BRIEF_HOUR
+    if is_checkout_day and past_checkout:
+        log.info("[%s] Post-checkout flow for %s", property_label, booking["guest_name"])
+        _call_bot("post-checkout", {
+            "booking_uid": booking["uid"],
+            "guest_name":  booking["guest_name"],
+            "property":    property_label,
+        })
+        state.setdefault("post_checkout_triggered", []).append(state_uid)
+        _save_state(state)
+
+# ---------------------------------------------------------------------------
 # Main poll loop
 # ---------------------------------------------------------------------------
 _MAX_BACKOFF = 3600   # 1 hour
@@ -289,7 +382,10 @@ def run():
                 log.info("[%s] %d booking(s) in feed", label, len(bookings))
                 for booking in bookings:
                     check_checkin(booking, label, state, now)
+                    check_guest_arrival(booking, label, state, now)
+                    check_extension_offer(booking, label, state, now)
                     check_cleaner_brief(booking, label, state, now)
+                    check_post_checkout(booking, label, state, now)
             fail_streak = 0
         except Exception as exc:
             fail_streak += 1

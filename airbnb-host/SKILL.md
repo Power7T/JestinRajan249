@@ -258,6 +258,117 @@ Required environment variables:
 | `EMAIL_PASSWORD` | App password (not your login password) |
 | `HOST_WHATSAPP_NUMBER` | Your WhatsApp number in E.164 format |
 
+### Guest Sessions
+
+When a guest checks in, the bot asks the host for the guest's WhatsApp number
+and grants them access to the assistant for the duration of their stay.
+
+**Guest message routing:**
+
+| Message type | Result |
+|---|---|
+| WiFi, parking, access codes, ETA | Auto-replied instantly |
+| Complaints, refunds, damage | Drafted → host APPROVE/EDIT/SKIP |
+| AC not working | Drafted → host approves → AC tech contacted |
+| After checkout date | Politely declined |
+
+**Registering a guest:**
+
+When the calendar watcher detects check-in day, the host receives:
+```
+🏠 Beach House — John has checked in!
+What's their WhatsApp? Reply: GUEST_WA [booking_uid] +[number]
+```
+
+Host replies: `GUEST_WA abc123 +14155550123`
+
+Guest immediately receives a welcome message and can start asking questions.
+
+---
+
+### Extension Offer
+
+2 hours before checkout, the bot messages the guest:
+```
+Hi John! Your checkout is scheduled for March 15 at 11:00 AM.
+Would you like to extend? Reply YES or NO.
+```
+
+If guest replies YES → host gets:
+```
+🏨 Extension Request — Beach House
+Guest: John | Current checkout: March 15
+EXTEND YES [id] — arrange in Airbnb then confirm
+EXTEND NO [id] — if unavailable
+```
+
+---
+
+### Post-Checkout Flow
+
+When checkout time passes, the bot automatically:
+
+1. **Notifies host** — "John has checked out of Beach House. Cleaner is being contacted."
+2. **Sends review request to guest** (via their registered WhatsApp):
+   ```
+   Thanks for staying! We'd love a review on Airbnb. [listing URL]
+   ```
+3. **Contacts primary cleaner** — asks if available (YES/NO)
+4. **If cleaner says NO** — host gets:
+   ```
+   ⚠️ Primary Cleaner is unavailable.
+   Proceed with Backup Cleaner?
+   NEXT_VENDOR [id]  or  STOP_VENDOR [id]
+   ```
+5. **Loop until confirmed** or host stops cascade
+
+When cleaner confirms YES → host is notified + cleaner receives the AI-generated cleaning brief automatically.
+
+---
+
+### Vendor Cascade (Cleaners + AC Technicians)
+
+Configure `scripts/vendors.json` with primary + backup contacts:
+```json
+{
+  "cleaners": [
+    { "name": "Sarah", "whatsapp": "+1234567890" },
+    { "name": "Mike's Cleaning", "whatsapp": "+0987654321" }
+  ],
+  "ac_technicians": [
+    { "name": "CoolAir HVAC", "whatsapp": "+1112223333" },
+    { "name": "Backup AC Tech", "whatsapp": "+4445556666" }
+  ]
+}
+```
+
+**AC complaint flow:**
+1. Guest: "The AC isn't working" → classified as complex
+2. Host receives draft reply + maintenance flag
+3. Host APPROVEs → reply sent to guest + host asked: `VENDOR_YES [id]` or `VENDOR_SKIP [id]`
+4. Host confirms → primary AC tech contacted via WhatsApp
+5. If tech says NO → host chooses: `NEXT_VENDOR [id]` or `STOP_VENDOR [id]`
+6. On confirmation → host notified + guest notified tech is on the way
+
+---
+
+### All Host Commands Reference
+
+| Command | Action |
+|---|---|
+| `APPROVE [draft_id]` | Send AI draft to guest as-is |
+| `EDIT [draft_id]: <text>` | Send edited version |
+| `SKIP [draft_id]` | Discard draft |
+| `GUEST_WA [booking_uid] +number` | Register guest WhatsApp |
+| `EXTEND YES [booking_uid]` | Confirm extension to guest |
+| `EXTEND NO [booking_uid]` | Decline extension |
+| `VENDOR_YES [req_id]` | Dispatch vendor |
+| `VENDOR_SKIP [req_id]` | Cancel vendor dispatch |
+| `NEXT_VENDOR [req_id]` | Try next backup vendor |
+| `STOP_VENDOR [req_id]` | Stop vendor cascade |
+
+---
+
 ### Calendar Watcher — iCal Integration
 
 The `calendar_watcher.py` script polls your Airbnb iCal feed and automatically

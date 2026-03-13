@@ -1,18 +1,17 @@
 /**
- * Airbnb Host WhatsApp Companion Bot — Option 4
- * ===============================================
- * Runs as a companion device on the host's personal WhatsApp.
+ * Airbnb Host WhatsApp Companion Bot
+ * ====================================
+ * Three-way routing on the host's personal WhatsApp number:
  *
- * Guest messages → classify → auto-reply (routine) or draft to host (complex)
- * Host approval  → APPROVE <id> / EDIT <id>: <text> / SKIP <id>
+ *   HOST messages   → approval commands, guest registration, vendor dispatch
+ *   GUEST messages  → AI classifier → auto-reply (routine) or draft to host (complex)
+ *   VENDOR messages → YES/NO availability → cascade or confirm to host
  *
- * Also exposes a local HTTP server so email_watcher.py can push complex
- * email drafts to the host via WhatsApp.
- *
- * First run: scan the QR code printed in the terminal to link your phone.
- * Session is saved in .wwebjs_auth/ so you only need to scan once.
- *
- * Run: node bot.js  (or via start.sh)
+ * HTTP endpoints (called by calendar_watcher.py + email_watcher.py):
+ *   POST /notify-host      email draft → host approval
+ *   POST /guest-checkin    guest arrived → ask host for guest WA number
+ *   POST /offer-extension  2h before checkout → offer extension to guest
+ *   POST /post-checkout    checkout → review request to guest + cleaner cascade
  */
 
 "use strict";
@@ -21,7 +20,7 @@ const path   = require("path");
 const fs     = require("fs");
 const http   = require("http");
 const https  = require("https");
-const { URL }  = require("url");
+const { URL } = require("url");
 
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
 
@@ -32,268 +31,692 @@ const qrcode = require("qrcode-terminal");
 // Config
 // ---------------------------------------------------------------------------
 const HOST_NUMBER     = (process.env.HOST_WHATSAPP_NUMBER || "").trim();
-if (!HOST_NUMBER) {
-  console.error("❌  HOST_WHATSAPP_NUMBER is not set in .env");
-  process.exit(1);
-}
+if (!HOST_NUMBER) { console.error("❌  HOST_WHATSAPP_NUMBER not set"); process.exit(1); }
 
 const ROUTER_URL      = `http://127.0.0.1:${process.env.ROUTER_PORT || 7771}`;
 const WA_BOT_PORT     = parseInt(process.env.WA_BOT_PORT || "7772", 10);
 const INTERNAL_TOKEN  = process.env.INTERNAL_TOKEN || "";
-const MAX_BODY_BYTES  = 65536;   // 64 KB limit on /notify-host requests
+const MAX_BODY_BYTES  = 65536;
+const AIRBNB_LISTING  = (process.env.AIRBNB_LISTING_URL || "").trim();
 
-// Normalise to WhatsApp chat ID: strip "+" prefix, append "@c.us"
 const HOST_WA_ID      = HOST_NUMBER.replace(/^\+/, "") + "@c.us";
 
 // ---------------------------------------------------------------------------
-// Pending approvals — persisted to disk so restarts don't lose them
-// { draft_id: { guestChatId, draft, channel } }
+// State files (all in scripts/whatsapp/)
 // ---------------------------------------------------------------------------
-const PENDING_FILE = path.join(__dirname, "pending.json");
+const FILES = {
+  pending:    path.join(__dirname, "pending.json"),
+  guests:     path.join(__dirname, "guests.json"),
+  services:   path.join(__dirname, "service_requests.json"),
+  pendingReg: path.join(__dirname, "pending_reg.json"),
+};
 
-function loadPending() {
+function loadJSON(file, fallback = {}) {
   try {
-    if (fs.existsSync(PENDING_FILE)) {
-      const raw = JSON.parse(fs.readFileSync(PENDING_FILE, "utf8"));
-      return new Map(Object.entries(raw));
-    }
-  } catch (err) {
-    console.warn("⚠️  Could not load pending.json — starting fresh:", err.message);
-  }
-  return new Map();
+    if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (e) { console.warn(`⚠️  Could not load ${path.basename(file)}: ${e.message}`); }
+  return fallback;
+}
+function saveJSON(file, data) {
+  try {
+    const tmp = file + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+    fs.renameSync(tmp, file);
+  } catch (e) { console.error(`❌  Could not save ${path.basename(file)}: ${e.message}`); }
 }
 
-function savePending(map) {
-  try {
-    const tmp = PENDING_FILE + ".tmp";
-    fs.writeFileSync(tmp, JSON.stringify(Object.fromEntries(map), null, 2));
-    fs.renameSync(tmp, PENDING_FILE);   // atomic on POSIX
-  } catch (err) {
-    console.error("❌  Failed to save pending.json:", err.message);
-  }
+// In-memory Maps backed by disk
+const pending    = new Map(Object.entries(loadJSON(FILES.pending)));
+const guests     = new Map(Object.entries(loadJSON(FILES.guests)));
+const services   = new Map(Object.entries(loadJSON(FILES.services)));
+const pendingReg = new Map(Object.entries(loadJSON(FILES.pendingReg)));
+console.log(`📂  Loaded: ${pending.size} pending, ${guests.size} guests, ${services.size} service requests`);
+
+// ---------------------------------------------------------------------------
+// Vendor registry (scripts/vendors.json — host configures)
+// ---------------------------------------------------------------------------
+let VENDORS = { cleaners: [], ac_technicians: [] };
+try {
+  VENDORS = JSON.parse(fs.readFileSync(path.join(__dirname, "../vendors.json"), "utf8"));
+  delete VENDORS._comment;
+  console.log(`📋  Vendors: ${VENDORS.cleaners?.length || 0} cleaners, ${VENDORS.ac_technicians?.length || 0} AC techs`);
+} catch (e) { console.warn("⚠️  vendors.json not found — vendor cascade disabled"); }
+
+function toWaId(num) {
+  return num.replace(/^\+/, "").replace(/\s/g, "") + "@c.us";
 }
 
-const pending = loadPending();
-console.log(`📂  Loaded ${pending.size} pending approval(s) from disk.`);
+// Build lookup: vendorWaId → {name, type, index}
+const vendorMap = new Map();
+for (const [type, list] of Object.entries(VENDORS)) {
+  (list || []).forEach((v, i) => vendorMap.set(toWaId(v.whatsapp), { ...v, type, index: i }));
+}
 
 // ---------------------------------------------------------------------------
 // WhatsApp client
 // ---------------------------------------------------------------------------
 const client = new Client({
   authStrategy: new LocalAuth({ dataPath: path.join(__dirname, ".wwebjs_auth") }),
-  puppeteer: {
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    headless: true,
-  },
+  puppeteer: { args: ["--no-sandbox", "--disable-setuid-sandbox"], headless: true },
 });
 
 client.on("qr", (qr) => {
-  console.log("\n📱  Scan this QR code with WhatsApp on your phone:");
-  console.log("    Open WhatsApp → Linked Devices → Link a Device\n");
+  console.log("\n📱  Scan QR code: WhatsApp → Linked Devices → Link a Device\n");
   qrcode.generate(qr, { small: true });
 });
-
-client.on("loading_screen", (pct, msg) => {
-  process.stdout.write(`\r⏳  Loading WhatsApp: ${pct}% — ${msg}     `);
-});
-
-client.on("authenticated", () => {
-  console.log("\n🔐  WhatsApp authenticated.");
-});
-
+client.on("loading_screen", (pct, msg) => process.stdout.write(`\r⏳  ${pct}% ${msg}   `));
+client.on("authenticated", () => console.log("\n🔐  Authenticated."));
 client.on("ready", () => {
-  console.log("✅  WhatsApp companion connected and ready.");
-  console.log(`    Host number : ${HOST_NUMBER}`);
-  console.log(`    Router URL  : ${ROUTER_URL}`);
-  console.log(`    HTTP port   : ${WA_BOT_PORT}\n`);
+  console.log(`✅  Bot ready  |  Host: ${HOST_NUMBER}  |  Router: ${ROUTER_URL}  |  HTTP: ${WA_BOT_PORT}\n`);
 });
-
-client.on("disconnected", (reason) => {
-  console.warn("⚠️  WhatsApp disconnected:", reason);
-});
+client.on("disconnected", (r) => console.warn("⚠️  Disconnected:", r));
 
 // ---------------------------------------------------------------------------
-// Incoming message handler
+// Message routing
 // ---------------------------------------------------------------------------
 client.on("message", async (msg) => {
   const from = msg.from;
+  if (!msg.body) return;
 
-  // ── Host approval commands ──────────────────────────────────────────────
-  if (from === HOST_WA_ID && msg.body) {
-    await handleHostApproval(msg.body.trim());
+  // 1. Host commands
+  if (from === HOST_WA_ID) {
+    await handleHostMessage(msg.body.trim());
     return;
   }
 
-  // Skip group chats and status updates
+  // 2. Skip groups / broadcasts
   if (msg.isGroupMsg || from === "status@broadcast") return;
 
-  // ── Guest message ───────────────────────────────────────────────────────
-  if (!msg.body) return;
+  // 3. Registered guest?
+  const guestEntry = findGuestByWaId(from);
+  if (guestEntry) {
+    await handleGuestMessage(msg, guestEntry);
+    return;
+  }
 
-  const contact   = await msg.getContact();
-  const guestName = contact.pushname || contact.name || "Guest";
-  const text      = msg.body;
+  // 4. Registered vendor?
+  const vendor = vendorMap.get(from);
+  if (vendor) {
+    await handleVendorResponse(msg, vendor);
+    return;
+  }
 
-  console.log(`📨  [${guestName}] ${text.slice(0, 80)}${text.length > 80 ? "…" : ""}`);
+  // 5. Unknown — check if we're waiting for a guest WA registration for THIS number
+  // (host might have registered a guest number that texted first — ignore)
+});
+
+// ---------------------------------------------------------------------------
+// HOST message handler
+// ---------------------------------------------------------------------------
+// APPROVE/EDIT/SKIP        [draft_id]              → draft approval
+// GUEST_WA [booking_uid] +NUMBER [optional name]   → register guest
+// EXTEND YES|NO [booking_uid]                      → extension response
+// VENDOR_YES|VENDOR_SKIP [req_id]                  → dispatch or cancel vendor
+// NEXT_VENDOR [req_id]                             → try next vendor
+// STOP_VENDOR [req_id]                             → stop cascade
+
+const RE_APPROVE    = /^APPROVE\s+(\S+)$/i;
+const RE_EDIT       = /^EDIT\s+(\S+):\s*([\s\S]{1,2000})$/i;
+const RE_SKIP       = /^SKIP\s+(\S+)$/i;
+const RE_GUEST_WA   = /^GUEST_WA\s+(\S+)\s+(\+?\d[\d\s\-]{6,})(.*)?$/i;
+const RE_EXTEND_YES = /^EXTEND\s+YES\s+(\S+)$/i;
+const RE_EXTEND_NO  = /^EXTEND\s+NO\s+(\S+)$/i;
+const RE_VENDOR_YES = /^VENDOR_YES\s+(\S+)$/i;
+const RE_VENDOR_SKP = /^VENDOR_SKIP\s+(\S+)$/i;
+const RE_NEXT_VND   = /^NEXT_VENDOR\s+(\S+)$/i;
+const RE_STOP_VND   = /^STOP_VENDOR\s+(\S+)$/i;
+
+async function handleHostMessage(text) {
+  let m;
+
+  // — Draft approvals —
+  if ((m = RE_APPROVE.exec(text))) return onApprove(m[1]);
+  if ((m = RE_EDIT.exec(text)))    return onEdit(m[1], m[2].trim());
+  if ((m = RE_SKIP.exec(text)))    return onSkip(m[1]);
+
+  // — Guest registration —
+  if ((m = RE_GUEST_WA.exec(text))) {
+    const uid   = m[1];
+    const num   = m[2].trim().replace(/\s/g, "");
+    const name  = m[3]?.trim() || null;
+    return registerGuest(uid, num, name);
+  }
+
+  // — Extension —
+  if ((m = RE_EXTEND_YES.exec(text))) return onExtendApproved(m[1]);
+  if ((m = RE_EXTEND_NO.exec(text)))  return onExtendDenied(m[1]);
+
+  // — Vendor dispatch —
+  if ((m = RE_VENDOR_YES.exec(text))) return dispatchVendor(m[1]);
+  if ((m = RE_VENDOR_SKP.exec(text))) return cancelServiceRequest(m[1]);
+  if ((m = RE_NEXT_VND.exec(text)))   return tryNextVendor(m[1]);
+  if ((m = RE_STOP_VND.exec(text)))   return cancelServiceRequest(m[1]);
+}
+
+// ---------------------------------------------------------------------------
+// GUEST message handler
+// ---------------------------------------------------------------------------
+async function handleGuestMessage(msg, { booking_uid, guest }) {
+  const text = msg.body;
+  const from = msg.from;
+
+  // Guest messaging after checkout — politely decline
+  const today = new Date().toISOString().slice(0, 10);
+  if (guest.checkout < today) {
+    await client.sendMessage(from,
+      `Your stay ended on ${guest.checkout}. We hope you had a great time! 🙏\n` +
+      `Feel free to book with us again at airbnb.com.`);
+    return;
+  }
+
+  console.log(`📨  [GUEST: ${guest.guest_name}] ${text.slice(0, 80)}`);
 
   try {
-    const result  = await callRouterWithRetry("/classify", {
+    const result = await callRouterWithRetry("/classify", {
       source:     "whatsapp",
-      guest_name: guestName,
+      guest_name: guest.guest_name,
       message:    text,
       reply_to:   from,
     });
 
-    const { draft_id, msg_type, draft } = result;
+    const { draft_id, msg_type, draft, vendor_type } = result;
 
     if (msg_type === "routine") {
       await client.sendMessage(from, draft);
-      console.log(`  ✅  Auto-replied to ${guestName} (routine)`);
+      console.log(`  ✅  Auto-replied to guest ${guest.guest_name} (routine)`);
       callRouterWithRetry("/approve", { draft_id, action: "approve" }).catch(() => {});
-
     } else {
-      pending.set(draft_id, { guestChatId: from, draft, channel: "whatsapp" });
-      savePending(pending);
-      const notice = buildApprovalNotice(draft_id, guestName, draft, "WhatsApp");
+      pending.set(draft_id, { guestChatId: from, draft, channel: "whatsapp", vendor_type });
+      saveJSON(FILES.pending, Object.fromEntries(pending));
+
+      let notice = buildDraftNotice(draft_id, guest.guest_name, draft, "WhatsApp (guest)");
+      if (vendor_type) {
+        notice += `\n\n⚠️  *Maintenance issue detected (${label(vendor_type)}).*\n` +
+                  `After approving: reply \`VENDOR_YES [req_id]\` to dispatch a technician.`;
+      }
       await client.sendMessage(HOST_WA_ID, notice);
-      console.log(`  ⏳  Complex message from ${guestName} — draft sent to host`);
+      console.log(`  ⏳  Complex — draft sent to host for approval`);
     }
   } catch (err) {
-    console.error(`  ❌  Error processing message from ${guestName}:`, err.message);
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Host approval parsing
-// ---------------------------------------------------------------------------
-const RE_APPROVE = /^APPROVE\s+([^\s]+)$/i;
-const RE_EDIT    = /^EDIT\s+([^\s]+):\s*([\s\S]{1,2000})$/i;
-const RE_SKIP    = /^SKIP\s+([^\s]+)$/i;
-
-async function handleHostApproval(text) {
-  let m;
-
-  if ((m = RE_APPROVE.exec(text))) {
-    const id    = m[1];
-    const entry = pending.get(id);
-    if (!entry) return;
-    if (entry.guestChatId) await client.sendMessage(entry.guestChatId, entry.draft);
-    callRouterWithRetry("/approve", { draft_id: id, action: "approve" }).catch(() => {});
-    pending.delete(id);
-    savePending(pending);
-    await client.sendMessage(HOST_WA_ID, "✅  Reply sent to guest.");
-
-  } else if ((m = RE_EDIT.exec(text))) {
-    const id      = m[1];
-    const newText = m[2].trim();
-    const entry   = pending.get(id);
-    if (!entry) return;
-    if (entry.guestChatId) await client.sendMessage(entry.guestChatId, newText);
-    callRouterWithRetry("/approve", { draft_id: id, action: "edit", edited_text: newText }).catch(() => {});
-    pending.delete(id);
-    savePending(pending);
-    await client.sendMessage(HOST_WA_ID, "✅  Edited reply sent to guest.");
-
-  } else if ((m = RE_SKIP.exec(text))) {
-    const id = m[1];
-    if (!pending.has(id)) return;
-    pending.delete(id);
-    savePending(pending);
-    callRouterWithRetry("/approve", { draft_id: id, action: "skip" }).catch(() => {});
-    await client.sendMessage(HOST_WA_ID, "⏭️  Skipped — no reply sent.");
+    console.error(`  ❌  Guest message error:`, err.message);
   }
 }
 
 // ---------------------------------------------------------------------------
-// HTTP server — receives complex email drafts from email_watcher.py
-// POST /notify-host  { draft_id, guest_name, draft, channel }
+// VENDOR response handler
 // ---------------------------------------------------------------------------
-const httpServer = http.createServer((req, res) => {
-  if (req.method !== "POST" || req.url !== "/notify-host") {
-    res.writeHead(404);
-    res.end();
+async function handleVendorResponse(msg, vendor) {
+  const text    = msg.body.trim().toUpperCase();
+  const req     = findActiveServiceRequestForVendor(vendor);
+  if (!req) return;
+
+  const isYes   = /^(YES|OK|CONFIRMED|AVAILABLE|SURE|CAN DO)/.test(text);
+  const isNo    = /^(NO|UNAVAILABLE|CANT|CAN'T|SORRY|BUSY|NOT AVAILABLE)/.test(text);
+
+  if (isYes) {
+    await onVendorConfirmed(req, vendor);
+  } else if (isNo) {
+    await onVendorUnavailable(req, vendor);
+  }
+  // Ambiguous reply — wait for clearer answer
+}
+
+function findActiveServiceRequestForVendor(vendor) {
+  for (const [id, req] of services) {
+    if (req.status === "contacted" && req.current_vendor_wa === toWaId(vendor.whatsapp)) {
+      return { id, ...req };
+    }
+  }
+  return null;
+}
+
+async function onVendorConfirmed(req, vendor) {
+  services.set(req.id, { ...req, status: "confirmed", confirmed_vendor: vendor.name });
+  saveJSON(FILES.services, Object.fromEntries(services));
+
+  const typeLabel = label(req.vendor_type);
+  await client.sendMessage(HOST_WA_ID,
+    `✅ *${typeLabel} confirmed — ${vendor.name}*\n` +
+    `Property: ${req.property}\n` +
+    `They are on their way.`);
+
+  // If guest is still registered, optionally notify them (AC fix only)
+  if (req.guest_wa_id && req.vendor_type === "ac_technicians") {
+    const guestMsg =
+      `Hi! Just to let you know, our ${typeLabel.toLowerCase()} has confirmed ` +
+      `and will be attending to the issue shortly. 🔧`;
+    await client.sendMessage(req.guest_wa_id, guestMsg).catch(() => {});
+  }
+
+  // If there's a pending cleaner brief draft for this booking, send it to the cleaner
+  if (req.vendor_type === "cleaners") {
+    const briefDraft = findCleanerBriefDraft(req.booking_uid);
+    if (briefDraft) {
+      await client.sendMessage(toWaId(vendor.whatsapp),
+        `📋 *Cleaning brief for ${req.property}:*\n\n${briefDraft}`).catch(() => {});
+    }
+  }
+  console.log(`✅  Vendor ${vendor.name} confirmed for ${req.id}`);
+}
+
+async function onVendorUnavailable(req, vendor) {
+  const reqEntry = services.get(req.id);
+  const typeLabel = label(req.vendor_type);
+  const vendorList = VENDORS[req.vendor_type] || [];
+  const nextIndex  = (reqEntry.vendor_index || 0) + 1;
+  const hasNext    = nextIndex < vendorList.length;
+
+  services.set(req.id, { ...reqEntry, status: "vendor_unavailable" });
+  saveJSON(FILES.services, Object.fromEntries(services));
+
+  let msg = `⚠️ *${vendor.name} is unavailable* for ${typeLabel} at ${req.property}.`;
+  if (hasNext) {
+    const next = vendorList[nextIndex];
+    msg += `\n\nProceed with backup: *${next.name}*?\n` +
+           `• \`NEXT_VENDOR ${req.id}\` — yes, contact them\n` +
+           `• \`STOP_VENDOR ${req.id}\` — handle manually`;
+  } else {
+    msg += `\n\nNo more backup vendors. Please arrange ${typeLabel} manually.`;
+    services.set(req.id, { ...reqEntry, status: "failed" });
+    saveJSON(FILES.services, Object.fromEntries(services));
+  }
+  await client.sendMessage(HOST_WA_ID, msg);
+}
+
+// ---------------------------------------------------------------------------
+// Draft approval (APPROVE / EDIT / SKIP)
+// ---------------------------------------------------------------------------
+async function onApprove(id) {
+  const entry = pending.get(id);
+  if (!entry) return;
+  if (entry.guestChatId) await client.sendMessage(entry.guestChatId, entry.draft);
+  callRouterWithRetry("/approve", { draft_id: id, action: "approve" }).catch(() => {});
+  pending.delete(id);
+  saveJSON(FILES.pending, Object.fromEntries(pending));
+  await client.sendMessage(HOST_WA_ID, "✅  Reply sent to guest.");
+
+  // If maintenance issue, prompt host to dispatch vendor
+  if (entry.vendor_type) {
+    const reqId = await createServiceRequest(entry.vendor_type, null, null, entry.guestChatId);
+    const typeLabel = label(entry.vendor_type);
+    await client.sendMessage(HOST_WA_ID,
+      `🔧 *Dispatch ${typeLabel}?*\n` +
+      `• \`VENDOR_YES ${reqId}\` — contact ${VENDORS[entry.vendor_type]?.[0]?.name || "primary tech"}\n` +
+      `• \`VENDOR_SKIP ${reqId}\` — handle manually`);
+  }
+}
+
+async function onEdit(id, newText) {
+  const entry = pending.get(id);
+  if (!entry) return;
+  if (entry.guestChatId) await client.sendMessage(entry.guestChatId, newText);
+  callRouterWithRetry("/approve", { draft_id: id, action: "edit", edited_text: newText }).catch(() => {});
+  pending.delete(id);
+  saveJSON(FILES.pending, Object.fromEntries(pending));
+  await client.sendMessage(HOST_WA_ID, "✅  Edited reply sent.");
+}
+
+async function onSkip(id) {
+  if (!pending.has(id)) return;
+  pending.delete(id);
+  saveJSON(FILES.pending, Object.fromEntries(pending));
+  callRouterWithRetry("/approve", { draft_id: id, action: "skip" }).catch(() => {});
+  await client.sendMessage(HOST_WA_ID, "⏭️  Skipped.");
+}
+
+// ---------------------------------------------------------------------------
+// Guest registration
+// ---------------------------------------------------------------------------
+async function registerGuest(booking_uid, rawNumber, nameOverride) {
+  const reg = pendingReg.get(booking_uid);
+  if (!reg) {
+    await client.sendMessage(HOST_WA_ID,
+      `⚠️  No pending check-in found for booking ${booking_uid}. ` +
+      `The calendar watcher may not have detected it yet.`);
     return;
   }
 
-  // Auth check
-  if (INTERNAL_TOKEN && req.headers["x-internal-token"] !== INTERNAL_TOKEN) {
-    res.writeHead(401);
-    res.end(JSON.stringify({ error: "Unauthorized" }));
+  const wa_id      = toWaId(rawNumber.startsWith("+") ? rawNumber : "+" + rawNumber);
+  const guestName  = nameOverride || reg.guest_name;
+
+  const guestData = {
+    guest_name:       guestName,
+    wa_id,
+    property:         reg.property,
+    checkin:          reg.checkin,
+    checkout:         reg.checkout,
+    welcome_sent:     false,
+    extension_offered:false,
+    review_sent:      false,
+  };
+  guests.set(booking_uid, guestData);
+  saveJSON(FILES.guests, Object.fromEntries(guests));
+  pendingReg.delete(booking_uid);
+  saveJSON(FILES.pendingReg, Object.fromEntries(pendingReg));
+
+  await client.sendMessage(HOST_WA_ID,
+    `✅  *${guestName}* registered. Sending them a welcome message now.`);
+
+  // Welcome message to guest
+  const welcome =
+    `Welcome to ${reg.property}, ${guestName}! 👋\n\n` +
+    `I'm the automated assistant for your stay. Ask me anything:\n` +
+    `• 📶 WiFi password\n• 🅿️ Parking info\n• 🔑 Access codes\n` +
+    `• 🕐 Check-out time\n• Or anything else!\n\n` +
+    `Your host will be notified for anything that needs personal attention.`;
+
+  await client.sendMessage(wa_id, welcome).catch(async (e) => {
+    console.error("Could not reach guest:", e.message);
+    await client.sendMessage(HOST_WA_ID,
+      `⚠️  Could not deliver welcome to ${guestName} — check the number is correct.`);
+  });
+
+  guests.set(booking_uid, { ...guestData, welcome_sent: true });
+  saveJSON(FILES.guests, Object.fromEntries(guests));
+  console.log(`✅  Guest ${guestName} registered (${booking_uid})`);
+}
+
+function findGuestByWaId(wa_id) {
+  for (const [booking_uid, guest] of guests) {
+    if (guest.wa_id === wa_id) return { booking_uid, guest };
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Extension flow
+// ---------------------------------------------------------------------------
+async function onExtendApproved(booking_uid) {
+  const g = guests.get(booking_uid);
+  if (!g) return;
+  await client.sendMessage(g.wa_id,
+    `Great news! 🎉 Your extension has been arranged. ` +
+    `Your new checkout details will be confirmed by Airbnb shortly. Enjoy your extended stay!`);
+  await client.sendMessage(HOST_WA_ID, `✅  Extension confirmed — guest notified.`);
+}
+
+async function onExtendDenied(booking_uid) {
+  const g = guests.get(booking_uid);
+  if (!g) return;
+  await client.sendMessage(g.wa_id,
+    `Thanks for asking! Unfortunately we're unable to extend for this period ` +
+    `due to another booking. We hope you had a wonderful stay and look forward to hosting you again! 🙏`);
+  await client.sendMessage(HOST_WA_ID, `✅  Extension declined — guest notified.`);
+}
+
+// ---------------------------------------------------------------------------
+// Vendor cascade helpers
+// ---------------------------------------------------------------------------
+let _reqCounter = Date.now();
+function newReqId() { return `req_${(++_reqCounter).toString(36)}`; }
+
+async function createServiceRequest(vendor_type, booking_uid, property, guest_wa_id) {
+  const id  = newReqId();
+  const req = { vendor_type, booking_uid, property, guest_wa_id, vendor_index: 0, status: "pending", current_vendor_wa: null };
+  services.set(id, req);
+  saveJSON(FILES.services, Object.fromEntries(services));
+  return id;
+}
+
+async function dispatchVendor(req_id) {
+  const req = services.get(req_id);
+  if (!req) return;
+  const list = VENDORS[req.vendor_type] || [];
+  const v    = list[req.vendor_index || 0];
+  if (!v) {
+    await client.sendMessage(HOST_WA_ID, `⚠️  No vendor configured for ${label(req.vendor_type)}.`);
     return;
   }
+  await contactVendor(req_id, req, v, req.vendor_index || 0);
+}
 
-  // Body size limit
-  let bodyBytes = 0;
-  let body = "";
-  req.on("data", (chunk) => {
-    bodyBytes += chunk.length;
-    if (bodyBytes > MAX_BODY_BYTES) {
-      res.writeHead(413);
-      res.end();
-      req.destroy();
-      return;
-    }
-    body += chunk;
-  });
-  req.on("end", async () => {
-    try {
-      const { draft_id, guest_name, draft, channel } = JSON.parse(body);
-      if (!draft_id || !guest_name || !draft) {
-        res.writeHead(422);
-        res.end(JSON.stringify({ error: "Missing required fields" }));
-        return;
-      }
-      pending.set(draft_id, { guestChatId: null, draft, channel });
-      savePending(pending);
-      const notice = buildApprovalNotice(draft_id, guest_name, draft, "Email");
-      await client.sendMessage(HOST_WA_ID, notice);
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "notified" }));
-      console.log(`📧  Email draft from ${guest_name} forwarded to host via WhatsApp`);
-    } catch (err) {
-      console.error("notify-host error:", err.message);
-      res.writeHead(500);
-      res.end();
-    }
-  });
-});
+async function tryNextVendor(req_id) {
+  const req  = services.get(req_id);
+  if (!req) return;
+  const list = VENDORS[req.vendor_type] || [];
+  const next = (req.vendor_index || 0) + 1;
+  if (next >= list.length) {
+    await client.sendMessage(HOST_WA_ID, `⚠️  No more backup ${label(req.vendor_type)} vendors. Please arrange manually.`);
+    services.set(req_id, { ...req, status: "failed" });
+    saveJSON(FILES.services, Object.fromEntries(services));
+    return;
+  }
+  await contactVendor(req_id, req, list[next], next);
+}
 
-httpServer.listen(WA_BOT_PORT, "127.0.0.1", () => {
-  console.log(`📡  HTTP server listening on 127.0.0.1:${WA_BOT_PORT}`);
-});
+async function cancelServiceRequest(req_id) {
+  services.set(req_id, { ...services.get(req_id), status: "cancelled" });
+  saveJSON(FILES.services, Object.fromEntries(services));
+  await client.sendMessage(HOST_WA_ID, `⏭️  Service request cancelled — please arrange manually.`);
+}
+
+async function contactVendor(req_id, req, vendor, index) {
+  const wa_id = toWaId(vendor.whatsapp);
+  services.set(req_id, { ...req, status: "contacted", vendor_index: index, current_vendor_wa: wa_id });
+  saveJSON(FILES.services, Object.fromEntries(services));
+
+  const typeLabel = label(req.vendor_type);
+  const msg =
+    `Hi ${vendor.name}! 🏠\n\n` +
+    `We need ${typeLabel} service at *${req.property || "our property"}* today.\n` +
+    `Are you available? Please reply *YES* or *NO*.\n\n` +
+    `Ref: ${req_id}`;
+  await client.sendMessage(wa_id, msg);
+  await client.sendMessage(HOST_WA_ID,
+    `📤  Contacting ${vendor.name} (${typeLabel})… waiting for reply.`);
+  console.log(`📤  Service request ${req_id} → ${vendor.name} (${wa_id})`);
+}
+
+function findCleanerBriefDraft(booking_uid) {
+  // Look through pending for a cleaner brief draft linked to this booking
+  for (const [, entry] of pending) {
+    if (entry.channel === "calendar:cleaner" && entry.draft) return entry.draft;
+  }
+  return null;
+}
+
+function label(vendor_type) {
+  return vendor_type === "cleaners" ? "Cleaner" : "AC Technician";
+}
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Build approval notice (host approval prompt)
 // ---------------------------------------------------------------------------
-function buildApprovalNotice(draft_id, guestName, draft, source) {
+function buildDraftNotice(draft_id, guestName, draft, source) {
   return (
     `📋 *Draft reply — ${source}*\n` +
     `Guest: *${guestName}*\n\n` +
     `${draft}\n\n` +
     `───────────────\n` +
-    `Reply with:\n` +
     `• \`APPROVE ${draft_id}\`\n` +
-    `• \`EDIT ${draft_id}: <your revised text>\`\n` +
+    `• \`EDIT ${draft_id}: <revised text>\`\n` +
     `• \`SKIP ${draft_id}\``
   );
 }
 
-// callRouter with exponential-backoff retry (3 attempts: 2s, 4s, 8s)
-async function callRouterWithRetry(endpoint, body, attempts = 3) {
-  const delays = [2000, 4000, 8000];
-  let lastErr;
-  for (let i = 0; i < attempts; i++) {
+// ---------------------------------------------------------------------------
+// HTTP server — calendar_watcher + email_watcher call these endpoints
+// ---------------------------------------------------------------------------
+const server = http.createServer((req, res) => {
+  if (req.method !== "POST") { res.writeHead(405); res.end(); return; }
+
+  // Auth check
+  if (INTERNAL_TOKEN && req.headers["x-internal-token"] !== INTERNAL_TOKEN) {
+    res.writeHead(401); res.end(); return;
+  }
+
+  let bodyBytes = 0, rawBody = "";
+  req.on("data", chunk => {
+    bodyBytes += chunk.length;
+    if (bodyBytes > MAX_BODY_BYTES) { res.writeHead(413); res.end(); req.destroy(); return; }
+    rawBody += chunk;
+  });
+
+  req.on("end", async () => {
+    let body;
+    try { body = JSON.parse(rawBody); }
+    catch { res.writeHead(400); res.end(); return; }
+
     try {
-      return await callRouter(endpoint, body);
-    } catch (err) {
-      lastErr = err;
-      if (i < attempts - 1) {
-        console.warn(`  ⚠️  Router ${endpoint} attempt ${i + 1} failed — retrying in ${delays[i] / 1000}s`);
-        await new Promise((r) => setTimeout(r, delays[i]));
+      switch (req.url) {
+        case "/notify-host":    await handleHttpNotifyHost(body); break;
+        case "/guest-checkin":  await handleHttpGuestCheckin(body); break;
+        case "/offer-extension":await handleHttpOfferExtension(body); break;
+        case "/post-checkout":  await handleHttpPostCheckout(body); break;
+        default: res.writeHead(404); res.end(); return;
       }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok" }));
+    } catch (err) {
+      console.error(`HTTP handler error (${req.url}):`, err.message);
+      res.writeHead(500); res.end();
+    }
+  });
+});
+
+// ── /notify-host  (email drafts) ──────────────────────────────────────────
+async function handleHttpNotifyHost({ draft_id, guest_name, draft, channel }) {
+  if (!draft_id || !guest_name || !draft) throw new Error("Missing fields");
+  pending.set(draft_id, { guestChatId: null, draft, channel });
+  saveJSON(FILES.pending, Object.fromEntries(pending));
+  await client.sendMessage(HOST_WA_ID, buildDraftNotice(draft_id, guest_name, draft, channel || "Email"));
+  console.log(`📧  Email draft from ${guest_name} sent to host`);
+}
+
+// ── /guest-checkin  (guest arrived, ask host for guest WA) ────────────────
+async function handleHttpGuestCheckin({ booking_uid, guest_name, property, checkin, checkout }) {
+  pendingReg.set(booking_uid, { guest_name, property, checkin, checkout });
+  saveJSON(FILES.pendingReg, Object.fromEntries(pendingReg));
+  await client.sendMessage(HOST_WA_ID,
+    `🏠 *${property}* — *${guest_name}* has checked in!\n\n` +
+    `What's their WhatsApp number? Reply:\n` +
+    `\`GUEST_WA ${booking_uid} +[number]\`\n\n` +
+    `_(Optional: add their name after the number if different)_`);
+  console.log(`🏠  Guest arrival notified — ${guest_name} (${booking_uid})`);
+}
+
+// ── /offer-extension  (2h before checkout) ────────────────────────────────
+async function handleHttpOfferExtension({ booking_uid, guest_name, property, checkout }) {
+  const g = guests.get(booking_uid);
+  if (!g || !g.wa_id) {
+    // Guest WA not registered — notify host instead
+    await client.sendMessage(HOST_WA_ID,
+      `⏰  *${guest_name}* at ${property} checks out today.\n` +
+      `_(Could not offer extension — guest WhatsApp not registered)_`);
+    return;
+  }
+  if (g.extension_offered) return;
+
+  const checkoutTime = process.env.CHECKOUT_BRIEF_HOUR
+    ? `${process.env.CHECKOUT_BRIEF_HOUR}:00`
+    : "11:00 AM";
+
+  await client.sendMessage(g.wa_id,
+    `Hi ${guest_name}! 🌟 Your checkout is scheduled for *${checkout}* at ${checkoutTime}.\n\n` +
+    `We hope you're having a wonderful stay! Would you like to *extend*?\n\n` +
+    `Reply *YES* to request an extension, or *NO* if you'll check out as planned.`);
+
+  // Set up a listener for guest YES/NO — we do it via message routing
+  // Store extension state so we can handle their reply
+  guests.set(booking_uid, { ...g, extension_offered: true });
+  saveJSON(FILES.guests, Object.fromEntries(guests));
+  console.log(`⏰  Extension offer sent to ${guest_name}`);
+}
+
+// ── /post-checkout  (checkout complete) ───────────────────────────────────
+async function handleHttpPostCheckout({ booking_uid, guest_name, property }) {
+  const g = guests.get(booking_uid);
+
+  // 1. Notify host
+  await client.sendMessage(HOST_WA_ID,
+    `🏁 *${guest_name}* has checked out of *${property}*.\n` +
+    `Cleaner is being contacted now.`);
+
+  // 2. Review request to guest (if WA registered + not already sent)
+  if (g?.wa_id && !g.review_sent) {
+    const reviewMsg =
+      `Hi ${guest_name}! 🙏 Thank you for staying at ${property}!\n\n` +
+      `We hope you had a wonderful experience. ` +
+      `We'd love it if you could spare 2 minutes to leave us a review on Airbnb — ` +
+      `it means the world to us and helps future guests.\n\n` +
+      (AIRBNB_LISTING ? AIRBNB_LISTING : `Just search for ${property} on Airbnb.\n\n`) +
+      `Thanks again — hope to host you soon! 🏠✨`;
+    await client.sendMessage(g.wa_id, reviewMsg).catch(() => {});
+    guests.set(booking_uid, { ...g, review_sent: true });
+    saveJSON(FILES.guests, Object.fromEntries(guests));
+    console.log(`⭐  Review request sent to ${guest_name}`);
+  }
+
+  // 3. Start cleaner cascade
+  const reqId = await createServiceRequest("cleaners", booking_uid, property, g?.wa_id || null);
+  await dispatchVendor(reqId);
+  console.log(`🧹  Cleaner cascade started (${reqId})`);
+}
+
+// ── Extension reply from guest ─────────────────────────────────────────────
+// Intercept inside handleGuestMessage (routine path won't catch YES/NO — handle here)
+// We patch the guest message handler to detect extension responses
+const _origHandleGuest = handleGuestMessage;
+async function handleGuestMessageWithExtension(msg, ctx) {
+  const { booking_uid, guest } = ctx;
+  if (guest.extension_offered) {
+    const up = msg.body.trim().toUpperCase();
+    if (up === "YES" || up === "YES." || up.startsWith("YES,")) {
+      await client.sendMessage(msg.from,
+        `Great! 🎉 We'll check availability and your host will confirm shortly.`);
+      await client.sendMessage(HOST_WA_ID,
+        `🏨 *Extension Request — ${guest.property}*\n` +
+        `Guest: *${guest.guest_name}*\n` +
+        `Current checkout: ${guest.checkout}\n\n` +
+        `They want to extend. Please arrange in Airbnb then reply:\n` +
+        `• \`EXTEND YES ${booking_uid}\`\n` +
+        `• \`EXTEND NO ${booking_uid}\``);
+      return;
+    }
+    if (up === "NO" || up === "NO." || up.startsWith("NO,")) {
+      guests.set(booking_uid, { ...guest, extension_offered: false });
+      saveJSON(FILES.guests, Object.fromEntries(guests));
+      await client.sendMessage(msg.from,
+        `Understood! We'll see you at checkout. Have a great rest of your stay! 😊`);
+      return;
     }
   }
-  throw lastErr;
+  return _origHandleGuest(msg, ctx);
+}
+// Override
+global.handleGuestMessage = handleGuestMessageWithExtension;
+// Re-bind in the message listener (Node module-level override)
+client.removeAllListeners("message");
+client.on("message", async (msg) => {
+  const from = msg.from;
+  if (!msg.body) return;
+  if (from === HOST_WA_ID)          { await handleHostMessage(msg.body.trim()); return; }
+  if (msg.isGroupMsg || from === "status@broadcast") return;
+  const guestEntry = findGuestByWaId(from);
+  if (guestEntry)                   { await handleGuestMessageWithExtension(msg, guestEntry); return; }
+  const vendor = vendorMap.get(from);
+  if (vendor)                       { await handleVendorResponse(msg, vendor); return; }
+});
+
+// ---------------------------------------------------------------------------
+// Router HTTP helpers
+// ---------------------------------------------------------------------------
+function callRouterWithRetry(endpoint, body, attempts = 3) {
+  const delays = [2000, 4000, 8000];
+  let lastErr;
+  const attempt = async (i) => {
+    try { return await callRouter(endpoint, body); }
+    catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        console.warn(`  ⚠️  Router ${endpoint} attempt ${i + 1} failed — retrying`);
+        await new Promise(r => setTimeout(r, delays[i]));
+        return attempt(i + 1);
+      }
+      throw lastErr;
+    }
+  };
+  return attempt(0);
 }
 
 function callRouter(endpoint, body) {
@@ -301,36 +724,29 @@ function callRouter(endpoint, body) {
     const data    = JSON.stringify(body);
     const parsed  = new URL(ROUTER_URL + endpoint);
     const headers = {
-      "Content-Type":   "application/json",
+      "Content-Type": "application/json",
       "Content-Length": Buffer.byteLength(data),
     };
     if (INTERNAL_TOKEN) headers["X-Internal-Token"] = INTERNAL_TOKEN;
-
-    const options = {
-      hostname: parsed.hostname,
-      port:     Number(parsed.port) || 80,
-      path:     parsed.pathname,
-      method:   "POST",
-      headers,
-      timeout:  15000,
-    };
-    const lib = parsed.protocol === "https:" ? https : http;
-    const req = lib.request(options, (res) => {
-      let out = "";
-      res.on("data", (c) => { out += c; });
-      res.on("end", () => {
-        try { resolve(JSON.parse(out)); }
-        catch { resolve({}); }
-      });
-    });
-    req.on("timeout", () => { req.destroy(new Error("Request timed out")); });
+    const req = (parsed.protocol === "https:" ? https : http).request(
+      { hostname: parsed.hostname, port: Number(parsed.port) || 80,
+        path: parsed.pathname, method: "POST", headers, timeout: 15000 },
+      res => {
+        let out = "";
+        res.on("data", c => out += c);
+        res.on("end",  () => { try { resolve(JSON.parse(out)); } catch { resolve({}); } });
+      }
+    );
+    req.on("timeout", () => req.destroy(new Error("Timeout")));
     req.on("error", reject);
-    req.write(data);
-    req.end();
+    req.write(data); req.end();
   });
 }
 
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
+server.listen(WA_BOT_PORT, "127.0.0.1", () =>
+  console.log(`📡  HTTP server on 127.0.0.1:${WA_BOT_PORT}`));
+
 client.initialize();
