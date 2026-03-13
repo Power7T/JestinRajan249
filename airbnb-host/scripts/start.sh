@@ -37,15 +37,25 @@ WA_BOT_PORT="${WA_BOT_PORT:-7772}"
 command -v python3 >/dev/null 2>&1 || error "python3 not found"
 command -v node    >/dev/null 2>&1 || error "node not found — install Node.js ≥ 18"
 command -v npm     >/dev/null 2>&1 || error "npm not found"
+command -v curl    >/dev/null 2>&1 || error "curl not found — needed for health checks"
 
-[[ -n "${ANTHROPIC_API_KEY:-}" ]]   || error "ANTHROPIC_API_KEY is not set in .env"
-[[ -n "${EMAIL_IMAP_HOST:-}" ]]     || error "EMAIL_IMAP_HOST is not set in .env"
-[[ -n "${EMAIL_ADDRESS:-}" ]]       || error "EMAIL_ADDRESS is not set in .env"
+[[ -n "${ANTHROPIC_API_KEY:-}" ]]    || error "ANTHROPIC_API_KEY is not set in .env"
+[[ -n "${EMAIL_IMAP_HOST:-}" ]]      || error "EMAIL_IMAP_HOST is not set in .env"
+[[ -n "${EMAIL_ADDRESS:-}" ]]        || error "EMAIL_ADDRESS is not set in .env"
 [[ -n "${HOST_WHATSAPP_NUMBER:-}" ]] || error "HOST_WHATSAPP_NUMBER is not set in .env"
+
+# ── Check for port conflicts ────────────────────────────────
+for port in "$ROUTER_PORT" "$WA_BOT_PORT"; do
+  if lsof -iTCP:"$port" -sTCP:LISTEN -t >/dev/null 2>&1; then
+    warn "Port $port is already in use. Stop the existing process first."
+    warn "Run: kill \$(lsof -iTCP:$port -sTCP:LISTEN -t)"
+    error "Port conflict on $port"
+  fi
+done
 
 # ── Install Python dependencies ────────────────────────────
 info "Installing Python dependencies..."
-pip install -q -r requirements.txt
+pip install -r requirements.txt 2>&1 | grep -E "^(Collecting|Successfully|ERROR)" || true
 
 # ── Install Node dependencies ──────────────────────────────
 info "Installing Node.js dependencies for WhatsApp bot..."
@@ -54,7 +64,8 @@ info "Installing Node.js dependencies for WhatsApp bot..."
 # ── PID tracking ──────────────────────────────────────────
 PIDS=()
 cleanup() {
-  info "Shutting down..."
+  echo ""
+  info "Shutting down all services..."
   for pid in "${PIDS[@]}"; do
     kill "$pid" 2>/dev/null || true
   done
@@ -66,14 +77,30 @@ trap cleanup SIGINT SIGTERM
 info "Starting response_router.py on port ${ROUTER_PORT}..."
 python3 response_router.py &
 PIDS+=($!)
-sleep 2   # give FastAPI a moment to bind
+
+# Health-check: poll /health until router responds (up to 15s)
+info "Waiting for router to be ready..."
+READY=0
+for i in $(seq 1 15); do
+  if curl -sf "http://127.0.0.1:${ROUTER_PORT}/health" >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
+  sleep 1
+done
+if [[ $READY -eq 0 ]]; then
+  error "Router did not start within 15 seconds. Check logs above."
+fi
+info "Router is up."
 
 # ── 2. Start WhatsApp bot ─────────────────────────────────
 info "Starting WhatsApp companion bot on port ${WA_BOT_PORT}..."
 info "(First run: scan the QR code printed below to link your phone)"
 (cd whatsapp && node bot.js) &
 PIDS+=($!)
-sleep 3
+
+# Give the HTTP server a moment to bind
+sleep 2
 
 # ── 3. Start email_watcher.py (foreground — shows live log) ─
 info "Starting email watcher (${EMAIL_ADDRESS})..."

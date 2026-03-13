@@ -18,6 +18,7 @@
 "use strict";
 
 const path   = require("path");
+const fs     = require("fs");
 const http   = require("http");
 const https  = require("https");
 const { URL }  = require("url");
@@ -30,23 +31,50 @@ const qrcode = require("qrcode-terminal");
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
-const HOST_NUMBER = (process.env.HOST_WHATSAPP_NUMBER || "").trim();
+const HOST_NUMBER     = (process.env.HOST_WHATSAPP_NUMBER || "").trim();
 if (!HOST_NUMBER) {
   console.error("❌  HOST_WHATSAPP_NUMBER is not set in .env");
   process.exit(1);
 }
 
-const ROUTER_URL  = `http://127.0.0.1:${process.env.ROUTER_PORT || 7771}`;
-const WA_BOT_PORT = parseInt(process.env.WA_BOT_PORT || "7772", 10);
+const ROUTER_URL      = `http://127.0.0.1:${process.env.ROUTER_PORT || 7771}`;
+const WA_BOT_PORT     = parseInt(process.env.WA_BOT_PORT || "7772", 10);
+const INTERNAL_TOKEN  = process.env.INTERNAL_TOKEN || "";
+const MAX_BODY_BYTES  = 65536;   // 64 KB limit on /notify-host requests
 
 // Normalise to WhatsApp chat ID: strip "+" prefix, append "@c.us"
-const HOST_WA_ID  = HOST_NUMBER.replace(/^\+/, "") + "@c.us";
+const HOST_WA_ID      = HOST_NUMBER.replace(/^\+/, "") + "@c.us";
 
 // ---------------------------------------------------------------------------
-// Pending approvals: draft_id → { guestChatId | null, draft, channel }
-// (in-memory; restarts clear it — low-volume use case, acceptable)
+// Pending approvals — persisted to disk so restarts don't lose them
+// { draft_id: { guestChatId, draft, channel } }
 // ---------------------------------------------------------------------------
-const pending = new Map();
+const PENDING_FILE = path.join(__dirname, "pending.json");
+
+function loadPending() {
+  try {
+    if (fs.existsSync(PENDING_FILE)) {
+      const raw = JSON.parse(fs.readFileSync(PENDING_FILE, "utf8"));
+      return new Map(Object.entries(raw));
+    }
+  } catch (err) {
+    console.warn("⚠️  Could not load pending.json — starting fresh:", err.message);
+  }
+  return new Map();
+}
+
+function savePending(map) {
+  try {
+    const tmp = PENDING_FILE + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(Object.fromEntries(map), null, 2));
+    fs.renameSync(tmp, PENDING_FILE);   // atomic on POSIX
+  } catch (err) {
+    console.error("❌  Failed to save pending.json:", err.message);
+  }
+}
+
+const pending = loadPending();
+console.log(`📂  Loaded ${pending.size} pending approval(s) from disk.`);
 
 // ---------------------------------------------------------------------------
 // WhatsApp client
@@ -109,7 +137,7 @@ client.on("message", async (msg) => {
   console.log(`📨  [${guestName}] ${text.slice(0, 80)}${text.length > 80 ? "…" : ""}`);
 
   try {
-    const result  = await callRouter("/classify", {
+    const result  = await callRouterWithRetry("/classify", {
       source:     "whatsapp",
       guest_name: guestName,
       message:    text,
@@ -121,11 +149,11 @@ client.on("message", async (msg) => {
     if (msg_type === "routine") {
       await client.sendMessage(from, draft);
       console.log(`  ✅  Auto-replied to ${guestName} (routine)`);
-      // Record approval in router (fire-and-forget)
-      callRouter("/approve", { draft_id, action: "approve" }).catch(() => {});
+      callRouterWithRetry("/approve", { draft_id, action: "approve" }).catch(() => {});
 
     } else {
       pending.set(draft_id, { guestChatId: from, draft, channel: "whatsapp" });
+      savePending(pending);
       const notice = buildApprovalNotice(draft_id, guestName, draft, "WhatsApp");
       await client.sendMessage(HOST_WA_ID, notice);
       console.log(`  ⏳  Complex message from ${guestName} — draft sent to host`);
@@ -139,19 +167,20 @@ client.on("message", async (msg) => {
 // Host approval parsing
 // ---------------------------------------------------------------------------
 const RE_APPROVE = /^APPROVE\s+([^\s]+)$/i;
-const RE_EDIT    = /^EDIT\s+([^\s]+):\s*([\s\S]+)$/i;
+const RE_EDIT    = /^EDIT\s+([^\s]+):\s*([\s\S]{1,2000})$/i;
 const RE_SKIP    = /^SKIP\s+([^\s]+)$/i;
 
 async function handleHostApproval(text) {
   let m;
 
   if ((m = RE_APPROVE.exec(text))) {
-    const id = m[1];
+    const id    = m[1];
     const entry = pending.get(id);
     if (!entry) return;
     if (entry.guestChatId) await client.sendMessage(entry.guestChatId, entry.draft);
-    callRouter("/approve", { draft_id: id, action: "approve" }).catch(() => {});
+    callRouterWithRetry("/approve", { draft_id: id, action: "approve" }).catch(() => {});
     pending.delete(id);
+    savePending(pending);
     await client.sendMessage(HOST_WA_ID, "✅  Reply sent to guest.");
 
   } else if ((m = RE_EDIT.exec(text))) {
@@ -160,15 +189,17 @@ async function handleHostApproval(text) {
     const entry   = pending.get(id);
     if (!entry) return;
     if (entry.guestChatId) await client.sendMessage(entry.guestChatId, newText);
-    callRouter("/approve", { draft_id: id, action: "edit", edited_text: newText }).catch(() => {});
+    callRouterWithRetry("/approve", { draft_id: id, action: "edit", edited_text: newText }).catch(() => {});
     pending.delete(id);
+    savePending(pending);
     await client.sendMessage(HOST_WA_ID, "✅  Edited reply sent to guest.");
 
   } else if ((m = RE_SKIP.exec(text))) {
     const id = m[1];
     if (!pending.has(id)) return;
     pending.delete(id);
-    callRouter("/approve", { draft_id: id, action: "skip" }).catch(() => {});
+    savePending(pending);
+    callRouterWithRetry("/approve", { draft_id: id, action: "skip" }).catch(() => {});
     await client.sendMessage(HOST_WA_ID, "⏭️  Skipped — no reply sent.");
   }
 }
@@ -184,12 +215,36 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // Auth check
+  if (INTERNAL_TOKEN && req.headers["x-internal-token"] !== INTERNAL_TOKEN) {
+    res.writeHead(401);
+    res.end(JSON.stringify({ error: "Unauthorized" }));
+    return;
+  }
+
+  // Body size limit
+  let bodyBytes = 0;
   let body = "";
-  req.on("data", (chunk) => { body += chunk; });
+  req.on("data", (chunk) => {
+    bodyBytes += chunk.length;
+    if (bodyBytes > MAX_BODY_BYTES) {
+      res.writeHead(413);
+      res.end();
+      req.destroy();
+      return;
+    }
+    body += chunk;
+  });
   req.on("end", async () => {
     try {
       const { draft_id, guest_name, draft, channel } = JSON.parse(body);
+      if (!draft_id || !guest_name || !draft) {
+        res.writeHead(422);
+        res.end(JSON.stringify({ error: "Missing required fields" }));
+        return;
+      }
       pending.set(draft_id, { guestChatId: null, draft, channel });
+      savePending(pending);
       const notice = buildApprovalNotice(draft_id, guest_name, draft, "Email");
       await client.sendMessage(HOST_WA_ID, notice);
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -223,19 +278,41 @@ function buildApprovalNotice(draft_id, guestName, draft, source) {
   );
 }
 
+// callRouter with exponential-backoff retry (3 attempts: 2s, 4s, 8s)
+async function callRouterWithRetry(endpoint, body, attempts = 3) {
+  const delays = [2000, 4000, 8000];
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await callRouter(endpoint, body);
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        console.warn(`  ⚠️  Router ${endpoint} attempt ${i + 1} failed — retrying in ${delays[i] / 1000}s`);
+        await new Promise((r) => setTimeout(r, delays[i]));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 function callRouter(endpoint, body) {
   return new Promise((resolve, reject) => {
     const data    = JSON.stringify(body);
     const parsed  = new URL(ROUTER_URL + endpoint);
+    const headers = {
+      "Content-Type":   "application/json",
+      "Content-Length": Buffer.byteLength(data),
+    };
+    if (INTERNAL_TOKEN) headers["X-Internal-Token"] = INTERNAL_TOKEN;
+
     const options = {
       hostname: parsed.hostname,
       port:     Number(parsed.port) || 80,
       path:     parsed.pathname,
       method:   "POST",
-      headers:  {
-        "Content-Type":   "application/json",
-        "Content-Length": Buffer.byteLength(data),
-      },
+      headers,
+      timeout:  15000,
     };
     const lib = parsed.protocol === "https:" ? https : http;
     const req = lib.request(options, (res) => {
@@ -246,6 +323,7 @@ function callRouter(endpoint, body) {
         catch { resolve({}); }
       });
     });
+    req.on("timeout", () => { req.destroy(new Error("Request timed out")); });
     req.on("error", reject);
     req.write(data);
     req.end();

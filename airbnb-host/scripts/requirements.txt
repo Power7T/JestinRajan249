@@ -6,6 +6,9 @@
 # Claude API client
 anthropic>=0.25.0
 
+# Atomic file writes for pending_drafts.json
+filelock>=3.13.0
+
 # FastAPI + ASGI server (response_router.py)
 fastapi>=0.111.0
 uvicorn>=0.30.0

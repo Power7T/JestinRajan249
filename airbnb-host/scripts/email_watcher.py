@@ -53,40 +53,63 @@ SMTP_PORT      = int(os.getenv("EMAIL_SMTP_PORT", "587"))
 EMAIL_ADDRESS  = os.environ["EMAIL_ADDRESS"]
 EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 POLL_INTERVAL  = int(os.getenv("EMAIL_POLL_SECONDS", "30"))
+IMAP_TIMEOUT   = int(os.getenv("EMAIL_IMAP_TIMEOUT", "20"))   # seconds before giving up on hang
 
-ROUTER_URL     = f"http://127.0.0.1:{os.getenv('ROUTER_PORT', '7771')}"
-WA_NOTIFY_URL  = f"http://127.0.0.1:{os.getenv('WA_BOT_PORT', '7772')}/notify-host"
+ROUTER_URL      = f"http://127.0.0.1:{os.getenv('ROUTER_PORT', '7771')}"
+WA_NOTIFY_URL   = f"http://127.0.0.1:{os.getenv('WA_BOT_PORT', '7772')}/notify-host"
+INTERNAL_TOKEN  = os.getenv("INTERNAL_TOKEN", "")
 
-SEEN_FILE      = pathlib.Path(__file__).parent / "seen_emails.json"
+SEEN_FILE       = pathlib.Path(__file__).parent / "seen_emails.json"
 
-# Airbnb sends notifications from these domains
 _AIRBNB_SENDERS = ("noreply@airbnb.com", "@airbnb.com", "@messaging.airbnb.com")
 
+# Message length sanity bounds (characters)
+_MSG_MIN_LEN = 10
+_MSG_MAX_LEN = 3000
+
 # ---------------------------------------------------------------------------
-# Seen-email tracking (avoid processing the same UID twice)
+# Auth header
+# ---------------------------------------------------------------------------
+
+def _auth_headers() -> dict:
+    if INTERNAL_TOKEN:
+        return {"X-Internal-Token": INTERNAL_TOKEN}
+    return {}
+
+# ---------------------------------------------------------------------------
+# Seen-email tracking
 # ---------------------------------------------------------------------------
 
 def _load_seen() -> set:
     if SEEN_FILE.exists():
-        return set(json.loads(SEEN_FILE.read_text()))
+        try:
+            return set(json.loads(SEEN_FILE.read_text()))
+        except (json.JSONDecodeError, OSError):
+            log.warning("seen_emails.json unreadable — starting fresh")
     return set()
 
 
 def _save_seen(seen: set):
-    SEEN_FILE.write_text(json.dumps(sorted(seen)))
+    tmp = SEEN_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(sorted(seen)))
+    tmp.replace(SEEN_FILE)   # atomic
 
 # ---------------------------------------------------------------------------
-# IMAP connection
+# IMAP connection — with socket timeout to prevent hangs
 # ---------------------------------------------------------------------------
 
 def _connect() -> imapclient.IMAPClient:
-    c = imapclient.IMAPClient(IMAP_HOST, port=IMAP_PORT, ssl=True)
+    c = imapclient.IMAPClient(
+        IMAP_HOST,
+        port=IMAP_PORT,
+        ssl=True,
+        timeout=IMAP_TIMEOUT,
+    )
     c.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
     return c
 
 
 def _fetch_airbnb_emails(c: imapclient.IMAPClient) -> list:
-    """Return list of {uid, msg} dicts for unread Airbnb notification emails."""
     c.select_folder("INBOX")
     uids = c.search(["UNSEEN"])
     if not uids:
@@ -114,7 +137,6 @@ _BODY_RE = re.compile(
 
 
 def _get_text(msg) -> str:
-    """Extract readable text from email (prefer plain text, fall back to HTML)."""
     plain, html = None, None
     for part in msg.walk():
         ct = part.get_content_type()
@@ -127,32 +149,29 @@ def _get_text(msg) -> str:
 
 
 def parse_airbnb_email(msg) -> dict | None:
-    """
-    Returns {guest_name, guest_message, reply_to} extracted from an Airbnb
-    notification email, or None if the content can't be parsed.
-    """
     subject = msg.get("Subject", "")
     body    = _get_text(msg)
 
-    # Guest name: try subject first, then body
     m = _NAME_RE.search(subject) or _NAME_RE.search(body)
     guest_name = m.group(1) if m else "Guest"
 
-    # Guest message body
     bm = _BODY_RE.search(body)
     if bm:
         guest_message = bm.group(1).strip()
     else:
-        # Fallback: grab a few lines after any "message" keyword
         lines  = [l.strip() for l in body.splitlines() if l.strip()]
         marker = next((i for i, l in enumerate(lines) if "message" in l.lower()), -1)
         if marker >= 0:
             guest_message = "\n".join(lines[marker + 1 : marker + 6])
         else:
-            guest_message = body[:500].strip()
+            guest_message = body[:_MSG_MAX_LEN].strip()
 
-    if not guest_message:
+    # Sanity-check the extracted message length
+    if len(guest_message) < _MSG_MIN_LEN:
+        log.warning("Parsed message too short (%d chars) — skipping", len(guest_message))
         return None
+    if len(guest_message) > _MSG_MAX_LEN:
+        guest_message = guest_message[:_MSG_MAX_LEN]
 
     reply_to = msg.get("Reply-To") or msg.get("From") or ""
     return {
@@ -181,21 +200,40 @@ def send_email_reply(to: str, original_subject: str, body: str):
     log.info("Email reply sent to %s", to)
 
 # ---------------------------------------------------------------------------
+# Router requests with exponential-backoff retry
+# ---------------------------------------------------------------------------
+_RETRY_DELAYS = [2, 4, 8]
+
+
+def _post_with_retry(url: str, payload: dict, timeout: int = 30) -> dict:
+    last_exc = None
+    for attempt, delay in enumerate(zip(range(len(_RETRY_DELAYS)), _RETRY_DELAYS), 1):
+        try:
+            r = requests.post(url, json=payload, headers=_auth_headers(), timeout=timeout)
+            r.raise_for_status()
+            return r.json()
+        except Exception as exc:
+            last_exc = exc
+            _, wait = delay
+            log.warning("Request to %s attempt %d failed: %s — retrying in %ds", url, attempt, exc, wait)
+            time.sleep(wait)
+    raise RuntimeError(f"All retries exhausted for {url}: {last_exc}")
+
+# ---------------------------------------------------------------------------
 # Notify host via WhatsApp for complex drafts
 # ---------------------------------------------------------------------------
 
 def notify_host_whatsapp(draft_id: str, guest_name: str, draft: str):
     try:
-        requests.post(
+        _post_with_retry(
             WA_NOTIFY_URL,
-            json={"draft_id": draft_id, "guest_name": guest_name, "draft": draft, "channel": "email"},
+            {"draft_id": draft_id, "guest_name": guest_name, "draft": draft, "channel": "email"},
             timeout=5,
         )
-        log.info("Complex draft %s forwarded to WhatsApp bot for host approval", draft_id)
+        log.info("Complex draft %s forwarded to WhatsApp bot", draft_id)
     except Exception as exc:
         log.warning("Could not reach WhatsApp bot: %s", exc)
-        log.warning("Pending draft %s stored in router — approve at http://127.0.0.1:%s/pending",
-                    draft_id, os.getenv("ROUTER_PORT", "7771"))
+        log.warning("Draft %s is stored in router — approve at %s/pending", draft_id, ROUTER_URL)
 
 # ---------------------------------------------------------------------------
 # Process a single parsed email
@@ -203,18 +241,17 @@ def notify_host_whatsapp(draft_id: str, guest_name: str, draft: str):
 
 def process_message(parsed: dict, original_subject: str):
     try:
-        resp = requests.post(
+        resp = _post_with_retry(
             f"{ROUTER_URL}/classify",
-            json={
+            {
                 "source":     "email",
                 "guest_name": parsed["guest_name"],
                 "message":    parsed["guest_message"],
                 "reply_to":   parsed["reply_to"],
             },
-            timeout=30,
-        ).json()
+        )
     except Exception as exc:
-        log.error("Router classify failed: %s", exc)
+        log.error("Router classify failed after retries: %s — message not processed", exc)
         return
 
     draft_id = resp["draft_id"]
@@ -222,25 +259,28 @@ def process_message(parsed: dict, original_subject: str):
     msg_type = resp["msg_type"]
 
     if msg_type == "routine":
-        send_email_reply(parsed["reply_to"], original_subject, draft)
-        # Record as approved in router
         try:
-            requests.post(
-                f"{ROUTER_URL}/approve",
-                json={"draft_id": draft_id, "action": "approve"},
-                timeout=5,
-            )
+            send_email_reply(parsed["reply_to"], original_subject, draft)
+        except Exception as exc:
+            log.error("SMTP send failed: %s", exc)
+            return
+        try:
+            _post_with_retry(f"{ROUTER_URL}/approve",
+                             {"draft_id": draft_id, "action": "approve"}, timeout=5)
         except Exception:
-            pass
+            pass  # non-critical; draft already sent
     else:
         notify_host_whatsapp(draft_id, parsed["guest_name"], draft)
 
 # ---------------------------------------------------------------------------
 # Main poll loop
 # ---------------------------------------------------------------------------
+_MAX_BACKOFF = 300   # cap retry sleep at 5 minutes
+
 
 def run():
-    seen = _load_seen()
+    seen           = _load_seen()
+    fail_streak    = 0
     log.info("Email watcher started — %s @ %s, polling every %ss",
              EMAIL_ADDRESS, IMAP_HOST, POLL_INTERVAL)
     while True:
@@ -262,11 +302,16 @@ def run():
             if new_seen:
                 _save_seen(seen)
             c.logout()
+            fail_streak = 0   # reset on success
         except KeyboardInterrupt:
             log.info("Email watcher stopped.")
             break
         except Exception as exc:
-            log.error("Email watcher error: %s", exc)
+            fail_streak += 1
+            backoff = min(POLL_INTERVAL * (2 ** (fail_streak - 1)), _MAX_BACKOFF)
+            log.error("Email watcher error (streak=%d): %s — backing off %ds", fail_streak, exc, backoff)
+            time.sleep(backoff)
+            continue
         time.sleep(POLL_INTERVAL)
 
 
