@@ -1,3 +1,6 @@
+# © 2024 Jestin Rajan. All rights reserved.
+# Licensed under the Airbnb Host AI License Agreement.
+# Unauthorized copying, distribution or use is prohibited.
 """
 Email Watcher — Option 3
 ========================

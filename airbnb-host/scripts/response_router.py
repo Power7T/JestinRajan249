@@ -1,3 +1,6 @@
+# © 2024 Jestin Rajan. All rights reserved.
+# Licensed under the Airbnb Host AI License Agreement.
+# Unauthorized copying, distribution or use is prohibited.
 """
 Airbnb Host Response Router
 ===========================
@@ -130,14 +133,22 @@ def classify_message(text: str) -> str:
     return "complex"
 
 # Vendor-type detection — which maintenance category does the message indicate?
-_AC_PATTERNS        = [r"\bac\b", r"\bair.?con", r"\bhvac\b", r"\bcooling\b", r"\bheat(ing)?\b", r"\bfurnace\b", r"\bthermostat\b"]
-_PLUMBING_PATTERNS  = [r"\bleak\b", r"\bwater\b", r"\bpipe\b", r"\btoilet\b", r"\bplumb"]
+_AC_PATTERNS          = [r"\bac\b", r"\bair.?con", r"\bhvac\b", r"\bcooling\b", r"\bheat(ing)?\b", r"\bfurnace\b", r"\bthermostat\b"]
+_PLUMBING_PATTERNS    = [r"\bleak\b", r"\bpipe\b", r"\btoilet\b", r"\bplumb", r"\bdrain\b", r"\bflood(ing)?\b", r"\bwater\s+(damage|leak|drip)"]
+_ELECTRICAL_PATTERNS  = [r"\belectr", r"\bpower\s+out", r"\boutlet\b", r"\btripped?\b", r"\bcircuit\b", r"\bfuse\b", r"\bblackout\b", r"\bno\s+power\b"]
+_LOCKSMITH_PATTERNS   = [r"\blocked\s+out\b", r"\bcan.?t\s+get\s+in\b", r"\bkey\s+broke", r"\bdoor\s+won.?t\s+open", r"\bsmartlock\b", r"\bkeypad\s+not\s+work"]
 
 
 def detect_vendor_type(text: str) -> str | None:
     lower = text.lower()
     if any(re.search(p, lower) for p in _AC_PATTERNS):
         return "ac_technicians"
+    if any(re.search(p, lower) for p in _PLUMBING_PATTERNS):
+        return "plumbers"
+    if any(re.search(p, lower) for p in _ELECTRICAL_PATTERNS):
+        return "electricians"
+    if any(re.search(p, lower) for p in _LOCKSMITH_PATTERNS):
+        return "locksmiths"
     return None
 
 # ---------------------------------------------------------------------------

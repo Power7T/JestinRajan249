@@ -2,6 +2,10 @@
 # ============================================================
 # start.sh — Launch the Airbnb Host automated pipeline
 #
+# © 2024 Jestin Rajan. All rights reserved.
+# Licensed under the Airbnb Host AI License Agreement.
+# Unauthorized copying, distribution or use is prohibited.
+#
 # Starts three processes:
 #   1. response_router.py  (FastAPI, port ROUTER_PORT)
 #   2. whatsapp/bot.js     (WhatsApp companion + HTTP server)
@@ -52,6 +56,10 @@ for port in "$ROUTER_PORT" "$WA_BOT_PORT"; do
     error "Port conflict on $port"
   fi
 done
+
+# ── License check ──────────────────────────────────────────
+info "Checking license..."
+python3 license.py || exit 1
 
 # ── Install Python dependencies ────────────────────────────
 info "Installing Python dependencies..."

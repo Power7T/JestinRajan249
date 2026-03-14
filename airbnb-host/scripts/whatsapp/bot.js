@@ -1,4 +1,8 @@
 /**
+ * © 2024 Jestin Rajan. All rights reserved.
+ * Licensed under the Airbnb Host AI License Agreement.
+ * Unauthorized copying, distribution or use is prohibited.
+ *
  * Airbnb Host WhatsApp Companion Bot
  * ====================================
  * Three-way routing on the host's personal WhatsApp number:
@@ -75,11 +79,17 @@ console.log(`📂  Loaded: ${pending.size} pending, ${guests.size} guests, ${ser
 // ---------------------------------------------------------------------------
 // Vendor registry (scripts/vendors.json — host configures)
 // ---------------------------------------------------------------------------
-let VENDORS = { cleaners: [], ac_technicians: [] };
+let VENDORS = { cleaners: [], ac_technicians: [], plumbers: [], electricians: [], locksmiths: [] };
 try {
   VENDORS = JSON.parse(fs.readFileSync(path.join(__dirname, "../vendors.json"), "utf8"));
   delete VENDORS._comment;
-  console.log(`📋  Vendors: ${VENDORS.cleaners?.length || 0} cleaners, ${VENDORS.ac_technicians?.length || 0} AC techs`);
+  console.log(
+    `📋  Vendors: ${VENDORS.cleaners?.length || 0} cleaners, ` +
+    `${VENDORS.ac_technicians?.length || 0} AC techs, ` +
+    `${VENDORS.plumbers?.length || 0} plumbers, ` +
+    `${VENDORS.electricians?.length || 0} electricians, ` +
+    `${VENDORS.locksmiths?.length || 0} locksmiths`
+  );
 } catch (e) { console.warn("⚠️  vendors.json not found — vendor cascade disabled"); }
 
 function toWaId(num) {
@@ -515,8 +525,15 @@ function findCleanerBriefDraft(booking_uid) {
   return null;
 }
 
+const _VENDOR_LABELS = {
+  cleaners:      "Cleaner",
+  ac_technicians:"AC Technician",
+  plumbers:      "Plumber",
+  electricians:  "Electrician",
+  locksmiths:    "Locksmith",
+};
 function label(vendor_type) {
-  return vendor_type === "cleaners" ? "Cleaner" : "AC Technician";
+  return _VENDOR_LABELS[vendor_type] || vendor_type;
 }
 
 // ---------------------------------------------------------------------------

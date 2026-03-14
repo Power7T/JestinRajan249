@@ -1,3 +1,6 @@
+# © 2024 Jestin Rajan. All rights reserved.
+# Licensed under the Airbnb Host AI License Agreement.
+# Unauthorized copying, distribution or use is prohibited.
 """
 Calendar Watcher — iCal Integration
 =====================================
@@ -49,6 +52,7 @@ DEFAULT_CHECKIN_HOUR  = int(os.getenv("DEFAULT_CHECKIN_HOUR", "15"))   # assume 
 EXTENSION_OFFER_HOUR  = int(os.getenv("EXTENSION_OFFER_HOUR",          # 2h before checkout
                              str(max(0, int(os.getenv("CHECKOUT_BRIEF_HOUR", "11")) - 2))))
 POLL_MINUTES          = int(os.getenv("CALENDAR_POLL_MINUTES", "30"))
+PRE_ARRIVAL_DAYS      = int(os.getenv("PRE_ARRIVAL_DAYS", "7"))
 
 ROUTER_URL     = f"http://127.0.0.1:{os.getenv('ROUTER_PORT', '7771')}"
 WA_BOT_URL     = f"http://127.0.0.1:{os.getenv('WA_BOT_PORT', '7772')}"
@@ -69,11 +73,13 @@ def _load_state() -> dict:
         except Exception:
             log.warning("calendar_state.json unreadable — starting fresh")
     return {
-        "notified_checkin":       [],   # check-in instructions draft (24h before)
-        "notified_cleaner":       [],   # cleaner brief draft (checkout day)
-        "guest_arrival_notified": [],   # host notified guest arrived + asked for WA
-        "extension_offered":      [],   # extension offer sent to guest
-        "post_checkout_triggered":[],   # review request + cleaner contact triggered
+        "notified_checkin":        [],   # check-in instructions draft (24h before)
+        "pre_arrival_notified":    [],   # pre-arrival message draft (PRE_ARRIVAL_DAYS before)
+        "booking_confirmed":       [],   # new booking confirmation notice to host
+        "notified_cleaner":        [],   # cleaner brief draft (checkout day)
+        "guest_arrival_notified":  [],   # host notified guest arrived + asked for WA
+        "extension_offered":       [],   # extension offer sent to guest
+        "post_checkout_triggered": [],   # review request + cleaner contact triggered
     }
 
 
@@ -184,6 +190,90 @@ def _notify_host(draft_id: str, display_name: str, draft: str, label: str):
             "WhatsApp bot unreachable: %s — draft %s is in router at %s/pending",
             exc, draft_id, ROUTER_URL,
         )
+
+# ---------------------------------------------------------------------------
+# Trigger: new booking confirmation — notify host when a booking first appears
+# ---------------------------------------------------------------------------
+
+def check_booking_confirmed(booking: dict, property_label: str, state: dict):
+    """Fire once when a booking's UID is seen for the first time."""
+    state_uid = f"confirmed:{booking['uid']}"
+    confirmed_list = state.setdefault("booking_confirmed", [])
+    if state_uid in confirmed_list:
+        return
+
+    guest  = booking["guest_name"]
+    nights = booking["nights"]
+    checkin_str  = booking["checkin"].strftime("%A, %B %d, %Y")
+    checkout_str = booking["checkout"].strftime("%A, %B %d, %Y")
+
+    log.info("[%s] New booking detected — %s (%d nights)", property_label, guest, nights)
+    _call_bot("notify-host", {
+        "draft_id":   f"booking_{booking['uid']}",
+        "guest_name": f"{guest} — new booking",
+        "draft": (
+            f"📅 *New booking confirmed!*\n\n"
+            f"Property: {property_label}\n"
+            f"Guest:    {guest}\n"
+            f"Check-in: {checkin_str}\n"
+            f"Checkout: {checkout_str}\n"
+            f"Nights:   {nights}\n\n"
+            f"Pre-arrival message will be drafted {PRE_ARRIVAL_DAYS} days before check-in."
+        ),
+        "channel": "calendar:booking",
+    })
+    confirmed_list.append(state_uid)
+    _save_state(state)
+
+
+# ---------------------------------------------------------------------------
+# Trigger: pre-arrival message — PRE_ARRIVAL_DAYS before check-in
+# ---------------------------------------------------------------------------
+
+def check_pre_arrival(booking: dict, property_label: str, state: dict, now: datetime):
+    """Generate a warm pre-arrival message draft for the host to send on Airbnb."""
+    state_uid = f"pre_arrival:{booking['uid']}"
+    if state_uid in state.setdefault("pre_arrival_notified", []):
+        return
+
+    checkin_dt = datetime(
+        booking["checkin"].year,
+        booking["checkin"].month,
+        booking["checkin"].day,
+        DEFAULT_CHECKIN_HOUR,
+        tzinfo=timezone.utc,
+    )
+    hours_until = (checkin_dt - now).total_seconds() / 3600
+    window_lo   = PRE_ARRIVAL_DAYS * 24
+    window_hi   = (PRE_ARRIVAL_DAYS + 1) * 24   # 24h polling tolerance
+
+    if window_lo < hours_until <= window_hi:
+        guest  = booking["guest_name"]
+        nights = booking["nights"]
+        context = (
+            f"[CALENDAR TRIGGER — PRE-ARRIVAL MESSAGE]\n\n"
+            f"Property: {property_label}\n"
+            f"Guest: {guest}\n"
+            f"Check-in: {booking['checkin'].strftime('%A, %B %d, %Y')} "
+            f"(in {PRE_ARRIVAL_DAYS} days)\n"
+            f"Length of stay: {nights} night{'s' if nights != 1 else ''}\n\n"
+            f"Please generate a warm, friendly pre-arrival message to send to {guest} on Airbnb "
+            f"{PRE_ARRIVAL_DAYS} days before their stay. Include: excitement about hosting them, "
+            f"a reminder that the host is available for questions, and a note that check-in "
+            f"instructions will arrive 24 hours before arrival. Keep it brief and personal."
+        )
+        log.info(
+            "[%s] Pre-arrival window for %s (~%d days out) — generating draft",
+            property_label, guest, PRE_ARRIVAL_DAYS,
+        )
+        result = _request_draft("reply", guest, context)
+        if result:
+            draft_id, draft = result
+            display = f"{guest} — pre-arrival ({PRE_ARRIVAL_DAYS}d before)"
+            _notify_host(draft_id, display, draft, "pre-arrival")
+            state["pre_arrival_notified"].append(state_uid)
+            _save_state(state)
+
 
 # ---------------------------------------------------------------------------
 # Trigger: check-in instructions
@@ -381,6 +471,8 @@ def run():
                 bookings = _parse_ical(raw)
                 log.info("[%s] %d booking(s) in feed", label, len(bookings))
                 for booking in bookings:
+                    check_booking_confirmed(booking, label, state)
+                    check_pre_arrival(booking, label, state, now)
                     check_checkin(booking, label, state, now)
                     check_guest_arrival(booking, label, state, now)
                     check_extension_offer(booking, label, state, now)

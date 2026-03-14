@@ -1,27 +1,23 @@
 {
-  "_comment": "Fill in your service providers below. The bot contacts them in order — primary first, then backups if unavailable. WhatsApp numbers must be in E.164 format (e.g. +14155550123).",
+  "_comment": "Fill in your real service providers. Primary is contacted first, then backups if unavailable. WhatsApp numbers in E.164 format (+countrycode, no spaces).",
   "cleaners": [
-    {
-      "name": "Primary Cleaner",
-      "whatsapp": "+1234567890"
-    },
-    {
-      "name": "Backup Cleaner 1",
-      "whatsapp": "+0987654321"
-    },
-    {
-      "name": "Backup Cleaner 2",
-      "whatsapp": "+1122334455"
-    }
+    { "name": "Primary Cleaner",      "whatsapp": "+1234567890" },
+    { "name": "Backup Cleaner 1",     "whatsapp": "+0987654321" },
+    { "name": "Backup Cleaner 2",     "whatsapp": "+1122334455" }
   ],
   "ac_technicians": [
-    {
-      "name": "Primary AC Tech",
-      "whatsapp": "+1112223333"
-    },
-    {
-      "name": "Backup AC Tech",
-      "whatsapp": "+4445556666"
-    }
+    { "name": "Primary AC Tech",      "whatsapp": "+1112223333" },
+    { "name": "Backup AC Tech",       "whatsapp": "+4445556666" }
+  ],
+  "plumbers": [
+    { "name": "Primary Plumber",      "whatsapp": "+2223334444" },
+    { "name": "Backup Plumber",       "whatsapp": "+3334445555" }
+  ],
+  "electricians": [
+    { "name": "Primary Electrician",  "whatsapp": "+5556667777" },
+    { "name": "Backup Electrician",   "whatsapp": "+6667778888" }
+  ],
+  "locksmiths": [
+    { "name": "Primary Locksmith",    "whatsapp": "+8889990000" }
   ]
 }
