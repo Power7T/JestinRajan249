@@ -165,16 +165,32 @@ client.on("message", async (msg) => {
 // NEXT_VENDOR [req_id]                             → try next vendor
 // STOP_VENDOR [req_id]                             → stop cascade
 
+// ── Draft approval ──────────────────────────────────────────────────────────
 const RE_APPROVE    = /^APPROVE\s+(\S+)$/i;
 const RE_EDIT       = /^EDIT\s+(\S+):\s*([\s\S]{1,2000})$/i;
 const RE_SKIP       = /^SKIP\s+(\S+)$/i;
+// ── Guest registration & extension ─────────────────────────────────────────
 const RE_GUEST_WA   = /^GUEST_WA\s+(\S+)\s+(\+?\d[\d\s\-]{6,})(.*)?$/i;
 const RE_EXTEND_YES = /^EXTEND\s+YES\s+(\S+)$/i;
 const RE_EXTEND_NO  = /^EXTEND\s+NO\s+(\S+)$/i;
+// ── Vendor dispatch ─────────────────────────────────────────────────────────
 const RE_VENDOR_YES = /^VENDOR_YES\s+(\S+)$/i;
 const RE_VENDOR_SKP = /^VENDOR_SKIP\s+(\S+)$/i;
 const RE_NEXT_VND   = /^NEXT_VENDOR\s+(\S+)$/i;
 const RE_STOP_VND   = /^STOP_VENDOR\s+(\S+)$/i;
+// ── Vendor management (CRUD via WhatsApp) ───────────────────────────────────
+const RE_ADD_VND    = /^ADD_VENDOR\s+(\S+)\s+(.+?)\s+(\+?\d[\d\s()\-\.]{6,})$/i;
+const RE_REM_VND    = /^REMOVE_VENDOR\s+(\S+)\s+(.+)$/i;
+const RE_LIST_VND   = /^LIST_VENDORS?(?:\s+(\S+))?$/i;
+const RE_SET_PRIM   = /^SET_PRIMARY\s+(\S+)\s+(.+)$/i;
+// ── Guest management ────────────────────────────────────────────────────────
+const RE_MSG_GUEST  = /^MSG_GUEST\s+(\S+):\s*([\s\S]{1,2000})$/i;
+const RE_REM_GUEST  = /^REMOVE_GUEST\s+(\S+)$/i;
+const RE_LIST_GSTS  = /^LIST_GUESTS?$/i;
+// ── System & info ───────────────────────────────────────────────────────────
+const RE_LIST_PND   = /^LIST_PENDING$/i;
+const RE_STATUS     = /^STATUS$/i;
+const RE_HELP       = /^HELP$/i;
 
 async function handleHostMessage(text) {
   let m;
@@ -201,6 +217,22 @@ async function handleHostMessage(text) {
   if ((m = RE_VENDOR_SKP.exec(text))) return cancelServiceRequest(m[1]);
   if ((m = RE_NEXT_VND.exec(text)))   return tryNextVendor(m[1]);
   if ((m = RE_STOP_VND.exec(text)))   return cancelServiceRequest(m[1]);
+
+  // — Vendor management (CRUD) —
+  if ((m = RE_ADD_VND.exec(text)))   return addVendor(m[1], m[2].trim(), m[3].trim());
+  if ((m = RE_REM_VND.exec(text)))   return removeVendor(m[1], m[2].trim());
+  if ((m = RE_LIST_VND.exec(text)))  return listVendors(m[1] || null);
+  if ((m = RE_SET_PRIM.exec(text)))  return setPrimary(m[1], m[2].trim());
+
+  // — Guest management —
+  if ((m = RE_MSG_GUEST.exec(text))) return msgGuest(m[1], m[2].trim());
+  if ((m = RE_REM_GUEST.exec(text))) return removeGuest(m[1]);
+  if (RE_LIST_GSTS.test(text))       return listGuests();
+
+  // — System —
+  if (RE_LIST_PND.test(text))        return listPendingDrafts();
+  if (RE_STATUS.test(text))          return showStatus();
+  if (RE_HELP.test(text))            return showHelp();
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +268,7 @@ async function handleGuestMessage(msg, { booking_uid, guest }) {
       console.log(`  ✅  Auto-replied to guest ${guest.guest_name} (routine)`);
       callRouterWithRetry("/approve", { draft_id, action: "approve" }).catch(() => {});
     } else {
-      pending.set(draft_id, { guestChatId: from, draft, channel: "whatsapp", vendor_type });
+      pending.set(draft_id, { guestChatId: from, draft, channel: "whatsapp", vendor_type, guest_name: guest.guest_name });
       saveJSON(FILES.pending, Object.fromEntries(pending));
 
       let notice = buildDraftNotice(draft_id, guest.guest_name, draft, "WhatsApp (guest)");
@@ -500,6 +532,269 @@ async function cancelServiceRequest(req_id) {
   await client.sendMessage(HOST_WA_ID, `⏭️  Service request cancelled — please arrange manually.`);
 }
 
+// ---------------------------------------------------------------------------
+// Vendor management — CRUD via WhatsApp
+// ---------------------------------------------------------------------------
+
+// Normalize user-typed vendor type to canonical key in vendors.json
+function normalizeVendorType(input) {
+  const map = {
+    cleaner:       "cleaners",      cleaners:       "cleaners",
+    plumber:       "plumbers",      plumbers:       "plumbers",
+    electrician:   "electricians",  electricians:   "electricians",
+    locksmith:     "locksmiths",    locksmiths:     "locksmiths",
+    ac:            "ac_technicians", ac_tech:       "ac_technicians",
+    ac_technician: "ac_technicians", ac_technicians:"ac_technicians",
+  };
+  return map[input.toLowerCase().replace(/[\s\-]+/g, "_")] || null;
+}
+
+function saveVendorsJson() {
+  const vendorsPath = path.join(__dirname, "../vendors.json");
+  saveJSON(vendorsPath, VENDORS);
+}
+
+function rebuildVendorMap() {
+  vendorMap.clear();
+  for (const [type, list] of Object.entries(VENDORS)) {
+    (list || []).forEach((v, i) => vendorMap.set(toWaId(v.whatsapp), { ...v, type, index: i }));
+  }
+}
+
+async function addVendor(typeInput, name, rawNumber) {
+  const type = normalizeVendorType(typeInput);
+  if (!type) {
+    await client.sendMessage(HOST_WA_ID,
+      `⚠️ Unknown vendor type: *${typeInput}*\n` +
+      `Valid types: cleaner, plumber, electrician, locksmith, ac`);
+    return;
+  }
+  const number = rawNumber.replace(/[\s()\-\.]/g, "");
+  const formatted = number.startsWith("+") ? number : "+" + number;
+  if (!VENDORS[type]) VENDORS[type] = [];
+  VENDORS[type].push({ name, whatsapp: formatted });
+  saveVendorsJson();
+  rebuildVendorMap();
+  const pos = VENDORS[type].length;
+  await client.sendMessage(HOST_WA_ID,
+    `✅ *${name}* added as ${label(type)} #${pos}${pos === 1 ? " (primary)" : " (backup)"}.\n` +
+    `Number: ${formatted}\n\n` +
+    `Reply \`LIST_VENDORS ${typeInput}\` to confirm.`);
+  console.log(`✅  Added vendor ${name} (${type})`);
+}
+
+async function removeVendor(typeInput, nameOrIndex) {
+  const type = normalizeVendorType(typeInput);
+  if (!type) {
+    await client.sendMessage(HOST_WA_ID, `⚠️ Unknown vendor type: *${typeInput}*`);
+    return;
+  }
+  const list = VENDORS[type] || [];
+  if (!list.length) {
+    await client.sendMessage(HOST_WA_ID, `⚠️ No ${label(type)} vendors configured.`);
+    return;
+  }
+  let idx = parseInt(nameOrIndex, 10);
+  if (!isNaN(idx)) {
+    idx = idx - 1; // user sends 1-indexed
+  } else {
+    idx = list.findIndex(v => v.name.toLowerCase().includes(nameOrIndex.toLowerCase()));
+  }
+  if (idx < 0 || idx >= list.length) {
+    await client.sendMessage(HOST_WA_ID,
+      `⚠️ Vendor not found: "${nameOrIndex}"\n` +
+      `Reply \`LIST_VENDORS ${typeInput}\` to see numbered list.`);
+    return;
+  }
+  const [removed] = list.splice(idx, 1);
+  VENDORS[type] = list;
+  saveVendorsJson();
+  rebuildVendorMap();
+  await client.sendMessage(HOST_WA_ID,
+    `✅ Removed *${removed.name}* from ${label(type)} list.\n` +
+    `Remaining: ${list.length}`);
+  console.log(`✅  Removed vendor ${removed.name} (${type})`);
+}
+
+async function listVendors(typeInput) {
+  const types = typeInput
+    ? [normalizeVendorType(typeInput)].filter(Boolean)
+    : Object.keys(VENDORS);
+
+  if (!types.length || (typeInput && !normalizeVendorType(typeInput))) {
+    await client.sendMessage(HOST_WA_ID, `⚠️ Unknown vendor type: *${typeInput}*`);
+    return;
+  }
+
+  let msg = "📋 *Vendor Contacts:*\n";
+  let hasAny = false;
+  for (const type of types) {
+    const list = VENDORS[type] || [];
+    if (!list.length) continue;
+    hasAny = true;
+    msg += `\n*${label(type)}s:*\n`;
+    list.forEach((v, i) => {
+      msg += `  ${i + 1}. ${v.name} — ${v.whatsapp}${i === 0 ? " ⭐" : ""}\n`;
+    });
+  }
+  if (!hasAny) msg += "\n_No vendors configured yet._";
+
+  msg += `\n_Commands: ADD_VENDOR, REMOVE_VENDOR, SET_PRIMARY_`;
+  await client.sendMessage(HOST_WA_ID, msg);
+}
+
+async function setPrimary(typeInput, nameOrIndex) {
+  const type = normalizeVendorType(typeInput);
+  if (!type) {
+    await client.sendMessage(HOST_WA_ID, `⚠️ Unknown vendor type: *${typeInput}*`);
+    return;
+  }
+  const list = VENDORS[type] || [];
+  let idx = parseInt(nameOrIndex, 10);
+  if (!isNaN(idx)) {
+    idx = idx - 1;
+  } else {
+    idx = list.findIndex(v => v.name.toLowerCase().includes(nameOrIndex.toLowerCase()));
+  }
+  if (idx <= 0 && isNaN(parseInt(nameOrIndex))) {
+    await client.sendMessage(HOST_WA_ID, `⚠️ Vendor not found: "${nameOrIndex}"`);
+    return;
+  }
+  if (idx === 0) {
+    await client.sendMessage(HOST_WA_ID, `ℹ️ *${list[0].name}* is already the primary ${label(type)}.`);
+    return;
+  }
+  const [v] = list.splice(idx, 1);
+  list.unshift(v);
+  VENDORS[type] = list;
+  saveVendorsJson();
+  rebuildVendorMap();
+  await client.sendMessage(HOST_WA_ID,
+    `✅ *${v.name}* is now the primary ${label(type)}.\n` +
+    `They will be contacted first for all future ${label(type)} requests.`);
+  console.log(`✅  Set ${v.name} as primary ${type}`);
+}
+
+// ---------------------------------------------------------------------------
+// Guest management commands
+// ---------------------------------------------------------------------------
+
+async function msgGuest(booking_uid, text) {
+  const g = guests.get(booking_uid);
+  if (!g || !g.wa_id) {
+    await client.sendMessage(HOST_WA_ID,
+      `⚠️ No registered guest WhatsApp for booking ${booking_uid}.\n` +
+      `Use \`LIST_GUESTS\` to see booking IDs.`);
+    return;
+  }
+  await client.sendMessage(g.wa_id, text);
+  await client.sendMessage(HOST_WA_ID, `✅ Message sent to *${g.guest_name}*.`);
+  console.log(`📤  Host → guest ${g.guest_name}: ${text.slice(0, 60)}`);
+}
+
+async function removeGuest(booking_uid) {
+  if (!guests.has(booking_uid)) {
+    await client.sendMessage(HOST_WA_ID, `⚠️ No guest session found for booking ${booking_uid}.`);
+    return;
+  }
+  const g = guests.get(booking_uid);
+  guests.delete(booking_uid);
+  saveJSON(FILES.guests, Object.fromEntries(guests));
+  await client.sendMessage(HOST_WA_ID,
+    `✅ Guest session for *${g.guest_name}* removed.\n` +
+    `They will no longer be routed through the bot.`);
+}
+
+async function listGuests() {
+  if (!guests.size) {
+    await client.sendMessage(HOST_WA_ID, "No registered guest sessions.");
+    return;
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  let msg = `🏠 *Guest Sessions (${guests.size}):*\n\n`;
+  for (const [uid, g] of guests) {
+    const status = g.checkout < today ? "✅ checked out" : "🟢 active";
+    const short  = uid.length > 12 ? uid.slice(0, 12) + "…" : uid;
+    msg += `*${g.guest_name}* (${short})\n`;
+    msg += `  ${g.property} | ${g.checkin} → ${g.checkout} ${status}\n`;
+    msg += `  📱 ${g.wa_id.replace("@c.us", "")}\n`;
+    msg += `  _MSG_GUEST ${uid}: ..._\n\n`;
+  }
+  await client.sendMessage(HOST_WA_ID, msg);
+}
+
+// ---------------------------------------------------------------------------
+// System commands
+// ---------------------------------------------------------------------------
+
+async function listPendingDrafts() {
+  if (!pending.size) {
+    await client.sendMessage(HOST_WA_ID, "✅ No pending drafts.");
+    return;
+  }
+  let msg = `📋 *Pending drafts (${pending.size}):*\n\n`;
+  for (const [id, entry] of pending) {
+    const from   = entry.guest_name || entry.channel || "?";
+    const preview = (entry.draft || "").slice(0, 80).replace(/\n/g, " ");
+    msg += `• \`${id}\`\n  From: ${from}\n  "${preview}…"\n\n`;
+  }
+  msg += `_APPROVE/EDIT/SKIP [id] to action each draft_`;
+  await client.sendMessage(HOST_WA_ID, msg);
+}
+
+async function showStatus() {
+  const today = new Date().toISOString().slice(0, 10);
+  const activeGuests   = Array.from(guests.values()).filter(g => g.checkout >= today).length;
+  const activeServices = Array.from(services.values()).filter(s => s.status === "contacted").length;
+
+  let vendorSummary = "";
+  for (const [type, list] of Object.entries(VENDORS)) {
+    if (list?.length) vendorSummary += `  ${label(type)}: ${list.length}\n`;
+  }
+
+  const msg =
+    `📊 *System Status*\n\n` +
+    `Pending drafts: ${pending.size}\n` +
+    `Active guests:  ${activeGuests} (${guests.size} total)\n` +
+    `Active service requests: ${activeServices}\n\n` +
+    `*Vendors configured:*\n${vendorSummary || "  None\n"}\n` +
+    `Router: ${ROUTER_URL}\n` +
+    `Bot port: ${WA_BOT_PORT}\n\n` +
+    `_Reply HELP for all commands_`;
+
+  await client.sendMessage(HOST_WA_ID, msg);
+}
+
+async function showHelp() {
+  const msg =
+    `🤖 *Host Commands*\n` +
+    `\n━━ Draft Approval ━━\n` +
+    `\`APPROVE [id]\`            Send AI draft to guest\n` +
+    `\`EDIT [id]: [text]\`       Edit draft then send\n` +
+    `\`SKIP [id]\`               Discard draft\n` +
+    `\n━━ Guest ━━\n` +
+    `\`GUEST_WA [uid] +num\`     Register guest WhatsApp\n` +
+    `\`MSG_GUEST [uid]: [text]\` Send message to guest\n` +
+    `\`REMOVE_GUEST [uid]\`      Remove guest session\n` +
+    `\`LIST_GUESTS\`             Show all guests\n` +
+    `\`EXTEND YES/NO [uid]\`     Approve/deny extension\n` +
+    `\n━━ Vendors ━━\n` +
+    `\`LIST_VENDORS [type]\`     Show contacts (or all)\n` +
+    `\`ADD_VENDOR [type] [name] +num\`  Add contact\n` +
+    `\`REMOVE_VENDOR [type] [name/#]\` Remove contact\n` +
+    `\`SET_PRIMARY [type] [name/#]\`   Set as #1 contact\n` +
+    `\`VENDOR_YES [id]\`         Dispatch vendor now\n` +
+    `\`VENDOR_SKIP [id]\`        Cancel service request\n` +
+    `\`NEXT_VENDOR [id]\`        Try next backup\n` +
+    `\`STOP_VENDOR [id]\`        Stop cascade\n` +
+    `\n━━ System ━━\n` +
+    `\`LIST_PENDING\`            Show pending drafts\n` +
+    `\`STATUS\`                  System overview\n` +
+    `\`HELP\`                    This message\n` +
+    `\n_Vendor types: cleaner, plumber, electrician, locksmith, ac_`;
+  await client.sendMessage(HOST_WA_ID, msg);
+}
+
 async function contactVendor(req_id, req, vendor, index) {
   const wa_id = toWaId(vendor.whatsapp);
   services.set(req_id, { ...req, status: "contacted", vendor_index: index, current_vendor_wa: wa_id });
@@ -594,7 +889,7 @@ const server = http.createServer((req, res) => {
 // ── /notify-host  (email drafts) ──────────────────────────────────────────
 async function handleHttpNotifyHost({ draft_id, guest_name, draft, channel }) {
   if (!draft_id || !guest_name || !draft) throw new Error("Missing fields");
-  pending.set(draft_id, { guestChatId: null, draft, channel });
+  pending.set(draft_id, { guestChatId: null, draft, channel, guest_name });
   saveJSON(FILES.pending, Object.fromEntries(pending));
   await client.sendMessage(HOST_WA_ID, buildDraftNotice(draft_id, guest_name, draft, channel || "Email"));
   console.log(`📧  Email draft from ${guest_name} sent to host`);

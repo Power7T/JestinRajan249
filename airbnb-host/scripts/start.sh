@@ -39,9 +39,14 @@ WA_BOT_PORT="${WA_BOT_PORT:-7772}"
 
 # ── Dependency checks ──────────────────────────────────────
 command -v python3 >/dev/null 2>&1 || error "python3 not found"
-command -v node    >/dev/null 2>&1 || error "node not found — install Node.js ≥ 18"
+command -v node    >/dev/null 2>&1 || error "node not found — install Node.js ≥ 22 from https://nodejs.org"
 command -v npm     >/dev/null 2>&1 || error "npm not found"
 command -v curl    >/dev/null 2>&1 || error "curl not found — needed for health checks"
+
+# Node.js version check (OpenClaw requires ≥22)
+if ! node -e "process.exit(parseInt(process.version.slice(1))<22?1:0)" 2>/dev/null; then
+  error "Node.js 22+ required (found $(node --version)). Upgrade at https://nodejs.org"
+fi
 
 [[ -n "${ANTHROPIC_API_KEY:-}" ]]    || error "ANTHROPIC_API_KEY is not set in .env"
 [[ -n "${EMAIL_IMAP_HOST:-}" ]]      || error "EMAIL_IMAP_HOST is not set in .env"
@@ -49,10 +54,20 @@ command -v curl    >/dev/null 2>&1 || error "curl not found — needed for healt
 [[ -n "${HOST_WHATSAPP_NUMBER:-}" ]] || error "HOST_WHATSAPP_NUMBER is not set in .env"
 
 # ── Check for port conflicts ────────────────────────────────
+_port_in_use() {
+  # Works on Linux, macOS, and WSL2 (falls back gracefully if ss/lsof missing)
+  if command -v ss >/dev/null 2>&1; then
+    ss -tlnp 2>/dev/null | grep -q ":$1 "
+  elif command -v lsof >/dev/null 2>&1; then
+    lsof -iTCP:"$1" -sTCP:LISTEN -t >/dev/null 2>&1
+  else
+    # Fallback: try to bind the port via node
+    ! node -e "const n=require('net');const s=n.createServer();s.once('error',()=>{process.exit(1)});s.listen($1,'127.0.0.1',()=>{s.close();process.exit(0)})" 2>/dev/null
+  fi
+}
 for port in "$ROUTER_PORT" "$WA_BOT_PORT"; do
-  if lsof -iTCP:"$port" -sTCP:LISTEN -t >/dev/null 2>&1; then
+  if _port_in_use "$port"; then
     warn "Port $port is already in use. Stop the existing process first."
-    warn "Run: kill \$(lsof -iTCP:$port -sTCP:LISTEN -t)"
     error "Port conflict on $port"
   fi
 done

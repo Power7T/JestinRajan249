@@ -27,6 +27,12 @@ echo -e "${CYAN}${BOLD}╔══════════════════
 echo -e "${CYAN}${BOLD}║       Airbnb Host AI Assistant — Setup Wizard         ║${NC}"
 echo -e "${CYAN}${BOLD}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
+# Windows users must use WSL2
+if [[ "$(uname -s)" == *"_NT"* ]] || [[ "$(uname -r)" == *"microsoft"* ]]; then
+  warn "Windows detected via WSL2 — this is supported. Continue normally."
+elif [[ "$(uname -s)" == "MINGW"* ]] || [[ "$(uname -s)" == "CYGWIN"* ]]; then
+  error "Git Bash / Cygwin are not supported. Please use WSL2 on Windows: https://learn.microsoft.com/en-us/windows/wsl/install"
+fi
 
 # ── Step 1: Check dependencies ──────────────────────────────────────────────
 step "Step 1 / 6 — Checking dependencies"
@@ -43,9 +49,9 @@ for cmd in python3 python; do
 done
 [[ -z "$PY_CMD" ]] && error "Python 3.9+ is required. Install from https://python.org"
 
-command -v node >/dev/null 2>&1 || error "Node.js 18+ is required. Install from https://nodejs.org"
-if ! node -e "process.exit(parseInt(process.version.slice(1))<18?1:0)" 2>/dev/null; then
-  error "Node.js 18+ required (found $(node --version)). Please upgrade at https://nodejs.org"
+command -v node >/dev/null 2>&1 || error "Node.js 22+ is required. Install from https://nodejs.org"
+if ! node -e "process.exit(parseInt(process.version.slice(1))<22?1:0)" 2>/dev/null; then
+  error "Node.js 22+ required (found $(node --version)). Upgrade at https://nodejs.org"
 fi
 info "Node.js: $(node --version)"
 
