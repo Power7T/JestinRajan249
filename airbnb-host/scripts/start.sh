@@ -116,11 +116,24 @@ if [[ $READY -eq 0 ]]; then
 fi
 info "Router is up."
 
-# ── 2. Start WhatsApp bot ─────────────────────────────────
-info "Starting WhatsApp companion bot on port ${WA_BOT_PORT}..."
-info "(First run: scan the QR code printed below to link your phone)"
-(cd whatsapp && node bot.js) &
-PIDS+=($!)
+# ── 2. Start WhatsApp bot (mode-dependent) ───────────────
+WA_MODE="${WA_MODE:-companion}"
+if [[ "$WA_MODE" == "business_api" ]]; then
+  # Validate Cloud API credentials
+  [[ -n "${WHATSAPP_TOKEN:-}" ]]        || error "WHATSAPP_TOKEN is required when WA_MODE=business_api"
+  [[ -n "${WHATSAPP_PHONE_ID:-}" ]]     || error "WHATSAPP_PHONE_ID is required when WA_MODE=business_api"
+  [[ -n "${WHATSAPP_VERIFY_TOKEN:-}" ]] || error "WHATSAPP_VERIFY_TOKEN is required when WA_MODE=business_api"
+  info "Starting WhatsApp Business Cloud API webhook on port ${WA_BOT_PORT}..."
+  info "(Meta will POST incoming messages to your public webhook URL)"
+  (cd whatsapp && node webhook.js) &
+  PIDS+=($!)
+else
+  # Default: companion mode via Baileys (personal/dedicated number, QR scan)
+  info "Starting WhatsApp companion bot on port ${WA_BOT_PORT}..."
+  info "(First run: scan the QR code printed below to link your phone)"
+  (cd whatsapp && node bot.js) &
+  PIDS+=($!)
+fi
 
 # Give the HTTP server a moment to bind
 sleep 2

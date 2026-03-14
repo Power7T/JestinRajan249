@@ -151,10 +151,37 @@ esac
 
 _prompt EMAIL_PASSWORD "Email App Password" "" yes
 
-# — WhatsApp —
+# — WhatsApp mode —
 echo ""
-info "WhatsApp — your personal number (you will scan a QR code with this phone)"
-_prompt HOST_WHATSAPP_NUMBER "Your WhatsApp number (E.164 format, e.g. +14155550123)" ""
+info "WhatsApp — choose how to connect"
+echo ""
+echo "  companion    — Personal/dedicated number, scan QR code, 1–20 units (recommended)"
+echo "  business_api — WhatsApp Business Cloud API (Meta-official), 20+ units, no ban risk"
+echo ""
+_prompt WA_MODE "WhatsApp mode (companion or business_api)" "companion"
+
+if [[ "${WA_MODE}" == "business_api" ]]; then
+  echo ""
+  info "WhatsApp Business Cloud API credentials"
+  info "  Meta dashboard: business.facebook.com → WhatsApp → API Setup"
+  _prompt HOST_WHATSAPP_NUMBER  "Your WhatsApp Business number (E.164, e.g. +14155550123)" ""
+  _prompt WHATSAPP_TOKEN        "Permanent access token (from Meta dashboard)" "" yes
+  _prompt WHATSAPP_PHONE_ID     "Phone number ID (numeric, from Meta dashboard)" ""
+  _prompt WHATSAPP_VERIFY_TOKEN "Webhook verify token (choose any secret string)" ""
+  echo ""
+  warn "After setup, configure your webhook URL in the Meta dashboard:"
+  warn "  URL: https://your-server.com:${WA_BOT_PORT:-7772}/webhook"
+  warn "  Verify token: the WHATSAPP_VERIFY_TOKEN you just entered"
+  warn "  Subscribe to: messages"
+else
+  echo ""
+  info "WhatsApp — your personal number (you will scan a QR code with this phone)"
+  _prompt HOST_WHATSAPP_NUMBER "Your WhatsApp number (E.164 format, e.g. +14155550123)" ""
+  # Cloud API vars not needed in companion mode
+  WHATSAPP_TOKEN="${WHATSAPP_TOKEN:-}"
+  WHATSAPP_PHONE_ID="${WHATSAPP_PHONE_ID:-}"
+  WHATSAPP_VERIFY_TOKEN="${WHATSAPP_VERIFY_TOKEN:-}"
+fi
 
 # — Property —
 echo ""
@@ -204,7 +231,14 @@ EMAIL_POLL_SECONDS=30
 EMAIL_IMAP_TIMEOUT=20
 
 # WhatsApp
+# companion  = Baileys (personal/dedicated number, QR scan) — default, 1–20 units
+# business_api = Meta WhatsApp Business Cloud API — no ban risk, 20+ units
+WA_MODE=${WA_MODE}
 HOST_WHATSAPP_NUMBER=${HOST_WHATSAPP_NUMBER}
+# Cloud API credentials (only used when WA_MODE=business_api)
+WHATSAPP_TOKEN=${WHATSAPP_TOKEN}
+WHATSAPP_PHONE_ID=${WHATSAPP_PHONE_ID}
+WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
 
 # Security (shared secret between internal services — do not change after setup)
 INTERNAL_TOKEN=${INTERNAL_TOKEN}

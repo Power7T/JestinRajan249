@@ -28,8 +28,10 @@ const { URL } = require("url");
 
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
 
-const { Client, LocalAuth } = require("whatsapp-web.js");
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason,
+        fetchLatestBaileysVersion, makeCacheableSignalKeyStore } = require("@whiskeysockets/baileys");
 const qrcode = require("qrcode-terminal");
+const pino   = require("pino");
 
 // ---------------------------------------------------------------------------
 // Config
@@ -43,7 +45,7 @@ const INTERNAL_TOKEN  = process.env.INTERNAL_TOKEN || "";
 const MAX_BODY_BYTES  = 65536;
 const AIRBNB_LISTING  = (process.env.AIRBNB_LISTING_URL || "").trim();
 
-const HOST_WA_ID      = HOST_NUMBER.replace(/^\+/, "") + "@c.us";
+const HOST_WA_ID      = HOST_NUMBER.replace(/^\+/, "") + "@s.whatsapp.net";
 
 // ---------------------------------------------------------------------------
 // State files (all in scripts/whatsapp/)
@@ -93,7 +95,7 @@ try {
 } catch (e) { console.warn("⚠️  vendors.json not found — vendor cascade disabled"); }
 
 function toWaId(num) {
-  return num.replace(/^\+/, "").replace(/\s/g, "") + "@c.us";
+  return num.replace(/^\+/, "").replace(/[\s\-\(\)]/g, "") + "@s.whatsapp.net";
 }
 
 // Build lookup: vendorWaId → {name, type, index}
@@ -103,57 +105,92 @@ for (const [type, list] of Object.entries(VENDORS)) {
 }
 
 // ---------------------------------------------------------------------------
-// WhatsApp client
+// WhatsApp transport — Baileys (same library OpenClaw uses)
+// No browser/Puppeteer dependency. Pure Node.js WebSocket to WhatsApp.
+// Auth persisted in .baileys_auth/ — no re-scan needed after first pairing.
 // ---------------------------------------------------------------------------
-const client = new Client({
-  authStrategy: new LocalAuth({ dataPath: path.join(__dirname, ".wwebjs_auth") }),
-  puppeteer: { args: ["--no-sandbox", "--disable-setuid-sandbox"], headless: true },
-});
+let sock = null;
 
-client.on("qr", (qr) => {
-  console.log("\n📱  Scan QR code: WhatsApp → Linked Devices → Link a Device\n");
-  qrcode.generate(qr, { small: true });
-});
-client.on("loading_screen", (pct, msg) => process.stdout.write(`\r⏳  ${pct}% ${msg}   `));
-client.on("authenticated", () => console.log("\n🔐  Authenticated."));
-client.on("ready", () => {
-  console.log(`✅  Bot ready  |  Host: ${HOST_NUMBER}  |  Router: ${ROUTER_URL}  |  HTTP: ${WA_BOT_PORT}\n`);
-});
-client.on("disconnected", (r) => console.warn("⚠️  Disconnected:", r));
+/** Send a text message via the active WhatsApp socket */
+async function sendMsg(jid, text) {
+  if (!sock) throw new Error("WhatsApp socket not connected yet");
+  await sock.sendMessage(jid, { text: String(text) });
+}
 
-// ---------------------------------------------------------------------------
-// Message routing
-// ---------------------------------------------------------------------------
-client.on("message", async (msg) => {
-  const from = msg.from;
-  if (!msg.body) return;
+async function connectToWhatsApp() {
+  const AUTH_DIR = path.join(__dirname, ".baileys_auth");
+  const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+  const { version } = await fetchLatestBaileysVersion();
 
-  // 1. Host commands
-  if (from === HOST_WA_ID) {
-    await handleHostMessage(msg.body.trim());
-    return;
-  }
+  sock = makeWASocket({
+    version,
+    auth: {
+      creds: state.creds,
+      keys:  makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" })),
+    },
+    logger:             pino({ level: "silent" }),
+    printQRInTerminal:  false,   // we render it ourselves via qrcode-terminal
+    generateHighQualityLinkPreview: false,
+  });
 
-  // 2. Skip groups / broadcasts
-  if (msg.isGroupMsg || from === "status@broadcast") return;
+  sock.ev.on("creds.update", saveCreds);
 
-  // 3. Registered guest?
-  const guestEntry = findGuestByWaId(from);
-  if (guestEntry) {
-    await handleGuestMessage(msg, guestEntry);
-    return;
-  }
+  sock.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
+    if (qr) {
+      console.log("\n📱  Scan QR code: WhatsApp → Linked Devices → Link a Device\n");
+      qrcode.generate(qr, { small: true });
+    }
+    if (connection === "close") {
+      const code = lastDisconnect?.error?.output?.statusCode;
+      const loggedOut = code === DisconnectReason.loggedOut;
+      console.warn(`⚠️  Disconnected (code=${code}) — ${loggedOut ? "logged out, delete .baileys_auth to re-pair" : "reconnecting…"}`);
+      if (!loggedOut) await connectToWhatsApp();
+    }
+    if (connection === "open") {
+      console.log(`✅  Bot ready | Host: ${HOST_NUMBER} | Router: ${ROUTER_URL} | HTTP: ${WA_BOT_PORT}\n`);
+    }
+  });
 
-  // 4. Registered vendor?
-  const vendor = vendorMap.get(from);
-  if (vendor) {
-    await handleVendorResponse(msg, vendor);
-    return;
-  }
+  // ---------------------------------------------------------------------------
+  // Consolidated message router
+  // ---------------------------------------------------------------------------
+  sock.ev.on("messages.upsert", async ({ messages, type }) => {
+    if (type !== "notify") return;
+    for (const raw of messages) {
+      if (raw.key.fromMe) continue;
+      const from = raw.key.remoteJid;
+      if (!from) continue;
 
-  // 5. Unknown — check if we're waiting for a guest WA registration for THIS number
-  // (host might have registered a guest number that texted first — ignore)
-});
+      // Extract plain text from multiple message types
+      const body =
+        raw.message?.conversation                       ||
+        raw.message?.extendedTextMessage?.text          ||
+        raw.message?.imageMessage?.caption              ||
+        raw.message?.videoMessage?.caption              || "";
+      if (!body.trim()) continue;
+
+      const msg = { body, from };   // normalised shape used by all handlers
+
+      try {
+        if (from === HOST_WA_ID) {
+          await handleHostMessage(body.trim());
+        } else if (from.endsWith("@g.us") || from === "status@broadcast") {
+          // skip groups and broadcasts
+        } else {
+          const guestEntry = findGuestByWaId(from);
+          if (guestEntry) {
+            await handleGuestMessageWithExtension(msg, guestEntry);
+          } else {
+            const vendor = vendorMap.get(from);
+            if (vendor) await handleVendorResponse(msg, vendor);
+          }
+        }
+      } catch (err) {
+        console.error(`Message handler error (from=${from}):`, err.message);
+      }
+    }
+  });
+}
 
 // ---------------------------------------------------------------------------
 // HOST message handler
@@ -245,7 +282,7 @@ async function handleGuestMessage(msg, { booking_uid, guest }) {
   // Guest messaging after checkout — politely decline
   const today = new Date().toISOString().slice(0, 10);
   if (guest.checkout < today) {
-    await client.sendMessage(from,
+    await sendMsg(from,
       `Your stay ended on ${guest.checkout}. We hope you had a great time! 🙏\n` +
       `Feel free to book with us again at airbnb.com.`);
     return;
@@ -264,7 +301,7 @@ async function handleGuestMessage(msg, { booking_uid, guest }) {
     const { draft_id, msg_type, draft, vendor_type } = result;
 
     if (msg_type === "routine") {
-      await client.sendMessage(from, draft);
+      await sendMsg(from, draft);
       console.log(`  ✅  Auto-replied to guest ${guest.guest_name} (routine)`);
       callRouterWithRetry("/approve", { draft_id, action: "approve" }).catch(() => {});
     } else {
@@ -276,7 +313,7 @@ async function handleGuestMessage(msg, { booking_uid, guest }) {
         notice += `\n\n⚠️  *Maintenance issue detected (${label(vendor_type)}).*\n` +
                   `After approving: reply \`VENDOR_YES [req_id]\` to dispatch a technician.`;
       }
-      await client.sendMessage(HOST_WA_ID, notice);
+      await sendMsg(HOST_WA_ID, notice);
       console.log(`  ⏳  Complex — draft sent to host for approval`);
     }
   } catch (err) {
@@ -317,7 +354,7 @@ async function onVendorConfirmed(req, vendor) {
   saveJSON(FILES.services, Object.fromEntries(services));
 
   const typeLabel = label(req.vendor_type);
-  await client.sendMessage(HOST_WA_ID,
+  await sendMsg(HOST_WA_ID,
     `✅ *${typeLabel} confirmed — ${vendor.name}*\n` +
     `Property: ${req.property}\n` +
     `They are on their way.`);
@@ -327,14 +364,14 @@ async function onVendorConfirmed(req, vendor) {
     const guestMsg =
       `Hi! Just to let you know, our ${typeLabel.toLowerCase()} has confirmed ` +
       `and will be attending to the issue shortly. 🔧`;
-    await client.sendMessage(req.guest_wa_id, guestMsg).catch(() => {});
+    await sendMsg(req.guest_wa_id, guestMsg).catch(() => {});
   }
 
   // If there's a pending cleaner brief draft for this booking, send it to the cleaner
   if (req.vendor_type === "cleaners") {
     const briefDraft = findCleanerBriefDraft(req.booking_uid);
     if (briefDraft) {
-      await client.sendMessage(toWaId(vendor.whatsapp),
+      await sendMsg(toWaId(vendor.whatsapp),
         `📋 *Cleaning brief for ${req.property}:*\n\n${briefDraft}`).catch(() => {});
     }
   }
@@ -362,7 +399,7 @@ async function onVendorUnavailable(req, vendor) {
     services.set(req.id, { ...reqEntry, status: "failed" });
     saveJSON(FILES.services, Object.fromEntries(services));
   }
-  await client.sendMessage(HOST_WA_ID, msg);
+  await sendMsg(HOST_WA_ID, msg);
 }
 
 // ---------------------------------------------------------------------------
@@ -371,17 +408,17 @@ async function onVendorUnavailable(req, vendor) {
 async function onApprove(id) {
   const entry = pending.get(id);
   if (!entry) return;
-  if (entry.guestChatId) await client.sendMessage(entry.guestChatId, entry.draft);
+  if (entry.guestChatId) await sendMsg(entry.guestChatId, entry.draft);
   callRouterWithRetry("/approve", { draft_id: id, action: "approve" }).catch(() => {});
   pending.delete(id);
   saveJSON(FILES.pending, Object.fromEntries(pending));
-  await client.sendMessage(HOST_WA_ID, "✅  Reply sent to guest.");
+  await sendMsg(HOST_WA_ID, "✅  Reply sent to guest.");
 
   // If maintenance issue, prompt host to dispatch vendor
   if (entry.vendor_type) {
     const reqId = await createServiceRequest(entry.vendor_type, null, null, entry.guestChatId);
     const typeLabel = label(entry.vendor_type);
-    await client.sendMessage(HOST_WA_ID,
+    await sendMsg(HOST_WA_ID,
       `🔧 *Dispatch ${typeLabel}?*\n` +
       `• \`VENDOR_YES ${reqId}\` — contact ${VENDORS[entry.vendor_type]?.[0]?.name || "primary tech"}\n` +
       `• \`VENDOR_SKIP ${reqId}\` — handle manually`);
@@ -391,11 +428,11 @@ async function onApprove(id) {
 async function onEdit(id, newText) {
   const entry = pending.get(id);
   if (!entry) return;
-  if (entry.guestChatId) await client.sendMessage(entry.guestChatId, newText);
+  if (entry.guestChatId) await sendMsg(entry.guestChatId, newText);
   callRouterWithRetry("/approve", { draft_id: id, action: "edit", edited_text: newText }).catch(() => {});
   pending.delete(id);
   saveJSON(FILES.pending, Object.fromEntries(pending));
-  await client.sendMessage(HOST_WA_ID, "✅  Edited reply sent.");
+  await sendMsg(HOST_WA_ID, "✅  Edited reply sent.");
 }
 
 async function onSkip(id) {
@@ -403,7 +440,7 @@ async function onSkip(id) {
   pending.delete(id);
   saveJSON(FILES.pending, Object.fromEntries(pending));
   callRouterWithRetry("/approve", { draft_id: id, action: "skip" }).catch(() => {});
-  await client.sendMessage(HOST_WA_ID, "⏭️  Skipped.");
+  await sendMsg(HOST_WA_ID, "⏭️  Skipped.");
 }
 
 // ---------------------------------------------------------------------------
@@ -412,7 +449,7 @@ async function onSkip(id) {
 async function registerGuest(booking_uid, rawNumber, nameOverride) {
   const reg = pendingReg.get(booking_uid);
   if (!reg) {
-    await client.sendMessage(HOST_WA_ID,
+    await sendMsg(HOST_WA_ID,
       `⚠️  No pending check-in found for booking ${booking_uid}. ` +
       `The calendar watcher may not have detected it yet.`);
     return;
@@ -436,7 +473,7 @@ async function registerGuest(booking_uid, rawNumber, nameOverride) {
   pendingReg.delete(booking_uid);
   saveJSON(FILES.pendingReg, Object.fromEntries(pendingReg));
 
-  await client.sendMessage(HOST_WA_ID,
+  await sendMsg(HOST_WA_ID,
     `✅  *${guestName}* registered. Sending them a welcome message now.`);
 
   // Welcome message to guest
@@ -447,9 +484,9 @@ async function registerGuest(booking_uid, rawNumber, nameOverride) {
     `• 🕐 Check-out time\n• Or anything else!\n\n` +
     `Your host will be notified for anything that needs personal attention.`;
 
-  await client.sendMessage(wa_id, welcome).catch(async (e) => {
+  await sendMsg(wa_id, welcome).catch(async (e) => {
     console.error("Could not reach guest:", e.message);
-    await client.sendMessage(HOST_WA_ID,
+    await sendMsg(HOST_WA_ID,
       `⚠️  Could not deliver welcome to ${guestName} — check the number is correct.`);
   });
 
@@ -471,19 +508,19 @@ function findGuestByWaId(wa_id) {
 async function onExtendApproved(booking_uid) {
   const g = guests.get(booking_uid);
   if (!g) return;
-  await client.sendMessage(g.wa_id,
+  await sendMsg(g.wa_id,
     `Great news! 🎉 Your extension has been arranged. ` +
     `Your new checkout details will be confirmed by Airbnb shortly. Enjoy your extended stay!`);
-  await client.sendMessage(HOST_WA_ID, `✅  Extension confirmed — guest notified.`);
+  await sendMsg(HOST_WA_ID, `✅  Extension confirmed — guest notified.`);
 }
 
 async function onExtendDenied(booking_uid) {
   const g = guests.get(booking_uid);
   if (!g) return;
-  await client.sendMessage(g.wa_id,
+  await sendMsg(g.wa_id,
     `Thanks for asking! Unfortunately we're unable to extend for this period ` +
     `due to another booking. We hope you had a wonderful stay and look forward to hosting you again! 🙏`);
-  await client.sendMessage(HOST_WA_ID, `✅  Extension declined — guest notified.`);
+  await sendMsg(HOST_WA_ID, `✅  Extension declined — guest notified.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -506,7 +543,7 @@ async function dispatchVendor(req_id) {
   const list = VENDORS[req.vendor_type] || [];
   const v    = list[req.vendor_index || 0];
   if (!v) {
-    await client.sendMessage(HOST_WA_ID, `⚠️  No vendor configured for ${label(req.vendor_type)}.`);
+    await sendMsg(HOST_WA_ID, `⚠️  No vendor configured for ${label(req.vendor_type)}.`);
     return;
   }
   await contactVendor(req_id, req, v, req.vendor_index || 0);
@@ -518,7 +555,7 @@ async function tryNextVendor(req_id) {
   const list = VENDORS[req.vendor_type] || [];
   const next = (req.vendor_index || 0) + 1;
   if (next >= list.length) {
-    await client.sendMessage(HOST_WA_ID, `⚠️  No more backup ${label(req.vendor_type)} vendors. Please arrange manually.`);
+    await sendMsg(HOST_WA_ID, `⚠️  No more backup ${label(req.vendor_type)} vendors. Please arrange manually.`);
     services.set(req_id, { ...req, status: "failed" });
     saveJSON(FILES.services, Object.fromEntries(services));
     return;
@@ -529,7 +566,7 @@ async function tryNextVendor(req_id) {
 async function cancelServiceRequest(req_id) {
   services.set(req_id, { ...services.get(req_id), status: "cancelled" });
   saveJSON(FILES.services, Object.fromEntries(services));
-  await client.sendMessage(HOST_WA_ID, `⏭️  Service request cancelled — please arrange manually.`);
+  await sendMsg(HOST_WA_ID, `⏭️  Service request cancelled — please arrange manually.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -564,7 +601,7 @@ function rebuildVendorMap() {
 async function addVendor(typeInput, name, rawNumber) {
   const type = normalizeVendorType(typeInput);
   if (!type) {
-    await client.sendMessage(HOST_WA_ID,
+    await sendMsg(HOST_WA_ID,
       `⚠️ Unknown vendor type: *${typeInput}*\n` +
       `Valid types: cleaner, plumber, electrician, locksmith, ac`);
     return;
@@ -576,7 +613,7 @@ async function addVendor(typeInput, name, rawNumber) {
   saveVendorsJson();
   rebuildVendorMap();
   const pos = VENDORS[type].length;
-  await client.sendMessage(HOST_WA_ID,
+  await sendMsg(HOST_WA_ID,
     `✅ *${name}* added as ${label(type)} #${pos}${pos === 1 ? " (primary)" : " (backup)"}.\n` +
     `Number: ${formatted}\n\n` +
     `Reply \`LIST_VENDORS ${typeInput}\` to confirm.`);
@@ -586,12 +623,12 @@ async function addVendor(typeInput, name, rawNumber) {
 async function removeVendor(typeInput, nameOrIndex) {
   const type = normalizeVendorType(typeInput);
   if (!type) {
-    await client.sendMessage(HOST_WA_ID, `⚠️ Unknown vendor type: *${typeInput}*`);
+    await sendMsg(HOST_WA_ID, `⚠️ Unknown vendor type: *${typeInput}*`);
     return;
   }
   const list = VENDORS[type] || [];
   if (!list.length) {
-    await client.sendMessage(HOST_WA_ID, `⚠️ No ${label(type)} vendors configured.`);
+    await sendMsg(HOST_WA_ID, `⚠️ No ${label(type)} vendors configured.`);
     return;
   }
   let idx = parseInt(nameOrIndex, 10);
@@ -601,7 +638,7 @@ async function removeVendor(typeInput, nameOrIndex) {
     idx = list.findIndex(v => v.name.toLowerCase().includes(nameOrIndex.toLowerCase()));
   }
   if (idx < 0 || idx >= list.length) {
-    await client.sendMessage(HOST_WA_ID,
+    await sendMsg(HOST_WA_ID,
       `⚠️ Vendor not found: "${nameOrIndex}"\n` +
       `Reply \`LIST_VENDORS ${typeInput}\` to see numbered list.`);
     return;
@@ -610,7 +647,7 @@ async function removeVendor(typeInput, nameOrIndex) {
   VENDORS[type] = list;
   saveVendorsJson();
   rebuildVendorMap();
-  await client.sendMessage(HOST_WA_ID,
+  await sendMsg(HOST_WA_ID,
     `✅ Removed *${removed.name}* from ${label(type)} list.\n` +
     `Remaining: ${list.length}`);
   console.log(`✅  Removed vendor ${removed.name} (${type})`);
@@ -622,7 +659,7 @@ async function listVendors(typeInput) {
     : Object.keys(VENDORS);
 
   if (!types.length || (typeInput && !normalizeVendorType(typeInput))) {
-    await client.sendMessage(HOST_WA_ID, `⚠️ Unknown vendor type: *${typeInput}*`);
+    await sendMsg(HOST_WA_ID, `⚠️ Unknown vendor type: *${typeInput}*`);
     return;
   }
 
@@ -640,13 +677,13 @@ async function listVendors(typeInput) {
   if (!hasAny) msg += "\n_No vendors configured yet._";
 
   msg += `\n_Commands: ADD_VENDOR, REMOVE_VENDOR, SET_PRIMARY_`;
-  await client.sendMessage(HOST_WA_ID, msg);
+  await sendMsg(HOST_WA_ID, msg);
 }
 
 async function setPrimary(typeInput, nameOrIndex) {
   const type = normalizeVendorType(typeInput);
   if (!type) {
-    await client.sendMessage(HOST_WA_ID, `⚠️ Unknown vendor type: *${typeInput}*`);
+    await sendMsg(HOST_WA_ID, `⚠️ Unknown vendor type: *${typeInput}*`);
     return;
   }
   const list = VENDORS[type] || [];
@@ -657,11 +694,11 @@ async function setPrimary(typeInput, nameOrIndex) {
     idx = list.findIndex(v => v.name.toLowerCase().includes(nameOrIndex.toLowerCase()));
   }
   if (idx <= 0 && isNaN(parseInt(nameOrIndex))) {
-    await client.sendMessage(HOST_WA_ID, `⚠️ Vendor not found: "${nameOrIndex}"`);
+    await sendMsg(HOST_WA_ID, `⚠️ Vendor not found: "${nameOrIndex}"`);
     return;
   }
   if (idx === 0) {
-    await client.sendMessage(HOST_WA_ID, `ℹ️ *${list[0].name}* is already the primary ${label(type)}.`);
+    await sendMsg(HOST_WA_ID, `ℹ️ *${list[0].name}* is already the primary ${label(type)}.`);
     return;
   }
   const [v] = list.splice(idx, 1);
@@ -669,7 +706,7 @@ async function setPrimary(typeInput, nameOrIndex) {
   VENDORS[type] = list;
   saveVendorsJson();
   rebuildVendorMap();
-  await client.sendMessage(HOST_WA_ID,
+  await sendMsg(HOST_WA_ID,
     `✅ *${v.name}* is now the primary ${label(type)}.\n` +
     `They will be contacted first for all future ${label(type)} requests.`);
   console.log(`✅  Set ${v.name} as primary ${type}`);
@@ -682,32 +719,32 @@ async function setPrimary(typeInput, nameOrIndex) {
 async function msgGuest(booking_uid, text) {
   const g = guests.get(booking_uid);
   if (!g || !g.wa_id) {
-    await client.sendMessage(HOST_WA_ID,
+    await sendMsg(HOST_WA_ID,
       `⚠️ No registered guest WhatsApp for booking ${booking_uid}.\n` +
       `Use \`LIST_GUESTS\` to see booking IDs.`);
     return;
   }
-  await client.sendMessage(g.wa_id, text);
-  await client.sendMessage(HOST_WA_ID, `✅ Message sent to *${g.guest_name}*.`);
+  await sendMsg(g.wa_id, text);
+  await sendMsg(HOST_WA_ID, `✅ Message sent to *${g.guest_name}*.`);
   console.log(`📤  Host → guest ${g.guest_name}: ${text.slice(0, 60)}`);
 }
 
 async function removeGuest(booking_uid) {
   if (!guests.has(booking_uid)) {
-    await client.sendMessage(HOST_WA_ID, `⚠️ No guest session found for booking ${booking_uid}.`);
+    await sendMsg(HOST_WA_ID, `⚠️ No guest session found for booking ${booking_uid}.`);
     return;
   }
   const g = guests.get(booking_uid);
   guests.delete(booking_uid);
   saveJSON(FILES.guests, Object.fromEntries(guests));
-  await client.sendMessage(HOST_WA_ID,
+  await sendMsg(HOST_WA_ID,
     `✅ Guest session for *${g.guest_name}* removed.\n` +
     `They will no longer be routed through the bot.`);
 }
 
 async function listGuests() {
   if (!guests.size) {
-    await client.sendMessage(HOST_WA_ID, "No registered guest sessions.");
+    await sendMsg(HOST_WA_ID, "No registered guest sessions.");
     return;
   }
   const today = new Date().toISOString().slice(0, 10);
@@ -720,7 +757,7 @@ async function listGuests() {
     msg += `  📱 ${g.wa_id.replace("@c.us", "")}\n`;
     msg += `  _MSG_GUEST ${uid}: ..._\n\n`;
   }
-  await client.sendMessage(HOST_WA_ID, msg);
+  await sendMsg(HOST_WA_ID, msg);
 }
 
 // ---------------------------------------------------------------------------
@@ -729,7 +766,7 @@ async function listGuests() {
 
 async function listPendingDrafts() {
   if (!pending.size) {
-    await client.sendMessage(HOST_WA_ID, "✅ No pending drafts.");
+    await sendMsg(HOST_WA_ID, "✅ No pending drafts.");
     return;
   }
   let msg = `📋 *Pending drafts (${pending.size}):*\n\n`;
@@ -739,7 +776,7 @@ async function listPendingDrafts() {
     msg += `• \`${id}\`\n  From: ${from}\n  "${preview}…"\n\n`;
   }
   msg += `_APPROVE/EDIT/SKIP [id] to action each draft_`;
-  await client.sendMessage(HOST_WA_ID, msg);
+  await sendMsg(HOST_WA_ID, msg);
 }
 
 async function showStatus() {
@@ -762,7 +799,7 @@ async function showStatus() {
     `Bot port: ${WA_BOT_PORT}\n\n` +
     `_Reply HELP for all commands_`;
 
-  await client.sendMessage(HOST_WA_ID, msg);
+  await sendMsg(HOST_WA_ID, msg);
 }
 
 async function showHelp() {
@@ -792,7 +829,7 @@ async function showHelp() {
     `\`STATUS\`                  System overview\n` +
     `\`HELP\`                    This message\n` +
     `\n_Vendor types: cleaner, plumber, electrician, locksmith, ac_`;
-  await client.sendMessage(HOST_WA_ID, msg);
+  await sendMsg(HOST_WA_ID, msg);
 }
 
 async function contactVendor(req_id, req, vendor, index) {
@@ -806,8 +843,8 @@ async function contactVendor(req_id, req, vendor, index) {
     `We need ${typeLabel} service at *${req.property || "our property"}* today.\n` +
     `Are you available? Please reply *YES* or *NO*.\n\n` +
     `Ref: ${req_id}`;
-  await client.sendMessage(wa_id, msg);
-  await client.sendMessage(HOST_WA_ID,
+  await sendMsg(wa_id, msg);
+  await sendMsg(HOST_WA_ID,
     `📤  Contacting ${vendor.name} (${typeLabel})… waiting for reply.`);
   console.log(`📤  Service request ${req_id} → ${vendor.name} (${wa_id})`);
 }
@@ -891,7 +928,7 @@ async function handleHttpNotifyHost({ draft_id, guest_name, draft, channel }) {
   if (!draft_id || !guest_name || !draft) throw new Error("Missing fields");
   pending.set(draft_id, { guestChatId: null, draft, channel, guest_name });
   saveJSON(FILES.pending, Object.fromEntries(pending));
-  await client.sendMessage(HOST_WA_ID, buildDraftNotice(draft_id, guest_name, draft, channel || "Email"));
+  await sendMsg(HOST_WA_ID, buildDraftNotice(draft_id, guest_name, draft, channel || "Email"));
   console.log(`📧  Email draft from ${guest_name} sent to host`);
 }
 
@@ -899,7 +936,7 @@ async function handleHttpNotifyHost({ draft_id, guest_name, draft, channel }) {
 async function handleHttpGuestCheckin({ booking_uid, guest_name, property, checkin, checkout }) {
   pendingReg.set(booking_uid, { guest_name, property, checkin, checkout });
   saveJSON(FILES.pendingReg, Object.fromEntries(pendingReg));
-  await client.sendMessage(HOST_WA_ID,
+  await sendMsg(HOST_WA_ID,
     `🏠 *${property}* — *${guest_name}* has checked in!\n\n` +
     `What's their WhatsApp number? Reply:\n` +
     `\`GUEST_WA ${booking_uid} +[number]\`\n\n` +
@@ -912,7 +949,7 @@ async function handleHttpOfferExtension({ booking_uid, guest_name, property, che
   const g = guests.get(booking_uid);
   if (!g || !g.wa_id) {
     // Guest WA not registered — notify host instead
-    await client.sendMessage(HOST_WA_ID,
+    await sendMsg(HOST_WA_ID,
       `⏰  *${guest_name}* at ${property} checks out today.\n` +
       `_(Could not offer extension — guest WhatsApp not registered)_`);
     return;
@@ -923,7 +960,7 @@ async function handleHttpOfferExtension({ booking_uid, guest_name, property, che
     ? `${process.env.CHECKOUT_BRIEF_HOUR}:00`
     : "11:00 AM";
 
-  await client.sendMessage(g.wa_id,
+  await sendMsg(g.wa_id,
     `Hi ${guest_name}! 🌟 Your checkout is scheduled for *${checkout}* at ${checkoutTime}.\n\n` +
     `We hope you're having a wonderful stay! Would you like to *extend*?\n\n` +
     `Reply *YES* to request an extension, or *NO* if you'll check out as planned.`);
@@ -940,7 +977,7 @@ async function handleHttpPostCheckout({ booking_uid, guest_name, property }) {
   const g = guests.get(booking_uid);
 
   // 1. Notify host
-  await client.sendMessage(HOST_WA_ID,
+  await sendMsg(HOST_WA_ID,
     `🏁 *${guest_name}* has checked out of *${property}*.\n` +
     `Cleaner is being contacted now.`);
 
@@ -953,7 +990,7 @@ async function handleHttpPostCheckout({ booking_uid, guest_name, property }) {
       `it means the world to us and helps future guests.\n\n` +
       (AIRBNB_LISTING ? AIRBNB_LISTING : `Just search for ${property} on Airbnb.\n\n`) +
       `Thanks again — hope to host you soon! 🏠✨`;
-    await client.sendMessage(g.wa_id, reviewMsg).catch(() => {});
+    await sendMsg(g.wa_id, reviewMsg).catch(() => {});
     guests.set(booking_uid, { ...g, review_sent: true });
     saveJSON(FILES.guests, Object.fromEntries(guests));
     console.log(`⭐  Review request sent to ${guest_name}`);
@@ -966,17 +1003,16 @@ async function handleHttpPostCheckout({ booking_uid, guest_name, property }) {
 }
 
 // ── Extension reply from guest ─────────────────────────────────────────────
-// Intercept inside handleGuestMessage (routine path won't catch YES/NO — handle here)
-// We patch the guest message handler to detect extension responses
-const _origHandleGuest = handleGuestMessage;
+// Intercepts YES/NO when a guest has been offered an extension.
+// Falls through to normal handleGuestMessage for all other messages.
 async function handleGuestMessageWithExtension(msg, ctx) {
   const { booking_uid, guest } = ctx;
   if (guest.extension_offered) {
     const up = msg.body.trim().toUpperCase();
     if (up === "YES" || up === "YES." || up.startsWith("YES,")) {
-      await client.sendMessage(msg.from,
+      await sendMsg(msg.from,
         `Great! 🎉 We'll check availability and your host will confirm shortly.`);
-      await client.sendMessage(HOST_WA_ID,
+      await sendMsg(HOST_WA_ID,
         `🏨 *Extension Request — ${guest.property}*\n` +
         `Guest: *${guest.guest_name}*\n` +
         `Current checkout: ${guest.checkout}\n\n` +
@@ -988,27 +1024,13 @@ async function handleGuestMessageWithExtension(msg, ctx) {
     if (up === "NO" || up === "NO." || up.startsWith("NO,")) {
       guests.set(booking_uid, { ...guest, extension_offered: false });
       saveJSON(FILES.guests, Object.fromEntries(guests));
-      await client.sendMessage(msg.from,
+      await sendMsg(msg.from,
         `Understood! We'll see you at checkout. Have a great rest of your stay! 😊`);
       return;
     }
   }
-  return _origHandleGuest(msg, ctx);
+  return handleGuestMessage(msg, ctx);
 }
-// Override
-global.handleGuestMessage = handleGuestMessageWithExtension;
-// Re-bind in the message listener (Node module-level override)
-client.removeAllListeners("message");
-client.on("message", async (msg) => {
-  const from = msg.from;
-  if (!msg.body) return;
-  if (from === HOST_WA_ID)          { await handleHostMessage(msg.body.trim()); return; }
-  if (msg.isGroupMsg || from === "status@broadcast") return;
-  const guestEntry = findGuestByWaId(from);
-  if (guestEntry)                   { await handleGuestMessageWithExtension(msg, guestEntry); return; }
-  const vendor = vendorMap.get(from);
-  if (vendor)                       { await handleVendorResponse(msg, vendor); return; }
-});
 
 // ---------------------------------------------------------------------------
 // Router HTTP helpers
@@ -1061,4 +1083,8 @@ function callRouter(endpoint, body) {
 server.listen(WA_BOT_PORT, "127.0.0.1", () =>
   console.log(`📡  HTTP server on 127.0.0.1:${WA_BOT_PORT}`));
 
-client.initialize();
+// Connect to WhatsApp via Baileys (reconnects automatically on drop)
+connectToWhatsApp().catch(err => {
+  console.error("Fatal: could not connect to WhatsApp:", err);
+  process.exit(1);
+});
