@@ -115,6 +115,24 @@ class TenantConfig(Base):
 
 
 # ---------------------------------------------------------------------------
+# BaileysOutbound — persistent fallback queue for Baileys outbound messages.
+# Primary queue is Redis; rows here are written when Redis is unavailable
+# and are also used as audit trail so no message is silently lost.
+# ---------------------------------------------------------------------------
+
+class BaileysOutbound(Base):
+    __tablename__ = "baileys_outbound"
+
+    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    to_phone:    Mapped[str]           = mapped_column(String(32))
+    text:        Mapped[str]           = mapped_column(Text)
+    created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+    delivered:   Mapped[bool]          = mapped_column(Boolean, default=False, index=True)
+    delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------------------
 # Draft — AI-generated draft awaiting host approval
 # ---------------------------------------------------------------------------
 

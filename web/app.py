@@ -61,7 +61,7 @@ from sqlalchemy.orm import Session
 
 from web.db import get_db, init_db, SessionLocal
 from web.models import (
-    Tenant, TenantConfig, Draft, Vendor, ActivityLog,
+    Tenant, TenantConfig, Draft, Vendor, ActivityLog, BaileysOutbound,
     PLAN_FREE, PLAN_BAILEYS, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
 )
 from web.auth import hash_password, verify_password, create_token, get_current_tenant_id
@@ -572,31 +572,51 @@ def _execute_draft(draft: Draft, final_text: str, tenant_id: str, db: Session):
     db.commit()
 
 
-# Baileys outbound queue — Redis when available, in-memory fallback.
-# Redis key: "baileys_out:{tenant_id}" → JSON list items
-_baileys_outbound: dict[str, list[dict]] = {}   # fallback for no-Redis env
-
+# ---------------------------------------------------------------------------
+# Baileys outbound queue
+# Priority: Redis (fast, shared across workers) → DB (durable, survives restarts)
+# Redis TTL is 48h — survives any plausible server downtime.
+# DB rows are written alongside Redis; popping marks them delivered=True
+# so we have a permanent audit trail and zero message loss even on Redis failure.
+# ---------------------------------------------------------------------------
 
 def _queue_baileys_outbound(tenant_id: str, to_phone: str, text: str, db: Session):
     from web.redis_client import get_redis
     r = get_redis()
-    msg = json.dumps({"to": to_phone, "text": text})
+    # Always persist to DB first — durable audit trail regardless of Redis
+    try:
+        row = BaileysOutbound(tenant_id=tenant_id, to_phone=to_phone, text=text)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        row_id = row.id
+    except Exception as exc:
+        log.error("[%s] Failed to persist Baileys outbound to DB: %s", tenant_id, exc)
+        db.rollback()
+        row_id = None
+
+    msg = json.dumps({"to": to_phone, "text": text, "db_id": row_id})
     if r is not None:
         try:
             r.rpush(f"baileys_out:{tenant_id}", msg)
-            r.expire(f"baileys_out:{tenant_id}", 3600)  # auto-clean after 1h
-            log.info("[%s] Queued Baileys outbound (Redis) to %s", tenant_id, to_phone)
+            r.expire(f"baileys_out:{tenant_id}", 172800)  # 48h — survives server downtime
+            log.info("[%s] Queued Baileys outbound (Redis+DB) to %s", tenant_id, to_phone)
             return
         except Exception as exc:
-            log.warning("[%s] Redis push failed, using in-memory: %s", tenant_id, exc)
-    _baileys_outbound.setdefault(tenant_id, []).append({"to": to_phone, "text": text})
-    log.info("[%s] Queued Baileys outbound (memory) to %s", tenant_id, to_phone)
+            log.warning("[%s] Redis push failed — will serve from DB on next poll: %s", tenant_id, exc)
+    log.info("[%s] Queued Baileys outbound (DB-only) to %s", tenant_id, to_phone)
 
 
 def _pop_baileys_outbound(tenant_id: str) -> list[dict]:
-    """Pop all pending outbound messages for a tenant (atomic)."""
+    """
+    Return all pending outbound messages for a tenant and mark them delivered.
+    Tries Redis first (fast); falls back to DB if Redis is empty or unavailable.
+    """
     from web.redis_client import get_redis
     r = get_redis()
+    msgs: list[dict] = []
+    db_ids: list[int] = []
+
     if r is not None:
         try:
             key = f"baileys_out:{tenant_id}"
@@ -604,10 +624,44 @@ def _pop_baileys_outbound(tenant_id: str) -> list[dict]:
             pipe.lrange(key, 0, -1)
             pipe.delete(key)
             results, _ = pipe.execute()
-            return [json.loads(m) for m in results]
+            for raw in results:
+                item = json.loads(raw)
+                msgs.append({"to": item["to"], "text": item["text"]})
+                if item.get("db_id"):
+                    db_ids.append(item["db_id"])
         except Exception as exc:
-            log.warning("[%s] Redis pop failed, using in-memory: %s", tenant_id, exc)
-    return _baileys_outbound.pop(tenant_id, [])
+            log.warning("[%s] Redis pop failed, falling back to DB: %s", tenant_id, exc)
+
+    # Fallback: if Redis returned nothing (empty or failed), check DB for undelivered rows
+    if not msgs:
+        db = SessionLocal()
+        try:
+            rows = (db.query(BaileysOutbound)
+                    .filter_by(tenant_id=tenant_id, delivered=False)
+                    .order_by(BaileysOutbound.created_at)
+                    .all())
+            for row in rows:
+                msgs.append({"to": row.to_phone, "text": row.text})
+                db_ids.append(row.id)
+        finally:
+            db.close()
+
+    # Mark DB rows as delivered
+    if db_ids:
+        db = SessionLocal()
+        try:
+            (db.query(BaileysOutbound)
+             .filter(BaileysOutbound.id.in_(db_ids))
+             .update({"delivered": True, "delivered_at": datetime.now(timezone.utc)},
+                     synchronize_session=False))
+            db.commit()
+        except Exception as exc:
+            log.warning("[%s] Failed to mark Baileys rows delivered: %s", tenant_id, exc)
+            db.rollback()
+        finally:
+            db.close()
+
+    return msgs
 
 
 # ---------------------------------------------------------------------------
