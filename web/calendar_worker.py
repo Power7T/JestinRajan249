@@ -17,7 +17,7 @@ from icalendar import Calendar
 
 from web.db import SessionLocal
 from web.models import Draft, CalendarState, ActivityLog
-from web.classifier import generate_draft, make_draft_id
+from web.classifier import generate_draft, make_draft_id, build_property_context
 from web.crypto import decrypt
 
 log = logging.getLogger(__name__)
@@ -38,6 +38,7 @@ class CalendarConfig:
     ical_urls:         list[str]
     property_names:    list[str]
     anthropic_api_key: str   # already decrypted
+    property_context:  str = ""   # injected into Claude system prompt
     poll_minutes:      int = _POLL_MINUTES
 
 
@@ -118,7 +119,10 @@ def _save_draft(tenant_id: str, draft_id: str, guest_name: str, context: str, dr
 
 def _request_draft(cfg: CalendarConfig, skill: str, guest: str, context: str) -> Optional[tuple]:
     try:
-        draft = generate_draft(cfg.anthropic_api_key, guest, context, "complex", skill=skill)
+        draft = generate_draft(
+            cfg.anthropic_api_key, guest, context, "complex", skill=skill,
+            property_context=cfg.property_context,
+        )
         return make_draft_id("calendar"), draft
     except Exception as exc:
         log.error("[%s] Draft generation failed for skill=%s: %s", cfg.tenant_id, skill, exc)
@@ -257,6 +261,7 @@ def make_config_from_db(tenant_id: str) -> Optional[CalendarConfig]:
             ical_urls=urls,
             property_names=names,
             anthropic_api_key=decrypt(cfg.anthropic_api_key_enc or ""),
+            property_context=build_property_context(cfg),
         )
     finally:
         db.close()

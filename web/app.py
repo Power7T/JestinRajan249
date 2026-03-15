@@ -51,7 +51,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, Header
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, Header, UploadFile, File
 from fastapi.responses import (
     HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 )
@@ -69,7 +69,7 @@ from web.auth import hash_password, verify_password, create_token, get_current_t
 from web.crypto import encrypt, decrypt
 from web import worker_manager
 from web import billing as billing_mod
-from web.mailer import send_verification_email, send_password_reset_email
+from web.mailer import send_verification_email, send_password_reset_email, send_welcome_email
 from web.billing import (
     PLAN_INFO, ACTIVE_STATUSES, tenant_has_channel, require_channel,
     create_checkout_session, create_portal_session, handle_stripe_webhook,
@@ -241,10 +241,10 @@ def login_page(request: Request):
 
 @app.post("/login", response_class=HTMLResponse)
 def login_post(
-    request: Request,
-    email:       str = Form(...),
-    password:    str = Form(...),
-    csrf_token:  str = Form(None),
+    request:    Request,
+    email:      str = Form(...),
+    password:   str = Form(...),
+    csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
     rate_limit(f"login:{client_ip(request)}", max_requests=10, window_seconds=900)
@@ -256,7 +256,10 @@ def login_post(
     token = create_token(tenant.id)
     is_secure = (request.url.scheme == "https"
                  or request.headers.get("X-Forwarded-Proto") == "https")
-    resp = RedirectResponse("/dashboard", status_code=302)
+    # Resume onboarding if not yet complete
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant.id).first()
+    redirect_to = "/dashboard" if (cfg and cfg.onboarding_complete) else "/onboarding"
+    resp = RedirectResponse(redirect_to, status_code=302)
     resp.set_cookie("session", token, httponly=True,
                     samesite="strict", secure=is_secure, max_age=72 * 3600)
     return resp
@@ -296,7 +299,7 @@ def signup_post(
     token = create_token(tenant.id)
     is_secure = (request.url.scheme == "https"
                  or request.headers.get("X-Forwarded-Proto") == "https")
-    resp = RedirectResponse("/settings", status_code=302)
+    resp = RedirectResponse("/onboarding", status_code=302)
     resp.set_cookie("session", token, httponly=True,
                     samesite="strict", secure=is_secure, max_age=72 * 3600)
     return resp
@@ -451,14 +454,20 @@ def dashboard(request: Request,
                .order_by(Draft.created_at.desc())
                .all())
     status  = worker_manager.worker_status(tenant_id)
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "tenant":  tenant,
-        "cfg":     cfg,
-        "drafts":  pending,
-        "status":  status,
+    # Show one-time tour overlay after onboarding completion (cookie-based)
+    show_tour = request.cookies.get("show_tour") == "1"
+    response  = templates.TemplateResponse("dashboard.html", {
+        "request":   request,
+        "tenant":    tenant,
+        "cfg":       cfg,
+        "drafts":    pending,
+        "status":    status,
+        "show_tour": show_tour,
         "plan_info": PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, PLAN_INFO[PLAN_FREE]),
     })
+    if show_tour:
+        response.delete_cookie("show_tour")
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -671,6 +680,355 @@ def _pop_baileys_outbound(tenant_id: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Onboarding wizard
+# ---------------------------------------------------------------------------
+
+_ONBOARDING_STEPS = 5
+
+def _onboarding_redirect(step: int):
+    return RedirectResponse(f"/onboarding?step={step}", status_code=302)
+
+
+@app.get("/onboarding", response_class=HTMLResponse)
+def onboarding_get(request: Request, step: int = None, db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    tenant = _get_tenant(tenant_id, db)
+    cfg    = _get_or_create_config(tenant_id, db)
+    if cfg.onboarding_complete and step is None:
+        return RedirectResponse("/dashboard", status_code=302)
+    current_step = step if step is not None else max(cfg.onboarding_step + 1, 1)
+    current_step = max(1, min(current_step, 6))
+    return templates.TemplateResponse("onboarding.html", {
+        "request": request,
+        "tenant":  tenant,
+        "cfg":     cfg,
+        "step":    current_step,
+        "saved":   False,
+    })
+
+
+@app.post("/onboarding", response_class=HTMLResponse)
+async def onboarding_post(
+    request:     Request,
+    step:        int  = Form(...),
+    skip:        str  = Form(""),
+    csrf_token:  str  = Form(None),
+    db: Session = Depends(get_db),
+    # Step 1 fields
+    property_names: str = Form(""),
+    property_type:  str = Form(""),
+    property_city:  str = Form(""),
+    check_in_time:  str = Form(""),
+    check_out_time: str = Form(""),
+    max_guests:     str = Form(""),
+    # Step 2 fields
+    house_rules:    str = Form(""),
+    amenities:      list = Form([]),
+    quiet_hours:    str = Form(""),
+    pet_policy:     str = Form(""),
+    # Step 3 fields
+    food_menu:           str = Form(""),
+    menu_pdf:            UploadFile = File(None),
+    breakfast_included:  str = Form(""),
+    nearby_restaurants:  str = Form(""),
+    extra_services:      list = Form([]),
+    # Step 4 fields
+    faq:                 str = Form(""),
+    emergency_contacts:  str = Form(""),
+    custom_instructions: str = Form(""),
+    escalation_email:    str = Form(""),
+    # Step 5 fields
+    ical_urls:           str = Form(""),
+    imap_host:           str = Form(""),
+    smtp_host:           str = Form(""),
+    email_address:       str = Form(""),
+    email_password:      str = Form(""),
+    anthropic_key:       str = Form(""),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    tenant = _get_tenant(tenant_id, db)
+    cfg    = _get_or_create_config(tenant_id, db)
+
+    if not skip:
+        if step == 1:
+            cfg.property_names = property_names.strip() or cfg.property_names
+            cfg.property_type  = property_type.strip() or None
+            cfg.property_city  = property_city.strip() or None
+            cfg.check_in_time  = check_in_time.strip() or None
+            cfg.check_out_time = check_out_time.strip() or None
+            cfg.max_guests     = int(max_guests) if max_guests.strip().isdigit() else cfg.max_guests
+
+        elif step == 2:
+            # Merge quiet hours and pet policy into house rules
+            extra_rules = ""
+            if quiet_hours.strip():
+                extra_rules += f"\nQuiet hours: {quiet_hours.strip()}"
+            if pet_policy.strip():
+                extra_rules += f"\nPet policy: {pet_policy.strip()}"
+            cfg.house_rules = (house_rules.strip() + extra_rules).strip() or cfg.house_rules
+            cfg.amenities   = ", ".join(amenities) if amenities else cfg.amenities
+
+        elif step == 3:
+            # PDF extraction takes priority over pasted text
+            extracted = ""
+            if menu_pdf and menu_pdf.filename:
+                try:
+                    import io
+                    import pdfplumber
+                    pdf_bytes = await menu_pdf.read()
+                    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                        extracted = "\n".join(
+                            page.extract_text() or "" for page in pdf.pages
+                        ).strip()
+                except Exception as exc:
+                    log.warning("[%s] PDF extraction failed: %s", tenant_id, exc)
+            cfg.food_menu          = extracted or food_menu.strip() or cfg.food_menu
+            cfg.nearby_restaurants = nearby_restaurants.strip() or cfg.nearby_restaurants
+            # Append breakfast and extra services to food_menu context
+            if breakfast_included.strip():
+                cfg.food_menu = (cfg.food_menu or "") + f"\n\nBreakfast: {breakfast_included.strip()}"
+            if extra_services:
+                cfg.food_menu = (cfg.food_menu or "") + f"\n\nAdditional services: {', '.join(extra_services)}"
+
+        elif step == 4:
+            combined_faq = faq.strip()
+            if emergency_contacts.strip():
+                combined_faq = (combined_faq + "\n\nEmergency contacts:\n" + emergency_contacts.strip()).strip()
+            cfg.faq                 = combined_faq or cfg.faq
+            cfg.custom_instructions = custom_instructions.strip() or cfg.custom_instructions
+            cfg.escalation_email    = escalation_email.strip() or cfg.escalation_email
+
+        elif step == 5:
+            cfg.ical_urls     = ical_urls.strip() or cfg.ical_urls
+            cfg.imap_host     = imap_host.strip() or cfg.imap_host
+            cfg.smtp_host     = smtp_host.strip() or cfg.smtp_host
+            cfg.email_address = email_address.strip() or cfg.email_address
+            if email_password.strip():
+                cfg.email_password_enc = encrypt(email_password.strip())
+            if anthropic_key.strip():
+                cfg.anthropic_api_key_enc = encrypt(anthropic_key.strip())
+
+    cfg.onboarding_step = step
+    db.commit()
+
+    next_step = step + 1
+    if next_step > _ONBOARDING_STEPS:
+        # Onboarding complete
+        cfg.onboarding_complete = True
+        db.commit()
+        worker_manager.restart_worker(tenant_id)
+        # Send welcome email
+        try:
+            send_welcome_email(tenant.email, cfg.property_names or "")
+        except Exception as exc:
+            log.warning("[%s] Welcome email failed: %s", tenant_id, exc)
+        # Set cookie so dashboard shows one-time tour
+        resp = RedirectResponse("/onboarding?step=6", status_code=302)
+        resp.set_cookie("show_tour", "1", max_age=300, httponly=True)
+        return resp
+
+    return _onboarding_redirect(next_step)
+
+
+@app.post("/onboarding/dismiss-tour")
+async def dismiss_tour(request: Request):
+    """Called by JS after the tour overlay is dismissed — no-op (cookie already deleted by dashboard)."""
+    return JSONResponse({"ok": True})
+
+
+@app.post("/onboarding/demo")
+async def onboarding_demo(request: Request, db: Session = Depends(get_db)):
+    """Generate a live demo draft using the host's own property context."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+    cfg = _get_or_create_config(tenant_id, db)
+    api_key = decrypt(cfg.anthropic_api_key_enc or "")
+    if not api_key:
+        return JSONResponse({"error": "No Anthropic API key set — add it in Settings."})
+    try:
+        from web.classifier import generate_draft, build_property_context
+        ctx = build_property_context(cfg)
+        demo_message = (
+            "Hi! We just arrived at the property. "
+            "Could you tell us the WiFi password? Also, what time is checkout and is there parking? Thanks!"
+        )
+        draft = generate_draft(api_key, "Demo Guest", demo_message, "routine", property_context=ctx)
+        return JSONResponse({"draft": draft})
+    except Exception as exc:
+        log.error("[%s] Demo draft failed: %s", tenant_id, exc)
+        return JSONResponse({"error": str(exc)})
+
+
+@app.post("/onboarding/import-listing")
+async def import_listing(request: Request, db: Session = Depends(get_db)):
+    """Fetch a public Airbnb listing URL and extract property details."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+    body = await request.json()
+    url  = (body.get("url") or "").strip()
+    if not url or "airbnb.com" not in url:
+        return JSONResponse({"error": "Please paste a valid Airbnb listing URL."})
+    try:
+        import requests as req_lib
+        from bs4 import BeautifulSoup
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; HostAI/1.0)"}
+        resp = req_lib.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        result: dict = {}
+
+        # Title → property name
+        title_tag = soup.find("h1") or soup.find("title")
+        if title_tag:
+            result["property_names"] = title_tag.get_text(strip=True)[:120]
+
+        # Guests / bedrooms / bathrooms from summary line
+        for tag in soup.find_all(["span", "li"], string=True):
+            t = tag.get_text(strip=True).lower()
+            if "guest" in t and any(c.isdigit() for c in t):
+                num = "".join(c for c in t if c.isdigit())[:2]
+                if num:
+                    result["max_guests"] = num
+                    break
+
+        # Check-in / check-out from meta or detail text
+        for tag in soup.find_all(string=True):
+            t = tag.strip().lower()
+            if "check-in" in t and (":" in t or "pm" in t or "am" in t):
+                result.setdefault("check_in_time", tag.strip()[:40])
+            if "check-out" in t and (":" in t or "pm" in t or "am" in t):
+                result.setdefault("check_out_time", tag.strip()[:40])
+
+        if not result:
+            return JSONResponse({"error": "Could not extract listing details. Please fill in manually."})
+        return JSONResponse(result)
+    except Exception as exc:
+        log.warning("Airbnb listing import failed for %s: %s", url, exc)
+        return JSONResponse({"error": "Could not reach that page. Please fill in manually."})
+
+
+# ---------------------------------------------------------------------------
+# Connection testing endpoints (HTMX inline)
+# ---------------------------------------------------------------------------
+
+@app.post("/test/imap", response_class=HTMLResponse)
+async def test_imap(
+    request:       Request,
+    imap_host:     str = Form(""),
+    email_address: str = Form(""),
+    email_password: str = Form(""),
+    csrf_token:    str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return HTMLResponse('<p class="test-result test-fail">Not logged in.</p>')
+    validate_csrf(request, csrf_token)
+
+    if not imap_host or not email_address or not email_password:
+        # If password blank, try existing encrypted password
+        cfg = _get_or_create_config(tenant_id, db)
+        email_password = email_password or decrypt(cfg.email_password_enc or "")
+        imap_host      = imap_host or cfg.imap_host or ""
+        email_address  = email_address or cfg.email_address or ""
+
+    if not all([imap_host, email_address, email_password]):
+        return HTMLResponse('<p class="test-result test-fail">Fill in host, email and password first.</p>')
+
+    try:
+        import imapclient
+        c = imapclient.IMAPClient(imap_host, port=993, ssl=True, timeout=10)
+        c.login(email_address, email_password)
+        c.select_folder("INBOX")
+        c.logout()
+        return HTMLResponse('<p class="test-result test-ok">✓ Connected to email successfully</p>')
+    except Exception as exc:
+        msg = str(exc)
+        hint = " — try an App Password" if "authentication" in msg.lower() else ""
+        return HTMLResponse(f'<p class="test-result test-fail">✗ {msg[:120]}{hint}</p>')
+
+
+@app.post("/test/anthropic", response_class=HTMLResponse)
+async def test_anthropic(
+    request:       Request,
+    anthropic_key: str = Form(""),
+    csrf_token:    str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return HTMLResponse('<p class="test-result test-fail">Not logged in.</p>')
+    validate_csrf(request, csrf_token)
+
+    if not anthropic_key:
+        cfg = _get_or_create_config(tenant_id, db)
+        anthropic_key = decrypt(cfg.anthropic_api_key_enc or "")
+
+    if not anthropic_key:
+        return HTMLResponse('<p class="test-result test-fail">Enter your API key first.</p>')
+
+    try:
+        import anthropic as _ant
+        client = _ant.Anthropic(api_key=anthropic_key)
+        client.models.list()
+        return HTMLResponse('<p class="test-result test-ok">✓ Valid API key — ready to go</p>')
+    except Exception as exc:
+        return HTMLResponse(f'<p class="test-result test-fail">✗ {str(exc)[:120]}</p>')
+
+
+@app.post("/test/ical", response_class=HTMLResponse)
+async def test_ical(
+    request:   Request,
+    ical_urls: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return HTMLResponse('<p class="test-result test-fail">Not logged in.</p>')
+    validate_csrf(request, csrf_token)
+
+    urls = [u.strip() for u in ical_urls.replace("\n", ",").split(",") if u.strip()]
+    if not urls:
+        cfg = _get_or_create_config(tenant_id, db)
+        urls = [u.strip() for u in (cfg.ical_urls or "").split(",") if u.strip()]
+
+    if not urls:
+        return HTMLResponse('<p class="test-result test-fail">Enter an iCal URL first.</p>')
+
+    try:
+        import urllib.request as _urlreq
+        from icalendar import Calendar
+        results = []
+        for url in urls[:3]:
+            req = _urlreq.Request(url, headers={"User-Agent": "HostAI/1.0"})
+            with _urlreq.urlopen(req, timeout=10) as r:
+                raw = r.read()
+            cal = Calendar.from_ical(raw)
+            count = sum(1 for c in cal.walk() if c.name == "VEVENT")
+            results.append(f"{count} event(s)")
+        summary = " | ".join(results)
+        return HTMLResponse(f'<p class="test-result test-ok">✓ Calendar connected — {summary} found</p>')
+    except Exception as exc:
+        return HTMLResponse(f'<p class="test-result test-fail">✗ {str(exc)[:120]}</p>')
+
+
+# ---------------------------------------------------------------------------
 # Settings
 # ---------------------------------------------------------------------------
 
@@ -699,7 +1057,7 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
 
 
 @app.post("/settings", response_class=HTMLResponse)
-def settings_save(
+async def settings_save(
     request:        Request,
     property_names:        str = Form(""),
     ical_urls:             str = Form(""),
@@ -743,6 +1101,18 @@ def settings_save(
         cfg.email_password_enc = encrypt(email_password.strip())
     if anthropic_key.strip():
         cfg.anthropic_api_key_enc = encrypt(anthropic_key.strip())
+
+    # Extended property context fields (editable from Settings after onboarding)
+    form_data = await request.form()
+    for field in ("property_type","property_city","check_in_time","check_out_time",
+                  "house_rules","amenities","food_menu","nearby_restaurants",
+                  "faq","custom_instructions","escalation_email"):
+        val = form_data.get(field, "")
+        if val is not None and str(val).strip():
+            setattr(cfg, field, str(val).strip())
+    max_g = str(form_data.get("max_guests","")).strip()
+    if max_g.isdigit():
+        cfg.max_guests = int(max_g)
 
     # WhatsApp Meta Cloud (only save if tenant has the right plan)
     if tenant_has_channel(cfg, PLAN_META_CLOUD):

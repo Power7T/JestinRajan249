@@ -72,6 +72,24 @@ class TenantConfig(Base):
     property_names: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # comma-separated
     ical_urls:      Mapped[Optional[str]] = mapped_column(Text, nullable=True)    # comma-separated
 
+    # Onboarding — property details (filled during wizard)
+    property_type:       Mapped[Optional[str]] = mapped_column(String(64), nullable=True)   # apartment/villa/bnb/hotel
+    property_city:       Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    check_in_time:       Mapped[Optional[str]] = mapped_column(String(32), nullable=True)   # e.g. "15:00"
+    check_out_time:      Mapped[Optional[str]] = mapped_column(String(32), nullable=True)   # e.g. "11:00"
+    max_guests:          Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    house_rules:         Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    amenities:           Mapped[Optional[str]] = mapped_column(Text, nullable=True)         # comma-separated
+    food_menu:           Mapped[Optional[str]] = mapped_column(Text, nullable=True)         # plain text (extracted from PDF or pasted)
+    nearby_restaurants:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    faq:                 Mapped[Optional[str]] = mapped_column(Text, nullable=True)         # free-form Q&A text
+    custom_instructions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)         # host's special instructions to the AI
+    escalation_email:    Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # where to send human-handoff alerts
+
+    # Onboarding progress
+    onboarding_complete: Mapped[bool] = mapped_column(Boolean, default=False)
+    onboarding_step:     Mapped[int]  = mapped_column(Integer, default=0)
+
     # Email / IMAP / SMTP (password stored AES-encrypted)
     imap_host:         Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     imap_port:         Mapped[int]           = mapped_column(Integer, default=993)

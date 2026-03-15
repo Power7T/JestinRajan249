@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+{% block title %}Setup — HostAI{% endblock %}
+
+{% block head %}
+<style>
+  /* Wizard chrome */
+  .wizard-header { text-align:center; margin-bottom:2rem; }
+  .wizard-header h1 { font-size:1.6rem; margin-bottom:0.4rem; }
+  .wizard-header p  { color:#6c757d; font-size:0.9rem; }
+
+  /* Progress bar */
+  .progress-bar { display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:2.5rem; }
+  .step-dot { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+              font-size:0.8rem; font-weight:700; border:2px solid #dee2e6; background:#fff; color:#adb5bd; flex-shrink:0; }
+  .step-dot.done    { background:#28a745; border-color:#28a745; color:#fff; }
+  .step-dot.active  { background:#e00b27; border-color:#e00b27; color:#fff; }
+  .step-line { flex:1; max-width:60px; height:2px; background:#dee2e6; }
+  .step-line.done { background:#28a745; }
+
+  /* Step labels */
+  .step-labels { display:flex; justify-content:center; gap:0; margin-bottom:2rem; }
+  .step-label { width:80px; text-align:center; font-size:0.7rem; color:#adb5bd; }
+  .step-label.active { color:#e00b27; font-weight:600; }
+  .step-label.done   { color:#28a745; }
+
+  /* Accordion / tooltip panels */
+  details { margin-bottom:0.5rem; }
+  details summary { cursor:pointer; font-size:0.8rem; color:#e00b27; font-weight:600; user-select:none; padding:4px 0; }
+  details summary::-webkit-details-marker { display:none; }
+  details summary::before { content:"▶ "; font-size:0.65rem; }
+  details[open] summary::before { content:"▼ "; }
+  .accordion-body { background:#f8f9fa; border-radius:6px; padding:0.75rem 1rem; font-size:0.8rem; line-height:1.7; color:#495057; margin-top:0.25rem; margin-bottom:0.75rem; }
+  .accordion-body ol { padding-left:1.25rem; }
+
+  /* Amenity checkboxes */
+  .amenity-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:0.5rem; margin-bottom:1rem; }
+  .amenity-item { display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; }
+  .amenity-item input[type=checkbox] { width:auto; margin:0; }
+
+  /* Connection test inline */
+  .test-row { display:flex; gap:0.5rem; align-items:flex-start; margin-bottom:1rem; }
+  .test-row > * { flex:1; }
+  .test-row .test-btn { flex:0 0 auto; margin-top:0; padding:8px 12px; font-size:0.8rem; }
+  .test-result { font-size:0.78rem; min-height:1.2em; margin-top:4px; }
+  .test-ok   { color:#155724; }
+  .test-fail { color:#721c24; }
+
+  /* Step nav */
+  .step-nav { display:flex; justify-content:space-between; align-items:center; margin-top:2rem; padding-top:1.5rem; border-top:1px solid #dee2e6; }
+  .skip-link { font-size:0.82rem; color:#6c757d; cursor:pointer; text-decoration:underline; background:none; border:none; }
+
+  /* Demo result */
+  #demo-result { display:none; background:#f0faf4; border:1px solid #c3e6cb; border-radius:8px; padding:1.25rem; margin-top:1.5rem; }
+  #demo-result .demo-draft { background:#fff; border:1px solid #dee2e6; border-radius:6px; padding:0.75rem; font-size:0.875rem; line-height:1.6; white-space:pre-wrap; margin-top:0.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wizard-header">
+  <h1>Set up your HostAI</h1>
+  <p>Takes about 5 minutes. Skip anything — you can always update it later in Settings.</p>
+</div>
+
+<!-- Progress bar -->
+<div class="progress-bar">
+  <div class="step-dot {% if step > 1 %}done{% elif step == 1 %}active{% endif %}">{% if step > 1 %}✓{% else %}1{% endif %}</div>
+  <div class="step-line {% if step > 1 %}done{% endif %}"></div>
+  <div class="step-dot {% if step > 2 %}done{% elif step == 2 %}active{% endif %}">{% if step > 2 %}✓{% else %}2{% endif %}</div>
+  <div class="step-line {% if step > 2 %}done{% endif %}"></div>
+  <div class="step-dot {% if step > 3 %}done{% elif step == 3 %}active{% endif %}">{% if step > 3 %}✓{% else %}3{% endif %}</div>
+  <div class="step-line {% if step > 3 %}done{% endif %}"></div>
+  <div class="step-dot {% if step > 4 %}done{% elif step == 4 %}active{% endif %}">{% if step > 4 %}✓{% else %}4{% endif %}</div>
+  <div class="step-line {% if step > 4 %}done{% endif %}"></div>
+  <div class="step-dot {% if step == 5 %}active{% endif %}">5</div>
+</div>
+<div class="step-labels">
+  <div class="step-label {% if step == 1 %}active{% elif step > 1 %}done{% endif %}">Property</div>
+  <div style="width:60px"></div>
+  <div class="step-label {% if step == 2 %}active{% elif step > 2 %}done{% endif %}">Rules</div>
+  <div style="width:60px"></div>
+  <div class="step-label {% if step == 3 %}active{% elif step > 3 %}done{% endif %}">Food</div>
+  <div style="width:60px"></div>
+  <div class="step-label {% if step == 4 %}active{% elif step > 4 %}done{% endif %}">FAQ</div>
+  <div style="width:60px"></div>
+  <div class="step-label {% if step == 5 %}active{% endif %}">Connect</div>
+</div>
+
+{% if saved %}
+<div class="alert alert-success">Saved! Continuing to the next step…</div>
+{% endif %}
+
+<!-- ─────────────────────────────────────────────────────────
+     STEP 1 — Property Basics
+────────────────────────────────────────────────────────── -->
+{% if step == 1 %}
+<div class="card">
+  <h2>Step 1 — About your property</h2>
+  <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1.5rem">
+    This information is given to the AI so it can answer guest questions accurately.
+  </p>
+
+  <!-- Optional: Airbnb listing import -->
+  <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:1rem;margin-bottom:1.5rem">
+    <p style="font-size:0.85rem;font-weight:600;margin-bottom:0.5rem">Auto-import from Airbnb (optional)</p>
+    <p style="font-size:0.8rem;color:#856404;margin-bottom:0.75rem">Paste your Airbnb listing URL and we'll pre-fill the fields below automatically.</p>
+    <div style="display:flex;gap:0.5rem">
+      <input type="text" id="listing-url" placeholder="https://www.airbnb.com/rooms/12345678" style="margin:0;flex:1">
+      <button type="button" class="btn btn-outline" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem"
+              onclick="importListing()">Import</button>
+    </div>
+    <p id="import-status" style="font-size:0.78rem;margin-top:4px;min-height:1.2em"></p>
+  </div>
+
+  <form method="post" action="/onboarding">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <input type="hidden" name="step" value="1">
+
+    <div class="form-row">
+      <div>
+        <label>Property name(s)</label>
+        <input type="text" name="property_names" id="f-property-names" value="{{ cfg.property_names or '' }}" placeholder="Beach House, City Flat">
+        <p class="help-text">Comma-separated if multiple.</p>
+      </div>
+      <div>
+        <label>Property type</label>
+        <select name="property_type" id="f-property-type">
+          <option value="">— select —</option>
+          {% for t in ["Apartment","Villa","House","B&B","Hotel room","Cabin","Studio","Penthouse","Other"] %}
+          <option value="{{ t }}" {% if cfg.property_type == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <label>City / Neighbourhood</label>
+    <input type="text" name="property_city" id="f-property-city" value="{{ cfg.property_city or '' }}" placeholder="Miami Beach, FL">
+
+    <div class="form-row">
+      <div>
+        <label>Check-in time</label>
+        <input type="text" name="check_in_time" id="f-check-in" value="{{ cfg.check_in_time or '' }}" placeholder="3:00 PM">
+      </div>
+      <div>
+        <label>Check-out time</label>
+        <input type="text" name="check_out_time" id="f-check-out" value="{{ cfg.check_out_time or '' }}" placeholder="11:00 AM">
+      </div>
+    </div>
+
+    <label>Max guests</label>
+    <input type="number" name="max_guests" id="f-max-guests" value="{{ cfg.max_guests or '' }}" placeholder="6" min="1" max="100" style="max-width:120px">
+
+    <div class="step-nav">
+      <span></span>
+      <button type="submit" class="btn btn-primary">Continue →</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<!-- ─────────────────────────────────────────────────────────
+     STEP 2 — House Rules & Amenities
+────────────────────────────────────────────────────────── -->
+{% if step == 2 %}
+<div class="card">
+  <h2>Step 2 — House rules & amenities</h2>
+  <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1.5rem">
+    The AI uses these to answer rule-related questions and set guest expectations correctly.
+  </p>
+
+  <form method="post" action="/onboarding">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <input type="hidden" name="step" value="2">
+
+    <label>House rules</label>
+    <p class="help-text" style="margin-bottom:0.5rem">Paste from your Airbnb listing, or write them out.</p>
+    <textarea name="house_rules" rows="6" placeholder="No parties or events&#10;No smoking inside&#10;No pets&#10;Quiet hours 10pm–8am&#10;Check-out by 11:00 AM">{{ cfg.house_rules or '' }}</textarea>
+
+    <label style="margin-bottom:0.5rem">Amenities available</label>
+    <div class="amenity-grid">
+      {% set amenity_list = (cfg.amenities or '').split(',') | map('trim') | list %}
+      {% for a in ["WiFi","Pool","Hot tub","Kitchen","BBQ","Parking","EV charging","AC","Heating","Gym","Beach access","Bikes","Washer/Dryer","Dishwasher","Smart TV","Board games","Baby crib","Work desk","Iron","Hair dryer"] %}
+      <label class="amenity-item">
+        <input type="checkbox" name="amenities" value="{{ a }}" {% if a in amenity_list %}checked{% endif %}>
+        {{ a }}
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="form-row" style="margin-top:1rem">
+      <div>
+        <label>Quiet hours</label>
+        <input type="text" name="quiet_hours" value="{{ cfg.faq | default('') | truncate(0, true, '') }}" placeholder="10:00 PM – 8:00 AM">
+        <p class="help-text">Will be included in house rules context.</p>
+      </div>
+      <div>
+        <label>Pet policy</label>
+        <select name="pet_policy">
+          <option value="">— not specified —</option>
+          <option value="No pets allowed">No pets allowed</option>
+          <option value="Pets allowed (with fee)">Pets allowed (with fee)</option>
+          <option value="Pets allowed (free)">Pets allowed (free)</option>
+          <option value="Small pets only">Small pets only</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="step-nav">
+      <a href="/onboarding?step=1" style="color:#6c757d;font-size:0.85rem">← Back</a>
+      <div style="display:flex;gap:0.75rem;align-items:center">
+        <button type="submit" name="skip" value="1" class="skip-link">Skip this step</button>
+        <button type="submit" class="btn btn-primary">Continue →</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<!-- ─────────────────────────────────────────────────────────
+     STEP 3 — Food & Services
+────────────────────────────────────────────────────────── -->
+{% if step == 3 %}
+<div class="card">
+  <h2>Step 3 — Food & services</h2>
+  <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1.5rem">
+    If you have a restaurant or breakfast service, paste or upload your menu — the AI will
+    describe it to guests accurately when asked.
+  </p>
+
+  <form method="post" action="/onboarding" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <input type="hidden" name="step" value="3">
+
+    <label>Food menu / restaurant (optional)</label>
+    <p class="help-text" style="margin-bottom:0.4rem">Paste menu text directly, or upload a PDF — we'll extract the text automatically.</p>
+    <textarea name="food_menu" rows="6" placeholder="Breakfast (7am–10am):&#10;• Continental buffet — €12/person&#10;• Eggs Benedict — €14&#10;&#10;Dinner (6pm–10pm):&#10;• Grilled salmon — €24&#10;• Pasta al pomodoro — €16">{{ cfg.food_menu or '' }}</textarea>
+
+    <label>Or upload a menu PDF</label>
+    <input type="file" name="menu_pdf" accept="application/pdf" style="margin-bottom:1rem">
+    <p class="help-text">Max 5 MB. Text will be extracted and stored.</p>
+
+    <label>Breakfast included?</label>
+    <select name="breakfast_included">
+      <option value="">— not applicable —</option>
+      <option value="Yes, included in price">Yes, included in price</option>
+      <option value="Yes, available for €X/person extra">Yes, available for a fee</option>
+      <option value="No breakfast service">No breakfast service</option>
+    </select>
+
+    <label>Nearby restaurant recommendations (optional)</label>
+    <textarea name="nearby_restaurants" rows="4" placeholder="La Piazza — 5 min walk, Italian, great pizza&#10;The Rooftop Bar — 3 min walk, cocktails &amp; small plates&#10;Morning Brew Café — 2 min walk, best coffee in town">{{ cfg.nearby_restaurants or '' }}</textarea>
+
+    <label>Other services available</label>
+    <div class="amenity-grid">
+      {% for s in ["Airport transfer","Bike rental","Car rental","Laundry service","Room service","Concierge","Tours","Grocery delivery","Baby equipment"] %}
+      <label class="amenity-item">
+        <input type="checkbox" name="extra_services" value="{{ s }}">
+        {{ s }}
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="step-nav">
+      <a href="/onboarding?step=2" style="color:#6c757d;font-size:0.85rem">← Back</a>
+      <div style="display:flex;gap:0.75rem;align-items:center">
+        <button type="submit" name="skip" value="1" class="skip-link">Skip this step</button>
+        <button type="submit" class="btn btn-primary">Continue →</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<!-- ─────────────────────────────────────────────────────────
+     STEP 4 — FAQ & Custom Instructions
+────────────────────────────────────────────────────────── -->
+{% if step == 4 %}
+<div class="card">
+  <h2>Step 4 — FAQ & custom instructions</h2>
+  <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1.5rem">
+    Give the AI answers to your most common questions and any special instructions.
+  </p>
+
+  <form method="post" action="/onboarding">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <input type="hidden" name="step" value="4">
+
+    <label>Frequently asked questions & answers</label>
+    <p class="help-text" style="margin-bottom:0.4rem">Write each Q&A on its own lines. The AI will reference these exactly.</p>
+    <textarea name="faq" rows="8" placeholder="Q: What is the WiFi password?&#10;A: The password is BeachHouse2024&#10;&#10;Q: Is there parking?&#10;A: Yes, free parking in the underground garage, space #12&#10;&#10;Q: Where do I find the key?&#10;A: The lockbox is on the right of the front door. Code is 4729.">{{ cfg.faq or '' }}</textarea>
+
+    <label style="margin-top:0.5rem">Emergency contacts</label>
+    <textarea name="emergency_contacts" rows="3" placeholder="Local doctor: Dr. Patel, +1 305 555 0001&#10;Hospital: Miami General, 5 min drive, 123 Main St&#10;Police: 911 / +1 305 555 0099">{{ '' }}</textarea>
+    <p class="help-text">Will be included in the AI context for emergencies.</p>
+
+    <label>Special AI instructions (optional)</label>
+    <p class="help-text" style="margin-bottom:0.4rem">
+      Anything you always want the AI to do or avoid. Examples: tone, upsells, what to mention.
+    </p>
+    <textarea name="custom_instructions" rows="4" placeholder="Always mention the rooftop terrace when guests ask about facilities.&#10;Never offer refunds directly — say you'll check with the host.&#10;Respond in a warm, friendly tone with the guest's first name.">{{ cfg.custom_instructions or '' }}</textarea>
+
+    <label style="margin-top:0.5rem">Email for urgent alerts (human handoff)</label>
+    <input type="email" name="escalation_email" value="{{ cfg.escalation_email or tenant.email }}" placeholder="{{ tenant.email }}">
+    <p class="help-text">
+      When a guest message contains legal threats, medical emergencies, or extreme frustration,
+      HostAI will email you here immediately with the full message.
+    </p>
+
+    <div class="step-nav">
+      <a href="/onboarding?step=3" style="color:#6c757d;font-size:0.85rem">← Back</a>
+      <div style="display:flex;gap:0.75rem;align-items:center">
+        <button type="submit" name="skip" value="1" class="skip-link">Skip this step</button>
+        <button type="submit" class="btn btn-primary">Continue →</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<!-- ─────────────────────────────────────────────────────────
+     STEP 5 — Connect Channels
+────────────────────────────────────────────────────────── -->
+{% if step == 5 %}
+<div class="card">
+  <h2>Step 5 — Connect your channels</h2>
+  <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1.5rem">
+    HostAI reads your Airbnb emails and replies via SMTP. It also watches your calendar for proactive messages.
+  </p>
+
+  <form method="post" action="/onboarding">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <input type="hidden" name="step" value="5">
+
+    <!-- Airbnb iCal -->
+    <div class="form-section">
+      <h2>Calendar (Airbnb iCal)</h2>
+      <label>Airbnb iCal URL(s)</label>
+      <textarea name="ical_urls" rows="3" placeholder="https://www.airbnb.com/calendar/ical/...ics&#10;One per line or comma-separated">{{ cfg.ical_urls or '' }}</textarea>
+      <details>
+        <summary>How to find your iCal URL</summary>
+        <div class="accordion-body">
+          <ol>
+            <li>Go to <strong>airbnb.com</strong> and open your listing</li>
+            <li>Click <strong>Calendar</strong> in the top menu</li>
+            <li>Click <strong>Availability settings</strong></li>
+            <li>Scroll down and click <strong>Export Calendar</strong></li>
+            <li>Copy the <code>.ics</code> link and paste it above</li>
+          </ol>
+        </div>
+      </details>
+      <!-- iCal test -->
+      <div id="ical-test-area"></div>
+      <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:1rem"
+              hx-post="/test/ical"
+              hx-include="[name='ical_urls']"
+              hx-target="#ical-test-area"
+              hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'>
+        Test calendar URL
+      </button>
+    </div>
+
+    <!-- Email / IMAP -->
+    <div class="form-section">
+      <h2>Email (IMAP / SMTP)</h2>
+      <div class="form-row">
+        <div>
+          <label>IMAP host</label>
+          <input type="text" name="imap_host" value="{{ cfg.imap_host or '' }}" placeholder="imap.gmail.com">
+        </div>
+        <div>
+          <label>SMTP host</label>
+          <input type="text" name="smtp_host" value="{{ cfg.smtp_host or '' }}" placeholder="smtp.gmail.com">
+        </div>
+      </div>
+      <label>Email address</label>
+      <input type="email" name="email_address" value="{{ cfg.email_address or '' }}" placeholder="yourhost@gmail.com">
+      <label>App password <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
+      <input type="password" name="email_password" id="email-password" placeholder="xxxx xxxx xxxx xxxx">
+      <details>
+        <summary>How to create a Gmail App Password</summary>
+        <div class="accordion-body">
+          <ol>
+            <li>Go to <a href="https://myaccount.google.com" target="_blank">myaccount.google.com</a></li>
+            <li>Click <strong>Security</strong> in the left menu</li>
+            <li>Scroll to <strong>How you sign in to Google</strong> and click <strong>2-Step Verification</strong> (must be ON)</li>
+            <li>Scroll to the bottom and click <strong>App passwords</strong></li>
+            <li>Choose app: <em>Mail</em>, device: <em>Other</em> → type "HostAI" → click <strong>Generate</strong></li>
+            <li>Copy the 16-character password and paste it above</li>
+          </ol>
+          <p style="margin-top:0.5rem">Not using Gmail? Use your provider's equivalent app password or IMAP credentials.</p>
+        </div>
+      </details>
+      <!-- Email test -->
+      <div id="email-test-area"></div>
+      <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:1rem"
+              hx-post="/test/imap"
+              hx-include="[name='imap_host'],[name='email_address'],[name='email_password']"
+              hx-target="#email-test-area"
+              hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'>
+        Test email connection
+      </button>
+    </div>
+
+    <!-- Anthropic API key -->
+    <div class="form-section">
+      <h2>Claude API key</h2>
+      <label>Anthropic API key <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
+      <input type="password" name="anthropic_key" id="anthropic-key" placeholder="sk-ant-...">
+      <details>
+        <summary>How to get a free Anthropic API key</summary>
+        <div class="accordion-body">
+          <ol>
+            <li>Go to <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></li>
+            <li>Sign up for a free account</li>
+            <li>Click <strong>API Keys</strong> in the left sidebar</li>
+            <li>Click <strong>Create Key</strong>, give it a name, copy the key</li>
+          </ol>
+          <p style="margin-top:0.5rem">New accounts get $5 free credits. Each message costs about $0.01.</p>
+        </div>
+      </details>
+      <!-- API key test -->
+      <div id="api-test-area"></div>
+      <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:1rem"
+              hx-post="/test/anthropic"
+              hx-include="[name='anthropic_key']"
+              hx-target="#api-test-area"
+              hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'>
+        Test API key
+      </button>
+    </div>
+
+    <div class="step-nav">
+      <a href="/onboarding?step=4" style="color:#6c757d;font-size:0.85rem">← Back</a>
+      <button type="submit" class="btn btn-primary" style="font-size:1rem;padding:10px 28px">
+        Finish setup →
+      </button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<!-- ─────────────────────────────────────────────────────────
+     COMPLETE — Simulate a Guest
+────────────────────────────────────────────────────────── -->
+{% if step == 6 %}
+<div class="card" style="text-align:center;padding:2.5rem">
+  <div style="font-size:3rem;margin-bottom:1rem">🎉</div>
+  <h2 style="font-size:1.4rem;margin-bottom:0.5rem">HostAI is live for {{ cfg.property_names or 'your property' }}!</h2>
+  <p style="color:#6c757d;margin-bottom:2rem">
+    Your AI will draft replies to guest messages automatically.<br>
+    Want to see it in action with your own property data?
+  </p>
+
+  <button type="button" class="btn btn-primary" style="font-size:1rem;padding:10px 24px;margin-bottom:1rem"
+          onclick="runDemo()">
+    See how your AI responds →
+  </button>
+  <p style="font-size:0.8rem;color:#6c757d;margin-bottom:2rem">Generates a live demo reply using your actual property info.</p>
+
+  <div id="demo-result">
+    <p style="font-weight:600;color:#155724;margin-bottom:0.5rem">Here's how your AI would reply to a typical guest question:</p>
+    <div class="demo-draft" id="demo-draft-text"></div>
+    <p style="font-size:0.78rem;color:#6c757d;margin-top:0.75rem">This is a live AI response using your actual property details.</p>
+  </div>
+
+  <div style="margin-top:2rem">
+    <a href="/dashboard" class="btn btn-outline" style="margin-right:0.5rem">Go to Dashboard</a>
+    <a href="/settings" class="btn btn-outline">Full Settings</a>
+  </div>
+</div>
+{% endif %}
+
+<script>
+// Airbnb listing auto-import
+function importListing() {
+  const url  = document.getElementById('listing-url').value.trim();
+  const stat = document.getElementById('import-status');
+  if (!url) { stat.textContent = 'Paste your Airbnb listing URL first.'; return; }
+  stat.style.color = '#856404';
+  stat.textContent = 'Importing…';
+  fetch('/onboarding/import-listing', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({url: url, csrf_token: '{{ request.state.csrf_token }}'})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) { stat.style.color='#721c24'; stat.textContent = '✗ ' + d.error; return; }
+    stat.style.color = '#155724';
+    stat.textContent = '✓ Imported! Fields pre-filled below — please review and adjust.';
+    if (d.property_names) document.getElementById('f-property-names').value = d.property_names;
+    if (d.property_type)  document.getElementById('f-property-type').value  = d.property_type;
+    if (d.property_city)  document.getElementById('f-property-city').value  = d.property_city;
+    if (d.check_in_time)  document.getElementById('f-check-in').value  = d.check_in_time;
+    if (d.check_out_time) document.getElementById('f-check-out').value = d.check_out_time;
+    if (d.max_guests)     document.getElementById('f-max-guests').value = d.max_guests;
+  })
+  .catch(() => { stat.style.color='#721c24'; stat.textContent = '✗ Could not reach that URL. Please fill in manually.'; });
+}
+
+// Demo draft generation
+function runDemo() {
+  const btn = event.target;
+  btn.textContent = 'Generating…';
+  btn.disabled = true;
+  fetch('/onboarding/demo', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({csrf_token:'{{ request.state.csrf_token }}'})})
+  .then(r => r.json())
+  .then(d => {
+    btn.textContent = 'Regenerate';
+    btn.disabled = false;
+    if (d.draft) {
+      document.getElementById('demo-draft-text').textContent = d.draft;
+      document.getElementById('demo-result').style.display = 'block';
+    } else {
+      document.getElementById('demo-draft-text').textContent = d.error || 'Could not generate — check your Anthropic API key in Settings.';
+      document.getElementById('demo-result').style.display = 'block';
+    }
+  })
+  .catch(() => {
+    btn.textContent = 'Regenerate';
+    btn.disabled = false;
+  });
+}
+</script>
+{% endblock %}

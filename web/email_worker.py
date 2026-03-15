@@ -21,7 +21,7 @@ from bs4 import BeautifulSoup
 
 from web.db import SessionLocal
 from web.models import Draft, ProcessedEmail, ActivityLog
-from web.classifier import classify_message, detect_vendor_type, generate_draft, make_draft_id
+from web.classifier import classify_message, detect_vendor_type, generate_draft, make_draft_id, needs_escalation, build_property_context
 from web.crypto import decrypt
 
 log = logging.getLogger(__name__)
@@ -45,6 +45,8 @@ class EmailConfig:
     email_address: str
     email_password: str   # already decrypted
     anthropic_api_key: str  # already decrypted
+    property_context: str = ""   # injected into Claude system prompt
+    escalation_email: str = ""   # host email for human-handoff alerts
     poll_interval: int = 30
     imap_timeout:  int = 20
 
@@ -170,10 +172,34 @@ def _mark_draft_approved(tenant_id: str, draft_id: str, final_text: str):
 
 
 def _process_message(cfg: EmailConfig, parsed: dict, subject: str):
-    msg_type    = classify_message(parsed["guest_message"])
-    vendor_type = detect_vendor_type(parsed["guest_message"]) if msg_type == "complex" else None
+    guest_msg = parsed["guest_message"]
+
+    # Human handoff: escalation check before anything else
+    if needs_escalation(guest_msg):
+        draft_id = make_draft_id("email")
+        escalation_note = (
+            f"[ESCALATION ALERT] This message requires immediate human attention.\n\n"
+            f"Guest: {parsed['guest_name']}\n"
+            f"Message:\n{guest_msg}"
+        )
+        _save_draft(cfg.tenant_id, draft_id, parsed, "complex", None, escalation_note)
+        log.warning("[%s] Escalation triggered for guest %s", cfg.tenant_id, parsed["guest_name"])
+        # Send alert to host
+        if cfg.escalation_email:
+            try:
+                from web.mailer import send_escalation_alert
+                send_escalation_alert(cfg.escalation_email, parsed["guest_name"], guest_msg)
+            except Exception as exc:
+                log.error("[%s] Escalation alert email failed: %s", cfg.tenant_id, exc)
+        return
+
+    msg_type    = classify_message(guest_msg)
+    vendor_type = detect_vendor_type(guest_msg) if msg_type == "complex" else None
     try:
-        draft_text = generate_draft(cfg.anthropic_api_key, parsed["guest_name"], parsed["guest_message"], msg_type)
+        draft_text = generate_draft(
+            cfg.anthropic_api_key, parsed["guest_name"], guest_msg, msg_type,
+            property_context=cfg.property_context,
+        )
     except RuntimeError as exc:
         log.error("[%s] Draft generation failed: %s", cfg.tenant_id, exc)
         return
@@ -246,6 +272,8 @@ def make_config_from_db(tenant_id: str) -> Optional[EmailConfig]:
             email_address=cfg.email_address,
             email_password=decrypt(cfg.email_password_enc or ""),
             anthropic_api_key=decrypt(cfg.anthropic_api_key_enc or ""),
+            property_context=build_property_context(cfg),
+            escalation_email=cfg.escalation_email or cfg.email_address or "",
         )
     finally:
         db.close()

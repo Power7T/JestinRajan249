@@ -51,6 +51,59 @@ _CALENDAR_SKILLS   = {"checkin", "cleaner-brief"}
 _MAX_RETRIES       = 3
 _RETRY_DELAYS      = [2, 4, 8]
 
+# Patterns that trigger human escalation regardless of normal classification
+_ESCALATION = [
+    r"\bsue\b", r"\blawyer\b", r"\blegal\b", r"\bpolice\b", r"\brefund\s+now\b",
+    r"\bthis\s+is\s+unacceptable\b", r"\bi('m| am)\s+furious\b", r"\bi('m| am)\s+disgusted\b",
+    r"\bmedical\s+(emergency|attention|help)\b", r"\bambulance\b", r"\bhospital\b",
+    r"\bfire\b.*\balarm\b", r"\bgas\s+leak\b", r"\bflood(ing)?\b", r"\bemergency\b",
+    r"\bcall\s+the\s+cops\b", r"\breporting\s+you\b", r"\bchargeback\b",
+]
+
+_MULTILINGUAL_RULE = """
+LANGUAGE RULE: Detect the language the guest is writing in. Always reply in the SAME language as the guest's message. If the guest writes in French, reply in French. If the guest writes in Spanish, reply in Spanish. If the guest writes in Arabic, reply in Arabic. The property information above is in English — translate your response for the guest automatically. The menu, house rules, and FAQ content should be translated on-the-fly as needed.
+"""
+
+
+def build_property_context(cfg) -> str:
+    """Build a property context block from a TenantConfig (or similar duck-typed object)."""
+    if not cfg:
+        return ""
+    parts = []
+    if getattr(cfg, "property_names", None):
+        parts.append(f"Property name: {cfg.property_names}")
+    if getattr(cfg, "property_type", None):
+        parts.append(f"Property type: {cfg.property_type}")
+    if getattr(cfg, "property_city", None):
+        parts.append(f"Location: {cfg.property_city}")
+    if getattr(cfg, "check_in_time", None) or getattr(cfg, "check_out_time", None):
+        ci = getattr(cfg, "check_in_time", None) or "flexible"
+        co = getattr(cfg, "check_out_time", None) or "flexible"
+        parts.append(f"Check-in: {ci}  |  Check-out: {co}")
+    if getattr(cfg, "max_guests", None):
+        parts.append(f"Max guests: {cfg.max_guests}")
+    if getattr(cfg, "amenities", None):
+        parts.append(f"Amenities: {cfg.amenities}")
+    if getattr(cfg, "house_rules", None):
+        parts.append(f"House rules:\n{cfg.house_rules}")
+    if getattr(cfg, "food_menu", None):
+        parts.append(f"Food menu / restaurant:\n{cfg.food_menu}")
+    if getattr(cfg, "nearby_restaurants", None):
+        parts.append(f"Nearby restaurant recommendations:\n{cfg.nearby_restaurants}")
+    if getattr(cfg, "faq", None):
+        parts.append(f"FAQ / common questions:\n{cfg.faq}")
+    if getattr(cfg, "custom_instructions", None):
+        parts.append(f"Special host instructions:\n{cfg.custom_instructions}")
+    if not parts:
+        return ""
+    return "<property_context>\n" + "\n\n".join(parts) + "\n</property_context>"
+
+
+def needs_escalation(text: str) -> bool:
+    """Return True if the guest message contains patterns requiring immediate human attention."""
+    lower = text.lower()
+    return any(re.search(p, lower) for p in _ESCALATION)
+
 
 def classify_message(text: str) -> str:
     lower = text.lower()
@@ -74,11 +127,18 @@ def detect_vendor_type(text: str) -> Optional[str]:
     return None
 
 
-def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, skill: str = None) -> str:
+def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, skill: str = None, property_context: str = "") -> str:
     """Call Claude API with tenant's own key and return draft text."""
     client     = anthropic.Anthropic(api_key=api_key)
     skill_cmd  = _SKILL_CMD_MAP.get(skill) or ("/reply" if msg_type == "routine" else "/complaint")
     max_tokens = 1024 if skill in _CALENDAR_SKILLS else 512
+
+    # Build dynamic system prompt: base + per-tenant property context + multilingual rule
+    system = SYSTEM_PROMPT
+    if property_context:
+        system = system + "\n\n" + property_context
+    system = system + "\n\n" + _MULTILINGUAL_RULE
+
     user_content = (
         f"[Automated pipeline — use {skill_cmd} flow]\n\n"
         f"<guest_name>{guest_name}</guest_name>\n\n"
@@ -91,7 +151,7 @@ def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, s
             resp = client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=max_tokens,
-                system=SYSTEM_PROMPT,
+                system=system,
                 messages=[{"role": "user", "content": user_content}],
             )
             if not resp.content or not resp.content[0].text:

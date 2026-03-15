@@ -1,6 +1,34 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — HostAI{% endblock %}
 
+{% block head %}
+<style>
+  /* Setup checklist */
+  .checklist-card { background:#fff;border:2px solid #e00b27;border-radius:10px;padding:1.5rem;margin-bottom:1.5rem; }
+  .checklist-card h2 { font-size:1rem;margin-bottom:1rem; }
+  .checklist-item { display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid #f1f3f5;font-size:0.875rem; }
+  .checklist-item:last-child { border-bottom:none;padding-bottom:0; }
+  .check-icon { font-size:1rem;width:1.5rem;text-align:center;flex-shrink:0; }
+  .check-icon.done  { color:#28a745; }
+  .check-icon.todo  { color:#dee2e6; }
+  .checklist-action { margin-left:auto;font-size:0.8rem; }
+
+  /* First-visit tour tooltip */
+  .tour-tip { position:relative; }
+  .tour-badge { display:inline-block;background:#e00b27;color:#fff;font-size:0.7rem;font-weight:700;
+                border-radius:12px;padding:2px 8px;margin-left:0.5rem;vertical-align:middle;animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.6} }
+  .tour-tooltip { position:absolute;bottom:calc(100%+8px);left:50%;transform:translateX(-50%);
+                  background:#212529;color:#fff;font-size:0.78rem;border-radius:6px;padding:6px 12px;
+                  white-space:nowrap;z-index:100;pointer-events:none; }
+  .tour-tooltip::after { content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+                          border:5px solid transparent;border-top-color:#212529; }
+
+  /* Escalation draft */
+  .draft-escalation { border-left:4px solid #dc3545 !important; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Dashboard</h1>
 
@@ -16,17 +44,55 @@
   </div>
 </div>
 
+<!-- Setup checklist (only shown when onboarding not complete) -->
+{% if not cfg.onboarding_complete %}
+<div class="checklist-card">
+  <h2>Getting started with HostAI</h2>
+  <div class="checklist-item">
+    <span class="check-icon done">✓</span>
+    <span>Account created</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check-icon {% if cfg.property_names %}done{% else %}todo{% endif %}">{% if cfg.property_names %}✓{% else %}○{% endif %}</span>
+    <span>Property details added</span>
+    {% if not cfg.property_names %}<a href="/onboarding?step=1" class="checklist-action btn btn-primary btn-sm">Set up →</a>{% endif %}
+  </div>
+  <div class="checklist-item">
+    <span class="check-icon {% if cfg.email_address %}done{% else %}todo{% endif %}">{% if cfg.email_address %}✓{% else %}○{% endif %}</span>
+    <span>Email connected</span>
+    {% if not cfg.email_address %}<a href="/onboarding?step=5" class="checklist-action btn btn-primary btn-sm">Connect →</a>{% endif %}
+  </div>
+  <div class="checklist-item">
+    <span class="check-icon {% if cfg.anthropic_api_key_enc %}done{% else %}todo{% endif %}">{% if cfg.anthropic_api_key_enc %}✓{% else %}○{% endif %}</span>
+    <span>Claude API key added</span>
+    {% if not cfg.anthropic_api_key_enc %}<a href="/onboarding?step=5" class="checklist-action btn btn-primary btn-sm">Add key →</a>{% endif %}
+  </div>
+  <div class="checklist-item">
+    <span class="check-icon {% if cfg.ical_urls %}done{% else %}todo{% endif %}">{% if cfg.ical_urls %}✓{% else %}○{% endif %}</span>
+    <span>Calendar connected</span>
+    {% if not cfg.ical_urls %}<a href="/onboarding?step=5" class="checklist-action btn btn-outline btn-sm">Add iCal →</a>{% endif %}
+  </div>
+  <div class="checklist-item">
+    <span class="check-icon todo">○</span>
+    <span style="color:#6c757d">First draft approved (waiting for a guest message)</span>
+  </div>
+  <p style="font-size:0.78rem;color:#6c757d;margin-top:1rem">
+    <a href="/onboarding">Resume setup wizard →</a>
+  </p>
+</div>
+{% endif %}
+
 {% if not drafts %}
-<div class="empty">
-  <div class="empty-icon">✅</div>
-  <p>No pending drafts — all caught up!</p>
+<div class="empty" id="empty-state">
+  <div class="empty-icon">{% if cfg.onboarding_complete %}✅{% else %}⏳{% endif %}</div>
+  <p>{% if cfg.onboarding_complete %}No pending drafts — all caught up!{% else %}No drafts yet — complete setup above to start{% endif %}</p>
   <p style="font-size:0.8rem;margin-top:0.4rem">New guest messages will appear here for your approval.</p>
 </div>
 {% else %}
 <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1rem">{{ drafts|length }} pending draft{% if drafts|length != 1 %}s{% endif %} waiting for review</p>
 
 {% for draft in drafts %}
-<div class="card" id="draft-{{ draft.id }}">
+<div class="card {% if draft.msg_type == 'escalation' %}draft-escalation{% endif %}" id="draft-{{ draft.id }}">
   <div class="card-header">
     <div>
       <span class="card-title">{{ draft.guest_name }}</span>
@@ -80,4 +146,28 @@
 <div hx-get="/api/drafts" hx-trigger="every 30s" hx-swap="none"
      hx-on::after-request="if(JSON.parse(event.detail.xhr.responseText).length !== {{ drafts|length }}) location.reload()">
 </div>
+
+<!-- Post-onboarding first-visit tour (shown once via localStorage) -->
+{% if show_tour %}
+<div id="tour-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:2rem;max-width:440px;width:90%;text-align:center">
+    <div style="font-size:2.5rem;margin-bottom:0.75rem">🏠</div>
+    <h2 style="font-size:1.2rem;margin-bottom:0.75rem">Your HostAI is ready!</h2>
+    <p style="font-size:0.875rem;color:#495057;margin-bottom:1.5rem;line-height:1.7">
+      When a guest sends you a message, it appears here as a <strong>draft card</strong>.<br><br>
+      Click <strong>✓ Send this</strong> to approve and send the AI reply instantly.<br>
+      Click <strong>✎ Edit &amp; send</strong> to tweak it before sending.<br>
+      Click <strong>✗ Skip</strong> to dismiss without sending.
+    </p>
+    <button class="btn btn-primary" onclick="dismissTour()">Got it, let's go →</button>
+  </div>
+</div>
+<script>
+function dismissTour() {
+  document.getElementById('tour-overlay').remove();
+  fetch('/onboarding/dismiss-tour', {method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({csrf_token:'{{ request.state.csrf_token }}'})});
+}
+</script>
+{% endif %}
 {% endblock %}
