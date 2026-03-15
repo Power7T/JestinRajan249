@@ -50,7 +50,11 @@ def get_db():
 
 def init_db():
     """Create all tables. Called once at startup."""
-    from web.models import Tenant, TenantConfig, Draft, ProcessedEmail, CalendarState, Vendor, ActivityLog, BaileysOutbound  # noqa: F401
+    from web.models import (  # noqa: F401
+        Tenant, TenantConfig, Draft, ProcessedEmail, CalendarState,
+        Vendor, ActivityLog, BaileysOutbound, Reservation, ReservationSyncLog,
+        PMSIntegration, PMSProcessedMessage,
+    )
     Base.metadata.create_all(bind=engine)
     db_migrate()
 

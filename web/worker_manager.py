@@ -17,7 +17,7 @@ import threading
 import time
 from typing import Optional
 
-from web import email_worker, calendar_worker, reservation_scheduler
+from web import email_worker, calendar_worker, reservation_scheduler, pms_worker
 
 log = logging.getLogger(__name__)
 
@@ -88,10 +88,24 @@ def _start_tenant(tenant_id: str):
         entry["sched"]      = t_sched
         entry["sched_stop"] = sched_stop
 
+    # PMS worker (only if tenant has at least one active PMS integration)
+    if pms_worker.has_active_pms(tenant_id):
+        pms_stop = threading.Event()
+        t_pms = threading.Thread(
+            target=pms_worker.run_for_tenant,
+            args=(tenant_id, pms_stop),
+            name=f"pms-{tenant_id[:8]}",
+            daemon=True,
+        )
+        t_pms.start()
+        entry["pms"]      = t_pms
+        entry["pms_stop"] = pms_stop
+
     with _lock:
         _workers[tenant_id] = entry
 
-    log.info("[%s] Workers started (email=%s, calendar=%s)", tenant_id, True, cal_cfg is not None)
+    log.info("[%s] Workers started (email=%s, calendar=%s, pms=%s)",
+             tenant_id, True, cal_cfg is not None, pms_worker.has_active_pms(tenant_id))
 
 
 def _stop_tenant(tenant_id: str):
@@ -100,11 +114,11 @@ def _stop_tenant(tenant_id: str):
         entry = _workers.pop(tenant_id, None)
     if not entry:
         return
-    for key in ("email_stop", "cal_stop", "sched_stop"):
+    for key in ("email_stop", "cal_stop", "sched_stop", "pms_stop"):
         evt = entry.get(key)
         if evt:
             evt.set()
-    for key in ("email", "cal", "sched"):
+    for key in ("email", "cal", "sched", "pms"):
         t = entry.get(key)
         if t and t.is_alive():
             t.join(timeout=5)
@@ -131,13 +145,15 @@ def _watchdog_loop():
             email_thread = entry.get("email")
             cal_thread   = entry.get("cal")
 
+            pms_thread   = entry.get("pms")
             email_dead = email_thread is not None and not email_thread.is_alive()
             cal_dead   = cal_thread is not None and not cal_thread.is_alive()
+            pms_dead   = pms_thread is not None and not pms_thread.is_alive()
 
-            if email_dead or cal_dead:
+            if email_dead or cal_dead or pms_dead:
                 log.warning(
-                    "[%s] Dead workers detected (email=%s cal=%s) — restarting",
-                    tenant_id, email_dead, cal_dead,
+                    "[%s] Dead workers detected (email=%s cal=%s pms=%s) — restarting",
+                    tenant_id, email_dead, cal_dead, pms_dead,
                 )
                 try:
                     _start_tenant(tenant_id)
@@ -200,5 +216,6 @@ def worker_status(tenant_id: str) -> dict:
         "email_running": entry.get("email") is not None and entry["email"].is_alive(),
         "cal_running":   entry.get("cal") is not None and entry["cal"].is_alive(),
         "sched_running": entry.get("sched") is not None and entry["sched"].is_alive(),
+        "pms_running":   entry.get("pms") is not None and entry["pms"].is_alive(),
         "watchdog_ok":   _watchdog_thread is not None and _watchdog_thread.is_alive(),
     }

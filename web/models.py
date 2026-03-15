@@ -264,6 +264,41 @@ class Reservation(Base):
 
 
 # ---------------------------------------------------------------------------
+# PMSIntegration — one row per PMS connection per tenant
+# ---------------------------------------------------------------------------
+
+class PMSIntegration(Base):
+    __tablename__ = "pms_integrations"
+
+    id:             Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:      Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    pms_type:       Mapped[str]           = mapped_column(String(32))          # guesty / hostaway / lodgify / generic
+    api_key_enc:    Mapped[str]           = mapped_column(Text)                # AES-encrypted API key / credentials
+    api_base_url:   Mapped[Optional[str]] = mapped_column(Text, nullable=True) # optional custom base URL
+    account_id:     Mapped[Optional[str]] = mapped_column(Text, nullable=True) # extra config (JSON for generic, account ID for others)
+    is_active:      Mapped[bool]          = mapped_column(Boolean, default=True)
+    last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at:     Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ---------------------------------------------------------------------------
+# PMSProcessedMessage — deduplication: tracks which PMS message IDs were handled
+# ---------------------------------------------------------------------------
+
+class PMSProcessedMessage(Base):
+    __tablename__ = "pms_processed_messages"
+    __table_args__ = (
+        UniqueConstraint("pms_integration_id", "pms_message_id", name="uq_pms_msg"),
+    )
+
+    id:                  Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:           Mapped[str]      = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    pms_integration_id:  Mapped[int]      = mapped_column(Integer, ForeignKey("pms_integrations.id"), index=True)
+    pms_message_id:      Mapped[str]      = mapped_column(String(128))
+    processed_at:        Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ---------------------------------------------------------------------------
 # ReservationSyncLog — tracks when each tenant last uploaded their CSV
 # ---------------------------------------------------------------------------
 

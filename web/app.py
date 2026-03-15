@@ -64,7 +64,7 @@ from web.db import get_db, init_db, SessionLocal
 from web.db_read import get_read_db
 from web.models import (
     Tenant, TenantConfig, Draft, Vendor, ActivityLog, BaileysOutbound,
-    Reservation, ReservationSyncLog,
+    Reservation, ReservationSyncLog, PMSIntegration, PMSProcessedMessage,
     PLAN_FREE, PLAN_BAILEYS, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
 )
 from web.auth import hash_password, verify_password, create_token, get_current_tenant_id
@@ -629,6 +629,35 @@ def _execute_draft(draft: Draft, final_text: str, tenant_id: str, db: Session):
                 if not ok:
                     log.warning("[%s] Twilio SMS send failed for %s", tenant_id, guest_phone)
 
+    elif draft.source == "pms" and draft.reply_to:
+        # reply_to format: "{integration_id}:{reservation_id}"
+        parts = draft.reply_to.split(":", 1)
+        if len(parts) == 2:
+            try:
+                from web.models import PMSIntegration
+                from web.pms_base import make_adapter
+                integration = db.query(PMSIntegration).filter_by(
+                    id=int(parts[0]), tenant_id=tenant_id, is_active=True
+                ).first()
+                if integration:
+                    adapter = make_adapter(
+                        integration.pms_type,
+                        decrypt(integration.api_key_enc),
+                        integration.account_id or "",
+                        integration.api_base_url or "",
+                    )
+                    ok = adapter.send_message(parts[1], final_text)
+                    if not ok:
+                        log.warning("[%s] PMS reply send failed for reservation %s",
+                                    tenant_id, parts[1])
+                    else:
+                        log.info("[%s] PMS reply sent via %s for reservation %s",
+                                 tenant_id, integration.pms_type, parts[1])
+                else:
+                    log.warning("[%s] PMS integration %s not found or inactive", tenant_id, parts[0])
+            except Exception as exc:
+                log.error("[%s] PMS reply error: %s", tenant_id, exc)
+
     draft.status      = "approved"
     draft.final_text  = final_text
     draft.approved_at = datetime.now(timezone.utc)
@@ -1092,12 +1121,16 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
     tenant  = _get_tenant(tenant_id, db)
     cfg     = _get_or_create_config(tenant_id, db)
     vendors = db.query(Vendor).filter_by(tenant_id=tenant_id).order_by(Vendor.category, Vendor.name).all()
+    pms_integrations = db.query(PMSIntegration).filter_by(
+        tenant_id=tenant_id, is_active=True
+    ).order_by(PMSIntegration.created_at).all()
     return templates.TemplateResponse("settings.html", {
-        "request":   request,
-        "tenant":    tenant,
-        "cfg":       cfg,
-        "vendors":   vendors,
-        "saved":     False,
+        "request":          request,
+        "tenant":           tenant,
+        "cfg":              cfg,
+        "vendors":          vendors,
+        "pms_integrations": pms_integrations,
+        "saved":            False,
         "plan_info": PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, PLAN_INFO[PLAN_FREE]),
         "has_baileys":    tenant_has_channel(cfg, PLAN_BAILEYS),
         "has_meta_cloud": tenant_has_channel(cfg, PLAN_META_CLOUD),
@@ -1190,12 +1223,16 @@ async def settings_save(
 
     tenant  = _get_tenant(tenant_id, db)
     vendors = db.query(Vendor).filter_by(tenant_id=tenant_id).order_by(Vendor.category, Vendor.name).all()
+    pms_integrations = db.query(PMSIntegration).filter_by(
+        tenant_id=tenant_id, is_active=True
+    ).order_by(PMSIntegration.created_at).all()
     return templates.TemplateResponse("settings.html", {
-        "request":   request,
-        "tenant":    tenant,
-        "cfg":       cfg,
-        "vendors":   vendors,
-        "saved":     True,
+        "request":          request,
+        "tenant":           tenant,
+        "cfg":              cfg,
+        "vendors":          vendors,
+        "pms_integrations": pms_integrations,
+        "saved":            True,
         "plan_info": PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, PLAN_INFO[PLAN_FREE]),
         "has_baileys":    tenant_has_channel(cfg, PLAN_BAILEYS),
         "has_meta_cloud": tenant_has_channel(cfg, PLAN_META_CLOUD),
@@ -1977,6 +2014,146 @@ def api_workers(request: Request):
     except HTTPException:
         raise HTTPException(status_code=401)
     return worker_manager.worker_status(tenant_id)
+
+
+# ---------------------------------------------------------------------------
+# PMS Integration routes
+# ---------------------------------------------------------------------------
+
+@app.post("/settings/pms")
+async def pms_settings_save(
+    request:    Request,
+    pms_type:   str = Form(...),
+    api_key:    str = Form(""),
+    account_id: str = Form(""),
+    base_url:   str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Save or replace the PMS integration for this tenant."""
+    validate_csrf(request, csrf_token)
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    if not cfg:
+        raise HTTPException(status_code=404)
+
+    # Require at least free plan (any authenticated user can connect a PMS)
+    pms_type = pms_type.strip().lower()
+    if pms_type not in ("guesty", "hostaway", "lodgify", "generic"):
+        raise HTTPException(status_code=400, detail="Unknown PMS type")
+    if not api_key.strip():
+        raise HTTPException(status_code=400, detail="API key is required")
+
+    # Deactivate any existing integration of the same type for this tenant
+    existing = db.query(PMSIntegration).filter_by(
+        tenant_id=tenant_id, pms_type=pms_type
+    ).first()
+    if existing:
+        existing.api_key_enc  = encrypt(api_key.strip())
+        existing.account_id   = account_id.strip() or None
+        existing.api_base_url = base_url.strip() or None
+        existing.is_active    = True
+    else:
+        db.add(PMSIntegration(
+            tenant_id=tenant_id,
+            pms_type=pms_type,
+            api_key_enc=encrypt(api_key.strip()),
+            account_id=account_id.strip() or None,
+            api_base_url=base_url.strip() or None,
+            is_active=True,
+        ))
+    db.commit()
+
+    # Restart workers so PMS thread picks up the new config
+    worker_manager.restart_worker(tenant_id)
+
+    return RedirectResponse("/settings?saved=pms", status_code=302)
+
+
+@app.post("/api/pms/test")
+async def pms_test_connection(
+    request:    Request,
+    pms_type:   str = Form(...),
+    api_key:    str = Form(""),
+    account_id: str = Form(""),
+    base_url:   str = Form(""),
+    csrf_token: str = Form(None),
+):
+    """Test a PMS API connection — returns JSON {ok: bool, message: str}."""
+    validate_csrf(request, csrf_token)
+    try:
+        get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    pms_type = pms_type.strip().lower()
+    if pms_type not in ("guesty", "hostaway", "lodgify", "generic"):
+        return JSONResponse({"ok": False, "message": "Unknown PMS type"})
+    if not api_key.strip():
+        return JSONResponse({"ok": False, "message": "API key is required"})
+
+    try:
+        from web.pms_base import make_adapter
+        adapter = make_adapter(pms_type, api_key.strip(),
+                               account_id.strip(), base_url.strip())
+        ok = adapter.test_connection()
+        return JSONResponse({
+            "ok": ok,
+            "message": "Connection successful!" if ok else "Connection failed — check credentials",
+        })
+    except Exception as exc:
+        log.warning("PMS test_connection error: %s", exc)
+        return JSONResponse({"ok": False, "message": str(exc)})
+
+
+@app.delete("/settings/pms/{integration_id}")
+async def pms_delete(
+    integration_id: int,
+    request:        Request,
+    db: Session = Depends(get_db),
+):
+    """Deactivate (soft-delete) a PMS integration."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    integration = db.query(PMSIntegration).filter_by(
+        id=integration_id, tenant_id=tenant_id
+    ).first()
+    if not integration:
+        raise HTTPException(status_code=404)
+
+    integration.is_active = False
+    db.commit()
+    worker_manager.restart_worker(tenant_id)
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/pms/status")
+def pms_status(request: Request, db: Session = Depends(get_db)):
+    """Return PMS integration status for the current tenant (used by dashboard)."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    integrations = db.query(PMSIntegration).filter_by(
+        tenant_id=tenant_id, is_active=True
+    ).all()
+    return JSONResponse([
+        {
+            "id":           i.id,
+            "pms_type":     i.pms_type,
+            "last_synced":  i.last_synced_at.isoformat() if i.last_synced_at else None,
+            "created_at":   i.created_at.isoformat(),
+        }
+        for i in integrations
+    ])
 
 
 @app.get("/drafts/{draft_id}/edit-form", response_class=HTMLResponse)

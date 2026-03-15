@@ -286,6 +286,109 @@
   </form>
 </div>
 
+<!-- ── PMS Integration ───────────────────────────────────────────── -->
+<div class="form-section">
+  <h2>PMS Integration</h2>
+  <p class="help-text">
+    If you use a Property Management System (Guesty, Hostaway, Lodgify, or any other PMS
+    with an open API), connect it here. HostAI will pull guest messages directly from your
+    PMS inbox — no email monitoring needed.
+  </p>
+
+  {% if pms_integrations %}
+  <table style="margin-bottom:1rem">
+    <thead>
+      <tr><th>PMS</th><th>Status</th><th>Last synced</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for p in pms_integrations %}
+      <tr>
+        <td style="text-transform:capitalize;font-weight:600">{{ p.pms_type }}</td>
+        <td><span class="active-badge">Active</span></td>
+        <td style="color:#6c757d;font-size:0.85rem">
+          {{ p.last_synced_at.strftime('%b %d, %H:%M UTC') if p.last_synced_at else 'Not yet synced' }}
+        </td>
+        <td>
+          <button type="button" class="btn btn-outline btn-sm"
+                  onclick="deletePMS({{ p.id }}, '{{ p.pms_type }}')">Remove</button>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form id="pmsForm" method="post" action="/settings/pms">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+    <label>PMS System</label>
+    <select name="pms_type" id="pmsType" onchange="updatePMSFields()" style="margin-bottom:1rem">
+      <option value="">— Select your PMS —</option>
+      <option value="guesty">Guesty</option>
+      <option value="hostaway">Hostaway</option>
+      <option value="lodgify">Lodgify</option>
+      <option value="generic">Other (Generic REST API)</option>
+    </select>
+
+    <!-- Guesty -->
+    <div id="fields-guesty" class="pms-fields" style="display:none">
+      <p class="help-text">Guesty uses OAuth2. Enter your <strong>Client ID</strong> and
+        <strong>Client Secret</strong> from the Guesty developer portal, separated by <code>|||</code>.<br>
+        Example: <code>your_client_id|||your_client_secret</code>
+      </p>
+      <label>Client ID <code>|||</code> Client Secret</label>
+      <input type="password" name="api_key" placeholder="client_id|||client_secret" autocomplete="new-password">
+    </div>
+
+    <!-- Hostaway -->
+    <div id="fields-hostaway" class="pms-fields" style="display:none">
+      <p class="help-text">Hostaway uses OAuth2. Enter your <strong>Client ID</strong> and
+        <strong>Client Secret</strong> separated by <code>|||</code>.<br>
+        Example: <code>your_client_id|||your_client_secret</code>
+      </p>
+      <label>Client ID <code>|||</code> Client Secret</label>
+      <input type="password" name="api_key" placeholder="client_id|||client_secret" autocomplete="new-password">
+    </div>
+
+    <!-- Lodgify -->
+    <div id="fields-lodgify" class="pms-fields" style="display:none">
+      <p class="help-text">Enter your Lodgify <strong>API Key</strong> from Account Settings → API.</p>
+      <label>API Key</label>
+      <input type="password" name="api_key" placeholder="Your Lodgify API key" autocomplete="new-password">
+    </div>
+
+    <!-- Generic -->
+    <div id="fields-generic" class="pms-fields" style="display:none">
+      <p class="help-text">
+        For any other PMS with a REST API. Provide your API key and the JSON configuration
+        that maps the API responses to our expected format.
+        <a href="https://docs.hostai.app/pms-generic" target="_blank">Configuration guide →</a>
+      </p>
+      <label>API Key / Auth Token</label>
+      <input type="password" name="api_key" placeholder="Your API key or bearer token" autocomplete="new-password">
+      <label>Base URL (optional)</label>
+      <input type="text" name="base_url" placeholder="https://api.yourpms.com">
+      <label>JSON Configuration</label>
+      <textarea name="account_id" rows="6" placeholder='{
+  "inbox_url": "/messages",
+  "send_url": "/messages/{reservation_id}",
+  "reservations_url": "/reservations",
+  "auth_header": "X-Api-Key",
+  "message_id_path": "id",
+  "guest_name_path": "guest.name",
+  "text_path": "body",
+  "received_at_path": "created_at"
+}'></textarea>
+    </div>
+
+    <div style="display:flex;gap:0.75rem;margin-top:1rem;align-items:center">
+      <button type="button" class="btn btn-outline" onclick="testPMS()">Test connection</button>
+      <button type="submit" class="btn btn-primary" id="pmsSaveBtn" disabled>Save PMS</button>
+      <span id="pmsTestResult" style="font-size:0.875rem"></span>
+    </div>
+  </form>
+</div>
+
 <script>
 function copyField(id) {
   const el = document.getElementById(id);
@@ -293,6 +396,41 @@ function copyField(id) {
   document.execCommand('copy');
   event.target.textContent = 'Copied!';
   setTimeout(() => event.target.textContent = 'Copy', 1500);
+}
+
+function updatePMSFields() {
+  const type = document.getElementById('pmsType').value;
+  document.querySelectorAll('.pms-fields').forEach(el => el.style.display = 'none');
+  if (type) document.getElementById('fields-' + type).style.display = 'block';
+  document.getElementById('pmsSaveBtn').disabled = !type;
+  document.getElementById('pmsTestResult').textContent = '';
+}
+
+async function testPMS() {
+  const form = document.getElementById('pmsForm');
+  const data = new FormData(form);
+  const resultEl = document.getElementById('pmsTestResult');
+  resultEl.textContent = 'Testing…';
+  try {
+    const resp = await fetch('/api/pms/test', { method: 'POST', body: data });
+    const json = await resp.json();
+    resultEl.style.color = json.ok ? '#155724' : '#721c24';
+    resultEl.textContent = json.message;
+    if (json.ok) document.getElementById('pmsSaveBtn').disabled = false;
+  } catch (e) {
+    resultEl.style.color = '#721c24';
+    resultEl.textContent = 'Network error — try again';
+  }
+}
+
+async function deletePMS(id, type) {
+  if (!confirm('Remove ' + type + ' integration?')) return;
+  const csrf = document.querySelector('[name=csrf_token]').value;
+  await fetch('/settings/pms/' + id, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrf },
+  });
+  location.reload();
 }
 </script>
 {% endblock %}
