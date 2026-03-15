@@ -60,6 +60,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from web.db import get_db, init_db, SessionLocal
+from web.db_read import get_read_db
 from web.models import (
     Tenant, TenantConfig, Draft, Vendor, ActivityLog, BaileysOutbound,
     PLAN_FREE, PLAN_BAILEYS, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
@@ -435,15 +436,17 @@ def logout():
 # ---------------------------------------------------------------------------
 
 @app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request, db: Session = Depends(get_db)):
+def dashboard(request: Request,
+              db: Session = Depends(get_db),
+              rdb: Session = Depends(get_read_db)):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         return _redirect_login()
 
-    tenant  = _get_tenant(tenant_id, db)
+    tenant  = _get_tenant(tenant_id, db)        # write session (needed if cfg auto-create)
     cfg     = _get_or_create_config(tenant_id, db)
-    pending = (db.query(Draft)
+    pending = (rdb.query(Draft)                  # read replica for the draft list scan
                .filter_by(tenant_id=tenant_id, status="pending")
                .order_by(Draft.created_at.desc())
                .all())
@@ -471,6 +474,8 @@ def approve_draft(draft_id: str, request: Request,
     except HTTPException:
         return _redirect_login()
     validate_csrf(request, csrf_token)
+    # Per-tenant rate limit: 120 draft actions/hour (prevents runaway Claude API spend)
+    rate_limit(f"draft:{tenant_id}", max_requests=120, window_seconds=3600)
 
     draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
     if not draft:
@@ -489,6 +494,7 @@ def edit_draft(draft_id: str, request: Request, edited_text: str = Form(...),
     except HTTPException:
         return _redirect_login()
     validate_csrf(request, csrf_token)
+    rate_limit(f"draft:{tenant_id}", max_requests=120, window_seconds=3600)
 
     draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
     if not draft:
@@ -722,6 +728,8 @@ def settings_save(
     except HTTPException:
         return _redirect_login()
     validate_csrf(request, csrf_token)
+    # Per-tenant settings save rate limit (prevents config spam / test-loop abuse)
+    rate_limit(f"settings:{tenant_id}", max_requests=30, window_seconds=3600)
 
     cfg = _get_or_create_config(tenant_id, db)
 
@@ -1311,14 +1319,16 @@ def api_download_baileys(request: Request, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @app.get("/activity", response_class=HTMLResponse)
-def activity_log(request: Request, db: Session = Depends(get_db)):
+def activity_log(request: Request,
+                 db: Session = Depends(get_db),
+                 rdb: Session = Depends(get_read_db)):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         return _redirect_login()
 
     tenant = _get_tenant(tenant_id, db)
-    logs   = (db.query(ActivityLog).filter_by(tenant_id=tenant_id)
+    logs   = (rdb.query(ActivityLog).filter_by(tenant_id=tenant_id)  # read replica
               .order_by(ActivityLog.created_at.desc()).limit(200).all())
     return templates.TemplateResponse("activity.html", {"request": request, "tenant": tenant, "logs": logs})
 
@@ -1370,6 +1380,16 @@ def edit_form(draft_id: str, request: Request, db: Session = Depends(get_db)):
       </div>
     </form>
     """)
+
+
+@app.get("/ping")
+def ping():
+    """
+    Ultra-lightweight liveness probe — no DB hit, no auth.
+    Point your uptime monitor (UptimeRobot, BetterStack, etc.) at /ping.
+    Responds in <1ms. Use /health for a full dependency check.
+    """
+    return JSONResponse({"ok": True})
 
 
 @app.get("/health")

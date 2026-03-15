@@ -49,7 +49,12 @@ const AIRBNB_LISTING  = (process.env.AIRBNB_LISTING_URL || "").trim();
 // SaaS bridge config (only used when WA_MODE=saas_bridge)
 const WEB_APP_URL     = (process.env.WEB_APP_URL || "").replace(/\/$/, "");
 const BOT_API_TOKEN   = (process.env.BOT_API_TOKEN || "").trim();
-const BRIDGE_POLL_MS  = parseInt(process.env.BRIDGE_POLL_MS || "10000", 10);
+const BRIDGE_POLL_MS      = parseInt(process.env.BRIDGE_POLL_MS || "10000", 10);
+const BRIDGE_POLL_MAX_MS  = 5 * 60 * 1000;  // 5-minute ceiling during outages
+
+// Adaptive poll scheduler state
+let _pollConsecutiveErrors = 0;
+let _pollTimeout           = null;
 
 if (WA_MODE === "saas_bridge") {
   if (!WEB_APP_URL)   { console.error("❌  WEB_APP_URL must be set in .env for saas_bridge mode"); process.exit(1); }
@@ -132,7 +137,11 @@ async function bridgePushCallback(action, draft_id, text) {
   }
 }
 
-/** Poll the web server for outbound messages to deliver to guests. */
+/**
+ * Poll the web server for outbound messages to deliver to guests.
+ * Returns true on success (even if no messages), false on network/server error.
+ * Subscription-expired (402) is treated as a soft pause, not an error.
+ */
 async function bridgePollOutbound() {
   try {
     const data = await bridgeRequest("GET", "/api/wa/pending");
@@ -141,13 +150,38 @@ async function bridgePollOutbound() {
       const jid = to.replace(/^\+/, "") + "@s.whatsapp.net";
       await sendMsg(jid, text).catch(e => console.error("Bridge send failed:", e.message));
     }
+    return true;   // success — reset backoff
   } catch (err) {
     if (err.status === 402) {
       console.warn(`⏸️  Subscription expired — bot paused. Renew at ${WEB_APP_URL}/billing`);
-    } else {
-      console.error("Bridge poll error:", err.message);
+      return true;  // 402 is intentional — don't back off
     }
+    console.error("Bridge poll error:", err.message);
+    return false;  // real network/server error — trigger backoff
   }
+}
+
+/**
+ * Adaptive polling scheduler — replaces setInterval.
+ * On success: polls at BRIDGE_POLL_MS (default 10s).
+ * On consecutive errors: doubles the delay up to BRIDGE_POLL_MAX_MS (5 min).
+ * Resets to base interval as soon as one poll succeeds.
+ */
+async function _adaptivePoll() {
+  const ok = await bridgePollOutbound();
+  if (ok) {
+    _pollConsecutiveErrors = 0;
+  } else {
+    _pollConsecutiveErrors = Math.min(_pollConsecutiveErrors + 1, 8);
+  }
+  const delay = _pollConsecutiveErrors > 0
+    ? Math.min(BRIDGE_POLL_MS * Math.pow(2, _pollConsecutiveErrors), BRIDGE_POLL_MAX_MS)
+    : BRIDGE_POLL_MS;
+  if (_pollConsecutiveErrors > 0) {
+    const secs = Math.round(delay / 1000);
+    console.warn(`⏳  Bridge poll backing off — next in ${secs}s (errors: ${_pollConsecutiveErrors})`);
+  }
+  _pollTimeout = setTimeout(_adaptivePoll, delay);
 }
 
 // Regex patterns for host commands (saas_bridge parses these and forwards to web server)
@@ -240,8 +274,7 @@ for (const [type, list] of Object.entries(VENDORS)) {
 // No browser/Puppeteer dependency. Pure Node.js WebSocket to WhatsApp.
 // Auth persisted in .baileys_auth/ — no re-scan needed after first pairing.
 // ---------------------------------------------------------------------------
-let sock          = null;
-let _pollInterval = null;
+let sock = null;
 
 /** Send a text message via the active WhatsApp socket */
 async function sendMsg(jid, text) {
@@ -281,17 +314,18 @@ async function connectToWhatsApp() {
     if (connection === "open") {
       if (WA_MODE === "saas_bridge") {
         console.log(`✅  Bot ready | Host: ${HOST_NUMBER} | Mode: saas_bridge | App: ${WEB_APP_URL}\n`);
-        // Start polling the web server for outbound messages
-        if (!_pollInterval) {
-          _pollInterval = setInterval(bridgePollOutbound, BRIDGE_POLL_MS);
-          console.log(`⏱️  Polling web server every ${BRIDGE_POLL_MS / 1000}s for outbound messages\n`);
+        // Start adaptive polling for outbound messages
+        if (!_pollTimeout) {
+          _pollConsecutiveErrors = 0;
+          _pollTimeout = setTimeout(_adaptivePoll, 0);  // start immediately
+          console.log(`⏱️  Polling web server every ${BRIDGE_POLL_MS / 1000}s (adaptive backoff up to ${BRIDGE_POLL_MAX_MS / 60000}min on errors)\n`);
         }
       } else {
         console.log(`✅  Bot ready | Host: ${HOST_NUMBER} | Router: ${ROUTER_URL} | HTTP: ${WA_BOT_PORT}\n`);
       }
     }
     if (connection === "close") {
-      if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+      if (_pollTimeout) { clearTimeout(_pollTimeout); _pollTimeout = null; _pollConsecutiveErrors = 0; }
     }
   });
 

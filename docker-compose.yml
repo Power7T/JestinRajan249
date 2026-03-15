@@ -3,7 +3,7 @@ version: "3.9"
 # ============================================================
 # HostAI — Full Production Stack
 # Deploy:  cp .env.example .env && nano .env && ./deploy.sh
-# Update:  git pull && ./deploy.sh
+# Update:  ./update.sh   (zero-downtime)
 # ============================================================
 
 # Shared log driver — all containers cap at 5×50 MB = 250 MB per service
@@ -15,24 +15,98 @@ x-logging: &default-logging
 
 services:
 
-  # ── PostgreSQL ──────────────────────────────────────────────
+  # ── PostgreSQL Primary ───────────────────────────────────────
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    # Enable WAL streaming replication so the replica can follow in real time
+    command: >
+      postgres
+      -c wal_level=replica
+      -c max_wal_senders=3
+      -c wal_keep_size=256MB
+      -c hot_standby=on
     environment:
-      POSTGRES_DB:       hostai
-      POSTGRES_USER:     hostai
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB:                   hostai
+      POSTGRES_USER:                 hostai
+      POSTGRES_PASSWORD:             ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_REPLICATION_USER:     replicator
+      POSTGRES_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # Creates replication user + pg_hba.conf entry on first init
+      - ./postgres/init-replication.sh:/docker-entrypoint-initdb.d/01-replication.sh:ro
     healthcheck:
-      test: [\"CMD-SHELL\", \"pg_isready -U hostai\"]
+      test: ["CMD-SHELL", "pg_isready -U hostai"]
       interval: 10s
       timeout: 5s
       retries: 5
-    # DB is internal-only; never expose port 5432 to the host
     expose:
       - "5432"
+    logging: *default-logging
+
+  # ── PgBouncer — connection pooler ────────────────────────────
+  # Sits between the app and PostgreSQL; pools connections in transaction mode.
+  # Lets you run many Uvicorn workers + background threads without exhausting
+  # PostgreSQL's max_connections (default 100).
+  pgbouncer:
+    image: bitnami/pgbouncer:1
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRESQL_HOST:              db
+      POSTGRESQL_PORT:              5432
+      POSTGRESQL_DATABASE:          hostai
+      POSTGRESQL_USERNAME:          hostai
+      POSTGRESQL_PASSWORD:          ${POSTGRES_PASSWORD}
+      PGBOUNCER_DATABASE:           hostai
+      PGBOUNCER_POOL_MODE:          transaction
+      PGBOUNCER_MAX_CLIENT_CONN:    200
+      PGBOUNCER_DEFAULT_POOL_SIZE:  20
+      PGBOUNCER_MIN_POOL_SIZE:      5
+      PGBOUNCER_RESERVE_POOL_SIZE:  5
+      PGBOUNCER_AUTH_TYPE:          scram-sha-256
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U hostai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+  # ── PostgreSQL Replica (streaming standby) ───────────────────
+  # Hot standby — receives WAL from primary, available for SELECT queries.
+  # The web app routes dashboard + activity log queries here via DATABASE_REPLICA_URL.
+  # Enable by setting REPLICATION_PASSWORD in .env.
+  # Skip this service (comment it out) if you don't need read scaling yet.
+  db-replica:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    profiles: ["replica"]          # opt-in: docker compose --profile replica up
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD:                    ${POSTGRES_PASSWORD}
+      REPL_PASSWORD:                 ${REPLICATION_PASSWORD:-}
+      POSTGRES_REPLICATION_USER:     replicator
+      PRIMARY_HOST:                  db
+      PRIMARY_PORT:                  5432
+    volumes:
+      - pgreplica:/var/lib/postgresql/data
+      - ./scripts/replica-entrypoint.sh:/replica-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/replica-entrypoint.sh"]
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hostai"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s   # allow time for pg_basebackup on first start
     logging: *default-logging
 
   # ── Redis (shared state: rate limiting, Baileys queue) ───────
@@ -58,43 +132,47 @@ services:
       dockerfile: web/Dockerfile
     restart: unless-stopped
     depends_on:
-      db:
+      pgbouncer:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL:          postgresql://hostai:${POSTGRES_PASSWORD}@db:5432/hostai
-      REDIS_URL:             redis://redis:6379/0
-      SECRET_KEY:            ${SECRET_KEY:?SECRET_KEY required}
-      FIELD_ENCRYPTION_KEY:  ${FIELD_ENCRYPTION_KEY:?FIELD_ENCRYPTION_KEY required}
-      APP_BASE_URL:          ${APP_BASE_URL:-https://localhost}
-      ENVIRONMENT:           ${ENVIRONMENT:-production}
+      # Write path goes through PgBouncer → primary
+      DATABASE_URL:            postgresql://hostai:${POSTGRES_PASSWORD}@pgbouncer:5432/hostai
+      # Read path goes directly to replica when available (bypasses PgBouncer for selects)
+      DATABASE_REPLICA_URL:    ${DATABASE_REPLICA_URL:-}
+      REDIS_URL:               redis://redis:6379/0
+      SECRET_KEY:              ${SECRET_KEY:?SECRET_KEY required}
+      FIELD_ENCRYPTION_KEY:    ${FIELD_ENCRYPTION_KEY:?FIELD_ENCRYPTION_KEY required}
+      APP_BASE_URL:            ${APP_BASE_URL:-https://localhost}
+      ENVIRONMENT:             ${ENVIRONMENT:-production}
       # SMTP (for email verification + password reset)
-      SMTP_HOST:             ${SMTP_HOST:-}
-      SMTP_PORT:             ${SMTP_PORT:-587}
-      SMTP_USER:             ${SMTP_USER:-}
-      SMTP_PASS:             ${SMTP_PASS:-}
-      SMTP_FROM:             ${SMTP_FROM:-}
+      SMTP_HOST:               ${SMTP_HOST:-}
+      SMTP_PORT:               ${SMTP_PORT:-587}
+      SMTP_USER:               ${SMTP_USER:-}
+      SMTP_PASS:               ${SMTP_PASS:-}
+      SMTP_FROM:               ${SMTP_FROM:-}
       # Stripe
-      STRIPE_SECRET_KEY:     ${STRIPE_SECRET_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      STRIPE_PRICE_BAILEYS:  ${STRIPE_PRICE_BAILEYS:-}
+      STRIPE_SECRET_KEY:       ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET:   ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_BAILEYS:    ${STRIPE_PRICE_BAILEYS:-}
       STRIPE_PRICE_META_CLOUD: ${STRIPE_PRICE_META_CLOUD:-}
-      STRIPE_PRICE_SMS:      ${STRIPE_PRICE_SMS:-}
-      STRIPE_PRICE_PRO:      ${STRIPE_PRICE_PRO:-}
+      STRIPE_PRICE_SMS:        ${STRIPE_PRICE_SMS:-}
+      STRIPE_PRICE_PRO:        ${STRIPE_PRICE_PRO:-}
       # Monitoring
-      SENTRY_DSN:            ${SENTRY_DSN:-}
-      WORKERS:               ${WORKERS:-2}
-      PORT:                  8000
+      SENTRY_DSN:              ${SENTRY_DSN:-}
+      WORKERS:                 ${WORKERS:-2}
+      PORT:                    8000
     volumes:
       - ./SKILL.md:/app/SKILL.md:ro
       - ./airbnb-host/SKILL.md:/app/airbnb-host/SKILL.md:ro
     expose:
       - "8000"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
+      # Use /ping (no DB hit) so the health check never causes false failures
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/ping || exit 1"]
+      interval: 15s
+      timeout: 5s
       retries: 3
       start_period: 15s
     logging: *default-logging
@@ -114,15 +192,13 @@ services:
       - letsencrypt:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot:ro
     healthcheck:
-      test: ["CMD-SHELL", "nginx -t 2>/dev/null && curl -sf http://localhost/health || exit 1"]
+      test: ["CMD-SHELL", "nginx -t 2>/dev/null && curl -sf http://localhost/ping || exit 1"]
       interval: 60s
       timeout: 10s
       retries: 3
     logging: *default-logging
 
   # ── Certbot — initial SSL + automatic renewal ────────────────
-  # First-time: docker compose --profile ssl run --rm certbot-init
-  # Auto-renewal runs in the background as a long-lived service.
   certbot-init:
     image: certbot/certbot:latest
     profiles: ["ssl"]
@@ -143,7 +219,6 @@ services:
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot_www:/var/www/certbot
-    # Attempt renewal every 12h; certbot only acts when cert is <30d from expiry
     entrypoint: >
       /bin/sh -c "trap exit TERM;
       while :; do
@@ -163,7 +238,6 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgbackups:/backups
-    # Dump daily at 03:00 UTC; keep last 7 days
     entrypoint: >
       /bin/sh -c "trap exit TERM;
       while :; do
@@ -178,6 +252,7 @@ services:
 
 volumes:
   pgdata:
+  pgreplica:
   redisdata:
   letsencrypt:
   certbot_www:

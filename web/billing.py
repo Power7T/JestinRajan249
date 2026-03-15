@@ -190,8 +190,24 @@ def handle_stripe_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid Stripe signature")
 
-    ev_type = event["type"]
-    log.info("Stripe event: %s", ev_type)
+    ev_type  = event["type"]
+    event_id = event.get("id", "")
+
+    # Idempotency: Stripe can redeliver the same event multiple times.
+    # Use Redis SET NX to deduplicate within a 48-hour window.
+    if event_id:
+        from web.redis_client import get_redis
+        r = get_redis()
+        if r is not None:
+            try:
+                if not r.set(f"stripe:evt:{event_id}", "1", ex=172800, nx=True):
+                    log.info("Stripe duplicate event skipped (idempotent): %s %s", ev_type, event_id)
+                    return {"status": "ok", "duplicate": True}
+            except Exception as exc:
+                # Redis unavailable — process anyway (missing event > duplicate risk)
+                log.warning("Redis idempotency check failed, processing event anyway: %s", exc)
+
+    log.info("Stripe event: %s %s", ev_type, event_id)
 
     if ev_type in (
         "checkout.session.completed",

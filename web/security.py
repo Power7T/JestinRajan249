@@ -33,6 +33,7 @@ _CSRF_EXEMPT_PREFIXES = (
     "/sms/webhook/",
     "/health",
     "/metrics",
+    "/ping",
     "/api/wa/",
     "/api/workers",
     "/api/drafts",

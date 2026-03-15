@@ -1,0 +1,95 @@
+# ============================================================
+# HostAI — Continuous Deployment
+#
+# Triggers on every push to 'main'.
+# Runs tests (lint), then SSH-deploys to your production server
+# using zero-downtime update.sh.
+#
+# Required GitHub repository secrets (Settings → Secrets → Actions):
+#   DEPLOY_HOST   — server IP or hostname (e.g. 203.0.113.42)
+#   DEPLOY_USER   — SSH user (e.g. ubuntu or deploy)
+#   DEPLOY_KEY    — private SSH key (contents of ~/.ssh/id_ed25519)
+#   DEPLOY_PATH   — absolute path on server (e.g. /srv/hostai)
+#
+# Generate a deploy key:
+#   ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/hostai_deploy -N ""
+#   # Add public key to server:  cat ~/.ssh/hostai_deploy.pub >> ~/.ssh/authorized_keys
+#   # Add private key to GitHub: cat ~/.ssh/hostai_deploy  (→ DEPLOY_KEY secret)
+# ============================================================
+
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:   # allow manual trigger from GitHub UI
+
+jobs:
+  # ── Lint / basic checks ──────────────────────────────────────
+  lint:
+    name: Lint & syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install lint deps
+        run: pip install --quiet ruff
+
+      - name: Check Python syntax (ruff)
+        run: ruff check web/ --select E9,F63,F7,F82 --output-format=github
+
+      - name: Verify JS syntax (node --check)
+        run: |
+          for f in airbnb-host/scripts/whatsapp/*.js; do
+            node --check "$f" && echo "OK: $f" || exit 1
+          done
+
+  # ── Deploy ───────────────────────────────────────────────────
+  deploy:
+    name: Zero-downtime deploy
+    needs: lint
+    runs-on: ubuntu-latest
+    environment: production   # optional: add approval gate in GitHub Environments
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key:      ${{ secrets.DEPLOY_KEY }}
+          port:     22
+          timeout:  300s
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+
+            # Pull the latest code
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Run zero-downtime update (already built the image, no git pull needed)
+            ./update.sh --skip-pull
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key:      ${{ secrets.DEPLOY_KEY }}
+          port:     22
+          script: |
+            cd "${{ secrets.DEPLOY_PATH }}"
+            curl -sf http://localhost/ping | grep -q '"ok":true' && echo "✅ Deploy verified" || { echo "❌ Health check failed"; exit 1; }
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment failed. Check the logs above."
+          # Optionally add Slack/Discord/email notification here
