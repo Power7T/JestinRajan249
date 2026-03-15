@@ -29,6 +29,7 @@
   {% endif %}
 
   <form method="post" action="/login">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <label>Email</label>
     <input type="email" name="email" placeholder="you@example.com" required autocomplete="email">
     <label>Password</label>
@@ -39,6 +40,7 @@
   <div class="divider">— or —</div>
 
   <form method="post" action="/signup">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <label>Email</label>
     <input type="email" name="email" placeholder="New account email" required autocomplete="email">
     <label>Password <span style="color:#6c757d;font-weight:400">(8+ chars)</span></label>

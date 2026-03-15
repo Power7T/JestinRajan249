@@ -58,6 +58,7 @@
 
     {% if cfg.stripe_customer_id and is_active %}
     <form method="post" action="/billing/portal" style="margin-top:1rem">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <button type="submit" class="btn btn-outline btn-sm">Manage / Cancel subscription</button>
     </form>
     {% endif %}
@@ -70,6 +71,7 @@
     <div style="display:flex;flex-direction:column;gap:0.5rem">
       {% if cfg.subscription_plan != 'baileys' %}
       <form method="post" action="/billing/subscribe/baileys">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
         <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
           📱 Baileys (Local Bot) — $19/mo
         </button>
@@ -78,6 +80,7 @@
 
       {% if cfg.subscription_plan != 'meta_cloud' %}
       <form method="post" action="/billing/subscribe/meta_cloud">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
         <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
           💬 Meta Cloud API — $29/mo
         </button>
@@ -86,6 +89,7 @@
 
       {% if cfg.subscription_plan != 'sms' %}
       <form method="post" action="/billing/subscribe/sms">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
         <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
           📟 SMS / Twilio — $19/mo
         </button>
@@ -94,6 +98,7 @@
 
       {% if cfg.subscription_plan != 'pro' %}
       <form method="post" action="/billing/subscribe/pro">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
         <button type="submit" class="btn btn-primary" style="width:100%;text-align:left">
           ⭐ Pro (All Channels) — $49/mo
         </button>
@@ -128,6 +133,7 @@
   Your last payment failed. Please update your payment method to restore messaging channels.
   {% if cfg.stripe_customer_id %}
   <form method="post" action="/billing/portal" style="display:inline;margin-left:0.5rem">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <button type="submit" class="btn btn-primary btn-sm">Update payment</button>
   </form>
   {% endif %}

@@ -73,6 +73,10 @@ from web.billing import (
     create_checkout_session, create_portal_session, handle_stripe_webhook,
     generate_bot_token, verify_bot_token,
 )
+from web.security import (
+    CSRFMiddleware, SecurityHeadersMiddleware,
+    validate_csrf, rate_limit, client_ip,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -96,8 +100,69 @@ async def lifespan(app: FastAPI):
     log.info("Airbnb Host Assistant web app stopped")
 
 
-app = FastAPI(title="Airbnb Host Assistant", lifespan=lifespan)
+app = FastAPI(
+    title="Airbnb Host Assistant",
+    lifespan=lifespan,
+    docs_url=None,     # disable Swagger UI in production
+    redoc_url=None,
+)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+
+# Middleware (applied in reverse order — bottom first)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(CSRFMiddleware)
+
+# ---------------------------------------------------------------------------
+# Global error handlers
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: HTTPException):
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+    return templates.TemplateResponse(
+        "error.html",
+        {"request": request, "code": 404, "title": "Page not found",
+         "message": "The page you're looking for doesn't exist."},
+        status_code=404,
+    )
+
+
+@app.exception_handler(403)
+async def forbidden_handler(request: Request, exc: HTTPException):
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": exc.detail}, status_code=403)
+    return templates.TemplateResponse(
+        "error.html",
+        {"request": request, "code": 403, "title": "Forbidden",
+         "message": str(exc.detail)},
+        status_code=403,
+    )
+
+
+@app.exception_handler(429)
+async def rate_limit_handler(request: Request, exc: HTTPException):
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": exc.detail}, status_code=429)
+    return templates.TemplateResponse(
+        "error.html",
+        {"request": request, "code": 429, "title": "Too many requests",
+         "message": "You've made too many requests. Please wait a moment and try again."},
+        status_code=429,
+    )
+
+
+@app.exception_handler(500)
+async def server_error_handler(request: Request, exc: Exception):
+    log.exception("Unhandled server error: %s", exc)
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "Internal server error"}, status_code=500)
+    return templates.TemplateResponse(
+        "error.html",
+        {"request": request, "code": 500, "title": "Server error",
+         "message": "Something went wrong on our end. Please try again in a moment."},
+        status_code=500,
+    )
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -153,21 +218,38 @@ def login_page(request: Request):
 
 
 @app.post("/login", response_class=HTMLResponse)
-def login_post(request: Request, email: str = Form(...), password: str = Form(...),
-               db: Session = Depends(get_db)):
+def login_post(
+    request: Request,
+    email:       str = Form(...),
+    password:    str = Form(...),
+    csrf_token:  str = Form(None),
+    db: Session = Depends(get_db),
+):
+    rate_limit(f"login:{client_ip(request)}", max_requests=10, window_seconds=900)
+    validate_csrf(request, csrf_token)
     tenant = db.query(Tenant).filter_by(email=email.lower().strip()).first()
     if not tenant or not verify_password(password, tenant.password_hash):
         return templates.TemplateResponse("login.html",
                                           {"request": request, "error": "Invalid email or password"})
     token = create_token(tenant.id)
-    resp  = RedirectResponse("/dashboard", status_code=302)
-    resp.set_cookie("session", token, httponly=True, samesite="lax", max_age=72 * 3600)
+    is_secure = (request.url.scheme == "https"
+                 or request.headers.get("X-Forwarded-Proto") == "https")
+    resp = RedirectResponse("/dashboard", status_code=302)
+    resp.set_cookie("session", token, httponly=True,
+                    samesite="strict", secure=is_secure, max_age=72 * 3600)
     return resp
 
 
 @app.post("/signup", response_class=HTMLResponse)
-def signup_post(request: Request, email: str = Form(...), password: str = Form(...),
-                db: Session = Depends(get_db)):
+def signup_post(
+    request: Request,
+    email:      str = Form(...),
+    password:   str = Form(...),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    rate_limit(f"signup:{client_ip(request)}", max_requests=5, window_seconds=3600)
+    validate_csrf(request, csrf_token)
     email = email.lower().strip()
     if db.query(Tenant).filter_by(email=email).first():
         return templates.TemplateResponse("login.html",
@@ -182,8 +264,11 @@ def signup_post(request: Request, email: str = Form(...), password: str = Form(.
     db.add(TenantConfig(tenant_id=tenant.id))
     db.commit()
     token = create_token(tenant.id)
-    resp  = RedirectResponse("/settings", status_code=302)
-    resp.set_cookie("session", token, httponly=True, samesite="lax", max_age=72 * 3600)
+    is_secure = (request.url.scheme == "https"
+                 or request.headers.get("X-Forwarded-Proto") == "https")
+    resp = RedirectResponse("/settings", status_code=302)
+    resp.set_cookie("session", token, httponly=True,
+                    samesite="strict", secure=is_secure, max_age=72 * 3600)
     return resp
 
 
@@ -227,11 +312,14 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @app.post("/drafts/{draft_id}/approve")
-def approve_draft(draft_id: str, request: Request, db: Session = Depends(get_db)):
+def approve_draft(draft_id: str, request: Request,
+                  csrf_token: str = Form(None),
+                  db: Session = Depends(get_db)):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         return _redirect_login()
+    validate_csrf(request, csrf_token)
 
     draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
     if not draft:
@@ -243,11 +331,13 @@ def approve_draft(draft_id: str, request: Request, db: Session = Depends(get_db)
 
 @app.post("/drafts/{draft_id}/edit")
 def edit_draft(draft_id: str, request: Request, edited_text: str = Form(...),
+               csrf_token: str = Form(None),
                db: Session = Depends(get_db)):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         return _redirect_login()
+    validate_csrf(request, csrf_token)
 
     draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
     if not draft:
@@ -258,11 +348,14 @@ def edit_draft(draft_id: str, request: Request, edited_text: str = Form(...),
 
 
 @app.post("/drafts/{draft_id}/skip")
-def skip_draft(draft_id: str, request: Request, db: Session = Depends(get_db)):
+def skip_draft(draft_id: str, request: Request,
+               csrf_token: str = Form(None),
+               db: Session = Depends(get_db)):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         return _redirect_login()
+    validate_csrf(request, csrf_token)
 
     draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
     if draft:
@@ -387,12 +480,14 @@ def settings_save(
     twilio_auth_token:     str = Form(""),
     twilio_from_number:    str = Form(""),
     sms_notify_number:     str = Form(""),
+    csrf_token:            str = Form(None),
     db: Session = Depends(get_db),
 ):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         return _redirect_login()
+    validate_csrf(request, csrf_token)
 
     cfg = _get_or_create_config(tenant_id, db)
 
@@ -449,22 +544,28 @@ def settings_save(
 
 @app.post("/vendors/add")
 def vendor_add(request: Request, category: str = Form(...), name: str = Form(...),
-               phone: str = Form(...), notes: str = Form(""), db: Session = Depends(get_db)):
+               phone: str = Form(...), notes: str = Form(""),
+               csrf_token: str = Form(None),
+               db: Session = Depends(get_db)):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         return _redirect_login()
+    validate_csrf(request, csrf_token)
     db.add(Vendor(tenant_id=tenant_id, category=category, name=name, phone=phone, notes=notes or None))
     db.commit()
     return RedirectResponse("/settings#vendors", status_code=302)
 
 
 @app.post("/vendors/{vendor_id}/delete")
-def vendor_delete(vendor_id: int, request: Request, db: Session = Depends(get_db)):
+def vendor_delete(vendor_id: int, request: Request,
+                  csrf_token: str = Form(None),
+                  db: Session = Depends(get_db)):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         return _redirect_login()
+    validate_csrf(request, csrf_token)
     v = db.query(Vendor).filter_by(id=vendor_id, tenant_id=tenant_id).first()
     if v:
         db.delete(v)
@@ -511,11 +612,14 @@ def billing_page(request: Request, db: Session = Depends(get_db)):
 
 
 @app.post("/billing/subscribe/{plan}")
-def billing_subscribe(plan: str, request: Request, db: Session = Depends(get_db)):
+def billing_subscribe(plan: str, request: Request,
+                      csrf_token: str = Form(None),
+                      db: Session = Depends(get_db)):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         return _redirect_login()
+    validate_csrf(request, csrf_token)
 
     if plan not in PLAN_INFO or plan == PLAN_FREE:
         raise HTTPException(status_code=400, detail="Invalid plan")
@@ -568,11 +672,14 @@ def billing_cancel(request: Request, db: Session = Depends(get_db)):
 
 
 @app.post("/billing/portal")
-def billing_portal(request: Request, db: Session = Depends(get_db)):
+def billing_portal(request: Request,
+                   csrf_token: str = Form(None),
+                   db: Session = Depends(get_db)):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         return _redirect_login()
+    validate_csrf(request, csrf_token)
     cfg = _get_or_create_config(tenant_id, db)
     if not cfg.stripe_customer_id:
         return RedirectResponse("/billing", status_code=302)
@@ -790,12 +897,15 @@ async def api_wa_callback(request: Request, db: Session = Depends(get_db)):
 
 
 @app.post("/api/wa/token/generate")
-def api_generate_bot_token(request: Request, db: Session = Depends(get_db)):
+def api_generate_bot_token(request: Request,
+                           csrf_token: str = Form(None),
+                           db: Session = Depends(get_db)):
     """Generate (or regenerate) the Baileys bot API token for this tenant."""
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         raise HTTPException(status_code=401)
+    validate_csrf(request, csrf_token)
 
     cfg = _get_or_create_config(tenant_id, db)
     try:
@@ -862,49 +972,97 @@ def api_download_baileys(request: Request, db: Session = Depends(get_db)):
     )
 
     setup_sh = (
-        "#!/bin/bash\n"
+        "#!/usr/bin/env bash\n"
+        "set -e\n"
         "echo '=== HostAI Baileys Bot Setup ==='\n"
-        "command -v node >/dev/null || { echo 'Node.js not found. Install from nodejs.org'; exit 1; }\n"
-        "npm install\n"
+        "command -v node >/dev/null 2>&1 || { echo 'Node.js not found. Download from https://nodejs.org (v22+)'; exit 1; }\n"
+        "echo \"Node $(node --version)\"\n"
+        "npm install --silent\n"
         "echo ''\n"
-        "echo 'Done! Starting bot...'\n"
-        "echo 'Scan the QR code with WhatsApp on your phone.'\n"
-        "node bot.js\n"
+        "# Use PM2 if available (auto-restart on crash, runs in background)\n"
+        "if command -v pm2 >/dev/null 2>&1; then\n"
+        "  pm2 start ecosystem.config.js\n"
+        "  pm2 save\n"
+        "  echo ''\n"
+        "  echo 'Bot started with PM2 (auto-restarts on crash).'\n"
+        "  echo 'To see QR code: pm2 logs hostai-bot'\n"
+        "  echo 'To stop:        pm2 stop hostai-bot'\n"
+        "else\n"
+        "  echo 'Starting bot... Scan the QR code with WhatsApp.'\n"
+        "  echo '(Tip: install PM2 for auto-restart: npm install -g pm2)'\n"
+        "  node bot.js\n"
+        "fi\n"
     )
     setup_bat = (
         "@echo off\n"
         "echo === HostAI Baileys Bot Setup ===\n"
-        "npm install\n"
+        "where node >nul 2>&1 || (echo Node.js not found. Download from https://nodejs.org ^(v22+^) && pause && exit /b 1)\n"
+        "npm install --silent\n"
         "echo.\n"
-        "echo Done! Starting bot...\n"
-        "echo Scan the QR code with WhatsApp on your phone.\n"
-        "node bot.js\n"
+        "where pm2 >nul 2>&1\n"
+        "if %ERRORLEVEL% EQU 0 (\n"
+        "  pm2 start ecosystem.config.js\n"
+        "  pm2 save\n"
+        "  echo Bot started with PM2. To see QR: pm2 logs hostai-bot\n"
+        ") else (\n"
+        "  echo Starting bot... Scan the QR code with WhatsApp.\n"
+        "  echo Tip: install PM2 for auto-restart: npm install -g pm2\n"
+        "  node bot.js\n"
+        ")\n"
         "pause\n"
     )
+    pm2_config = json.dumps({
+        "apps": [{
+            "name":       "hostai-bot",
+            "script":     "bot.js",
+            "watch":      False,
+            "restart_delay": 3000,
+            "max_restarts":  10,
+            "env": {
+                "NODE_ENV": "production",
+            },
+        }]
+    }, indent=2)
     readme = (
         "HostAI Baileys Bot — Quick Start\n"
         "=================================\n\n"
-        "Requirements: Node.js 22+ (download from nodejs.org)\n\n"
-        "Steps:\n"
-        "  Mac/Linux:  chmod +x setup.sh && ./setup.sh\n"
-        "  Windows:    Double-click setup.bat\n\n"
-        "1. The bot will print a QR code in the terminal.\n"
-        "2. Open WhatsApp on your phone → Linked Devices → Link a Device.\n"
-        "3. Scan the QR code.\n"
-        "4. Done! Keep this terminal running.\n\n"
-        "The bot connects to your HostAI dashboard automatically.\n"
-        "Your WhatsApp messages go through your home IP — no ban risk.\n\n"
+        "Requirements: Node.js 22+ — download from https://nodejs.org\n\n"
+        "━━ First time setup ━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "  Mac / Linux:\n"
+        "    chmod +x setup.sh\n"
+        "    ./setup.sh\n\n"
+        "  Windows:\n"
+        "    Double-click setup.bat\n\n"
+        "━━ Steps ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "1. Run setup.sh (or setup.bat on Windows)\n"
+        "2. Scan the QR code printed in the terminal:\n"
+        "     WhatsApp → ... → Linked Devices → Link a Device\n"
+        "3. Done! You only need to scan once.\n\n"
+        "━━ Recommended: PM2 (auto-restart on crash) ━\n\n"
+        "  npm install -g pm2\n"
+        "  Then re-run setup.sh — PM2 starts automatically.\n"
+        "  pm2 startup   ← makes bot start on computer boot\n\n"
+        "━━ Keep bot running ━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "  - Your PC must be on and connected to the internet\n"
+        "  - Bot reconnects automatically if connection drops\n"
+        "  - WhatsApp messages go through your home IP (no ban risk)\n\n"
+        "━━ Commands (type in WhatsApp to your host number) ━\n\n"
+        "  APPROVE [id]         Send AI draft to guest\n"
+        "  EDIT [id]: [text]    Edit draft then send\n"
+        "  SKIP [id]            Discard draft\n\n"
         f"Dashboard: {APP_BASE_URL}/dashboard\n"
+        f"Settings:  {APP_BASE_URL}/settings\n"
     )
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("hostai-bot/bot.js",       bot_js_content)
-        zf.writestr("hostai-bot/package.json",  pkg_json)
-        zf.writestr("hostai-bot/.env",           env_content)
-        zf.writestr("hostai-bot/setup.sh",       setup_sh)
-        zf.writestr("hostai-bot/setup.bat",      setup_bat)
-        zf.writestr("hostai-bot/README.txt",     readme)
+        zf.writestr("hostai-bot/bot.js",              bot_js_content)
+        zf.writestr("hostai-bot/package.json",         pkg_json)
+        zf.writestr("hostai-bot/.env",                 env_content)
+        zf.writestr("hostai-bot/ecosystem.config.js",  pm2_config)
+        zf.writestr("hostai-bot/setup.sh",             setup_sh)
+        zf.writestr("hostai-bot/setup.bat",            setup_bat)
+        zf.writestr("hostai-bot/README.txt",           readme)
     buf.seek(0)
 
     return StreamingResponse(
@@ -966,8 +1124,10 @@ def edit_form(draft_id: str, request: Request, db: Session = Depends(get_db)):
     draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
     if not draft:
         return HTMLResponse("")
+    csrf = getattr(request.state, "csrf_token", "")
     return HTMLResponse(f"""
     <form method="post" action="/drafts/{draft_id}/edit" style="margin-top:0.5rem">
+      <input type="hidden" name="csrf_token" value="{csrf}">
       <textarea name="edited_text" style="width:100%;padding:8px;border:1px solid #ced4da;border-radius:6px;
         font-size:0.875rem;line-height:1.6;min-height:120px;resize:vertical"
       >{draft.draft}</textarea>
@@ -979,8 +1139,15 @@ def edit_form(draft_id: str, request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/health")
-def health():
-    return {"status": "ok"}
+def health(db: Session = Depends(get_db)):
+    try:
+        db.execute(__import__("sqlalchemy").text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        db_ok = False
+    status = "ok" if db_ok else "degraded"
+    return JSONResponse({"status": status, "db": "ok" if db_ok else "error"},
+                        status_code=200 if db_ok else 503)
 
 
 # ---------------------------------------------------------------------------

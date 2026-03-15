@@ -25,6 +25,7 @@
 {% endif %}
 
 <form method="post" action="/settings">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
 
   <!-- ── Property ─────────────────────────────────────────────────── -->
   <div class="form-section">
@@ -242,6 +243,7 @@
         <td style="color:#6c757d;font-size:0.8rem">{{ v.notes or '' }}</td>
         <td>
           <form method="post" action="/vendors/{{ v.id }}/delete" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
             <button type="submit" class="btn btn-outline btn-sm" onclick="return confirm('Remove {{ v.name }}?')">Remove</button>
           </form>
         </td>
@@ -253,6 +255,7 @@
   {% endif %}
 
   <form method="post" action="/vendors/add">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <div class="form-row">
       <div>
         <label>Category</label>

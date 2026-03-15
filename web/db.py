@@ -10,10 +10,29 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./airbnb_host.db")
 
-# SQLite needs check_same_thread=False for multi-threaded use
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+_is_sqlite = DATABASE_URL.startswith("sqlite")
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args, echo=False)
+# ---------------------------------------------------------------------------
+# Engine — tuned for production load
+# ---------------------------------------------------------------------------
+if _is_sqlite:
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        echo=False,
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        echo=False,
+        # Connection pool tuned for a typical 2-4 worker Uvicorn deployment
+        pool_size=10,           # keep 10 connections warm
+        max_overflow=20,        # allow up to 30 total under peak load
+        pool_timeout=30,        # give up after 30s waiting for a connection
+        pool_recycle=1800,      # recycle connections every 30 min (avoids stale TCP)
+        pool_pre_ping=True,     # verify connection alive before handing it out
+    )
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

@@ -51,11 +51,13 @@
   <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-start">
     <!-- Approve -->
     <form method="post" action="/drafts/{{ draft.id }}/approve" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <button type="submit" class="btn btn-success btn-sm">✓ Send this</button>
     </form>
 
     <!-- Skip -->
     <form method="post" action="/drafts/{{ draft.id }}/skip" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <button type="submit" class="btn btn-outline btn-sm">✗ Skip</button>
     </form>
 

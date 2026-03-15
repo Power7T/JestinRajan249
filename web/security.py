@@ -1,0 +1,185 @@
+# © 2024 Jestin Rajan. All rights reserved.
+"""
+Security layer:
+  - CSRF protection (double-submit signed cookie)
+  - In-memory sliding-window rate limiter
+  - Security headers middleware (HSTS, CSP, X-Frame-Options, etc.)
+"""
+
+import hashlib
+import hmac
+import os
+import secrets
+import time
+from collections import defaultdict
+from threading import Lock
+from typing import Callable
+
+from fastapi import HTTPException, Request
+from fastapi.responses import Response
+from starlette.middleware.base import BaseHTTPMiddleware
+
+_SECRET = os.getenv("SECRET_KEY", "change-me-long-random-string").encode()
+
+# ---------------------------------------------------------------------------
+# CSRF — double-submit signed cookie
+# ---------------------------------------------------------------------------
+CSRF_COOKIE = "csrf_token"
+
+# Paths that must never undergo CSRF validation
+_CSRF_EXEMPT_PREFIXES = (
+    "/billing/stripe-webhook",
+    "/wa/webhook/",
+    "/sms/webhook/",
+    "/health",
+    "/api/wa/",
+    "/api/workers",
+    "/api/drafts",
+    "/api/download/",
+    "/static/",
+    "/pricing",
+)
+
+_CSRF_SAFE_METHODS = frozenset(("GET", "HEAD", "OPTIONS"))
+
+
+def _is_csrf_exempt(path: str) -> bool:
+    return any(path.startswith(p) for p in _CSRF_EXEMPT_PREFIXES)
+
+
+def _make_csrf_token() -> str:
+    raw = secrets.token_urlsafe(24)
+    sig = hmac.new(_SECRET, raw.encode(), hashlib.sha256).hexdigest()[:16]
+    return f"{raw}.{sig}"
+
+
+def _verify_csrf_token(token: str) -> bool:
+    try:
+        raw, sig = token.rsplit(".", 1)
+        expected = hmac.new(_SECRET, raw.encode(), hashlib.sha256).hexdigest()[:16]
+        return hmac.compare_digest(sig, expected)
+    except Exception:
+        return False
+
+
+def validate_csrf(request: Request, form_token: str | None) -> None:
+    """
+    Call from POST handlers to validate the CSRF token.
+    Raises HTTP 403 on failure.
+    """
+    cookie_token = request.cookies.get(CSRF_COOKIE, "")
+    if not cookie_token or not _verify_csrf_token(cookie_token):
+        raise HTTPException(status_code=403, detail="Session expired — please refresh and try again")
+    if not form_token:
+        raise HTTPException(status_code=403, detail="CSRF token missing from form")
+    if not hmac.compare_digest(cookie_token, form_token):
+        raise HTTPException(status_code=403, detail="CSRF validation failed — please refresh and try again")
+
+
+# ---------------------------------------------------------------------------
+# CSRF Middleware — sets cookie + request.state.csrf_token on every request
+# ---------------------------------------------------------------------------
+
+class CSRFMiddleware(BaseHTTPMiddleware):
+    """
+    Sets a signed CSRF cookie on every response.
+    Templates access the token via {{ request.state.csrf_token }}.
+    POST handlers call validate_csrf(request, form_token) to verify.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        existing = request.cookies.get(CSRF_COOKIE, "")
+        if existing and _verify_csrf_token(existing):
+            csrf = existing
+        else:
+            csrf = _make_csrf_token()
+
+        request.state.csrf_token = csrf
+
+        response = await call_next(request)
+
+        is_secure = (
+            request.url.scheme == "https"
+            or request.headers.get("X-Forwarded-Proto") == "https"
+        )
+        response.set_cookie(
+            key=CSRF_COOKIE,
+            value=csrf,
+            httponly=False,        # forms / JS need to read it
+            samesite="strict",
+            secure=is_secure,
+            max_age=7 * 24 * 3600,
+            path="/",
+        )
+        return response
+
+
+# ---------------------------------------------------------------------------
+# Rate limiter — sliding window, in-memory, thread-safe
+# ---------------------------------------------------------------------------
+
+_windows: dict[str, list[float]] = defaultdict(list)
+_lock = Lock()
+
+
+def rate_limit(key: str, max_requests: int, window_seconds: int) -> None:
+    """
+    Enforce a sliding-window rate limit.
+    Raises HTTP 429 if the key has exceeded max_requests within window_seconds.
+    """
+    now = time.monotonic()
+    cutoff = now - window_seconds
+    with _lock:
+        hits = _windows[key]
+        # Evict expired entries
+        while hits and hits[0] < cutoff:
+            hits.pop(0)
+        if len(hits) >= max_requests:
+            raise HTTPException(
+                status_code=429,
+                detail="Too many requests — please wait and try again",
+            )
+        hits.append(now)
+
+
+def client_ip(request: Request) -> str:
+    """Best-effort client IP; trusts X-Forwarded-For from Nginx."""
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return (request.client.host if request.client else "unknown")
+
+
+# ---------------------------------------------------------------------------
+# Security headers middleware
+# ---------------------------------------------------------------------------
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Adds security headers to every response."""
+
+    _CSP = (
+        "default-src 'self'; "
+        "script-src 'self' https://unpkg.com 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none';"
+    )
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        response = await call_next(request)
+        h = response.headers
+        h["X-Content-Type-Options"]  = "nosniff"
+        h["X-Frame-Options"]          = "DENY"
+        h["X-XSS-Protection"]         = "0"        # Deprecated; CSP handles this
+        h["Referrer-Policy"]          = "strict-origin-when-cross-origin"
+        h["Permissions-Policy"]       = "geolocation=(), microphone=(), camera=()"
+        h["Content-Security-Policy"]  = self._CSP
+        is_https = (
+            request.url.scheme == "https"
+            or request.headers.get("X-Forwarded-Proto") == "https"
+        )
+        if is_https:
+            h["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+        return response
