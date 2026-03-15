@@ -100,9 +100,19 @@
   <a href="/activity"      class="{% if request.url.path == '/activity' %}active{% endif %}">Activity</a>
   <a href="/settings"      class="{% if request.url.path == '/settings' %}active{% endif %}">Settings</a>
   <a href="/billing"       class="{% if request.url.path == '/billing' %}active{% endif %}">Billing</a>
+  {% if tenant is defined and tenant and is_admin(tenant.email) %}
+  <a href="/admin" class="{% if request.url.path.startswith('/admin') %}active{% endif %}" style="color:#e00b27;font-weight:700">Admin</a>
+  {% endif %}
   <a href="/logout" class="logout">Sign out</a>
 </nav>
 {% endblock %}
+
+{% if request.cookies.get("admin_session") %}
+<div style="background:#212529;color:#fff;padding:0.5rem 1.5rem;font-size:0.82rem;display:flex;align-items:center;gap:1rem">
+  <span>🔍 Impersonating session</span>
+  <a href="/admin/unimpersonate" style="color:#ffc107;font-weight:600">← Back to Admin</a>
+</div>
+{% endif %}
 
 {% if tenant is defined and tenant and not tenant.email_verified %}
 <div style="background:#fff3cd;color:#856404;padding:0.6rem 1.5rem;font-size:0.85rem;text-align:center;border-bottom:1px solid #ffc107">

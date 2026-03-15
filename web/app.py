@@ -108,6 +108,14 @@ if _SENTRY_DSN:
 BASE_DIR  = os.path.dirname(__file__)
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
+# Admin email allowlist — comma-separated in ADMIN_EMAILS env var
+_ADMIN_EMAILS: set = {
+    e.strip().lower()
+    for e in os.getenv("ADMIN_EMAILS", "").split(",")
+    if e.strip()
+}
+templates.env.globals["is_admin"] = lambda email: bool(email) and email.lower() in _ADMIN_EMAILS
+
 APP_BASE_URL = os.getenv("APP_BASE_URL", "https://your-domain.com")
 
 # ---------------------------------------------------------------------------
@@ -2070,6 +2078,362 @@ def metrics(db: Session = Depends(get_db)):
         "threads":        threading.active_count(),
         "watchdog_ok":    (worker_manager._watchdog_thread is not None
                            and worker_manager._watchdog_thread.is_alive()),
+    })
+
+
+# ---------------------------------------------------------------------------
+# Admin — super-admin panel (configure ADMIN_EMAILS env var)
+# ---------------------------------------------------------------------------
+
+import threading as _threading_mod
+
+_PLAN_MRR: dict = {
+    "free":       0,
+    "baileys":    19,
+    "meta_cloud": 29,
+    "sms":        19,
+    "pro":        49,
+}
+
+
+def _require_admin(request: Request, db: Session) -> Tenant:
+    """Returns the authenticated admin Tenant or raises 403."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+    if not tenant or tenant.email.lower() not in _ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return tenant
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_overview(request: Request, db: Session = Depends(get_db)):
+    admin = _require_admin(request, db)
+
+    tenants = db.query(Tenant).order_by(Tenant.created_at.desc()).all()
+    configs = {c.tenant_id: c for c in db.query(TenantConfig).all()}
+
+    now_utc = datetime.now(timezone.utc)
+    thirty_days_ago  = now_utc - timedelta(days=30)
+    fourteen_days_ago = now_utc - timedelta(days=14)
+
+    tenant_rows = []
+    plan_counts: dict = {}
+    mrr = 0
+    paid_count = 0
+
+    for t in tenants:
+        cfg = configs.get(t.id)
+        plan      = cfg.subscription_plan   if cfg else "free"
+        sub_status = cfg.subscription_status if cfg else "inactive"
+        is_paid   = sub_status in ("active", "trialing") and plan != "free"
+
+        onboarding_complete = cfg.onboarding_complete if cfg else False
+        onboarding_step     = cfg.onboarding_step     if cfg else 0
+
+        ws         = worker_manager.worker_status(t.id)
+        email_conf = bool(cfg and cfg.imap_host and cfg.email_address)
+        worker_dead = email_conf and not ws["email_running"]
+
+        last_log = (
+            db.query(ActivityLog)
+            .filter_by(tenant_id=t.id)
+            .order_by(ActivityLog.created_at.desc())
+            .first()
+        )
+        last_active  = last_log.created_at if last_log else t.created_at
+        inactive_14d = last_active < fourteen_days_ago
+
+        tenant_rows.append({
+            "tenant":              t,
+            "cfg":                 cfg,
+            "plan":                plan,
+            "sub_status":          sub_status,
+            "is_paid":             is_paid,
+            "onboarding_complete": onboarding_complete,
+            "onboarding_step":     onboarding_step,
+            "ws":                  ws,
+            "worker_dead":         worker_dead,
+            "last_active":         last_active,
+            "inactive_14d":        inactive_14d,
+        })
+
+        plan_counts[plan] = plan_counts.get(plan, 0) + 1
+        if is_paid:
+            mrr       += _PLAN_MRR.get(plan, 0)
+            paid_count += 1
+
+    # Sort: paid & active first
+    tenant_rows.sort(key=lambda r: (not r["is_paid"], -r["tenant"].created_at.timestamp()))
+
+    # Onboarding funnel
+    funnel: dict = {str(i): 0 for i in range(6)}
+    funnel["complete"] = 0
+    for row in tenant_rows:
+        if row["onboarding_complete"]:
+            funnel["complete"] += 1
+        else:
+            key = str(row["onboarding_step"])
+            funnel[key] = funnel.get(key, 0) + 1
+
+    # Draft quality last 30 days
+    drafts_30d = db.query(Draft).filter(Draft.created_at >= thirty_days_ago).all()
+    total_d   = len(drafts_30d)
+    approved_d = sum(1 for d in drafts_30d if d.status == "approved")
+    skipped_d  = sum(1 for d in drafts_30d if d.status == "skipped")
+    pending_d  = sum(1 for d in drafts_30d if d.status == "pending")
+    edited_d   = sum(
+        1 for d in drafts_30d
+        if d.status == "approved" and d.final_text and d.final_text != d.draft
+    )
+    draft_stats = {
+        "total":         total_d,
+        "approved":      approved_d,
+        "skipped":       skipped_d,
+        "pending":       pending_d,
+        "edited":        edited_d,
+        "approval_rate": round(approved_d / total_d * 100, 1) if total_d else 0,
+    }
+
+    # Churn signals
+    churn_signals = [r for r in tenant_rows if r["worker_dead"] or r["inactive_14d"]]
+
+    # Plan breakdown
+    plan_breakdown = []
+    for pk in ["free", "baileys", "meta_cloud", "sms", "pro"]:
+        cnt = plan_counts.get(pk, 0)
+        plan_breakdown.append({
+            "plan":         pk,
+            "count":        cnt,
+            "price":        _PLAN_MRR.get(pk, 0),
+            "contribution": cnt * _PLAN_MRR.get(pk, 0),
+        })
+
+    return templates.TemplateResponse("admin_overview.html", {
+        "request":       request,
+        "admin":         admin,
+        "tenant_rows":   tenant_rows,
+        "total_tenants": len(tenants),
+        "paid_count":    paid_count,
+        "free_count":    len(tenants) - paid_count,
+        "mrr":           mrr,
+        "plan_breakdown": plan_breakdown,
+        "funnel":        funnel,
+        "draft_stats":   draft_stats,
+        "churn_signals": churn_signals,
+        "now":           now_utc,
+    })
+
+
+@app.get("/admin/tenants/{tid}", response_class=HTMLResponse)
+def admin_tenant_detail(tid: str, request: Request, db: Session = Depends(get_db)):
+    _require_admin(request, db)
+    t = db.query(Tenant).filter_by(id=tid).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    cfg = db.query(TenantConfig).filter_by(tenant_id=t.id).first()
+
+    all_drafts = db.query(Draft).filter_by(tenant_id=t.id).all()
+    draft_stats = {
+        "total":    len(all_drafts),
+        "pending":  sum(1 for d in all_drafts if d.status == "pending"),
+        "approved": sum(1 for d in all_drafts if d.status == "approved"),
+        "skipped":  sum(1 for d in all_drafts if d.status == "skipped"),
+        "edited":   sum(
+            1 for d in all_drafts
+            if d.status == "approved" and d.final_text and d.final_text != d.draft
+        ),
+    }
+
+    reservation_count = db.query(Reservation).filter_by(tenant_id=t.id).count()
+    sync_log          = db.query(ReservationSyncLog).filter_by(tenant_id=t.id).first()
+
+    activity_logs = (
+        db.query(ActivityLog)
+        .filter_by(tenant_id=t.id)
+        .order_by(ActivityLog.created_at.desc())
+        .limit(30)
+        .all()
+    )
+
+    ws          = worker_manager.worker_status(t.id)
+    last_active = activity_logs[0].created_at if activity_logs else t.created_at
+    msg         = request.query_params.get("msg", "")
+
+    return templates.TemplateResponse("admin_tenant.html", {
+        "request":           request,
+        "t":                 t,
+        "cfg":               cfg,
+        "draft_stats":       draft_stats,
+        "reservation_count": reservation_count,
+        "sync_log":          sync_log,
+        "activity_logs":     activity_logs,
+        "ws":                ws,
+        "last_active":       last_active,
+        "plans":             ["free", "baileys", "meta_cloud", "sms", "pro"],
+        "plan_mrr":          _PLAN_MRR,
+        "now":               datetime.now(timezone.utc),
+        "msg":               msg,
+    })
+
+
+@app.post("/admin/tenants/{tid}/plan", response_class=HTMLResponse)
+def admin_change_plan(
+    tid: str, request: Request,
+    plan:       str = Form(...),
+    sub_status: str = Form(...),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    _require_admin(request, db)
+    validate_csrf(request, csrf_token)
+    t   = db.query(Tenant).filter_by(id=tid).first()
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tid).first()
+    if not t or not cfg:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    if plan not in _PLAN_MRR or sub_status not in ("active", "trialing", "inactive", "cancelled", "past_due"):
+        raise HTTPException(status_code=400, detail="Invalid plan or status")
+    cfg.subscription_plan   = plan
+    cfg.subscription_status = sub_status
+    db.commit()
+    db.add(ActivityLog(tenant_id=t.id, event_type="admin_plan_change",
+                       message=f"Plan set to {plan}/{sub_status} by admin"))
+    db.commit()
+    return RedirectResponse(f"/admin/tenants/{tid}?msg=plan_updated", status_code=302)
+
+
+@app.post("/admin/tenants/{tid}/deactivate", response_class=HTMLResponse)
+def admin_deactivate(
+    tid: str, request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    _require_admin(request, db)
+    validate_csrf(request, csrf_token)
+    t = db.query(Tenant).filter_by(id=tid).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    t.is_active = False
+    db.commit()
+    worker_manager._stop_tenant(t.id)
+    db.add(ActivityLog(tenant_id=t.id, event_type="admin_deactivated",
+                       message="Account deactivated by admin"))
+    db.commit()
+    return RedirectResponse(f"/admin/tenants/{tid}?msg=deactivated", status_code=302)
+
+
+@app.post("/admin/tenants/{tid}/reactivate", response_class=HTMLResponse)
+def admin_reactivate(
+    tid: str, request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    _require_admin(request, db)
+    validate_csrf(request, csrf_token)
+    t = db.query(Tenant).filter_by(id=tid).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    t.is_active = True
+    db.commit()
+    worker_manager.restart_worker(t.id)
+    db.add(ActivityLog(tenant_id=t.id, event_type="admin_reactivated",
+                       message="Account reactivated by admin"))
+    db.commit()
+    return RedirectResponse(f"/admin/tenants/{tid}?msg=reactivated", status_code=302)
+
+
+@app.get("/admin/tenants/{tid}/impersonate", response_class=HTMLResponse)
+def admin_impersonate(tid: str, request: Request, db: Session = Depends(get_db)):
+    _require_admin(request, db)
+    t = db.query(Tenant).filter_by(id=tid).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    admin_token = request.cookies.get("session")
+    new_token   = create_token(t.id)
+    is_secure   = (request.url.scheme == "https"
+                   or request.headers.get("X-Forwarded-Proto") == "https")
+    cfg         = db.query(TenantConfig).filter_by(tenant_id=t.id).first()
+    redirect_to = "/dashboard" if (cfg and cfg.onboarding_complete) else "/onboarding"
+    resp = RedirectResponse(redirect_to, status_code=302)
+    resp.set_cookie("session",       new_token,   httponly=True, samesite="strict",
+                    secure=is_secure, max_age=72 * 3600)
+    resp.set_cookie("admin_session", admin_token, httponly=True, samesite="strict",
+                    secure=is_secure, max_age=72 * 3600)
+    return resp
+
+
+@app.get("/admin/unimpersonate", response_class=HTMLResponse)
+def admin_unimpersonate(request: Request):
+    admin_token = request.cookies.get("admin_session")
+    if not admin_token:
+        return RedirectResponse("/admin", status_code=302)
+    is_secure = (request.url.scheme == "https"
+                 or request.headers.get("X-Forwarded-Proto") == "https")
+    resp = RedirectResponse("/admin", status_code=302)
+    resp.set_cookie("session",       admin_token, httponly=True, samesite="strict",
+                    secure=is_secure, max_age=72 * 3600)
+    resp.delete_cookie("admin_session")
+    return resp
+
+
+@app.get("/admin/system", response_class=HTMLResponse)
+def admin_system(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request, db)
+
+    tenants = db.query(Tenant).order_by(Tenant.email).all()
+    configs = {c.tenant_id: c for c in db.query(TenantConfig).all()}
+
+    system_rows = []
+    for t in tenants:
+        cfg          = configs.get(t.id)
+        ws           = worker_manager.worker_status(t.id)
+        email_conf   = bool(cfg and cfg.imap_host and cfg.email_address)
+        cal_conf     = bool(cfg and cfg.ical_urls)
+        any_dead     = (email_conf and not ws["email_running"]) or (cal_conf and not ws["cal_running"])
+        system_rows.append({
+            "tenant":        t,
+            "cfg":           cfg,
+            "ws":            ws,
+            "email_conf":    email_conf,
+            "cal_conf":      cal_conf,
+            "any_dead":      any_dead,
+        })
+
+    system_rows.sort(key=lambda r: (not r["any_dead"], r["tenant"].email))
+
+    watchdog_ok = (worker_manager._watchdog_thread is not None
+                   and worker_manager._watchdog_thread.is_alive())
+
+    from web.redis_client import get_redis as _get_redis
+    r = _get_redis()
+    redis_ok = False
+    if r is not None:
+        try:
+            r.ping()
+            redis_ok = True
+        except Exception:
+            pass
+
+    import sqlalchemy as _sa
+    db_ok = True
+    try:
+        db.execute(_sa.text("SELECT 1"))
+    except Exception:
+        db_ok = False
+
+    return templates.TemplateResponse("admin_system.html", {
+        "request":        request,
+        "system_rows":    system_rows,
+        "watchdog_ok":    watchdog_ok,
+        "redis_ok":       redis_ok,
+        "db_ok":          db_ok,
+        "thread_count":   _threading_mod.active_count(),
+        "total_tenants":  len(tenants),
+        "active_workers": sum(1 for r in system_rows if r["ws"]["email_running"]),
+        "dead_workers":   sum(1 for r in system_rows if r["any_dead"]),
+        "now":            datetime.now(timezone.utc),
     })
 
 

@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}Admin — HostAI{% endblock %}
+
+{% block head %}
+<style>
+  .admin-nav { display:flex; gap:1rem; margin-bottom:1.5rem; }
+  .admin-nav a { padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600;
+                 background:#f8f9fa; border:1px solid #dee2e6; color:#495057; }
+  .admin-nav a.active, .admin-nav a:hover { background:#e00b27; color:#fff; border-color:#e00b27; text-decoration:none; }
+
+  .stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+  .stat-card { background:#fff; border:1px solid #dee2e6; border-radius:8px; padding:1.1rem; text-align:center; }
+  .stat-value { font-size:1.8rem; font-weight:700; color:#212529; line-height:1.1; }
+  .stat-label { font-size:0.75rem; color:#6c757d; margin-top:0.2rem; }
+
+  .plan-badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:700; text-transform:uppercase; }
+  .plan-free       { background:#e9ecef; color:#495057; }
+  .plan-baileys    { background:#cce5ff; color:#004085; }
+  .plan-meta_cloud { background:#d4edda; color:#155724; }
+  .plan-sms        { background:#fff3cd; color:#856404; }
+  .plan-pro        { background:#e2d9f3; color:#4a235a; }
+
+  .sub-active   { color:#28a745; font-weight:600; }
+  .sub-trialing { color:#17a2b8; font-weight:600; }
+  .sub-inactive { color:#adb5bd; }
+  .sub-cancelled { color:#dc3545; }
+  .sub-past_due { color:#fd7e14; font-weight:600; }
+
+  .funnel-bar { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.4rem; font-size:0.82rem; }
+  .funnel-track { flex:1; background:#f1f3f5; border-radius:4px; height:18px; overflow:hidden; }
+  .funnel-fill { background:#e00b27; height:100%; border-radius:4px; transition:width 0.3s; }
+  .funnel-label { width:90px; color:#495057; }
+  .funnel-count { width:30px; text-align:right; color:#6c757d; font-weight:600; }
+
+  .churn-signal { border-left:3px solid #fd7e14; padding-left:0.75rem; margin-bottom:0.5rem; font-size:0.85rem; }
+  .churn-signal .reason { font-size:0.75rem; color:#6c757d; }
+
+  .tenant-table-wrap { overflow-x:auto; }
+  .tenant-table th, .tenant-table td { white-space:nowrap; }
+  .email-cell { max-width:200px; overflow:hidden; text-overflow:ellipsis; }
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dot-green { background:#28a745; }
+  .dot-red   { background:#dc3545; }
+  .dot-grey  { background:#adb5bd; }
+  .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Admin Panel</h1>
+
+<!-- Admin sub-nav -->
+<div class="admin-nav">
+  <a href="/admin" class="active">Overview</a>
+  <a href="/admin/system">System Health</a>
+</div>
+
+<!-- ── Revenue Summary ─────────────────────────────────────────────────── -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-value">{{ total_tenants }}</div>
+    <div class="stat-label">Total Tenants</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ paid_count }}</div>
+    <div class="stat-label">Paid Tenants</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ free_count }}</div>
+    <div class="stat-label">Free Plan</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">${{ mrr }}</div>
+    <div class="stat-label">Est. MRR</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ draft_stats.total }}</div>
+    <div class="stat-label">Drafts (30d)</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ draft_stats.approval_rate }}%</div>
+    <div class="stat-label">Approval Rate (30d)</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+
+  <!-- ── Plan Breakdown ──────────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>Plan Breakdown</h2>
+    <table>
+      <thead><tr><th>Plan</th><th>Users</th><th>Price</th><th>MRR</th></tr></thead>
+      <tbody>
+        {% for pb in plan_breakdown %}
+        <tr>
+          <td><span class="plan-badge plan-{{ pb.plan }}">{{ pb.plan }}</span></td>
+          <td>{{ pb.count }}</td>
+          <td>{% if pb.price == 0 %}Free{% else %}${{ pb.price }}/mo{% endif %}</td>
+          <td>{% if pb.contribution %}${{ pb.contribution }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Onboarding Funnel ───────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>Onboarding Funnel</h2>
+    {% set max_funnel = [funnel["0"], funnel["1"], funnel["2"], funnel["3"], funnel["4"], funnel["5"], funnel["complete"]] | max %}
+    {% for step in ["0","1","2","3","4","5"] %}
+    {% set cnt = funnel[step] %}
+    <div class="funnel-bar">
+      <div class="funnel-label">Step {{ step }}</div>
+      <div class="funnel-track">
+        <div class="funnel-fill" style="width:{% if max_funnel > 0 %}{{ (cnt / max_funnel * 100) | int }}{% else %}0{% endif %}%"></div>
+      </div>
+      <div class="funnel-count">{{ cnt }}</div>
+    </div>
+    {% endfor %}
+    <div class="funnel-bar">
+      <div class="funnel-label" style="color:#28a745;font-weight:600">Complete</div>
+      <div class="funnel-track">
+        <div class="funnel-fill" style="background:#28a745;width:{% if max_funnel > 0 %}{{ (funnel["complete"] / max_funnel * 100) | int }}{% else %}0{% endif %}%"></div>
+      </div>
+      <div class="funnel-count" style="color:#28a745">{{ funnel["complete"] }}</div>
+    </div>
+  </div>
+
+  <!-- ── Draft Quality ───────────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>Draft Quality (30d)</h2>
+    <table>
+      <tbody>
+        <tr><td>Total drafted</td><td><strong>{{ draft_stats.total }}</strong></td></tr>
+        <tr><td>Approved</td><td style="color:#28a745"><strong>{{ draft_stats.approved }}</strong></td></tr>
+        <tr><td>Edited before send</td><td style="color:#fd7e14"><strong>{{ draft_stats.edited }}</strong></td></tr>
+        <tr><td>Skipped</td><td style="color:#dc3545"><strong>{{ draft_stats.skipped }}</strong></td></tr>
+        <tr><td>Still pending</td><td style="color:#6c757d"><strong>{{ draft_stats.pending }}</strong></td></tr>
+        <tr>
+          <td><strong>Approval rate</strong></td>
+          <td><strong style="font-size:1.1rem">{{ draft_stats.approval_rate }}%</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ── Churn Signals ───────────────────────────────────────────────────── -->
+{% if churn_signals %}
+<div class="card" style="border-color:#fd7e14">
+  <div class="section-header">
+    <h2 style="color:#fd7e14">⚠ Churn Signals ({{ churn_signals | length }})</h2>
+  </div>
+  {% for row in churn_signals %}
+  <div class="churn-signal">
+    <a href="/admin/tenants/{{ row.tenant.id }}">{{ row.tenant.email }}</a>
+    <span class="plan-badge plan-{{ row.plan }}" style="margin-left:0.5rem">{{ row.plan }}</span>
+    <div class="reason">
+      {% if row.worker_dead %}Worker thread dead · {% endif %}
+      {% if row.inactive_14d %}No activity in 14+ days (last: {{ row.last_active.strftime("%Y-%m-%d") }}){% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ── Tenant Table ─────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="section-header">
+    <h2>All Tenants ({{ total_tenants }})</h2>
+  </div>
+  <div class="tenant-table-wrap">
+    <table class="tenant-table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Plan</th>
+          <th>Sub Status</th>
+          <th>Onboarding</th>
+          <th>Worker</th>
+          <th>Active</th>
+          <th>Signed Up</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in tenant_rows %}
+        <tr {% if not row.tenant.is_active %}style="opacity:0.5"{% endif %}>
+          <td class="email-cell">
+            <a href="/admin/tenants/{{ row.tenant.id }}">{{ row.tenant.email }}</a>
+            {% if not row.tenant.is_active %}
+              <span class="badge badge-off" style="margin-left:4px">inactive</span>
+            {% endif %}
+            {% if not row.tenant.email_verified %}
+              <span style="font-size:0.7rem;color:#adb5bd;margin-left:4px">unverified</span>
+            {% endif %}
+          </td>
+          <td><span class="plan-badge plan-{{ row.plan }}">{{ row.plan }}</span></td>
+          <td>
+            <span class="sub-{{ row.sub_status }}">{{ row.sub_status }}</span>
+          </td>
+          <td>
+            {% if row.onboarding_complete %}
+              <span style="color:#28a745">✓ Complete</span>
+            {% else %}
+              Step {{ row.onboarding_step }}/5
+            {% endif %}
+          </td>
+          <td>
+            <span class="dot {% if row.ws.email_running %}dot-green{% elif not row.worker_dead %}dot-grey{% else %}dot-red{% endif %}"></span>
+            {% if row.ws.email_running %}running{% elif row.worker_dead %}dead{% else %}not configured{% endif %}
+          </td>
+          <td style="{% if row.inactive_14d %}color:#fd7e14{% endif %}">
+            {{ row.last_active.strftime("%Y-%m-%d") }}
+          </td>
+          <td>{{ row.tenant.created_at.strftime("%Y-%m-%d") }}</td>
+          <td>
+            <a href="/admin/tenants/{{ row.tenant.id }}" class="btn btn-outline btn-sm">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not tenant_rows %}
+        <tr><td colspan="8" class="empty">No tenants yet.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

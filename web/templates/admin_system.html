@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Admin · System Health — HostAI{% endblock %}
+
+{% block head %}
+<style>
+  .admin-nav { display:flex; gap:1rem; margin-bottom:1.5rem; }
+  .admin-nav a { padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600;
+                 background:#f8f9fa; border:1px solid #dee2e6; color:#495057; }
+  .admin-nav a.active, .admin-nav a:hover { background:#e00b27; color:#fff; border-color:#e00b27; text-decoration:none; }
+
+  .health-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+  .health-card { background:#fff; border:1px solid #dee2e6; border-radius:8px; padding:1rem; text-align:center; }
+  .health-card.ok    { border-color:#28a745; }
+  .health-card.warn  { border-color:#fd7e14; }
+  .health-card.error { border-color:#dc3545; }
+  .health-val { font-size:1.6rem; font-weight:700; line-height:1.2; }
+  .health-lab { font-size:0.75rem; color:#6c757d; margin-top:0.2rem; }
+
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dot-green { background:#28a745; }
+  .dot-red   { background:#dc3545; }
+  .dot-grey  { background:#adb5bd; }
+
+  .system-table th, .system-table td { white-space:nowrap; }
+  .email-cell { max-width:220px; overflow:hidden; text-overflow:ellipsis; }
+  .dead-row { background:#fff5f5; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>System Health</h1>
+
+<!-- Admin sub-nav -->
+<div class="admin-nav">
+  <a href="/admin">Overview</a>
+  <a href="/admin/system" class="active">System Health</a>
+</div>
+
+<!-- ── Health Cards ────────────────────────────────────────────────────── -->
+<div class="health-grid">
+
+  <div class="health-card {% if db_ok %}ok{% else %}error{% endif %}">
+    <div class="health-val" style="color:{% if db_ok %}#28a745{% else %}#dc3545{% endif %}">
+      {% if db_ok %}OK{% else %}ERR{% endif %}
+    </div>
+    <div class="health-lab">Database</div>
+  </div>
+
+  <div class="health-card {% if redis_ok %}ok{% else %}warn{% endif %}">
+    <div class="health-val" style="color:{% if redis_ok %}#28a745{% else %}#fd7e14{% endif %}">
+      {% if redis_ok %}OK{% else %}OFF{% endif %}
+    </div>
+    <div class="health-lab">Redis</div>
+  </div>
+
+  <div class="health-card {% if watchdog_ok %}ok{% else %}error{% endif %}">
+    <div class="health-val" style="color:{% if watchdog_ok %}#28a745{% else %}#dc3545{% endif %}">
+      {% if watchdog_ok %}OK{% else %}DEAD{% endif %}
+    </div>
+    <div class="health-lab">Watchdog</div>
+  </div>
+
+  <div class="health-card">
+    <div class="health-val">{{ thread_count }}</div>
+    <div class="health-lab">OS Threads</div>
+  </div>
+
+  <div class="health-card ok">
+    <div class="health-val" style="color:#28a745">{{ active_workers }}</div>
+    <div class="health-lab">Active Workers</div>
+  </div>
+
+  <div class="health-card {% if dead_workers > 0 %}error{% endif %}">
+    <div class="health-val" style="color:{% if dead_workers > 0 %}#dc3545{% else %}#212529{% endif %}">
+      {{ dead_workers }}
+    </div>
+    <div class="health-lab">Dead Workers</div>
+  </div>
+
+  <div class="health-card">
+    <div class="health-val">{{ total_tenants }}</div>
+    <div class="health-lab">Total Tenants</div>
+  </div>
+
+</div>
+
+<p style="font-size:0.78rem;color:#6c757d;margin-bottom:1.25rem">
+  Last refreshed: {{ now.strftime("%Y-%m-%d %H:%M:%S") }} UTC &nbsp;·&nbsp;
+  <a href="/admin/system">Refresh</a>
+</p>
+
+<!-- ── Worker Table ────────────────────────────────────────────────────── -->
+<div class="card">
+  <h2>Per-Tenant Workers</h2>
+  <div style="overflow-x:auto">
+    <table class="system-table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Email Worker</th>
+          <th>Cal Worker</th>
+          <th>Scheduler</th>
+          <th>Plan</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in system_rows %}
+        <tr {% if row.any_dead %}class="dead-row"{% endif %}>
+          <td class="email-cell">
+            <a href="/admin/tenants/{{ row.tenant.id }}">{{ row.tenant.email }}</a>
+            {% if not row.tenant.is_active %}
+              <span class="badge badge-off" style="margin-left:4px">inactive</span>
+            {% endif %}
+          </td>
+
+          <!-- Email worker -->
+          <td>
+            {% if row.email_conf %}
+              <span class="dot {% if row.ws.email_running %}dot-green{% else %}dot-red{% endif %}"></span>
+              {{ "running" if row.ws.email_running else "DEAD" }}
+            {% else %}
+              <span class="dot dot-grey"></span> not configured
+            {% endif %}
+          </td>
+
+          <!-- Calendar worker -->
+          <td>
+            {% if row.cal_conf %}
+              <span class="dot {% if row.ws.cal_running %}dot-green{% else %}dot-red{% endif %}"></span>
+              {{ "running" if row.ws.cal_running else "DEAD" }}
+            {% else %}
+              <span class="dot dot-grey"></span> not configured
+            {% endif %}
+          </td>
+
+          <!-- Scheduler -->
+          <td>
+            <span class="dot {% if row.ws.sched_running %}dot-green{% else %}dot-grey{% endif %}"></span>
+            {{ "running" if row.ws.sched_running else "not running" }}
+          </td>
+
+          <td>
+            {% if row.cfg %}
+              <span style="font-size:0.8rem">{{ row.cfg.subscription_plan }}</span>
+            {% else %}—{% endif %}
+          </td>
+
+          <td>
+            {% if row.cfg %}
+              <span style="font-size:0.8rem">{{ row.cfg.subscription_status }}</span>
+            {% else %}—{% endif %}
+          </td>
+
+          <td>
+            <a href="/admin/tenants/{{ row.tenant.id }}" class="btn btn-outline btn-sm">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not system_rows %}
+        <tr><td colspan="7" class="empty">No tenants yet.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

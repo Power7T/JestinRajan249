@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}Admin · {{ t.email }} — HostAI{% endblock %}
+
+{% block head %}
+<style>
+  .admin-nav { display:flex; gap:1rem; margin-bottom:1.5rem; }
+  .admin-nav a { padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600;
+                 background:#f8f9fa; border:1px solid #dee2e6; color:#495057; }
+  .admin-nav a:hover { background:#e00b27; color:#fff; border-color:#e00b27; text-decoration:none; }
+
+  .tenant-header { display:flex; align-items:flex-start; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+  .tenant-header h1 { margin-bottom:0.25rem; font-size:1.2rem; }
+  .tenant-meta { font-size:0.82rem; color:#6c757d; }
+  .tenant-actions { margin-left:auto; display:flex; gap:0.5rem; flex-wrap:wrap; }
+
+  .plan-badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:700; text-transform:uppercase; }
+  .plan-free       { background:#e9ecef; color:#495057; }
+  .plan-baileys    { background:#cce5ff; color:#004085; }
+  .plan-meta_cloud { background:#d4edda; color:#155724; }
+  .plan-sms        { background:#fff3cd; color:#856404; }
+  .plan-pro        { background:#e2d9f3; color:#4a235a; }
+
+  .sub-active   { color:#28a745; font-weight:600; }
+  .sub-trialing { color:#17a2b8; font-weight:600; }
+  .sub-inactive { color:#adb5bd; }
+  .sub-cancelled { color:#dc3545; }
+  .sub-past_due { color:#fd7e14; font-weight:600; }
+
+  .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; }
+  .detail-row { display:flex; justify-content:space-between; padding:0.4rem 0;
+                border-bottom:1px solid #f1f3f5; font-size:0.85rem; }
+  .detail-row:last-child { border-bottom:none; }
+  .detail-key { color:#6c757d; }
+  .detail-val { font-weight:500; text-align:right; word-break:break-all; }
+
+  .stat-mini { display:inline-block; padding:0.5rem 1rem; border-radius:6px;
+               background:#f8f9fa; border:1px solid #dee2e6; text-align:center; margin-right:0.5rem; margin-bottom:0.5rem; }
+  .stat-mini-val { font-size:1.4rem; font-weight:700; }
+  .stat-mini-lab { font-size:0.72rem; color:#6c757d; }
+
+  .log-row { display:flex; gap:0.75rem; padding:0.4rem 0; border-bottom:1px solid #f8f9fa; font-size:0.82rem; }
+  .log-row:last-child { border-bottom:none; }
+  .log-time { color:#adb5bd; white-space:nowrap; width:130px; flex-shrink:0; }
+  .log-type { color:#6c757d; width:160px; flex-shrink:0; }
+
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dot-green { background:#28a745; }
+  .dot-red   { background:#dc3545; }
+  .dot-grey  { background:#adb5bd; }
+
+  .danger-zone { border:1px solid #dc3545; border-radius:8px; padding:1.25rem; margin-top:1rem; }
+  .danger-zone h2 { color:#dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Admin sub-nav -->
+<div class="admin-nav">
+  <a href="/admin">← All Tenants</a>
+  <a href="/admin/system">System Health</a>
+</div>
+
+<!-- ── Flash messages ──────────────────────────────────────────────────── -->
+{% if msg == "plan_updated" %}
+<div class="alert alert-success">Plan updated successfully.</div>
+{% elif msg == "deactivated" %}
+<div class="alert alert-error">Tenant deactivated. Workers stopped.</div>
+{% elif msg == "reactivated" %}
+<div class="alert alert-success">Tenant reactivated. Workers restarted.</div>
+{% endif %}
+
+<!-- ── Tenant Header ───────────────────────────────────────────────────── -->
+<div class="tenant-header">
+  <div>
+    <h1>{{ t.email }}</h1>
+    <div class="tenant-meta">
+      ID: {{ t.id }} &nbsp;·&nbsp; Joined: {{ t.created_at.strftime("%Y-%m-%d") }}
+      &nbsp;·&nbsp; Last active: {{ last_active.strftime("%Y-%m-%d %H:%M") }} UTC
+      {% if not t.is_active %}&nbsp;·&nbsp; <span style="color:#dc3545;font-weight:600">DEACTIVATED</span>{% endif %}
+      {% if not t.email_verified %}&nbsp;·&nbsp; <span style="color:#856404">email unverified</span>{% endif %}
+    </div>
+  </div>
+  <div class="tenant-actions">
+    <a href="/admin/tenants/{{ t.id }}/impersonate" class="btn btn-outline btn-sm">Impersonate</a>
+    {% if t.is_active %}
+    <form method="post" action="/admin/tenants/{{ t.id }}/deactivate" style="display:inline"
+          onsubmit="return confirm('Deactivate {{ t.email }}? Their workers will stop.')">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button class="btn btn-sm" style="background:#dc3545;color:#fff">Deactivate</button>
+    </form>
+    {% else %}
+    <form method="post" action="/admin/tenants/{{ t.id }}/reactivate" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button class="btn btn-success btn-sm">Reactivate</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Stats Row ───────────────────────────────────────────────────────── -->
+<div style="margin-bottom:1.5rem">
+  <div class="stat-mini">
+    <div class="stat-mini-val">{{ draft_stats.total }}</div>
+    <div class="stat-mini-lab">Total Drafts</div>
+  </div>
+  <div class="stat-mini" style="border-color:#28a745">
+    <div class="stat-mini-val" style="color:#28a745">{{ draft_stats.approved }}</div>
+    <div class="stat-mini-lab">Approved</div>
+  </div>
+  <div class="stat-mini" style="border-color:#fd7e14">
+    <div class="stat-mini-val" style="color:#fd7e14">{{ draft_stats.edited }}</div>
+    <div class="stat-mini-lab">Edited</div>
+  </div>
+  <div class="stat-mini" style="border-color:#dc3545">
+    <div class="stat-mini-val" style="color:#dc3545">{{ draft_stats.skipped }}</div>
+    <div class="stat-mini-lab">Skipped</div>
+  </div>
+  <div class="stat-mini">
+    <div class="stat-mini-val">{{ reservation_count }}</div>
+    <div class="stat-mini-lab">Reservations</div>
+  </div>
+  {% if sync_log %}
+  <div class="stat-mini">
+    <div class="stat-mini-val" style="font-size:1rem">{{ sync_log.last_synced.strftime("%m-%d") }}</div>
+    <div class="stat-mini-lab">Last CSV sync</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── Two-column detail grid ─────────────────────────────────────────── -->
+<div class="detail-grid">
+
+  <!-- Config snapshot -->
+  <div class="card">
+    <h2>Config</h2>
+    {% if cfg %}
+    <div class="detail-row"><span class="detail-key">Plan</span>
+      <span class="detail-val">
+        <span class="plan-badge plan-{{ cfg.subscription_plan }}">{{ cfg.subscription_plan }}</span>
+        &nbsp;<span class="sub-{{ cfg.subscription_status }}">{{ cfg.subscription_status }}</span>
+      </span>
+    </div>
+    <div class="detail-row"><span class="detail-key">Onboarding</span>
+      <span class="detail-val">
+        {% if cfg.onboarding_complete %}<span style="color:#28a745">Complete</span>
+        {% else %}Step {{ cfg.onboarding_step }}/5{% endif %}
+      </span>
+    </div>
+    <div class="detail-row"><span class="detail-key">Property</span>
+      <span class="detail-val">{{ cfg.property_names or "—" }}</span>
+    </div>
+    <div class="detail-row"><span class="detail-key">City</span>
+      <span class="detail-val">{{ cfg.property_city or "—" }}</span>
+    </div>
+    <div class="detail-row"><span class="detail-key">Email (IMAP)</span>
+      <span class="detail-val">{{ cfg.email_address or "—" }}</span>
+    </div>
+    <div class="detail-row"><span class="detail-key">IMAP host</span>
+      <span class="detail-val">{{ cfg.imap_host or "—" }}</span>
+    </div>
+    <div class="detail-row"><span class="detail-key">WhatsApp mode</span>
+      <span class="detail-val">{{ cfg.wa_mode }}</span>
+    </div>
+    <div class="detail-row"><span class="detail-key">SMS mode</span>
+      <span class="detail-val">{{ cfg.sms_mode }}</span>
+    </div>
+    <div class="detail-row"><span class="detail-key">iCal URLs</span>
+      <span class="detail-val">{{ "Configured" if cfg.ical_urls else "—" }}</span>
+    </div>
+    <div class="detail-row"><span class="detail-key">Claude API key</span>
+      <span class="detail-val">{{ "Configured" if cfg.anthropic_api_key_enc else "—" }}</span>
+    </div>
+    <div class="detail-row"><span class="detail-key">Escalation email</span>
+      <span class="detail-val">{{ cfg.escalation_email or "—" }}</span>
+    </div>
+    {% else %}
+    <p style="color:#6c757d;font-size:0.875rem">No config record yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Billing + Worker status -->
+  <div>
+    <div class="card">
+      <h2>Billing</h2>
+      {% if cfg %}
+      <div class="detail-row"><span class="detail-key">Stripe customer</span>
+        <span class="detail-val">{{ cfg.stripe_customer_id or "—" }}</span>
+      </div>
+      <div class="detail-row"><span class="detail-key">Stripe subscription</span>
+        <span class="detail-val">{{ cfg.stripe_subscription_id or "—" }}</span>
+      </div>
+      <div class="detail-row"><span class="detail-key">Expires at</span>
+        <span class="detail-val">{{ cfg.subscription_expires_at.strftime("%Y-%m-%d") if cfg.subscription_expires_at else "—" }}</span>
+      </div>
+      {% else %}—{% endif %}
+    </div>
+
+    <div class="card">
+      <h2>Workers</h2>
+      <div class="detail-row"><span class="detail-key">Email worker</span>
+        <span class="detail-val">
+          <span class="dot {% if ws.email_running %}dot-green{% else %}dot-red{% endif %}"></span>
+          {{ "running" if ws.email_running else "stopped" }}
+        </span>
+      </div>
+      <div class="detail-row"><span class="detail-key">Calendar worker</span>
+        <span class="detail-val">
+          <span class="dot {% if ws.cal_running %}dot-green{% else %}dot-grey{% endif %}"></span>
+          {{ "running" if ws.cal_running else "not running" }}
+        </span>
+      </div>
+      <div class="detail-row"><span class="detail-key">Scheduler</span>
+        <span class="detail-val">
+          <span class="dot {% if ws.sched_running %}dot-green{% else %}dot-grey{% endif %}"></span>
+          {{ "running" if ws.sched_running else "not running" }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Change Plan ─────────────────────────────────────────────────────── -->
+{% if cfg %}
+<div class="card">
+  <h2>Override Plan</h2>
+  <form method="post" action="/admin/tenants/{{ t.id }}/plan" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div>
+      <label>Plan</label>
+      <select name="plan" style="width:160px;margin-bottom:0">
+        {% for p in plans %}
+        <option value="{{ p }}" {% if cfg.subscription_plan == p %}selected{% endif %}>
+          {{ p }} (${{ plan_mrr[p] }}/mo)
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Status</label>
+      <select name="sub_status" style="width:140px;margin-bottom:0">
+        {% for s in ["active","trialing","inactive","cancelled","past_due"] %}
+        <option value="{{ s }}" {% if cfg.subscription_status == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Save Plan</button>
+  </form>
+</div>
+{% endif %}
+
+<!-- ── Activity Log ─────────────────────────────────────────────────────── -->
+<div class="card">
+  <h2>Recent Activity (last 30 events)</h2>
+  {% if activity_logs %}
+  {% for log in activity_logs %}
+  <div class="log-row">
+    <span class="log-time">{{ log.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
+    <span class="log-type">{{ log.event_type }}</span>
+    <span>{{ log.message }}</span>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p style="color:#6c757d;font-size:0.875rem">No activity yet.</p>
+  {% endif %}
+</div>
+
+{% endblock %}
