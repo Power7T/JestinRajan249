@@ -22,4 +22,4 @@ EXPOSE 8000
 
 # 2 workers × (2 × CPU + 1) — good default for I/O-bound FastAPI
 # Use WORKERS env var to override (e.g. WORKERS=4 for a 2-core server)
-CMD ["sh", "-c", "uvicorn web.app:app --host 0.0.0.0 --port 8000 --workers ${WORKERS:-2} --loop uvloop --http h11 --timeout-keep-alive 30"]
+CMD ["sh", "-c", "uvicorn web.app:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS:-2} --loop uvloop --http h11 --timeout-keep-alive 30"]
