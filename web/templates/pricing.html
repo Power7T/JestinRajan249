@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — HostAI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #212529; }
+    a { color: #e00b27; text-decoration: none; }
+    nav { background: #fff; border-bottom: 1px solid #dee2e6; padding: 0 1.5rem; display: flex; align-items: center; height: 56px; gap: 1.5rem; }
+    nav .brand { font-weight: 700; font-size: 1.1rem; color: #e00b27; margin-right: auto; }
+    nav a { color: #495057; font-size: 0.9rem; }
+    .btn { display: inline-block; padding: 10px 22px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; }
+    .btn-primary { background: #e00b27; color: #fff; }
+    .btn-outline  { background: transparent; border: 1px solid #dee2e6; color: #495057; }
+    .btn:hover { opacity: 0.88; }
+
+    .hero { text-align: center; padding: 4rem 1rem 2rem; }
+    .hero h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.75rem; }
+    .hero p  { color: #6c757d; font-size: 1.1rem; max-width: 480px; margin: 0 auto; }
+
+    .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; max-width: 1060px; margin: 2.5rem auto; padding: 0 1rem 4rem; }
+
+    .plan-card { background: #fff; border: 2px solid #dee2e6; border-radius: 12px; padding: 1.75rem 1.5rem; position: relative; }
+    .plan-card.featured { border-color: #e00b27; }
+    .plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #e00b27; color: #fff; font-size: 0.72rem; font-weight: 700; padding: 3px 12px; border-radius: 20px; text-transform: uppercase; white-space: nowrap; }
+    .plan-name  { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .plan-price { font-size: 1.75rem; font-weight: 800; color: #e00b27; margin-bottom: 1.25rem; }
+    .plan-price span { font-size: 0.9rem; font-weight: 400; color: #6c757d; }
+    .plan-features { list-style: none; margin-bottom: 1.5rem; }
+    .plan-features li { font-size: 0.85rem; padding: 0.3rem 0; color: #495057; }
+    .plan-features li::before { content: "✓ "; color: #28a745; font-weight: 700; }
+    .plan-btn { width: 100%; text-align: center; display: block; }
+
+    .channel-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .tag { font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: #e2e3e5; color: #383d41; text-transform: uppercase; }
+    .tag-wa     { background: #d4edda; color: #155724; }
+    .tag-meta   { background: #cce5ff; color: #004085; }
+    .tag-sms    { background: #fff3cd; color: #856404; }
+
+    .faq { max-width: 680px; margin: 0 auto; padding: 0 1rem 4rem; }
+    .faq h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1.5rem; text-align: center; }
+    .faq-item { border-bottom: 1px solid #dee2e6; padding: 1rem 0; }
+    .faq-item strong { display: block; margin-bottom: 0.4rem; font-size: 0.95rem; }
+    .faq-item p { font-size: 0.875rem; color: #6c757d; line-height: 1.6; }
+  </style>
+</head>
+<body>
+<nav>
+  <span class="brand">🏠 HostAI</span>
+  {% if logged_in %}
+  <a href="/dashboard">Dashboard</a>
+  <a href="/billing">Billing</a>
+  <a href="/logout">Sign out</a>
+  {% else %}
+  <a href="/login">Sign in</a>
+  {% endif %}
+</nav>
+
+<div class="hero">
+  <h1>Simple, honest pricing</h1>
+  <p>Pick the messaging channel that fits your setup. All plans include the web dashboard + AI drafts.</p>
+</div>
+
+<div class="plans">
+
+  <!-- Free -->
+  <div class="plan-card">
+    <div class="plan-name">{{ plan_info['free']['name'] }}</div>
+    <div class="plan-price">$0 <span>/mo</span></div>
+    <ul class="plan-features">
+      {% for f in plan_info['free']['features'] %}
+      <li>{{ f }}</li>
+      {% endfor %}
+    </ul>
+    {% if logged_in %}
+    <a href="/dashboard" class="btn btn-outline plan-btn">Go to dashboard</a>
+    {% else %}
+    <a href="/signup" class="btn btn-outline plan-btn">Get started free</a>
+    {% endif %}
+  </div>
+
+  <!-- Baileys -->
+  <div class="plan-card">
+    <div class="channel-tags"><span class="tag tag-wa">WhatsApp</span><span class="tag">Your PC</span></div>
+    <div class="plan-name">{{ plan_info['baileys']['name'] }}</div>
+    <div class="plan-price">$19 <span>/mo</span></div>
+    <ul class="plan-features">
+      {% for f in plan_info['baileys']['features'] %}
+      <li>{{ f }}</li>
+      {% endfor %}
+    </ul>
+    {% if logged_in %}
+    <form method="post" action="/billing/subscribe/baileys">
+      <button type="submit" class="btn btn-outline plan-btn">Subscribe</button>
+    </form>
+    {% else %}
+    <a href="/signup" class="btn btn-outline plan-btn">Sign up to subscribe</a>
+    {% endif %}
+  </div>
+
+  <!-- Meta Cloud -->
+  <div class="plan-card featured">
+    <div class="plan-badge">Most popular</div>
+    <div class="channel-tags"><span class="tag tag-meta">WhatsApp Business</span><span class="tag">Cloud</span></div>
+    <div class="plan-name">{{ plan_info['meta_cloud']['name'] }}</div>
+    <div class="plan-price">$29 <span>/mo</span></div>
+    <ul class="plan-features">
+      {% for f in plan_info['meta_cloud']['features'] %}
+      <li>{{ f }}</li>
+      {% endfor %}
+    </ul>
+    {% if logged_in %}
+    <form method="post" action="/billing/subscribe/meta_cloud">
+      <button type="submit" class="btn btn-primary plan-btn">Subscribe</button>
+    </form>
+    {% else %}
+    <a href="/signup" class="btn btn-primary plan-btn">Sign up to subscribe</a>
+    {% endif %}
+  </div>
+
+  <!-- SMS -->
+  <div class="plan-card">
+    <div class="channel-tags"><span class="tag tag-sms">SMS</span><span class="tag">Twilio</span></div>
+    <div class="plan-name">{{ plan_info['sms']['name'] }}</div>
+    <div class="plan-price">$19 <span>/mo</span></div>
+    <ul class="plan-features">
+      {% for f in plan_info['sms']['features'] %}
+      <li>{{ f }}</li>
+      {% endfor %}
+    </ul>
+    {% if logged_in %}
+    <form method="post" action="/billing/subscribe/sms">
+      <button type="submit" class="btn btn-outline plan-btn">Subscribe</button>
+    </form>
+    {% else %}
+    <a href="/signup" class="btn btn-outline plan-btn">Sign up to subscribe</a>
+    {% endif %}
+  </div>
+
+  <!-- Pro -->
+  <div class="plan-card">
+    <div class="channel-tags">
+      <span class="tag tag-wa">WhatsApp</span>
+      <span class="tag tag-meta">Business</span>
+      <span class="tag tag-sms">SMS</span>
+    </div>
+    <div class="plan-name">{{ plan_info['pro']['name'] }}</div>
+    <div class="plan-price">$49 <span>/mo</span></div>
+    <ul class="plan-features">
+      {% for f in plan_info['pro']['features'] %}
+      <li>{{ f }}</li>
+      {% endfor %}
+    </ul>
+    {% if logged_in %}
+    <form method="post" action="/billing/subscribe/pro">
+      <button type="submit" class="btn btn-outline plan-btn">Subscribe</button>
+    </form>
+    {% else %}
+    <a href="/signup" class="btn btn-outline plan-btn">Sign up to subscribe</a>
+    {% endif %}
+  </div>
+
+</div>
+
+<div class="faq">
+  <h2>Frequently asked questions</h2>
+
+  <div class="faq-item">
+    <strong>What's the difference between Baileys and Meta Cloud?</strong>
+    <p>Baileys runs a small bot on your own computer using your personal WhatsApp account. Meta Cloud API uses WhatsApp Business (official Meta product) running entirely on our servers — no software to install, supports high volume.</p>
+  </div>
+  <div class="faq-item">
+    <strong>Do I need to install anything for Baileys?</strong>
+    <p>Just Node.js. After subscribing, you download a pre-configured zip from your Settings page, run one script, and scan a QR code once. That's it.</p>
+  </div>
+  <div class="faq-item">
+    <strong>What happens when my subscription expires?</strong>
+    <p>The messaging channels stop working immediately. Your dashboard, drafts, and data are preserved. Renew anytime to resume.</p>
+  </div>
+  <div class="faq-item">
+    <strong>Can I switch plans?</strong>
+    <p>Yes — upgrade, downgrade, or cancel anytime from your billing page. Changes take effect at the next billing cycle.</p>
+  </div>
+  <div class="faq-item">
+    <strong>Is there a free trial?</strong>
+    <p>The Free plan is free forever. Paid plans offer a 7-day trial — cancel before then and you won't be charged.</p>
+  </div>
+</div>
+
+</body>
+</html>

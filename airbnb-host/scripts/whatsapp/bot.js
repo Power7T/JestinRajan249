@@ -39,13 +39,144 @@ const pino   = require("pino");
 const HOST_NUMBER     = (process.env.HOST_WHATSAPP_NUMBER || "").trim();
 if (!HOST_NUMBER) { console.error("❌  HOST_WHATSAPP_NUMBER not set"); process.exit(1); }
 
+const WA_MODE         = (process.env.WA_MODE || "local").trim();   // "local" | "saas_bridge"
 const ROUTER_URL      = `http://127.0.0.1:${process.env.ROUTER_PORT || 7771}`;
 const WA_BOT_PORT     = parseInt(process.env.WA_BOT_PORT || "7772", 10);
 const INTERNAL_TOKEN  = process.env.INTERNAL_TOKEN || "";
 const MAX_BODY_BYTES  = 65536;
 const AIRBNB_LISTING  = (process.env.AIRBNB_LISTING_URL || "").trim();
 
+// SaaS bridge config (only used when WA_MODE=saas_bridge)
+const WEB_APP_URL     = (process.env.WEB_APP_URL || "").replace(/\/$/, "");
+const BOT_API_TOKEN   = (process.env.BOT_API_TOKEN || "").trim();
+const BRIDGE_POLL_MS  = parseInt(process.env.BRIDGE_POLL_MS || "10000", 10);
+
+if (WA_MODE === "saas_bridge") {
+  if (!WEB_APP_URL)   { console.error("❌  WEB_APP_URL must be set in .env for saas_bridge mode"); process.exit(1); }
+  if (!BOT_API_TOKEN) { console.error("❌  BOT_API_TOKEN must be set in .env for saas_bridge mode"); process.exit(1); }
+  console.log(`🌐  SaaS bridge mode — web app: ${WEB_APP_URL}`);
+}
+
 const HOST_WA_ID      = HOST_NUMBER.replace(/^\+/, "") + "@s.whatsapp.net";
+
+// ---------------------------------------------------------------------------
+// SaaS Bridge — HTTP helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Make an authenticated request to the HostAI web server.
+ * Returns parsed JSON or null on failure.
+ * Throws a special BridgeError with status 402 when subscription has expired.
+ */
+function bridgeRequest(method, endpoint, body) {
+  return new Promise((resolve, reject) => {
+    const url     = new URL(WEB_APP_URL + endpoint);
+    const payload = body ? JSON.stringify(body) : null;
+    const opts    = {
+      hostname: url.hostname,
+      port:     url.port || (url.protocol === "https:" ? 443 : 80),
+      path:     url.pathname + url.search,
+      method,
+      headers:  {
+        "Authorization": `Bearer ${BOT_API_TOKEN}`,
+        "Content-Type":  "application/json",
+        ...(payload ? { "Content-Length": Buffer.byteLength(payload) } : {}),
+      },
+      timeout: 12000,
+    };
+    const lib = url.protocol === "https:" ? https : http;
+    const req = lib.request(opts, res => {
+      let out = "";
+      res.on("data", c => out += c);
+      res.on("end", () => {
+        if (res.statusCode === 402) {
+          const err = new Error("Subscription expired");
+          err.status = 402;
+          return reject(err);
+        }
+        try { resolve(JSON.parse(out)); }
+        catch { resolve(null); }
+      });
+    });
+    req.on("timeout", () => req.destroy(new Error("Timeout")));
+    req.on("error", reject);
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+/** Push an inbound message to the web server for classification. */
+async function bridgePushInbound(fromPhone, text) {
+  const phone = fromPhone.replace(/@.+$/, "");
+  try {
+    await bridgeRequest("POST", "/api/wa/inbound", { from: phone, text });
+  } catch (err) {
+    if (err.status === 402) {
+      console.warn("⚠️  Subscription expired — renew at", WEB_APP_URL + "/billing");
+    } else {
+      console.error("Bridge inbound push error:", err.message);
+    }
+  }
+}
+
+/** Push a host WA command (APPROVE / EDIT / SKIP) to the web server. */
+async function bridgePushCallback(action, draft_id, text) {
+  try {
+    await bridgeRequest("POST", "/api/wa/callback", { action, draft_id, text: text || "" });
+  } catch (err) {
+    if (err.status === 402) {
+      await sendMsg(HOST_WA_ID, `⚠️  Subscription expired. Renew at ${WEB_APP_URL}/billing`);
+    } else {
+      console.error("Bridge callback error:", err.message);
+    }
+  }
+}
+
+/** Poll the web server for outbound messages to deliver to guests. */
+async function bridgePollOutbound() {
+  try {
+    const data = await bridgeRequest("GET", "/api/wa/pending");
+    const msgs = data?.messages || [];
+    for (const { to, text } of msgs) {
+      const jid = to.replace(/^\+/, "") + "@s.whatsapp.net";
+      await sendMsg(jid, text).catch(e => console.error("Bridge send failed:", e.message));
+    }
+  } catch (err) {
+    if (err.status === 402) {
+      console.warn(`⏸️  Subscription expired — bot paused. Renew at ${WEB_APP_URL}/billing`);
+    } else {
+      console.error("Bridge poll error:", err.message);
+    }
+  }
+}
+
+// Regex patterns for host commands (saas_bridge parses these and forwards to web server)
+const RE_BRIDGE_APPROVE = /^APPROVE\s+(\S+)$/i;
+const RE_BRIDGE_EDIT    = /^EDIT\s+(\S+):\s*([\s\S]{1,2000})$/i;
+const RE_BRIDGE_SKIP    = /^SKIP\s+(\S+)$/i;
+
+/** Handle a host WA message in bridge mode — forward commands to the web server. */
+async function handleHostMessageBridge(text) {
+  let m;
+  if ((m = RE_BRIDGE_APPROVE.exec(text))) {
+    await bridgePushCallback("approve", m[1]);
+    await sendMsg(HOST_WA_ID, `✅  Sent to web server for approval.`);
+    return;
+  }
+  if ((m = RE_BRIDGE_EDIT.exec(text))) {
+    await bridgePushCallback("edit", m[1], m[2].trim());
+    await sendMsg(HOST_WA_ID, `✅  Edited reply forwarded.`);
+    return;
+  }
+  if ((m = RE_BRIDGE_SKIP.exec(text))) {
+    await bridgePushCallback("skip", m[1]);
+    await sendMsg(HOST_WA_ID, `⏭️  Skipped.`);
+    return;
+  }
+  // Unknown command in bridge mode
+  await sendMsg(HOST_WA_ID,
+    `ℹ️  Bridge mode — commands: APPROVE/EDIT/SKIP [id]\nManage drafts at ${WEB_APP_URL}/dashboard`);
+}
 
 // ---------------------------------------------------------------------------
 // State files (all in scripts/whatsapp/)
@@ -109,7 +240,8 @@ for (const [type, list] of Object.entries(VENDORS)) {
 // No browser/Puppeteer dependency. Pure Node.js WebSocket to WhatsApp.
 // Auth persisted in .baileys_auth/ — no re-scan needed after first pairing.
 // ---------------------------------------------------------------------------
-let sock = null;
+let sock          = null;
+let _pollInterval = null;
 
 /** Send a text message via the active WhatsApp socket */
 async function sendMsg(jid, text) {
@@ -147,7 +279,19 @@ async function connectToWhatsApp() {
       if (!loggedOut) await connectToWhatsApp();
     }
     if (connection === "open") {
-      console.log(`✅  Bot ready | Host: ${HOST_NUMBER} | Router: ${ROUTER_URL} | HTTP: ${WA_BOT_PORT}\n`);
+      if (WA_MODE === "saas_bridge") {
+        console.log(`✅  Bot ready | Host: ${HOST_NUMBER} | Mode: saas_bridge | App: ${WEB_APP_URL}\n`);
+        // Start polling the web server for outbound messages
+        if (!_pollInterval) {
+          _pollInterval = setInterval(bridgePollOutbound, BRIDGE_POLL_MS);
+          console.log(`⏱️  Polling web server every ${BRIDGE_POLL_MS / 1000}s for outbound messages\n`);
+        }
+      } else {
+        console.log(`✅  Bot ready | Host: ${HOST_NUMBER} | Router: ${ROUTER_URL} | HTTP: ${WA_BOT_PORT}\n`);
+      }
+    }
+    if (connection === "close") {
+      if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
     }
   });
 
@@ -172,17 +316,27 @@ async function connectToWhatsApp() {
       const msg = { body, from };   // normalised shape used by all handlers
 
       try {
-        if (from === HOST_WA_ID) {
-          await handleHostMessage(body.trim());
-        } else if (from.endsWith("@g.us") || from === "status@broadcast") {
+        if (from.endsWith("@g.us") || from === "status@broadcast") {
           // skip groups and broadcasts
-        } else {
-          const guestEntry = findGuestByWaId(from);
-          if (guestEntry) {
-            await handleGuestMessageWithExtension(msg, guestEntry);
+        } else if (WA_MODE === "saas_bridge") {
+          // Bridge mode: host commands go to web server; everything else forwarded as inbound
+          if (from === HOST_WA_ID) {
+            await handleHostMessageBridge(body.trim());
           } else {
-            const vendor = vendorMap.get(from);
-            if (vendor) await handleVendorResponse(msg, vendor);
+            await bridgePushInbound(from, body.trim());
+          }
+        } else {
+          // Local mode: all logic runs on this machine
+          if (from === HOST_WA_ID) {
+            await handleHostMessage(body.trim());
+          } else {
+            const guestEntry = findGuestByWaId(from);
+            if (guestEntry) {
+              await handleGuestMessageWithExtension(msg, guestEntry);
+            } else {
+              const vendor = vendorMap.get(from);
+              if (vendor) await handleVendorResponse(msg, vendor);
+            }
           }
         }
       } catch (err) {

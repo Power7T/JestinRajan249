@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Billing — HostAI{% endblock %}
+
+{% block head %}
+<style>
+  .billing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 2rem; }
+  .plan-badge-lg { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; background: #d4edda; color: #155724; }
+  .plan-badge-lg.inactive { background: #f8d7da; color: #721c24; }
+  .plan-badge-lg.past_due { background: #fff3cd; color: #856404; }
+  .plan-price-lg { font-size: 2rem; font-weight: 800; color: #e00b27; }
+  .channel-pill { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; margin: 2px; }
+  .pill-wa    { background: #d4edda; color: #155724; }
+  .pill-meta  { background: #cce5ff; color: #004085; }
+  .pill-sms   { background: #fff3cd; color: #856404; }
+  .pill-none  { background: #e2e3e5; color: #383d41; }
+  @media (max-width: 600px) { .billing-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Billing</h1>
+
+{% if success_msg is defined and success_msg %}
+<div class="alert alert-success">{{ success_msg }}</div>
+{% endif %}
+
+<!-- Current plan summary -->
+<div class="billing-grid">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Current plan</span>
+      {% if is_active %}
+        <span class="plan-badge-lg">Active</span>
+      {% elif cfg.subscription_status == 'past_due' %}
+        <span class="plan-badge-lg past_due">Past due</span>
+      {% else %}
+        <span class="plan-badge-lg inactive">Inactive</span>
+      {% endif %}
+    </div>
+    <div class="plan-price-lg">{{ current_plan.price }}</div>
+    <div style="font-size:1.1rem;font-weight:700;margin:0.4rem 0 0.75rem">{{ current_plan.name }}</div>
+
+    <div style="margin-bottom:0.75rem">
+      {% for ch in current_plan.channels %}
+        {% if ch == 'baileys' %}<span class="channel-pill pill-wa">WhatsApp (Baileys)</span>{% endif %}
+        {% if ch == 'meta_cloud' %}<span class="channel-pill pill-meta">Meta Cloud API</span>{% endif %}
+        {% if ch == 'sms' %}<span class="channel-pill pill-sms">SMS / Twilio</span>{% endif %}
+      {% else %}
+        <span class="channel-pill pill-none">Email &amp; iCal only</span>
+      {% endfor %}
+    </div>
+
+    {% if cfg.subscription_expires_at %}
+    <p style="font-size:0.8rem;color:#6c757d">
+      Renews: {{ cfg.subscription_expires_at.strftime('%b %d, %Y') }}
+    </p>
+    {% endif %}
+
+    {% if cfg.stripe_customer_id and is_active %}
+    <form method="post" action="/billing/portal" style="margin-top:1rem">
+      <button type="submit" class="btn btn-outline btn-sm">Manage / Cancel subscription</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Change plan</span></div>
+    <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1rem">Upgrade or switch your messaging channel.</p>
+
+    <div style="display:flex;flex-direction:column;gap:0.5rem">
+      {% if cfg.subscription_plan != 'baileys' %}
+      <form method="post" action="/billing/subscribe/baileys">
+        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
+          📱 Baileys (Local Bot) — $19/mo
+        </button>
+      </form>
+      {% endif %}
+
+      {% if cfg.subscription_plan != 'meta_cloud' %}
+      <form method="post" action="/billing/subscribe/meta_cloud">
+        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
+          💬 Meta Cloud API — $29/mo
+        </button>
+      </form>
+      {% endif %}
+
+      {% if cfg.subscription_plan != 'sms' %}
+      <form method="post" action="/billing/subscribe/sms">
+        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
+          📟 SMS / Twilio — $19/mo
+        </button>
+      </form>
+      {% endif %}
+
+      {% if cfg.subscription_plan != 'pro' %}
+      <form method="post" action="/billing/subscribe/pro">
+        <button type="submit" class="btn btn-primary" style="width:100%;text-align:left">
+          ⭐ Pro (All Channels) — $49/mo
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    <p style="margin-top:1rem;font-size:0.78rem;color:#6c757d">
+      <a href="/pricing">See full plan comparison →</a>
+    </p>
+  </div>
+</div>
+
+<!-- Included in all plans -->
+<div class="card">
+  <div class="card-header"><span class="card-title">What's always included</span></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.5rem;font-size:0.85rem;color:#495057">
+    <div>✓ Web dashboard</div>
+    <div>✓ AI draft generation (Claude)</div>
+    <div>✓ iCal calendar sync</div>
+    <div>✓ Email (IMAP/SMTP)</div>
+    <div>✓ Vendor management</div>
+    <div>✓ Activity log</div>
+    <div>✓ Unlimited properties</div>
+    <div>✓ Cancel anytime</div>
+  </div>
+</div>
+
+<!-- Past due warning -->
+{% if cfg.subscription_status == 'past_due' %}
+<div class="alert alert-error" style="margin-top:1rem">
+  Your last payment failed. Please update your payment method to restore messaging channels.
+  {% if cfg.stripe_customer_id %}
+  <form method="post" action="/billing/portal" style="display:inline;margin-left:0.5rem">
+    <button type="submit" class="btn btn-primary btn-sm">Update payment</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

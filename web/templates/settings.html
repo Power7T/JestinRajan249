@@ -1,6 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Settings — HostAI{% endblock %}
 
+{% block head %}
+<style>
+  .channel-section { border: 2px solid #dee2e6; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .channel-section.locked { opacity: 0.6; pointer-events: none; }
+  .channel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .channel-title { font-size: 1rem; font-weight: 700; }
+  .lock-badge { font-size: 0.75rem; background: #f8d7da; color: #721c24; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+  .active-badge { font-size: 0.75rem; background: #d4edda; color: #155724; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+  .copy-box { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+  .copy-box input[type=text] { font-family: monospace; font-size: 0.8rem; background: #f8f9fa; margin-bottom: 0; }
+  .copy-btn { white-space: nowrap; padding: 6px 12px; font-size: 0.8rem; }
+  .token-display { font-family: monospace; font-size: 0.85rem; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px 12px; word-break: break-all; margin-bottom: 0.75rem; }
+  .download-box { background: #f0faf4; border: 1px solid #c3e6cb; border-radius: 8px; padding: 1.25rem; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Settings</h1>
 
@@ -9,7 +25,8 @@
 {% endif %}
 
 <form method="post" action="/settings">
-  <!-- Property info -->
+
+  <!-- ── Property ─────────────────────────────────────────────────── -->
   <div class="form-section">
     <h2>Property</h2>
     <label>Property name(s)</label>
@@ -21,7 +38,7 @@
     <p class="help-text">Airbnb → Calendar → Availability settings → Export Calendar → copy .ics link</p>
   </div>
 
-  <!-- Email -->
+  <!-- ── Email ────────────────────────────────────────────────────── -->
   <div class="form-section">
     <h2>Email (IMAP / SMTP)</h2>
     <div class="form-row">
@@ -40,11 +57,11 @@
     <input type="password" name="email_password" placeholder="xxxx xxxx xxxx xxxx">
     <p class="help-text">
       Gmail: <a href="https://myaccount.google.com/apppasswords" target="_blank">Create an App Password</a> →
-      Google Account → Security → App Passwords. Use this instead of your main password.
+      Google Account → Security → App Passwords.
     </p>
   </div>
 
-  <!-- Claude API -->
+  <!-- ── Claude API ────────────────────────────────────────────────── -->
   <div class="form-section">
     <h2>Claude API Key</h2>
     <label>Anthropic API key <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
@@ -52,10 +69,159 @@
     <p class="help-text">Get one at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></p>
   </div>
 
+  <!-- ── WhatsApp: Baileys ─────────────────────────────────────────── -->
+  <div class="channel-section {% if not has_baileys %}locked{% endif %}">
+    <div class="channel-header">
+      <span class="channel-title">📱 WhatsApp — Baileys (runs on your PC)</span>
+      {% if has_baileys %}
+        <span class="active-badge">Plan active</span>
+      {% else %}
+        <a href="/billing" class="lock-badge" style="pointer-events:all">🔒 Upgrade to enable</a>
+      {% endif %}
+    </div>
+
+    {% if has_baileys %}
+    <p style="font-size:0.85rem;color:#495057;margin-bottom:1rem">
+      Your WhatsApp bot runs on your own computer using your home internet connection.
+      No ban risk. One-time QR scan required.
+    </p>
+
+    <div class="download-box">
+      <p style="font-size:0.85rem;font-weight:600;margin-bottom:0.75rem">Step 1 — Download your personal bot package</p>
+      <p style="font-size:0.8rem;color:#6c757d;margin-bottom:0.75rem">
+        Pre-configured with your account credentials. Run it, scan the QR code once, done.
+      </p>
+      <a href="/api/download/baileys" class="btn btn-primary" style="margin-bottom:0.75rem">
+        ⬇ Download Baileys Bot (.zip)
+      </a>
+      <p style="font-size:0.75rem;color:#6c757d">
+        Requires <a href="https://nodejs.org" target="_blank">Node.js 22+</a>.
+        Mac/Linux: run <code>./setup.sh</code> · Windows: double-click <code>setup.bat</code>
+      </p>
+    </div>
+
+    <div style="margin-top:1rem">
+      <p style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem">Step 2 — Set your WhatsApp number</p>
+      <label>Your WhatsApp phone number (the one you'll scan with)</label>
+      <input type="text" name="whatsapp_number" value="{{ cfg.whatsapp_number or '' }}" placeholder="+1 555 000 0000">
+      <p class="help-text">Must match the phone number you scan the QR code with.</p>
+    </div>
+
+    {% if cfg.bot_api_token_hint %}
+    <div style="margin-top:1rem">
+      <p style="font-size:0.8rem;font-weight:600;margin-bottom:0.4rem">Bot token (stored in your downloaded .env)</p>
+      <div class="token-display">…{{ cfg.bot_api_token_hint }}</div>
+      <p style="font-size:0.75rem;color:#6c757d">Token is regenerated each time you download the package.</p>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <p style="font-size:0.85rem;color:#6c757d">
+      Subscribe to the <strong>Baileys</strong> or <strong>Pro</strong> plan to enable WhatsApp on your PC.
+      <a href="/billing">View plans →</a>
+    </p>
+    {% endif %}
+  </div>
+
+  <!-- ── WhatsApp: Meta Cloud API ─────────────────────────────────── -->
+  <div class="channel-section {% if not has_meta_cloud %}locked{% endif %}">
+    <div class="channel-header">
+      <span class="channel-title">💬 WhatsApp — Meta Cloud API (runs on our server)</span>
+      {% if has_meta_cloud %}
+        <span class="active-badge">Plan active</span>
+      {% else %}
+        <a href="/billing" class="lock-badge" style="pointer-events:all">🔒 Upgrade to enable</a>
+      {% endif %}
+    </div>
+
+    {% if has_meta_cloud %}
+    <p style="font-size:0.85rem;color:#495057;margin-bottom:1rem">
+      Official WhatsApp Business Cloud API — no hardware needed, scales to 10,000+ messages/day.
+    </p>
+
+    <label>WA Phone Number ID</label>
+    <input type="text" name="whatsapp_phone_id" value="{{ cfg.whatsapp_phone_id or '' }}" placeholder="123456789012345">
+
+    <label>Permanent access token <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
+    <input type="password" name="whatsapp_token" placeholder="EAA...">
+
+    <label>Webhook verify token <span style="color:#6c757d;font-weight:400">(you choose any string)</span></label>
+    <input type="text" name="whatsapp_verify_token" value="{{ cfg.whatsapp_verify_token or '' }}" placeholder="my-secret-token-123">
+
+    <label>Your webhook URL (paste this into Meta Developer Console)</label>
+    <div class="copy-box">
+      <input type="text" readonly value="{{ app_base_url }}/wa/webhook/{{ cfg.tenant_id }}" id="wa-webhook-url">
+      <button type="button" class="btn btn-outline copy-btn" onclick="copyField('wa-webhook-url')">Copy</button>
+    </div>
+    <p class="help-text">
+      Meta Developer Console → Your App → WhatsApp → Configuration → Webhook URL.
+      Subscribe to the <code>messages</code> field.
+    </p>
+    {% else %}
+    <p style="font-size:0.85rem;color:#6c757d">
+      Subscribe to the <strong>Meta Cloud</strong> or <strong>Pro</strong> plan to enable the official WhatsApp Business API.
+      <a href="/billing">View plans →</a>
+    </p>
+    {% endif %}
+  </div>
+
+  <!-- ── SMS / Twilio ─────────────────────────────────────────────── -->
+  <div class="channel-section {% if not has_sms %}locked{% endif %}">
+    <div class="channel-header">
+      <span class="channel-title">📟 SMS — Twilio</span>
+      {% if has_sms %}
+        <span class="active-badge">Plan active</span>
+      {% else %}
+        <a href="/billing" class="lock-badge" style="pointer-events:all">🔒 Upgrade to enable</a>
+      {% endif %}
+    </div>
+
+    {% if has_sms %}
+    <p style="font-size:0.85rem;color:#495057;margin-bottom:1rem">
+      Reach guests who don't use WhatsApp. Bring your own Twilio number.
+    </p>
+
+    <div class="form-row">
+      <div>
+        <label>Twilio Account SID</label>
+        <input type="text" name="twilio_account_sid" value="{{ cfg.twilio_account_sid or '' }}" placeholder="ACxxxxxxxx">
+      </div>
+      <div>
+        <label>Auth token <span style="color:#6c757d;font-weight:400">(leave blank to keep)</span></label>
+        <input type="password" name="twilio_auth_token" placeholder="••••••••">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Twilio from number</label>
+        <input type="text" name="twilio_from_number" value="{{ cfg.twilio_from_number or '' }}" placeholder="+15550001234">
+      </div>
+      <div>
+        <label>Your SMS alert number (host)</label>
+        <input type="text" name="sms_notify_number" value="{{ cfg.sms_notify_number or '' }}" placeholder="+15550009999">
+      </div>
+    </div>
+
+    <label>Your Twilio webhook URL (paste into Twilio Console)</label>
+    <div class="copy-box">
+      <input type="text" readonly value="{{ app_base_url }}/sms/webhook/{{ cfg.tenant_id }}" id="sms-webhook-url">
+      <button type="button" class="btn btn-outline copy-btn" onclick="copyField('sms-webhook-url')">Copy</button>
+    </div>
+    <p class="help-text">
+      Twilio Console → Phone Numbers → Active Numbers → your number → Messaging → Webhook URL (HTTP POST).
+    </p>
+    {% else %}
+    <p style="font-size:0.85rem;color:#6c757d">
+      Subscribe to the <strong>SMS</strong> or <strong>Pro</strong> plan to enable Twilio SMS.
+      <a href="/billing">View plans →</a>
+    </p>
+    {% endif %}
+  </div>
+
   <button type="submit" class="btn btn-primary">Save settings</button>
 </form>
 
-<!-- Vendors -->
+<!-- ── Vendors ────────────────────────────────────────────────────── -->
 <div class="form-section" id="vendors" style="margin-top:2.5rem">
   <h2>Vendors</h2>
   <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1rem">
@@ -116,4 +282,14 @@
     <button type="submit" class="btn btn-outline">+ Add vendor</button>
   </form>
 </div>
+
+<script>
+function copyField(id) {
+  const el = document.getElementById(id);
+  el.select();
+  document.execCommand('copy');
+  event.target.textContent = 'Copied!';
+  setTimeout(() => event.target.textContent = 'Copy', 1500);
+}
+</script>
 {% endblock %}

@@ -14,6 +14,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from web.db import Base
 
+# Subscription plans
+PLAN_FREE       = "free"
+PLAN_BAILEYS    = "baileys"
+PLAN_META_CLOUD = "meta_cloud"
+PLAN_SMS        = "sms"
+PLAN_PRO        = "pro"   # all three channels
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -68,10 +75,29 @@ class TenantConfig(Base):
     anthropic_api_key_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # WhatsApp (optional)
-    wa_mode:             Mapped[str]           = mapped_column(String(32), default="none")
-    whatsapp_number:     Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    whatsapp_token_enc:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # encrypted
-    whatsapp_phone_id:   Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    wa_mode:               Mapped[str]           = mapped_column(String(32), default="none")
+    whatsapp_number:       Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    whatsapp_token_enc:    Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # encrypted
+    whatsapp_phone_id:     Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    whatsapp_verify_token: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
+    # SMS / Twilio
+    sms_mode:              Mapped[str]           = mapped_column(String(32), default="none")
+    twilio_account_sid:    Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    twilio_auth_token_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # encrypted
+    twilio_from_number:    Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    sms_notify_number:     Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+
+    # Subscription (Stripe)
+    subscription_plan:       Mapped[str]           = mapped_column(String(32), default="free")
+    subscription_status:     Mapped[str]           = mapped_column(String(32), default="inactive")
+    subscription_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    stripe_customer_id:      Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    stripe_subscription_id:  Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
+    # Baileys bot API token (hashed) — bot authenticates with this instead of user password
+    bot_api_token_hash: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    bot_api_token_hint: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)  # last 4 chars for display
 
     # Internal token (auto-generated) for service-to-service auth
     internal_token: Mapped[str] = mapped_column(String(64), default=lambda: str(uuid.uuid4()))
