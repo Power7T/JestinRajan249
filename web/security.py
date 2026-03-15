@@ -32,12 +32,14 @@ _CSRF_EXEMPT_PREFIXES = (
     "/wa/webhook/",
     "/sms/webhook/",
     "/health",
+    "/metrics",
     "/api/wa/",
     "/api/workers",
     "/api/drafts",
     "/api/download/",
     "/static/",
     "/pricing",
+    "/verify-email",
 )
 
 _CSRF_SAFE_METHODS = frozenset(("GET", "HEAD", "OPTIONS"))
@@ -115,23 +117,40 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
 
 # ---------------------------------------------------------------------------
-# Rate limiter — sliding window, in-memory, thread-safe
+# Rate limiter — Redis-backed with in-memory fallback
+# Uses Redis sliding window (INCR + EXPIRE) when Redis is available.
+# Falls back to in-process sliding window when Redis is not configured.
 # ---------------------------------------------------------------------------
 
 _windows: dict[str, list[float]] = defaultdict(list)
 _lock = Lock()
 
 
-def rate_limit(key: str, max_requests: int, window_seconds: int) -> None:
-    """
-    Enforce a sliding-window rate limit.
-    Raises HTTP 429 if the key has exceeded max_requests within window_seconds.
-    """
+def _rate_limit_redis(r, key: str, max_requests: int, window_seconds: int) -> None:
+    """Redis-backed counter rate limit (fixed window per Redis key TTL)."""
+    rkey = f"rl:{key}"
+    try:
+        current = r.incr(rkey)
+        if current == 1:
+            r.expire(rkey, window_seconds)
+        if current > max_requests:
+            raise HTTPException(
+                status_code=429,
+                detail="Too many requests — please wait and try again",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        # Redis error — fall through to in-memory
+        _rate_limit_memory(key, max_requests, window_seconds)
+
+
+def _rate_limit_memory(key: str, max_requests: int, window_seconds: int) -> None:
+    """In-process sliding window rate limiter (single-worker only)."""
     now = time.monotonic()
     cutoff = now - window_seconds
     with _lock:
         hits = _windows[key]
-        # Evict expired entries
         while hits and hits[0] < cutoff:
             hits.pop(0)
         if len(hits) >= max_requests:
@@ -140,6 +159,19 @@ def rate_limit(key: str, max_requests: int, window_seconds: int) -> None:
                 detail="Too many requests — please wait and try again",
             )
         hits.append(now)
+
+
+def rate_limit(key: str, max_requests: int, window_seconds: int) -> None:
+    """
+    Enforce a rate limit. Uses Redis when available, in-memory as fallback.
+    Raises HTTP 429 if the key has exceeded max_requests within window_seconds.
+    """
+    from web.redis_client import get_redis
+    r = get_redis()
+    if r is not None:
+        _rate_limit_redis(r, key, max_requests, window_seconds)
+    else:
+        _rate_limit_memory(key, max_requests, window_seconds)
 
 
 def client_ip(request: Request) -> str:

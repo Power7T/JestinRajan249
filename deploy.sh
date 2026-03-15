@@ -109,7 +109,7 @@ if [ "$DOMAIN" != "localhost" ] && grep -q "letsencrypt/live/YOUR_DOMAIN" nginx.
     # Start nginx in HTTP-only mode temporarily
     $DC up -d nginx --no-deps 2>/dev/null || true
     sleep 3
-    $DC --profile ssl run --rm certbot && ok "SSL certificate obtained" || \
+    $DC --profile ssl run --rm certbot-init && ok "SSL certificate obtained" || \
       warn "Certbot failed — check that ${DOMAIN} points to this server's IP and port 80 is open"
     $DC restart nginx 2>/dev/null || true
   else
@@ -147,7 +147,17 @@ echo "  Update:     git pull && ./deploy.sh"
 echo ""
 warn "Remember to:"
 echo "  • Set STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET in .env"
+echo "  • Set SMTP_HOST + SMTP_USER + SMTP_PASS in .env (for verification emails)"
 echo "  • Point your Stripe webhook to: https://${DOMAIN}/billing/stripe-webhook"
+echo "  • (Optional) Set SENTRY_DSN in .env for error tracking"
+echo "  • (Optional) Proxy via Cloudflare for CDN + DDoS protection"
 echo "  • Restart after .env changes: ${DC} restart web"
+echo ""
+echo "  Services running:"
+echo "  • web + nginx: app + reverse proxy"
+echo "  • db:          PostgreSQL"
+echo "  • redis:       Rate limiting + message queue"
+echo "  • certbot-renew: Auto SSL renewal (every 12h)"
+echo "  • db-backup:   Daily PostgreSQL backups → pgbackups volume"
 echo "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""

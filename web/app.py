@@ -47,7 +47,7 @@ import os
 import secrets
 import zipfile
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import uvicorn
@@ -68,6 +68,7 @@ from web.auth import hash_password, verify_password, create_token, get_current_t
 from web.crypto import encrypt, decrypt
 from web import worker_manager
 from web import billing as billing_mod
+from web.mailer import send_verification_email, send_password_reset_email
 from web.billing import (
     PLAN_INFO, ACTIVE_STATUSES, tenant_has_channel, require_channel,
     create_checkout_session, create_portal_session, handle_stripe_webhook,
@@ -80,6 +81,26 @@ from web.security import (
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Sentry — error tracking (optional; only active when SENTRY_DSN is set)
+# ---------------------------------------------------------------------------
+_SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+        sentry_sdk.init(
+            dsn=_SENTRY_DSN,
+            integrations=[FastApiIntegration(), SqlalchemyIntegration()],
+            traces_sample_rate=0.05,
+            environment=os.getenv("ENVIRONMENT", "production"),
+            send_default_pii=False,
+        )
+        log.info("Sentry initialized")
+    except ImportError:
+        log.warning("sentry-sdk not installed — pip install 'sentry-sdk[fastapi]' to enable")
 
 BASE_DIR  = os.path.dirname(__file__)
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
@@ -257,12 +278,20 @@ def signup_post(
     if len(password) < 8:
         return templates.TemplateResponse("login.html",
                                           {"request": request, "error": "Password must be 8+ characters"})
-    tenant = Tenant(email=email, password_hash=hash_password(password))
+    ver_token = secrets.token_urlsafe(32)
+    tenant = Tenant(
+        email=email,
+        password_hash=hash_password(password),
+        verification_token=ver_token,
+        verification_sent_at=datetime.now(timezone.utc),
+    )
     db.add(tenant)
     db.commit()
     db.refresh(tenant)
     db.add(TenantConfig(tenant_id=tenant.id))
     db.commit()
+    # Send verification email (non-blocking — failure just logs a warning)
+    send_verification_email(email, ver_token)
     token = create_token(tenant.id)
     is_secure = (request.url.scheme == "https"
                  or request.headers.get("X-Forwarded-Proto") == "https")
@@ -270,6 +299,128 @@ def signup_post(
     resp.set_cookie("session", token, httponly=True,
                     samesite="strict", secure=is_secure, max_age=72 * 3600)
     return resp
+
+
+@app.get("/verify-email", response_class=HTMLResponse)
+def verify_email(request: Request, token: str = "", db: Session = Depends(get_db)):
+    if not token:
+        return templates.TemplateResponse("verify_email.html",
+                                          {"request": request, "success": False, "expired": False})
+    tenant = db.query(Tenant).filter_by(verification_token=token).first()
+    if not tenant:
+        return templates.TemplateResponse("verify_email.html",
+                                          {"request": request, "success": False, "expired": False})
+    # Check 24h expiry
+    if tenant.verification_sent_at:
+        sent_at = tenant.verification_sent_at
+        if sent_at.tzinfo is None:
+            sent_at = sent_at.replace(tzinfo=timezone.utc)
+        age = datetime.now(timezone.utc) - sent_at
+        if age.total_seconds() > 86400:
+            return templates.TemplateResponse("verify_email.html",
+                                              {"request": request, "success": False, "expired": True})
+    tenant.email_verified = True
+    tenant.verification_token = None
+    db.commit()
+    return templates.TemplateResponse("verify_email.html",
+                                      {"request": request, "success": True, "expired": False})
+
+
+@app.post("/resend-verification")
+def resend_verification(
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"resend-ver:{tenant_id}", max_requests=3, window_seconds=3600)
+    tenant = _get_tenant(tenant_id, db)
+    if not tenant.email_verified:
+        ver_token = secrets.token_urlsafe(32)
+        tenant.verification_token = ver_token
+        tenant.verification_sent_at = datetime.now(timezone.utc)
+        db.commit()
+        send_verification_email(tenant.email, ver_token)
+    return RedirectResponse("/dashboard", status_code=302)
+
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+def forgot_password_page(request: Request):
+    return templates.TemplateResponse("forgot_password.html",
+                                      {"request": request, "sent": False, "error": None})
+
+
+@app.post("/forgot-password", response_class=HTMLResponse)
+def forgot_password_post(
+    request: Request,
+    email: str = Form(...),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    rate_limit(f"forgot:{client_ip(request)}", max_requests=5, window_seconds=3600)
+    validate_csrf(request, csrf_token)
+    email = email.lower().strip()
+    tenant = db.query(Tenant).filter_by(email=email).first()
+    if tenant:
+        reset_tok = secrets.token_urlsafe(32)
+        tenant.reset_token = reset_tok
+        tenant.reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        db.commit()
+        send_password_reset_email(email, reset_tok)
+    # Always show success to prevent user enumeration
+    return templates.TemplateResponse("forgot_password.html",
+                                      {"request": request, "sent": True, "error": None})
+
+
+@app.get("/reset-password", response_class=HTMLResponse)
+def reset_password_page(request: Request, token: str = "", db: Session = Depends(get_db)):
+    tenant = db.query(Tenant).filter_by(reset_token=token).first()
+    if not tenant or not token:
+        return templates.TemplateResponse("reset_password.html",
+                                          {"request": request, "invalid": True, "success": False, "token": "", "error": None})
+    if tenant.reset_token_expires:
+        if datetime.now(timezone.utc) > tenant.reset_token_expires.replace(tzinfo=timezone.utc):
+            return templates.TemplateResponse("reset_password.html",
+                                              {"request": request, "invalid": True, "success": False, "token": "", "error": None})
+    return templates.TemplateResponse("reset_password.html",
+                                      {"request": request, "invalid": False, "success": False, "token": token, "error": None})
+
+
+@app.post("/reset-password", response_class=HTMLResponse)
+def reset_password_post(
+    request: Request,
+    token: str = Form(...),
+    password: str = Form(...),
+    confirm: str = Form(...),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    rate_limit(f"reset:{client_ip(request)}", max_requests=10, window_seconds=3600)
+    validate_csrf(request, csrf_token)
+    tenant = db.query(Tenant).filter_by(reset_token=token).first()
+    if not tenant:
+        return templates.TemplateResponse("reset_password.html",
+                                          {"request": request, "invalid": True, "success": False, "token": "", "error": None})
+    if tenant.reset_token_expires:
+        if datetime.now(timezone.utc) > tenant.reset_token_expires.replace(tzinfo=timezone.utc):
+            return templates.TemplateResponse("reset_password.html",
+                                              {"request": request, "invalid": True, "success": False, "token": "", "error": None})
+    if password != confirm:
+        return templates.TemplateResponse("reset_password.html",
+                                          {"request": request, "invalid": False, "success": False, "token": token, "error": "Passwords do not match"})
+    if len(password) < 8:
+        return templates.TemplateResponse("reset_password.html",
+                                          {"request": request, "invalid": False, "success": False, "token": token, "error": "Password must be at least 8 characters"})
+    tenant.password_hash = hash_password(password)
+    tenant.reset_token = None
+    tenant.reset_token_expires = None
+    db.commit()
+    return templates.TemplateResponse("reset_password.html",
+                                      {"request": request, "invalid": False, "success": True, "token": "", "error": None})
 
 
 @app.get("/logout")
@@ -421,13 +572,42 @@ def _execute_draft(draft: Draft, final_text: str, tenant_id: str, db: Session):
     db.commit()
 
 
-# Baileys outbound queue (in-memory per process; bot polls /api/wa/pending)
-_baileys_outbound: dict[str, list[dict]] = {}   # tenant_id → [{"to": phone, "text": str}]
+# Baileys outbound queue — Redis when available, in-memory fallback.
+# Redis key: "baileys_out:{tenant_id}" → JSON list items
+_baileys_outbound: dict[str, list[dict]] = {}   # fallback for no-Redis env
 
 
 def _queue_baileys_outbound(tenant_id: str, to_phone: str, text: str, db: Session):
+    from web.redis_client import get_redis
+    r = get_redis()
+    msg = json.dumps({"to": to_phone, "text": text})
+    if r is not None:
+        try:
+            r.rpush(f"baileys_out:{tenant_id}", msg)
+            r.expire(f"baileys_out:{tenant_id}", 3600)  # auto-clean after 1h
+            log.info("[%s] Queued Baileys outbound (Redis) to %s", tenant_id, to_phone)
+            return
+        except Exception as exc:
+            log.warning("[%s] Redis push failed, using in-memory: %s", tenant_id, exc)
     _baileys_outbound.setdefault(tenant_id, []).append({"to": to_phone, "text": text})
-    log.info("[%s] Queued Baileys outbound to %s", tenant_id, to_phone)
+    log.info("[%s] Queued Baileys outbound (memory) to %s", tenant_id, to_phone)
+
+
+def _pop_baileys_outbound(tenant_id: str) -> list[dict]:
+    """Pop all pending outbound messages for a tenant (atomic)."""
+    from web.redis_client import get_redis
+    r = get_redis()
+    if r is not None:
+        try:
+            key = f"baileys_out:{tenant_id}"
+            pipe = r.pipeline()
+            pipe.lrange(key, 0, -1)
+            pipe.delete(key)
+            results, _ = pipe.execute()
+            return [json.loads(m) for m in results]
+        except Exception as exc:
+            log.warning("[%s] Redis pop failed, using in-memory: %s", tenant_id, exc)
+    return _baileys_outbound.pop(tenant_id, [])
 
 
 # ---------------------------------------------------------------------------
@@ -841,7 +1021,7 @@ def api_wa_pending(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
 
     tenant_id = cfg.tenant_id
-    msgs = _baileys_outbound.pop(tenant_id, [])
+    msgs = _pop_baileys_outbound(tenant_id)
     return JSONResponse({"messages": msgs})
 
 
@@ -1145,9 +1325,66 @@ def health(db: Session = Depends(get_db)):
         db_ok = True
     except Exception:
         db_ok = False
+
+    from web.redis_client import get_redis
+    r = get_redis()
+    redis_ok = False
+    if r is not None:
+        try:
+            r.ping()
+            redis_ok = True
+        except Exception:
+            pass
+
     status = "ok" if db_ok else "degraded"
-    return JSONResponse({"status": status, "db": "ok" if db_ok else "error"},
-                        status_code=200 if db_ok else 503)
+    return JSONResponse(
+        {"status": status, "db": "ok" if db_ok else "error",
+         "redis": "ok" if redis_ok else ("disabled" if r is None else "error")},
+        status_code=200 if db_ok else 503,
+    )
+
+
+@app.get("/metrics")
+def metrics(db: Session = Depends(get_db)):
+    """Basic operational metrics — JSON format. Protect with your monitoring auth or firewall."""
+    import threading
+    from web.redis_client import get_redis
+
+    # DB stats
+    try:
+        total_tenants = db.query(Tenant).count()
+        active_drafts = db.query(Draft).filter_by(status="pending").count()
+        db_ok = True
+    except Exception:
+        total_tenants = active_drafts = -1
+        db_ok = False
+
+    # Worker stats
+    active_workers = sum(
+        1 for tid in list(worker_manager._workers.keys())
+        if worker_manager.worker_status(tid)["email_running"]
+    )
+
+    # Redis
+    r = get_redis()
+    redis_ok = False
+    if r is not None:
+        try:
+            r.ping()
+            redis_ok = True
+        except Exception:
+            pass
+
+    return JSONResponse({
+        "db":             "ok" if db_ok else "error",
+        "redis":          "ok" if redis_ok else ("disabled" if r is None else "error"),
+        "total_tenants":  total_tenants,
+        "pending_drafts": active_drafts,
+        "active_workers": active_workers,
+        "threads":        threading.active_count(),
+        "watchdog_ok":    (worker_manager._watchdog_thread is not None
+                           and worker_manager._watchdog_thread.is_alive()),
+    })
 
 
 # ---------------------------------------------------------------------------

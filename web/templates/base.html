@@ -102,6 +102,17 @@
   <a href="/logout" class="logout">Sign out</a>
 </nav>
 {% endblock %}
+
+{% if tenant is defined and tenant and not tenant.email_verified %}
+<div style="background:#fff3cd;color:#856404;padding:0.6rem 1.5rem;font-size:0.85rem;text-align:center;border-bottom:1px solid #ffc107">
+  ⚠️ Please verify your email address to ensure uninterrupted service.
+  <form method="post" action="/resend-verification" style="display:inline;margin-left:0.5rem">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button type="submit" style="background:none;border:none;color:#856404;font-weight:600;cursor:pointer;text-decoration:underline;font-size:0.85rem;padding:0">Resend verification email</button>
+  </form>
+</div>
+{% endif %}
+
 <div class="container">
   {% block content %}{% endblock %}
 </div>

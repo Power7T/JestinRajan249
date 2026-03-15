@@ -1,10 +1,17 @@
 version: "3.9"
 
 # ============================================================
-# Airbnb Host Assistant — Full Production Stack
+# HostAI — Full Production Stack
 # Deploy:  cp .env.example .env && nano .env && ./deploy.sh
 # Update:  git pull && ./deploy.sh
 # ============================================================
+
+# Shared log driver — all containers cap at 5×50 MB = 250 MB per service
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "5"
 
 services:
 
@@ -19,13 +26,30 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hostai"]
+      test: [\"CMD-SHELL\", \"pg_isready -U hostai\"]
       interval: 10s
       timeout: 5s
       retries: 5
     # DB is internal-only; never expose port 5432 to the host
     expose:
       - "5432"
+    logging: *default-logging
+
+  # ── Redis (shared state: rate limiting, Baileys queue) ───────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
 
   # ── Web App (FastAPI + Uvicorn) ─────────────────────────────
   web:
@@ -36,17 +60,30 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       DATABASE_URL:          postgresql://hostai:${POSTGRES_PASSWORD}@db:5432/hostai
+      REDIS_URL:             redis://redis:6379/0
       SECRET_KEY:            ${SECRET_KEY:?SECRET_KEY required}
       FIELD_ENCRYPTION_KEY:  ${FIELD_ENCRYPTION_KEY:?FIELD_ENCRYPTION_KEY required}
       APP_BASE_URL:          ${APP_BASE_URL:-https://localhost}
+      ENVIRONMENT:           ${ENVIRONMENT:-production}
+      # SMTP (for email verification + password reset)
+      SMTP_HOST:             ${SMTP_HOST:-}
+      SMTP_PORT:             ${SMTP_PORT:-587}
+      SMTP_USER:             ${SMTP_USER:-}
+      SMTP_PASS:             ${SMTP_PASS:-}
+      SMTP_FROM:             ${SMTP_FROM:-}
+      # Stripe
       STRIPE_SECRET_KEY:     ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PRICE_BAILEYS:  ${STRIPE_PRICE_BAILEYS:-}
       STRIPE_PRICE_META_CLOUD: ${STRIPE_PRICE_META_CLOUD:-}
       STRIPE_PRICE_SMS:      ${STRIPE_PRICE_SMS:-}
       STRIPE_PRICE_PRO:      ${STRIPE_PRICE_PRO:-}
+      # Monitoring
+      SENTRY_DSN:            ${SENTRY_DSN:-}
       WORKERS:               ${WORKERS:-2}
       PORT:                  8000
     volumes:
@@ -60,6 +97,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+    logging: *default-logging
 
   # ── Nginx (TLS termination + reverse proxy) ─────────────────
   nginx:
@@ -80,11 +118,14 @@ services:
       interval: 60s
       timeout: 10s
       retries: 3
+    logging: *default-logging
 
-  # ── Certbot (Let's Encrypt — run once, then renew via cron) ─
-  certbot:
+  # ── Certbot — initial SSL + automatic renewal ────────────────
+  # First-time: docker compose --profile ssl run --rm certbot-init
+  # Auto-renewal runs in the background as a long-lived service.
+  certbot-init:
     image: certbot/certbot:latest
-    profiles: ["ssl"]      # only started with: docker compose --profile ssl run certbot
+    profiles: ["ssl"]
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot_www:/var/www/certbot
@@ -96,7 +137,48 @@ services:
       --no-eff-email
       -d ${DOMAIN:-example.com}
 
+  certbot-renew:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    # Attempt renewal every 12h; certbot only acts when cert is <30d from expiry
+    entrypoint: >
+      /bin/sh -c "trap exit TERM;
+      while :; do
+        certbot renew --webroot --webroot-path=/var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done"
+    logging: *default-logging
+
+  # ── PostgreSQL automated daily backups ───────────────────────
+  db-backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgbackups:/backups
+    # Dump daily at 03:00 UTC; keep last 7 days
+    entrypoint: >
+      /bin/sh -c "trap exit TERM;
+      while :; do
+        FNAME=/backups/hostai_$$(date +%Y%m%d_%H%M%S).sql.gz;
+        pg_dump -h db -U hostai hostai | gzip > $$FNAME
+          && echo \"Backup OK: $$FNAME\"
+          || echo \"Backup FAILED\";
+        find /backups -name '*.sql.gz' -mtime +7 -delete;
+        sleep 24h & wait $${!};
+      done"
+    logging: *default-logging
+
 volumes:
   pgdata:
+  redisdata:
   letsencrypt:
   certbot_www:
+  pgbackups:

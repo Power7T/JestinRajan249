@@ -43,6 +43,15 @@ class Tenant(Base):
     is_active:    Mapped[bool]     = mapped_column(Boolean, default=True)
     created_at:   Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
+    # Email verification
+    email_verified:      Mapped[bool]           = mapped_column(Boolean, default=False)
+    verification_token:  Mapped[Optional[str]]  = mapped_column(String(128), nullable=True, index=True)
+    verification_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Password reset
+    reset_token:          Mapped[Optional[str]]      = mapped_column(String(128), nullable=True, index=True)
+    reset_token_expires:  Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     config:   Mapped[Optional["TenantConfig"]] = relationship("TenantConfig", back_populates="tenant", uselist=False)
     drafts:   Mapped[list["Draft"]]            = relationship("Draft", back_populates="tenant")
     vendors:  Mapped[list["Vendor"]]           = relationship("Vendor", back_populates="tenant")

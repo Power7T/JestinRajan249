@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Email — HostAI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #212529; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 2rem; width: 100%; max-width: 440px; text-align: center; }
+    .brand { font-size: 1.4rem; font-weight: 700; color: #e00b27; margin-bottom: 1.5rem; }
+    .icon { font-size: 3rem; margin-bottom: 1rem; }
+    h2 { font-size: 1.2rem; margin-bottom: 0.75rem; }
+    p { color: #6c757d; font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem; }
+    .alert-success { background: #d1e7dd; color: #0a3622; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.88rem; }
+    .alert-error   { background: #f8d7da; color: #721c24; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.88rem; }
+    .btn { display: inline-block; padding: 10px 24px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; text-decoration: none; background: #e00b27; color: #fff; margin-top: 0.5rem; }
+    .btn:hover { opacity: 0.88; }
+    .btn-secondary { background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">🏠 HostAI</div>
+
+  {% if success %}
+    <div class="icon">✅</div>
+    <h2>Email verified!</h2>
+    <div class="alert-success">Your email address has been confirmed. Your account is fully active.</div>
+    <a href="/dashboard" class="btn">Go to Dashboard</a>
+  {% elif expired %}
+    <div class="icon">⏰</div>
+    <h2>Link expired</h2>
+    <div class="alert-error">This verification link has expired (links are valid for 24 hours).</div>
+    <p>Sign in and we'll send you a new verification email from your account settings.</p>
+    <a href="/login" class="btn btn-secondary">Sign in</a>
+  {% else %}
+    <div class="icon">❌</div>
+    <h2>Invalid link</h2>
+    <div class="alert-error">This verification link is invalid or has already been used.</div>
+    <p>If you need help, contact support.</p>
+    <a href="/login" class="btn btn-secondary">Back to login</a>
+  {% endif %}
+</div>
+</body>
+</html>
