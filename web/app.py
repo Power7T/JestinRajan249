@@ -1637,9 +1637,7 @@ def api_download_baileys(request: Request, db: Session = Depends(get_db)):
     raw_token = generate_bot_token(cfg, db)
 
     # Read bot.js source
-    bot_js_path = os.path.join(
-        os.path.dirname(__file__), "..", "airbnb-host", "scripts", "whatsapp", "bot.js"
-    )
+    bot_js_path = os.path.join(os.path.dirname(__file__), "bot.js")
     try:
         with open(bot_js_path) as f:
             bot_js_content = f.read()

@@ -13,7 +13,6 @@ RUN pip install --no-cache-dir -r /app/web/requirements.txt
 
 # Copy application
 COPY web/ /app/web/
-COPY airbnb-host/ /app/airbnb-host/
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
