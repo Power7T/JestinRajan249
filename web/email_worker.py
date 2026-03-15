@@ -12,7 +12,7 @@ import smtplib
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 from typing import Optional
 
@@ -20,7 +20,7 @@ import imapclient
 from bs4 import BeautifulSoup
 
 from web.db import SessionLocal
-from web.models import Draft, ProcessedEmail, ActivityLog
+from web.models import Draft, ProcessedEmail, ActivityLog, Reservation
 from web.classifier import classify_message, detect_vendor_type, generate_draft, make_draft_id, needs_escalation, build_property_context
 from web.crypto import decrypt
 
@@ -171,6 +171,44 @@ def _mark_draft_approved(tenant_id: str, draft_id: str, final_text: str):
         db.close()
 
 
+def _lookup_reservation(tenant_id: str, guest_name: str) -> Optional[str]:
+    """
+    Try to match the guest name against a recent/upcoming reservation row.
+    Returns a context string if found, else None.
+    """
+    from datetime import date as date_type
+    today = datetime.now(timezone.utc).date()
+    window_start = today - timedelta(days=7)
+    window_end   = today + timedelta(days=90)
+    db = SessionLocal()
+    try:
+        name_parts = guest_name.lower().split()
+        rows = db.query(Reservation).filter(
+            Reservation.tenant_id == tenant_id,
+            Reservation.status == "confirmed",
+            Reservation.checkin >= window_start,
+            Reservation.checkin <= window_end,
+        ).all()
+        for r in rows:
+            db_name_lower = r.guest_name.lower()
+            if any(part in db_name_lower or db_name_lower in part for part in name_parts if len(part) > 2):
+                lines = [f"Reservation: {r.confirmation_code}"]
+                if r.listing_name:
+                    lines.append(f"Property: {r.listing_name}")
+                if r.checkin:
+                    lines.append(f"Check-in: {r.checkin.strftime('%A, %B %d, %Y')}")
+                if r.checkout:
+                    lines.append(f"Check-out: {r.checkout.strftime('%A, %B %d, %Y')}")
+                if r.nights:
+                    lines.append(f"Nights: {r.nights}")
+                if r.guests_count:
+                    lines.append(f"Guests: {r.guests_count}")
+                return "\n".join(lines)
+    finally:
+        db.close()
+    return None
+
+
 def _process_message(cfg: EmailConfig, parsed: dict, subject: str):
     guest_msg = parsed["guest_message"]
 
@@ -195,10 +233,18 @@ def _process_message(cfg: EmailConfig, parsed: dict, subject: str):
 
     msg_type    = classify_message(guest_msg)
     vendor_type = detect_vendor_type(guest_msg) if msg_type == "complex" else None
+
+    # Enrich property context with live reservation data if a match is found
+    res_context = _lookup_reservation(cfg.tenant_id, parsed["guest_name"])
+    full_context = cfg.property_context
+    if res_context:
+        full_context = (full_context + "\n\n<reservation>\n" + res_context + "\n</reservation>").strip()
+        log.info("[%s] Reservation match found for %s", cfg.tenant_id, parsed["guest_name"])
+
     try:
         draft_text = generate_draft(
             cfg.anthropic_api_key, parsed["guest_name"], guest_msg, msg_type,
-            property_context=cfg.property_context,
+            property_context=full_context,
         )
     except RuntimeError as exc:
         log.error("[%s] Draft generation failed: %s", cfg.tenant_id, exc)

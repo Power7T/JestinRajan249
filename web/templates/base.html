@@ -95,10 +95,11 @@
 {% block nav %}
 <nav>
   <span class="brand">🏠 HostAI</span>
-  <a href="/dashboard" class="{% if request.url.path == '/dashboard' %}active{% endif %}">Dashboard</a>
-  <a href="/activity"  class="{% if request.url.path == '/activity' %}active{% endif %}">Activity</a>
-  <a href="/settings"  class="{% if request.url.path == '/settings' %}active{% endif %}">Settings</a>
-  <a href="/billing"   class="{% if request.url.path == '/billing' %}active{% endif %}">Billing</a>
+  <a href="/dashboard"     class="{% if request.url.path == '/dashboard' %}active{% endif %}">Dashboard</a>
+  <a href="/reservations"  class="{% if request.url.path == '/reservations' %}active{% endif %}">Reservations</a>
+  <a href="/activity"      class="{% if request.url.path == '/activity' %}active{% endif %}">Activity</a>
+  <a href="/settings"      class="{% if request.url.path == '/settings' %}active{% endif %}">Settings</a>
+  <a href="/billing"       class="{% if request.url.path == '/billing' %}active{% endif %}">Billing</a>
   <a href="/logout" class="logout">Sign out</a>
 </nav>
 {% endblock %}

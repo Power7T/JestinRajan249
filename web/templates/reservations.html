@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Reservations — HostAI{% endblock %}
+
+{% block head %}
+<style>
+  /* Analytics row */
+  .analytics-row { display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem; }
+  .analytics-widget { background:#fff;border:1px solid #dee2e6;border-radius:8px;padding:1rem;text-align:center; }
+  .analytics-widget .widget-value { font-size:1.5rem;font-weight:700;color:#212529; }
+  .analytics-widget .widget-label { font-size:0.75rem;color:#6c757d;margin-top:0.25rem; }
+
+  /* Upload box */
+  .upload-card { background:#f0faf4;border:2px dashed #c3e6cb;border-radius:10px;padding:1.5rem;margin-bottom:1.5rem;text-align:center; }
+  .upload-card h3 { font-size:0.95rem;margin-bottom:0.5rem; }
+  .upload-card p  { font-size:0.82rem;color:#6c757d;margin-bottom:1rem; }
+
+  /* Upload frequency badge */
+  .freq-badge { display:inline-flex;align-items:center;gap:0.5rem;background:#fff;border:1px solid #dee2e6;
+                border-radius:20px;padding:4px 12px;font-size:0.78rem;color:#495057;margin-bottom:1rem; }
+  .freq-dot { width:8px;height:8px;border-radius:50%; }
+
+  /* Status badge colours */
+  .badge-confirmed  { background:#d4edda;color:#155724; }
+  .badge-cancelled  { background:#f8d7da;color:#721c24; }
+  .badge-pending    { background:#fff3cd;color:#856404; }
+
+  /* Stale warning */
+  .stale-banner { background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:0.6rem 1rem;
+                  font-size:0.82rem;color:#856404;margin-bottom:1rem; }
+
+  /* Table improvements */
+  .checkin-soon { background:#fff9e6; }
+  .checkout-today { background:#e8f5e9; }
+  .pagination { display:flex;gap:0.5rem;margin-top:1rem;justify-content:center;flex-wrap:wrap; }
+  .pagination a { padding:4px 10px;border:1px solid #dee2e6;border-radius:4px;font-size:0.82rem;color:#495057; }
+  .pagination a.active { background:#e00b27;color:#fff;border-color:#e00b27; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Reservations</h1>
+
+<!-- Upload frequency recommendation -->
+<div style="display:flex;gap:0.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center">
+  <div class="freq-badge">
+    <div class="freq-dot" style="background:#28a745"></div>
+    Recommended: upload CSV <strong>twice daily</strong>
+  </div>
+  <div class="freq-badge">
+    <div class="freq-dot" style="background:#ffc107"></div>
+    Morning (7–8am) + Evening (8–9pm)
+  </div>
+  {% if sync_log %}
+  <div class="freq-badge">
+    <div class="freq-dot" style="background:{% if csv_stale %}#dc3545{% else %}#28a745{% endif %}"></div>
+    Last synced: {{ sync_log.last_synced.strftime('%b %d, %H:%M UTC') }}
+    {% if csv_stale %} — <span style="color:#dc3545;font-weight:600">overdue</span>{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- Analytics -->
+{% if total > 0 %}
+<div class="analytics-row">
+  <div class="analytics-widget">
+    <div class="widget-value">{{ upcoming }}</div>
+    <div class="widget-label">Upcoming check-ins</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">${{ "%.0f"|format(month_revenue) }}</div>
+    <div class="widget-label">Revenue this month</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ occupancy_pct }}%</div>
+    <div class="widget-label">Occupancy this month</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ total }}</div>
+    <div class="widget-label">Total reservations</div>
+  </div>
+</div>
+{% endif %}
+
+{% if request.query_params.get('imported') %}
+<div class="alert alert-success">
+  ✓ {{ request.query_params.get('imported') }} new reservation(s) imported successfully.
+</div>
+{% endif %}
+{% if request.query_params.get('error') %}
+<div class="alert alert-error">
+  Upload error: {{ request.query_params.get('error') | replace('_', ' ') }}. Please try again with a valid Airbnb CSV file.
+</div>
+{% endif %}
+
+<!-- Upload card -->
+<div class="upload-card">
+  <h3>Upload Airbnb Reservation CSV</h3>
+  <p>
+    On Airbnb → <strong>Reservations</strong> → <strong>Export CSV</strong>.<br>
+    Upload here twice a day — morning and evening — for best results.
+  </p>
+  <form method="post" action="/reservations/upload" enctype="multipart/form-data" style="display:inline-flex;gap:0.75rem;align-items:center;flex-wrap:wrap;justify-content:center">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <input type="file" name="csv_file" accept=".csv" required style="width:auto;margin:0">
+    <button type="submit" class="btn btn-primary">Upload CSV</button>
+  </form>
+  <p style="font-size:0.75rem;color:#6c757d;margin-top:0.75rem;margin-bottom:0">
+    Existing reservations are updated (not duplicated). Cancelled bookings are flagged automatically.
+  </p>
+</div>
+
+<!-- What happens after upload -->
+<details style="margin-bottom:1.5rem">
+  <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;color:#e00b27;padding:4px 0">
+    ▶ What HostAI does with your reservations
+  </summary>
+  <div style="background:#f8f9fa;border-radius:6px;padding:1rem;margin-top:0.5rem;font-size:0.82rem;line-height:1.9;color:#495057">
+    <strong>Guest context enrichment</strong> — When a guest emails you, HostAI matches them to their reservation and includes check-in date, checkout date, and nights stayed in the AI prompt. Replies become far more personal.<br>
+    <strong>Pre-arrival message</strong> — 7 days before check-in, a warm welcome draft is auto-generated for your approval.<br>
+    <strong>Check-out thank-you</strong> — On checkout day, a thank-you message with a review request is drafted.<br>
+    <strong>Cleaner brief</strong> — On checkout day, a full cleaning checklist is drafted for your cleaner.<br>
+    <strong>Review reminder</strong> — 14 days after checkout, a nudge to leave the guest a review before the Airbnb window closes.
+  </div>
+</details>
+
+<!-- Reservations table -->
+{% if rows %}
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead>
+      <tr>
+        <th>Guest</th>
+        <th>Property</th>
+        <th>Check-in</th>
+        <th>Check-out</th>
+        <th>Nights</th>
+        <th>Guests</th>
+        <th>Payout</th>
+        <th>Status</th>
+        <th>Drafts</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+    {% set is_today_checkout = r.checkout == today %}
+    {% set is_soon = r.checkin and (r.checkin - today).days <= 3 and (r.checkin - today).days >= 0 %}
+    <tr class="{% if is_today_checkout %}checkout-today{% elif is_soon %}checkin-soon{% endif %}">
+      <td>
+        <strong>{{ r.guest_name }}</strong>
+        <div style="font-size:0.72rem;color:#6c757d;font-family:monospace">{{ r.confirmation_code }}</div>
+      </td>
+      <td style="font-size:0.82rem">{{ r.listing_name or '—' }}</td>
+      <td style="font-size:0.82rem;white-space:nowrap">
+        {% if r.checkin %}
+          {{ r.checkin.strftime('%b %d, %Y') }}
+          {% if r.checkin == today %}<span class="badge badge-ok" style="margin-left:4px">today</span>{% endif %}
+          {% if is_soon and r.checkin != today %}<span style="font-size:0.7rem;color:#856404">soon</span>{% endif %}
+        {% else %}—{% endif %}
+      </td>
+      <td style="font-size:0.82rem;white-space:nowrap">
+        {% if r.checkout %}
+          {{ r.checkout.strftime('%b %d, %Y') }}
+          {% if is_today_checkout %}<span class="badge badge-ok" style="margin-left:4px">today</span>{% endif %}
+        {% else %}—{% endif %}
+      </td>
+      <td style="text-align:center">{{ r.nights or '—' }}</td>
+      <td style="text-align:center">{{ r.guests_count or '—' }}</td>
+      <td style="text-align:right;font-size:0.85rem">
+        {% if r.payout_usd %}${{ "%.2f"|format(r.payout_usd) }}{% else %}—{% endif %}
+      </td>
+      <td>
+        <span class="badge badge-{{ r.status }}">{{ r.status }}</span>
+      </td>
+      <td style="font-size:0.72rem;color:#6c757d;white-space:nowrap">
+        {% if r.pre_arrival_sent %}✓ pre-arrival<br>{% endif %}
+        {% if r.cleaner_brief_sent %}✓ cleaner<br>{% endif %}
+        {% if r.checkout_msg_sent %}✓ checkout<br>{% endif %}
+        {% if r.review_reminder_sent %}✓ review<br>{% endif %}
+        {% if not r.pre_arrival_sent and not r.cleaner_brief_sent and not r.checkout_msg_sent and not r.review_reminder_sent %}
+        <span style="color:#adb5bd">pending</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+{% if pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}<a href="/reservations?page={{ page - 1 }}">← Prev</a>{% endif %}
+  {% for p in range(1, pages + 1) %}
+    <a href="/reservations?page={{ p }}" class="{% if p == page %}active{% endif %}">{{ p }}</a>
+  {% endfor %}
+  {% if page < pages %}<a href="/reservations?page={{ page + 1 }}">Next →</a>{% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty">
+  <div class="empty-icon">📋</div>
+  <p>No reservations imported yet.</p>
+  <p style="font-size:0.82rem;margin-top:0.4rem">Upload your Airbnb CSV above to get started.</p>
+</div>
+{% endif %}
+
+{% endblock %}

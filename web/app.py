@@ -40,6 +40,7 @@ Routes:
   GET  /api/workers   → worker status JSON
 """
 
+import csv
 import io
 import json
 import logging
@@ -47,7 +48,7 @@ import os
 import secrets
 import zipfile
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date as date_type
 from typing import Optional
 
 import uvicorn
@@ -63,6 +64,7 @@ from web.db import get_db, init_db, SessionLocal
 from web.db_read import get_read_db
 from web.models import (
     Tenant, TenantConfig, Draft, Vendor, ActivityLog, BaileysOutbound,
+    Reservation, ReservationSyncLog,
     PLAN_FREE, PLAN_BAILEYS, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
 )
 from web.auth import hash_password, verify_password, create_token, get_current_tenant_id
@@ -453,17 +455,57 @@ def dashboard(request: Request,
                .filter_by(tenant_id=tenant_id, status="pending")
                .order_by(Draft.created_at.desc())
                .all())
-    status  = worker_manager.worker_status(tenant_id)
+    status   = worker_manager.worker_status(tenant_id)
+    today    = datetime.now(timezone.utc).date()
+
+    # Reservation analytics for dashboard widgets
+    sync_log     = db.query(ReservationSyncLog).filter_by(tenant_id=tenant_id).first()
+    month_start  = today.replace(day=1)
+    month_rows   = db.query(Reservation).filter(
+        Reservation.tenant_id == tenant_id,
+        Reservation.status == "confirmed",
+        Reservation.checkin >= month_start,
+    ).all()
+    month_revenue  = sum(r.payout_usd or 0 for r in month_rows)
+    month_nights   = sum(r.nights or 0 for r in month_rows)
+    occupancy_pct  = round((month_nights / 30) * 100) if month_nights else 0
+    upcoming_count = db.query(Reservation).filter(
+        Reservation.tenant_id == tenant_id,
+        Reservation.status == "confirmed",
+        Reservation.checkin >= today,
+    ).count()
+    next_checkin = (db.query(Reservation).filter(
+        Reservation.tenant_id == tenant_id,
+        Reservation.status == "confirmed",
+        Reservation.checkin >= today,
+    ).order_by(Reservation.checkin).first())
+
+    # Stale CSV warning: > 12 hours since last upload
+    csv_stale = False
+    if sync_log:
+        last = sync_log.last_synced
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        csv_stale = (datetime.now(timezone.utc) - last).total_seconds() > 43200
+
     # Show one-time tour overlay after onboarding completion (cookie-based)
     show_tour = request.cookies.get("show_tour") == "1"
     response  = templates.TemplateResponse("dashboard.html", {
-        "request":   request,
-        "tenant":    tenant,
-        "cfg":       cfg,
-        "drafts":    pending,
-        "status":    status,
-        "show_tour": show_tour,
-        "plan_info": PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, PLAN_INFO[PLAN_FREE]),
+        "request":       request,
+        "tenant":        tenant,
+        "cfg":           cfg,
+        "drafts":        pending,
+        "status":        status,
+        "show_tour":     show_tour,
+        "plan_info":     PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, PLAN_INFO[PLAN_FREE]),
+        # Reservation analytics
+        "sync_log":      sync_log,
+        "csv_stale":     csv_stale,
+        "month_revenue": month_revenue,
+        "occupancy_pct": occupancy_pct,
+        "upcoming_count": upcoming_count,
+        "next_checkin":  next_checkin,
+        "today":         today,
     })
     if show_tour:
         response.delete_cookie("show_tour")
@@ -1682,6 +1724,206 @@ def api_download_baileys(request: Request, db: Session = Depends(get_db)):
         media_type="application/zip",
         headers={"Content-Disposition": "attachment; filename=hostai-bot.zip"},
     )
+
+
+# ---------------------------------------------------------------------------
+# Reservations — CSV import, list, analytics
+# ---------------------------------------------------------------------------
+
+# Airbnb CSV column name aliases (different export locales/versions use different names)
+_CSV_ALIASES = {
+    "confirmation_code": ["confirmation code", "confirmation_code", "reservationid", "reservation id"],
+    "guest_name":        ["guest name", "guest_name", "guest"],
+    "listing_name":      ["listing", "listing name", "listing_name", "property"],
+    "checkin":           ["start date", "start_date", "check-in", "check_in", "checkin", "arrival"],
+    "checkout":          ["end date", "end_date", "check-out", "check_out", "checkout", "departure"],
+    "nights":            ["nights", "# nights", "number of nights", "duration"],
+    "guests_count":      ["# guests", "guests", "number of guests", "guest count"],
+    "payout_usd":        ["amount", "total payout", "payout", "earnings", "host payout"],
+    "status":            ["status", "booking status"],
+}
+
+
+def _csv_col(headers: list[str], field: str) -> Optional[str]:
+    """Find the matching column name in CSV headers for a given field."""
+    lower_headers = {h.lower().strip(): h for h in headers}
+    for alias in _CSV_ALIASES.get(field, []):
+        if alias in lower_headers:
+            return lower_headers[alias]
+    return None
+
+
+def _parse_date(val: str) -> Optional[date_type]:
+    val = val.strip()
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%b %d, %Y", "%d-%b-%Y"):
+        try:
+            return datetime.strptime(val, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_float(val: str) -> Optional[float]:
+    try:
+        return float(val.strip().replace("$", "").replace(",", "").replace("€", "").replace("£", ""))
+    except (ValueError, AttributeError):
+        return None
+
+
+@app.get("/reservations", response_class=HTMLResponse)
+def reservations_page(request: Request,
+                      page: int = 1,
+                      db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    tenant   = _get_tenant(tenant_id, db)
+    per_page = 25
+    offset   = (page - 1) * per_page
+    total    = db.query(Reservation).filter_by(tenant_id=tenant_id).count()
+    rows     = (db.query(Reservation)
+                .filter_by(tenant_id=tenant_id)
+                .order_by(Reservation.checkin.desc())
+                .offset(offset).limit(per_page).all())
+
+    sync_log = db.query(ReservationSyncLog).filter_by(tenant_id=tenant_id).first()
+
+    # Analytics
+    today   = datetime.now(timezone.utc).date()
+    month_start = today.replace(day=1)
+    month_rows  = db.query(Reservation).filter(
+        Reservation.tenant_id == tenant_id,
+        Reservation.status == "confirmed",
+        Reservation.checkin >= month_start,
+    ).all()
+    month_revenue = sum(r.payout_usd or 0 for r in month_rows)
+    month_nights  = sum(r.nights or 0 for r in month_rows)
+    days_in_month = 30
+    occupancy_pct = round((month_nights / days_in_month) * 100) if month_nights else 0
+    upcoming = db.query(Reservation).filter(
+        Reservation.tenant_id == tenant_id,
+        Reservation.status == "confirmed",
+        Reservation.checkin >= today,
+    ).count()
+
+    return templates.TemplateResponse("reservations.html", {
+        "request":       request,
+        "tenant":        tenant,
+        "rows":          rows,
+        "total":         total,
+        "page":          page,
+        "per_page":      per_page,
+        "pages":         max(1, (total + per_page - 1) // per_page),
+        "sync_log":      sync_log,
+        "month_revenue": month_revenue,
+        "occupancy_pct": occupancy_pct,
+        "upcoming":      upcoming,
+        "today":         today,
+    })
+
+
+@app.post("/reservations/upload", response_class=HTMLResponse)
+async def reservations_upload(
+    request:    Request,
+    csv_file:   UploadFile = File(...),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"csv-upload:{tenant_id}", max_requests=20, window_seconds=3600)
+
+    if not csv_file.filename or not csv_file.filename.lower().endswith(".csv"):
+        return RedirectResponse("/reservations?error=invalid_file", status_code=302)
+
+    raw_bytes = await csv_file.read()
+    # Try UTF-8 then latin-1 (Airbnb sometimes exports in latin-1)
+    for enc in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            text = raw_bytes.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        return RedirectResponse("/reservations?error=encoding", status_code=302)
+
+    reader  = csv.DictReader(io.StringIO(text))
+    headers = reader.fieldnames or []
+    imported = 0
+    skipped  = 0
+
+    for row in reader:
+        code_col   = _csv_col(headers, "confirmation_code")
+        if not code_col:
+            break  # Can't parse without confirmation code
+        code = row.get(code_col, "").strip()
+        if not code:
+            skipped += 1
+            continue
+
+        existing = db.query(Reservation).filter_by(
+            tenant_id=tenant_id, confirmation_code=code
+        ).first()
+
+        def _get(field: str) -> str:
+            col = _csv_col(headers, field)
+            return row.get(col, "").strip() if col else ""
+
+        checkin_str  = _get("checkin")
+        checkout_str = _get("checkout")
+        nights_str   = _get("nights")
+        guests_str   = _get("guests_count")
+        payout_str   = _get("payout_usd")
+        status_raw   = _get("status").lower()
+        status = "cancelled" if "cancel" in status_raw else "confirmed"
+
+        checkin  = _parse_date(checkin_str)  if checkin_str  else None
+        checkout = _parse_date(checkout_str) if checkout_str else None
+        nights   = int(nights_str) if nights_str.isdigit() else (
+            (checkout - checkin).days if checkin and checkout else None
+        )
+        guests   = int(guests_str) if guests_str.isdigit() else None
+        payout   = _parse_float(payout_str)
+
+        guest_col   = _csv_col(headers, "guest_name")
+        listing_col = _csv_col(headers, "listing_name")
+
+        if existing:
+            existing.status       = status
+            existing.payout_usd   = payout   or existing.payout_usd
+            existing.guests_count = guests   or existing.guests_count
+        else:
+            db.add(Reservation(
+                tenant_id=tenant_id,
+                confirmation_code=code,
+                guest_name=(row.get(guest_col, "Guest").strip() if guest_col else "Guest"),
+                listing_name=(row.get(listing_col, "").strip() if listing_col else None),
+                checkin=checkin,
+                checkout=checkout,
+                nights=nights,
+                guests_count=guests,
+                payout_usd=payout,
+                status=status,
+            ))
+            imported += 1
+
+    # Update sync log
+    sync_log = db.query(ReservationSyncLog).filter_by(tenant_id=tenant_id).first()
+    if sync_log:
+        sync_log.last_synced   = datetime.now(timezone.utc)
+        sync_log.rows_imported = imported
+    else:
+        db.add(ReservationSyncLog(tenant_id=tenant_id, rows_imported=imported))
+
+    db.add(ActivityLog(tenant_id=tenant_id, event_type="csv_imported",
+                       message=f"Reservation CSV imported: {imported} new, {skipped} skipped"))
+    db.commit()
+    return RedirectResponse(f"/reservations?imported={imported}", status_code=302)
 
 
 # ---------------------------------------------------------------------------

@@ -17,7 +17,7 @@ import threading
 import time
 from typing import Optional
 
-from web import email_worker, calendar_worker
+from web import email_worker, calendar_worker, reservation_scheduler
 
 log = logging.getLogger(__name__)
 
@@ -73,6 +73,21 @@ def _start_tenant(tenant_id: str):
         entry["cal_stop"] = cal_stop
         entry["cal_cfg"]  = cal_cfg  # saved for watchdog restarts
 
+    # Reservation scheduler (only if API key + imported reservations exist)
+    res_cfg = reservation_scheduler.make_config_from_db(tenant_id)
+    if res_cfg:
+        api_key, prop_ctx = res_cfg
+        sched_stop = threading.Event()
+        t_sched = threading.Thread(
+            target=reservation_scheduler._run_scheduler,
+            args=(tenant_id, api_key, prop_ctx, sched_stop),
+            name=f"sched-{tenant_id[:8]}",
+            daemon=True,
+        )
+        t_sched.start()
+        entry["sched"]      = t_sched
+        entry["sched_stop"] = sched_stop
+
     with _lock:
         _workers[tenant_id] = entry
 
@@ -85,11 +100,11 @@ def _stop_tenant(tenant_id: str):
         entry = _workers.pop(tenant_id, None)
     if not entry:
         return
-    for key in ("email_stop", "cal_stop"):
+    for key in ("email_stop", "cal_stop", "sched_stop"):
         evt = entry.get(key)
         if evt:
             evt.set()
-    for key in ("email", "cal"):
+    for key in ("email", "cal", "sched"):
         t = entry.get(key)
         if t and t.is_alive():
             t.join(timeout=5)
@@ -184,5 +199,6 @@ def worker_status(tenant_id: str) -> dict:
     return {
         "email_running": entry.get("email") is not None and entry["email"].is_alive(),
         "cal_running":   entry.get("cal") is not None and entry["cal"].is_alive(),
+        "sched_running": entry.get("sched") is not None and entry["sched"].is_alive(),
         "watchdog_ok":   _watchdog_thread is not None and _watchdog_thread.is_alive(),
     }

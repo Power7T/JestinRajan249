@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (
-    String, Text, Integer, Boolean, DateTime, ForeignKey, JSON
+    String, Text, Integer, Boolean, DateTime, ForeignKey, JSON, Float, Date, UniqueConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -231,3 +231,46 @@ class ActivityLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="logs")
+
+
+# ---------------------------------------------------------------------------
+# Reservation — imported from Airbnb CSV (one row per booking per tenant)
+# ---------------------------------------------------------------------------
+
+class Reservation(Base):
+    __tablename__ = "reservations"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "confirmation_code", name="uq_reservation_tenant_code"),
+    )
+
+    id:                Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:         Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    confirmation_code: Mapped[str]           = mapped_column(String(64), index=True)
+    guest_name:        Mapped[str]           = mapped_column(String(128))
+    listing_name:      Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    checkin:           Mapped[Optional[datetime]] = mapped_column(Date, nullable=True, index=True)
+    checkout:          Mapped[Optional[datetime]] = mapped_column(Date, nullable=True, index=True)
+    nights:            Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    guests_count:      Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    payout_usd:        Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    status:            Mapped[str]           = mapped_column(String(32), default="confirmed", index=True)  # confirmed / cancelled / pending
+    imported_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+
+    # Proactive message state flags (prevent re-sending)
+    pre_arrival_sent:   Mapped[bool] = mapped_column(Boolean, default=False)
+    checkout_msg_sent:  Mapped[bool] = mapped_column(Boolean, default=False)
+    review_reminder_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    cleaner_brief_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+# ---------------------------------------------------------------------------
+# ReservationSyncLog — tracks when each tenant last uploaded their CSV
+# ---------------------------------------------------------------------------
+
+class ReservationSyncLog(Base):
+    __tablename__ = "reservation_sync_logs"
+
+    id:          Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:   Mapped[str]      = mapped_column(String(36), ForeignKey("tenants.id"), unique=True, index=True)
+    last_synced: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    rows_imported: Mapped[int]    = mapped_column(Integer, default=0)

@@ -26,6 +26,18 @@
 
   /* Escalation draft */
   .draft-escalation { border-left:4px solid #dc3545 !important; }
+
+  /* Analytics widgets */
+  .analytics-row { display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem; }
+  .analytics-widget { background:#fff;border:1px solid #dee2e6;border-radius:8px;padding:1rem;text-align:center; }
+  .analytics-widget .widget-value { font-size:1.5rem;font-weight:700;color:#212529;line-height:1.2; }
+  .analytics-widget .widget-label { font-size:0.75rem;color:#6c757d;margin-top:0.25rem; }
+  .analytics-widget .widget-sub   { font-size:0.7rem;color:#adb5bd;margin-top:0.1rem; }
+
+  /* CSV stale banner */
+  .csv-banner { background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:0.6rem 1rem;
+                font-size:0.82rem;color:#856404;display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem; }
+  .csv-banner a { color:#856404;font-weight:600; }
 </style>
 {% endblock %}
 
@@ -43,6 +55,49 @@
     <span>Calendar watcher {% if status.cal_running %}running{% else %}not configured{% endif %}</span>
   </div>
 </div>
+
+<!-- CSV stale warning -->
+{% if sync_log and csv_stale %}
+<div class="csv-banner">
+  ⚠️ Your reservation data was last synced
+  {% set hours_ago = ((today | string | length) and ((now - sync_log.last_synced).total_seconds() // 3600) | int) %}
+  over 12 hours ago.
+  <a href="/reservations">Upload fresh CSV →</a>
+  <span style="margin-left:auto;font-size:0.75rem;color:#adb5bd">Recommended: twice daily (morning + evening)</span>
+</div>
+{% elif not sync_log %}
+<div class="csv-banner">
+  📋 No reservation data yet — <a href="/reservations">upload your Airbnb CSV</a> to unlock guest context, analytics, and proactive messages.
+</div>
+{% endif %}
+
+<!-- Analytics widgets (shown once reservations are uploaded) -->
+{% if sync_log %}
+<div class="analytics-row">
+  <div class="analytics-widget">
+    <div class="widget-value">{{ upcoming_count }}</div>
+    <div class="widget-label">Upcoming reservations</div>
+    {% if next_checkin %}
+    <div class="widget-sub">Next: {{ next_checkin.guest_name.split()[0] }}, {{ next_checkin.checkin.strftime('%b %d') }}</div>
+    {% endif %}
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">${{ "%.0f"|format(month_revenue) }}</div>
+    <div class="widget-label">Revenue this month</div>
+    <div class="widget-sub">Confirmed bookings only</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ occupancy_pct }}%</div>
+    <div class="widget-label">Occupancy this month</div>
+    <div class="widget-sub">Booked nights ÷ 30</div>
+  </div>
+  <div class="analytics-widget" style="cursor:pointer" onclick="location.href='/reservations'">
+    <div class="widget-value" style="font-size:1.1rem;color:#e00b27">→</div>
+    <div class="widget-label">All reservations</div>
+    <div class="widget-sub">View & upload CSV</div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Setup checklist (only shown when onboarding not complete) -->
 {% if not cfg.onboarding_complete %}
