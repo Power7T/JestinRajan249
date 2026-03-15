@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Activity — HostAI{% endblock %}
+
+{% block content %}
+<h1>Activity Log</h1>
+
+{% if not logs %}
+<div class="empty">
+  <div class="empty-icon">📋</div>
+  <p>No activity yet.</p>
+</div>
+{% else %}
+<div class="card" style="padding:0;overflow:hidden">
+<table>
+  <thead>
+    <tr><th>Time</th><th>Event</th><th>Detail</th></tr>
+  </thead>
+  <tbody>
+  {% for log in logs %}
+    <tr>
+      <td style="white-space:nowrap;color:#6c757d;font-size:0.8rem">
+        {{ log.created_at.strftime('%b %d %H:%M') if log.created_at else '' }}
+      </td>
+      <td>
+        {% set et = log.event_type %}
+        {% if 'approved' in et %}
+          <span class="badge badge-ok">approved</span>
+        {% elif 'skipped' in et %}
+          <span class="badge badge-email">skipped</span>
+        {% elif 'email' in et %}
+          <span class="badge badge-email">email</span>
+        {% elif 'calendar' in et %}
+          <span class="badge badge-calendar">calendar</span>
+        {% elif 'settings' in et %}
+          <span class="badge badge-routine">settings</span>
+        {% else %}
+          <span class="badge badge-email">{{ et }}</span>
+        {% endif %}
+      </td>
+      <td style="font-size:0.85rem">{{ log.message }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

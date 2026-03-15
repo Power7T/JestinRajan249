@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Settings — HostAI{% endblock %}
+
+{% block content %}
+<h1>Settings</h1>
+
+{% if saved %}
+<div class="alert alert-success">Settings saved — workers restarted with new configuration.</div>
+{% endif %}
+
+<form method="post" action="/settings">
+  <!-- Property info -->
+  <div class="form-section">
+    <h2>Property</h2>
+    <label>Property name(s)</label>
+    <input type="text" name="property_names" value="{{ cfg.property_names or '' }}" placeholder="Beach House, City Flat">
+    <p class="help-text">Comma-separated if multiple properties.</p>
+
+    <label>Airbnb iCal URL(s)</label>
+    <textarea name="ical_urls" placeholder="https://www.airbnb.com/calendar/ical/...ics&#10;One per line or comma-separated">{{ cfg.ical_urls or '' }}</textarea>
+    <p class="help-text">Airbnb → Calendar → Availability settings → Export Calendar → copy .ics link</p>
+  </div>
+
+  <!-- Email -->
+  <div class="form-section">
+    <h2>Email (IMAP / SMTP)</h2>
+    <div class="form-row">
+      <div>
+        <label>IMAP host</label>
+        <input type="text" name="imap_host" value="{{ cfg.imap_host or '' }}" placeholder="imap.gmail.com">
+      </div>
+      <div>
+        <label>SMTP host</label>
+        <input type="text" name="smtp_host" value="{{ cfg.smtp_host or '' }}" placeholder="smtp.gmail.com">
+      </div>
+    </div>
+    <label>Email address</label>
+    <input type="email" name="email_address" value="{{ cfg.email_address or '' }}" placeholder="yourhost@gmail.com">
+    <label>App password <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
+    <input type="password" name="email_password" placeholder="xxxx xxxx xxxx xxxx">
+    <p class="help-text">
+      Gmail: <a href="https://myaccount.google.com/apppasswords" target="_blank">Create an App Password</a> →
+      Google Account → Security → App Passwords. Use this instead of your main password.
+    </p>
+  </div>
+
+  <!-- Claude API -->
+  <div class="form-section">
+    <h2>Claude API Key</h2>
+    <label>Anthropic API key <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
+    <input type="password" name="anthropic_key" placeholder="sk-ant-...">
+    <p class="help-text">Get one at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></p>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Save settings</button>
+</form>
+
+<!-- Vendors -->
+<div class="form-section" id="vendors" style="margin-top:2.5rem">
+  <h2>Vendors</h2>
+  <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1rem">
+    Contacts for cleaners, maintenance crew, etc. Used for automatic dispatch prompts.
+  </p>
+
+  {% if vendors %}
+  <table>
+    <thead>
+      <tr><th>Category</th><th>Name</th><th>Phone</th><th>Notes</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for v in vendors %}
+      <tr>
+        <td>{{ v.category|replace('_', ' ') }}</td>
+        <td>{{ v.name }}</td>
+        <td>{{ v.phone }}</td>
+        <td style="color:#6c757d;font-size:0.8rem">{{ v.notes or '' }}</td>
+        <td>
+          <form method="post" action="/vendors/{{ v.id }}/delete" style="display:inline">
+            <button type="submit" class="btn btn-outline btn-sm" onclick="return confirm('Remove {{ v.name }}?')">Remove</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <br>
+  {% endif %}
+
+  <form method="post" action="/vendors/add">
+    <div class="form-row">
+      <div>
+        <label>Category</label>
+        <select name="category">
+          <option value="cleaners">Cleaners</option>
+          <option value="ac_technicians">AC Technicians</option>
+          <option value="plumbers">Plumbers</option>
+          <option value="electricians">Electricians</option>
+          <option value="locksmiths">Locksmiths</option>
+        </select>
+      </div>
+      <div>
+        <label>Name</label>
+        <input type="text" name="name" placeholder="Maria Lopez" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Phone (WhatsApp)</label>
+        <input type="text" name="phone" placeholder="+1 555 000 0000" required>
+      </div>
+      <div>
+        <label>Notes (optional)</label>
+        <input type="text" name="notes" placeholder="Available 8am–6pm">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-outline">+ Add vendor</button>
+  </form>
+</div>
+{% endblock %}

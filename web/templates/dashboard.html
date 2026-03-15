@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — HostAI{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<!-- Worker status bar -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="dot {% if status.email_running %}dot-green{% else %}dot-red{% endif %}"></div>
+    <span>Email watcher {% if status.email_running %}running{% else %}stopped{% endif %}</span>
+  </div>
+  <div class="status-item">
+    <div class="dot {% if status.cal_running %}dot-green{% else %}dot-grey{% endif %}"></div>
+    <span>Calendar watcher {% if status.cal_running %}running{% else %}not configured{% endif %}</span>
+  </div>
+</div>
+
+{% if not drafts %}
+<div class="empty">
+  <div class="empty-icon">✅</div>
+  <p>No pending drafts — all caught up!</p>
+  <p style="font-size:0.8rem;margin-top:0.4rem">New guest messages will appear here for your approval.</p>
+</div>
+{% else %}
+<p style="font-size:0.85rem;color:#6c757d;margin-bottom:1rem">{{ drafts|length }} pending draft{% if drafts|length != 1 %}s{% endif %} waiting for review</p>
+
+{% for draft in drafts %}
+<div class="card" id="draft-{{ draft.id }}">
+  <div class="card-header">
+    <div>
+      <span class="card-title">{{ draft.guest_name }}</span>
+      &nbsp;
+      <span class="badge badge-{{ draft.msg_type }}">{{ draft.msg_type }}</span>
+      <span class="badge badge-{{ draft.source }}">{{ draft.source }}</span>
+      {% if draft.vendor_type %}
+      <span class="badge badge-complex">{{ draft.vendor_type|replace('_', ' ') }}</span>
+      {% endif %}
+    </div>
+    <span class="card-meta">{{ draft.created_at.strftime('%b %d, %H:%M') if draft.created_at else '' }}</span>
+  </div>
+
+  {% if draft.message and draft.source != 'calendar' %}
+  <div style="font-size:0.8rem;color:#6c757d;margin-bottom:0.5rem">
+    <strong>Guest message:</strong> {{ draft.message[:200] }}{% if draft.message|length > 200 %}…{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="draft-text">{{ draft.draft }}</div>
+
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-start">
+    <!-- Approve -->
+    <form method="post" action="/drafts/{{ draft.id }}/approve" style="display:inline">
+      <button type="submit" class="btn btn-success btn-sm">✓ Send this</button>
+    </form>
+
+    <!-- Skip -->
+    <form method="post" action="/drafts/{{ draft.id }}/skip" style="display:inline">
+      <button type="submit" class="btn btn-outline btn-sm">✗ Skip</button>
+    </form>
+
+    <!-- Edit toggle (HTMX inline) -->
+    <button class="btn btn-secondary btn-sm"
+            hx-get="/drafts/{{ draft.id }}/edit-form"
+            hx-target="#edit-area-{{ draft.id }}"
+            hx-swap="innerHTML">
+      ✎ Edit &amp; send
+    </button>
+  </div>
+
+  <!-- Inline edit form (loaded by HTMX) -->
+  <div id="edit-area-{{ draft.id }}" style="margin-top:0.75rem"></div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- Auto-refresh pending count every 30s via HTMX -->
+<div hx-get="/api/drafts" hx-trigger="every 30s" hx-swap="none"
+     hx-on::after-request="if(JSON.parse(event.detail.xhr.responseText).length !== {{ drafts|length }}) location.reload()">
+</div>
+{% endblock %}

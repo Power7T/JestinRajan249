@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in — HostAI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #212529; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 2rem; width: 100%; max-width: 400px; }
+    .brand { text-align: center; font-size: 1.4rem; font-weight: 700; color: #e00b27; margin-bottom: 1.5rem; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+    input { width: 100%; padding: 9px 11px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.9rem; margin-bottom: 1rem; }
+    .btn { width: 100%; padding: 10px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; }
+    .btn-primary { background: #e00b27; color: #fff; margin-bottom: 0.75rem; }
+    .btn-secondary { background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; }
+    .btn:hover { opacity: 0.88; }
+    .alert { padding: 0.65rem 0.9rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; background: #f8d7da; color: #721c24; }
+    .divider { text-align: center; color: #adb5bd; font-size: 0.8rem; margin: 0.5rem 0 0.75rem; }
+    p.note { font-size: 0.78rem; color: #6c757d; text-align: center; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">🏠 HostAI</div>
+
+  {% if error %}
+  <div class="alert">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="/login">
+    <label>Email</label>
+    <input type="email" name="email" placeholder="you@example.com" required autocomplete="email">
+    <label>Password</label>
+    <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+    <button type="submit" class="btn btn-primary">Sign in</button>
+  </form>
+
+  <div class="divider">— or —</div>
+
+  <form method="post" action="/signup">
+    <label>Email</label>
+    <input type="email" name="email" placeholder="New account email" required autocomplete="email">
+    <label>Password <span style="color:#6c757d;font-weight:400">(8+ chars)</span></label>
+    <input type="password" name="password" placeholder="Choose a password" required autocomplete="new-password">
+    <button type="submit" class="btn btn-secondary">Create account</button>
+  </form>
+
+  <p class="note">AI-powered guest communication for Airbnb hosts.</p>
+</div>
+</body>
+</html>
