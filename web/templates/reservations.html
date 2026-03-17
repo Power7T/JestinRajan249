@@ -123,8 +123,21 @@
   </div>
 </details>
 
+<!-- Export + check-in link notification -->
+{% if request.query_params.get('checkin_link') %}
+<div class="alert alert-success" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+  ✓ Check-in link generated:
+  <code style="font-size:0.82rem;word-break:break-all">{{ request.url.scheme }}://{{ request.headers.get('host', '') }}/checkin/{{ request.query_params.get('checkin_link') }}</code>
+  <button onclick="navigator.clipboard.writeText('{{ request.url.scheme }}://{{ request.headers.get('host', '') }}/checkin/{{ request.query_params.get('checkin_link') }}');this.textContent='Copied!'"
+          class="btn btn-outline btn-sm">Copy link</button>
+</div>
+{% endif %}
+
 <!-- Reservations table -->
 {% if rows %}
+<div style="display:flex;justify-content:flex-end;margin-bottom:0.75rem">
+  <a href="/reservations/export.csv" class="btn btn-outline btn-sm">⬇ Export CSV</a>
+</div>
 <div class="card" style="padding:0;overflow:hidden">
   <table>
     <thead>
@@ -138,6 +151,7 @@
         <th>Payout</th>
         <th>Status</th>
         <th>Drafts</th>
+        <th>Portal</th>
       </tr>
     </thead>
     <tbody>
@@ -178,6 +192,19 @@
         {% if r.review_reminder_sent %}✓ review<br>{% endif %}
         {% if not r.pre_arrival_sent and not r.cleaner_brief_sent and not r.checkout_msg_sent and not r.review_reminder_sent %}
         <span style="color:#adb5bd">pending</span>
+        {% endif %}
+      </td>
+      <td style="white-space:nowrap">
+        {% if r.checkin_token %}
+          <a href="/checkin/{{ r.checkin_token }}" target="_blank"
+             class="btn btn-outline btn-sm" title="Open guest check-in portal">🔗 View</a>
+        {% else %}
+          <form method="post" action="/reservations/{{ r.id }}/checkin-link" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="btn btn-outline btn-sm" title="Generate check-in link for guest">
+              + Link
+            </button>
+          </form>
         {% endif %}
       </td>
     </tr>

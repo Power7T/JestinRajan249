@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check-in Info — {{ cfg.property_names or 'Your Stay' }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+      color: #212529;
+      min-height: 100vh;
+    }
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #dee2e6;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .brand { font-weight: 700; font-size: 1.1rem; color: #e00b27; }
+    .container { max-width: 640px; margin: 0 auto; padding: 2rem 1rem; }
+    .hero {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .hero-icon { font-size: 3rem; margin-bottom: 0.75rem; }
+    .hero h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .hero .welcome { font-size: 0.95rem; color: #6c757d; }
+    .section {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .section h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #212529;
+    }
+    .info-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #f1f3f5;
+      font-size: 0.9rem;
+    }
+    .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .info-label { font-weight: 600; min-width: 120px; color: #495057; }
+    .info-value { color: #212529; flex: 1; }
+    pre.rules {
+      font-family: inherit;
+      font-size: 0.875rem;
+      color: #495057;
+      white-space: pre-wrap;
+      line-height: 1.7;
+    }
+    .faq-item { margin-bottom: 1rem; }
+    .faq-item:last-child { margin-bottom: 0; }
+    .faq-q { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; }
+    .faq-a { font-size: 0.875rem; color: #495057; line-height: 1.6; }
+    .checkin-dates {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .date-card {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .date-card .date-label { font-size: 0.75rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .date-card .date-val { font-size: 1.1rem; font-weight: 700; color: #212529; }
+    .date-card .time-val { font-size: 0.85rem; color: #6c757d; margin-top: 0.1rem; }
+    .footer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: #adb5bd;
+      padding: 2rem 1rem;
+    }
+    .badge-guests {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: #d1ecf1; color: #0c5460;
+      border-radius: 20px; padding: 4px 12px; font-size: 0.82rem; font-weight: 600;
+    }
+    @media (max-width: 480px) {
+      .checkin-dates { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <span class="brand">🏠 HostAI</span>
+  <span style="color:#6c757d;font-size:0.88rem">Guest Check-in Portal</span>
+</div>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-icon">🏡</div>
+    <h1>Welcome, {{ reservation.guest_name.split()[0] }}!</h1>
+    <p class="welcome">
+      Everything you need for your stay at
+      <strong>{{ cfg.property_names or 'the property' }}</strong>.
+    </p>
+    {% if reservation.guests_count %}
+    <div style="margin-top:0.75rem">
+      <span class="badge-guests">👥 {{ reservation.guests_count }} guest{% if reservation.guests_count != 1 %}s{% endif %}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Dates -->
+  <div class="section">
+    <h2>📅 Your Reservation</h2>
+    <div class="checkin-dates">
+      <div class="date-card">
+        <div class="date-label">Check-in</div>
+        <div class="date-val">{{ reservation.checkin.strftime('%a, %b %d') if reservation.checkin else '—' }}</div>
+        <div class="time-val">from {{ cfg.check_in_time or '3:00 PM' }}</div>
+      </div>
+      <div class="date-card">
+        <div class="date-label">Check-out</div>
+        <div class="date-val">{{ reservation.checkout.strftime('%a, %b %d') if reservation.checkout else '—' }}</div>
+        <div class="time-val">by {{ cfg.check_out_time or '11:00 AM' }}</div>
+      </div>
+    </div>
+    {% if reservation.nights %}
+    <div class="info-row">
+      <span class="info-label">Duration</span>
+      <span class="info-value">{{ reservation.nights }} night{% if reservation.nights != 1 %}s{% endif %}</span>
+    </div>
+    {% endif %}
+    {% if reservation.listing_name %}
+    <div class="info-row">
+      <span class="info-label">Property</span>
+      <span class="info-value">{{ reservation.listing_name }}</span>
+    </div>
+    {% endif %}
+    {% if reservation.confirmation_code %}
+    <div class="info-row">
+      <span class="info-label">Booking ref</span>
+      <span class="info-value" style="font-family:monospace">{{ reservation.confirmation_code }}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Property info -->
+  {% if cfg.property_city or cfg.max_guests %}
+  <div class="section">
+    <h2>🏠 Property Info</h2>
+    {% if cfg.property_city %}
+    <div class="info-row">
+      <span class="info-label">Location</span>
+      <span class="info-value">{{ cfg.property_city }}</span>
+    </div>
+    {% endif %}
+    {% if cfg.max_guests %}
+    <div class="info-row">
+      <span class="info-label">Max guests</span>
+      <span class="info-value">{{ cfg.max_guests }}</span>
+    </div>
+    {% endif %}
+    {% if cfg.amenities %}
+    <div class="info-row">
+      <span class="info-label">Amenities</span>
+      <span class="info-value">{{ cfg.amenities }}</span>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- House rules -->
+  {% if cfg.house_rules %}
+  <div class="section">
+    <h2>📋 House Rules</h2>
+    <pre class="rules">{{ cfg.house_rules }}</pre>
+  </div>
+  {% endif %}
+
+  <!-- FAQ -->
+  {% if faq_items %}
+  <div class="section">
+    <h2>❓ Frequently Asked Questions</h2>
+    {% for item in faq_items %}
+    <div class="faq-item">
+      <div class="faq-q">{{ item.q }}</div>
+      <div class="faq-a">{{ item.a }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% elif cfg.faq %}
+  <div class="section">
+    <h2>❓ Guest Info</h2>
+    <pre class="rules">{{ cfg.faq }}</pre>
+  </div>
+  {% endif %}
+
+  <!-- Food & nearby -->
+  {% if cfg.nearby_restaurants %}
+  <div class="section">
+    <h2>🍽️ Nearby Restaurants</h2>
+    <pre class="rules">{{ cfg.nearby_restaurants }}</pre>
+  </div>
+  {% endif %}
+
+  <!-- Escalation contact -->
+  {% if cfg.escalation_email %}
+  <div class="section">
+    <h2>📞 Need Help?</h2>
+    <div class="info-row">
+      <span class="info-label">Contact</span>
+      <span class="info-value">
+        <a href="mailto:{{ cfg.escalation_email }}" style="color:#e00b27">{{ cfg.escalation_email }}</a>
+      </span>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<div class="footer">
+  This page was generated by HostAI for your reservation.<br>
+  Link expires after check-out. For issues, contact your host directly.
+</div>
+
+</body>
+</html>

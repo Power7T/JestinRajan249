@@ -144,7 +144,22 @@
   <p style="font-size:0.8rem;margin-top:0.4rem">New guest messages will appear here for your approval.</p>
 </div>
 {% else %}
-<p style="font-size:0.85rem;color:#6c757d;margin-bottom:1rem">{{ drafts|length }} pending draft{% if drafts|length != 1 %}s{% endif %} waiting for review</p>
+<!-- Bulk action bar -->
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem">
+  <p style="font-size:0.85rem;color:#6c757d;margin:0">{{ drafts|length }} pending draft{% if drafts|length != 1 %}s{% endif %} waiting for review</p>
+  <div style="display:flex;gap:0.5rem">
+    <form method="post" action="/drafts/bulk-approve"
+          onsubmit="return confirm('Approve and send all {{ drafts|length }} pending draft(s)?')">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn btn-success btn-sm">✓ Approve all</button>
+    </form>
+    <form method="post" action="/drafts/bulk-skip"
+          onsubmit="return confirm('Skip all {{ drafts|length }} pending draft(s)?')">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn btn-outline btn-sm">✗ Skip all</button>
+    </form>
+  </div>
+</div>
 
 {% for draft in drafts %}
 <div class="card {% if draft.msg_type == 'escalation' %}draft-escalation{% endif %}" id="draft-{{ draft.id }}">
@@ -189,10 +204,34 @@
             hx-swap="innerHTML">
       ✎ Edit &amp; send
     </button>
+
+    <!-- Schedule toggle -->
+    <button class="btn btn-outline btn-sm"
+            onclick="toggleSchedule('{{ draft.id }}')">
+      🕐 Schedule
+    </button>
   </div>
 
   <!-- Inline edit form (loaded by HTMX) -->
   <div id="edit-area-{{ draft.id }}" style="margin-top:0.75rem"></div>
+
+  <!-- Inline schedule form -->
+  <div id="schedule-area-{{ draft.id }}" style="display:none;margin-top:0.75rem">
+    <form method="post" action="/drafts/{{ draft.id }}/schedule"
+          style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <input type="datetime-local" name="scheduled_at"
+             style="width:auto;margin-bottom:0;font-size:0.82rem"
+             {% if draft.scheduled_at %}value="{{ draft.scheduled_at.strftime('%Y-%m-%dT%H:%M') }}"{% endif %}>
+      <button type="submit" class="btn btn-primary btn-sm">Set schedule</button>
+      <span style="font-size:0.78rem;color:#6c757d">Draft stays pending until you approve it.</span>
+    </form>
+    {% if draft.scheduled_at %}
+    <p style="font-size:0.78rem;color:#6c757d;margin-top:0.3rem">
+      ⏰ Scheduled: <strong>{{ draft.scheduled_at.strftime('%b %d, %H:%M UTC') }}</strong>
+    </p>
+    {% endif %}
+  </div>
 </div>
 {% endfor %}
 {% endif %}
@@ -203,6 +242,13 @@
 </div>
 
 <!-- Post-onboarding first-visit tour (shown once via localStorage) -->
+<script>
+function toggleSchedule(id) {
+  var el = document.getElementById('schedule-area-' + id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+
 {% if show_tour %}
 <div id="tour-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:12px;padding:2rem;max-width:440px;width:90%;text-align:center">

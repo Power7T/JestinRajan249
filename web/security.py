@@ -41,6 +41,7 @@ _CSRF_EXEMPT_PREFIXES = (
     "/static/",
     "/pricing",
     "/verify-email",
+    "/checkin/",         # Public guest portal — no session, no CSRF
 )
 
 _CSRF_SAFE_METHODS = frozenset(("GET", "HEAD", "OPTIONS"))

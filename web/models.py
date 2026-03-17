@@ -165,11 +165,12 @@ class Draft(Base):
     reply_to:    Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     msg_type:    Mapped[str]           = mapped_column(String(16))            # routine / complex
     vendor_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    draft:       Mapped[str]           = mapped_column(Text)
-    final_text:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status:      Mapped[str]           = mapped_column(String(16), default="pending", index=True)
-    created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
-    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    draft:        Mapped[str]           = mapped_column(Text)
+    final_text:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status:       Mapped[str]           = mapped_column(String(16), default="pending", index=True)
+    created_at:   Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+    approved_at:  Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    scheduled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="drafts")
 
@@ -257,10 +258,13 @@ class Reservation(Base):
     imported_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
 
     # Proactive message state flags (prevent re-sending)
-    pre_arrival_sent:   Mapped[bool] = mapped_column(Boolean, default=False)
-    checkout_msg_sent:  Mapped[bool] = mapped_column(Boolean, default=False)
-    review_reminder_sent: Mapped[bool] = mapped_column(Boolean, default=False)
-    cleaner_brief_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    pre_arrival_sent:     Mapped[bool]          = mapped_column(Boolean, default=False)
+    checkout_msg_sent:    Mapped[bool]          = mapped_column(Boolean, default=False)
+    review_reminder_sent: Mapped[bool]          = mapped_column(Boolean, default=False)
+    cleaner_brief_sent:   Mapped[bool]          = mapped_column(Boolean, default=False)
+
+    # Guest-facing check-in portal token (random URL-safe string, unique per reservation)
+    checkin_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True, unique=True)
 
 
 # ---------------------------------------------------------------------------

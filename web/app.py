@@ -82,7 +82,36 @@ from web.security import (
     validate_csrf, rate_limit, client_ip,
 )
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+class _JSONFormatter(logging.Formatter):
+    """Emit log records as single-line JSON objects for structured log ingestion."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "ts":      self.formatTime(record, "%Y-%m-%dT%H:%M:%S"),
+            "level":   record.levelname,
+            "logger":  record.name,
+            "msg":     record.getMessage(),
+        }
+        if record.exc_info:
+            payload["exc"] = self.formatException(record.exc_info)
+        return json.dumps(payload, ensure_ascii=False)
+
+
+def _configure_logging() -> None:
+    handler = logging.StreamHandler()
+    if os.getenv("ENVIRONMENT", "production") != "development":
+        handler.setFormatter(_JSONFormatter())
+    else:
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(handler)
+    root.setLevel(logging.INFO)
+    # Suppress noisy SQLAlchemy engine logs
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+
+
+_configure_logging()
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -2610,6 +2639,423 @@ def admin_system(request: Request, db: Session = Depends(get_db)):
         "dead_workers":   sum(1 for r in system_rows if r["any_dead"]),
         "now":            datetime.now(timezone.utc),
     })
+
+
+# ---------------------------------------------------------------------------
+# Bulk draft actions
+# ---------------------------------------------------------------------------
+
+@app.post("/drafts/bulk-approve")
+def bulk_approve_drafts(
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Approve all pending drafts for the current tenant at once."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"draft:{tenant_id}", max_requests=120, window_seconds=3600)
+
+    pending = db.query(Draft).filter_by(tenant_id=tenant_id, status="pending").all()
+    for draft in pending:
+        try:
+            _execute_draft(draft, draft.draft, tenant_id, db)
+        except Exception as exc:
+            log.error("[%s] Bulk approve failed for draft %s: %s", tenant_id, draft.id, exc)
+    return RedirectResponse("/dashboard", status_code=302)
+
+
+@app.post("/drafts/bulk-skip")
+def bulk_skip_drafts(
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Skip (dismiss) all pending drafts for the current tenant at once."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    pending = db.query(Draft).filter_by(tenant_id=tenant_id, status="pending").all()
+    for draft in pending:
+        draft.status = "skipped"
+    if pending:
+        db.add(ActivityLog(
+            tenant_id=tenant_id,
+            event_type="bulk_skipped",
+            message=f"Bulk-skipped {len(pending)} pending draft(s)",
+        ))
+        db.commit()
+    return RedirectResponse("/dashboard", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Draft scheduling
+# ---------------------------------------------------------------------------
+
+@app.post("/drafts/{draft_id}/schedule")
+def schedule_draft(
+    draft_id: str,
+    request: Request,
+    scheduled_at: str = Form(...),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Set a scheduled send time on a pending draft."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id, status="pending").first()
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    try:
+        parsed = datetime.fromisoformat(scheduled_at)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid datetime format — use ISO 8601")
+
+    draft.scheduled_at = parsed
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="draft_scheduled",
+        message=f"Draft scheduled for {parsed.strftime('%Y-%m-%d %H:%M UTC')}: {draft.guest_name}",
+    ))
+    db.commit()
+    return RedirectResponse("/dashboard", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Reservations analytics export (CSV)
+# ---------------------------------------------------------------------------
+
+@app.get("/reservations/export.csv")
+def reservations_export_csv(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Export all reservations as a CSV download."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    rows = (
+        db.query(Reservation)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(Reservation.checkin.desc())
+        .all()
+    )
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        "Confirmation Code", "Guest Name", "Listing", "Check-in", "Check-out",
+        "Nights", "Guests", "Payout (USD)", "Status", "Imported At",
+    ])
+    for r in rows:
+        writer.writerow([
+            r.confirmation_code,
+            r.guest_name,
+            r.listing_name or "",
+            r.checkin.isoformat() if r.checkin else "",
+            r.checkout.isoformat() if r.checkout else "",
+            r.nights or "",
+            r.guests_count or "",
+            f"{r.payout_usd:.2f}" if r.payout_usd is not None else "",
+            r.status,
+            r.imported_at.strftime("%Y-%m-%d %H:%M") if r.imported_at else "",
+        ])
+
+    buf.seek(0)
+    filename = f"reservations_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Settings: FAQ and House Rules PDF upload
+# ---------------------------------------------------------------------------
+
+@app.post("/settings/upload-faq")
+async def upload_faq_pdf(
+    request: Request,
+    faq_pdf: UploadFile = File(None),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Extract text from an uploaded PDF and save it to the faq field."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"settings:{tenant_id}", max_requests=30, window_seconds=3600)
+
+    cfg = _get_or_create_config(tenant_id, db)
+
+    if faq_pdf and faq_pdf.filename:
+        try:
+            import pdfplumber
+            pdf_bytes = await faq_pdf.read()
+            with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                text = "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
+            if text:
+                cfg.faq = text
+                db.add(ActivityLog(
+                    tenant_id=tenant_id,
+                    event_type="faq_uploaded",
+                    message=f"FAQ PDF uploaded: {faq_pdf.filename} ({len(text)} chars extracted)",
+                ))
+                db.commit()
+        except Exception as exc:
+            log.warning("[%s] FAQ PDF extraction failed: %s", tenant_id, exc)
+
+    return RedirectResponse("/settings?saved=faq", status_code=302)
+
+
+@app.post("/settings/upload-house-rules")
+async def upload_house_rules_pdf(
+    request: Request,
+    rules_pdf: UploadFile = File(None),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Extract text from an uploaded PDF and save it to the house_rules field."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"settings:{tenant_id}", max_requests=30, window_seconds=3600)
+
+    cfg = _get_or_create_config(tenant_id, db)
+
+    if rules_pdf and rules_pdf.filename:
+        try:
+            import pdfplumber
+            pdf_bytes = await rules_pdf.read()
+            with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                text = "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
+            if text:
+                cfg.house_rules = text
+                db.add(ActivityLog(
+                    tenant_id=tenant_id,
+                    event_type="house_rules_uploaded",
+                    message=f"House rules PDF uploaded: {rules_pdf.filename} ({len(text)} chars extracted)",
+                ))
+                db.commit()
+        except Exception as exc:
+            log.warning("[%s] House rules PDF extraction failed: %s", tenant_id, exc)
+
+    return RedirectResponse("/settings?saved=rules", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Vendor edit
+# ---------------------------------------------------------------------------
+
+@app.post("/vendors/{vendor_id}/edit")
+def vendor_edit(
+    vendor_id: int,
+    request: Request,
+    name: str = Form(...),
+    phone: str = Form(...),
+    notes: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Update an existing vendor's details."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    v = db.query(Vendor).filter_by(id=vendor_id, tenant_id=tenant_id).first()
+    if v:
+        v.name  = name.strip() or v.name
+        v.phone = phone.strip() or v.phone
+        v.notes = notes.strip() or None
+        db.commit()
+    return RedirectResponse("/settings#vendors", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Guest check-in portal
+# ---------------------------------------------------------------------------
+
+@app.post("/reservations/{reservation_id}/checkin-link")
+def generate_checkin_link(
+    reservation_id: int,
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Generate (or regenerate) a unique check-in portal link for a reservation."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    res = db.query(Reservation).filter_by(id=reservation_id, tenant_id=tenant_id).first()
+    if not res:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    res.checkin_token = secrets.token_urlsafe(32)
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="checkin_link_generated",
+        message=f"Check-in link generated for {res.guest_name} ({res.confirmation_code})",
+    ))
+    db.commit()
+    return RedirectResponse(f"/reservations?checkin_link={res.checkin_token}", status_code=302)
+
+
+@app.get("/checkin/{token}", response_class=HTMLResponse)
+def checkin_portal(token: str, request: Request, db: Session = Depends(get_db)):
+    """Public guest check-in page — no auth required, only the token."""
+    res = db.query(Reservation).filter_by(checkin_token=token).first()
+    if not res:
+        raise HTTPException(status_code=404, detail="Check-in link not found or expired")
+
+    cfg = db.query(TenantConfig).filter_by(tenant_id=res.tenant_id).first()
+    if not cfg:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    # Parse FAQ into Q&A pairs if formatted as "Q: ...\nA: ..." blocks
+    faq_items: list[dict] = []
+    if cfg.faq:
+        lines = cfg.faq.strip().splitlines()
+        current_q = current_a = ""
+        for line in lines:
+            if line.upper().startswith("Q:") or line.upper().startswith("Q."):
+                if current_q:
+                    faq_items.append({"q": current_q, "a": current_a.strip()})
+                current_q = line[2:].strip()
+                current_a = ""
+            elif line.upper().startswith("A:") or line.upper().startswith("A."):
+                current_a = line[2:].strip()
+            elif current_q:
+                current_a += " " + line.strip()
+        if current_q:
+            faq_items.append({"q": current_q, "a": current_a.strip()})
+
+    return templates.TemplateResponse("checkin.html", {
+        "request":     request,
+        "reservation": res,
+        "cfg":         cfg,
+        "faq_items":   faq_items,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Prometheus metrics endpoint
+# ---------------------------------------------------------------------------
+
+@app.get("/metrics/prometheus")
+def metrics_prometheus(db: Session = Depends(get_db)):
+    """
+    Prometheus text format metrics endpoint.
+    Protect this route with a firewall rule or IP allowlist in production.
+    """
+    import threading
+
+    try:
+        total_tenants  = db.query(Tenant).count()
+        pending_drafts = db.query(Draft).filter_by(status="pending").count()
+        approved_today = db.query(Draft).filter(
+            Draft.status == "approved",
+            Draft.approved_at >= datetime.now(timezone.utc).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ),
+        ).count()
+        total_reservations = db.query(Reservation).filter_by(status="confirmed").count()
+        db_ok = 1
+    except Exception:
+        total_tenants = pending_drafts = approved_today = total_reservations = 0
+        db_ok = 0
+
+    active_workers = sum(
+        1 for tid in list(worker_manager._workers.keys())
+        if worker_manager.worker_status(tid)["email_running"]
+    )
+
+    from web.redis_client import get_redis
+    r = get_redis()
+    redis_ok = 0
+    if r is not None:
+        try:
+            r.ping()
+            redis_ok = 1
+        except Exception:
+            pass
+
+    watchdog_ok = int(
+        worker_manager._watchdog_thread is not None
+        and worker_manager._watchdog_thread.is_alive()
+    )
+
+    lines = [
+        "# HELP hostai_up Application is up (1) or down (0)",
+        "# TYPE hostai_up gauge",
+        f"hostai_up 1",
+        "",
+        "# HELP hostai_db_up Database is reachable (1) or not (0)",
+        "# TYPE hostai_db_up gauge",
+        f"hostai_db_up {db_ok}",
+        "",
+        "# HELP hostai_redis_up Redis is reachable (1) or not (0)",
+        "# TYPE hostai_redis_up gauge",
+        f"hostai_redis_up {redis_ok}",
+        "",
+        "# HELP hostai_tenants_total Total number of registered tenants",
+        "# TYPE hostai_tenants_total gauge",
+        f"hostai_tenants_total {total_tenants}",
+        "",
+        "# HELP hostai_drafts_pending Current number of pending drafts awaiting approval",
+        "# TYPE hostai_drafts_pending gauge",
+        f"hostai_drafts_pending {pending_drafts}",
+        "",
+        "# HELP hostai_drafts_approved_today Drafts approved today",
+        "# TYPE hostai_drafts_approved_today counter",
+        f"hostai_drafts_approved_today {approved_today}",
+        "",
+        "# HELP hostai_reservations_confirmed Confirmed reservations in the system",
+        "# TYPE hostai_reservations_confirmed gauge",
+        f"hostai_reservations_confirmed {total_reservations}",
+        "",
+        "# HELP hostai_workers_active Number of active email worker threads",
+        "# TYPE hostai_workers_active gauge",
+        f"hostai_workers_active {active_workers}",
+        "",
+        "# HELP hostai_threads_total OS-level active thread count",
+        "# TYPE hostai_threads_total gauge",
+        f"hostai_threads_total {threading.active_count()}",
+        "",
+        "# HELP hostai_watchdog_up Worker watchdog thread is alive (1) or not (0)",
+        "# TYPE hostai_watchdog_up gauge",
+        f"hostai_watchdog_up {watchdog_ok}",
+        "",
+    ]
+
+    return StreamingResponse(
+        iter(["\n".join(lines)]),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 # ---------------------------------------------------------------------------
