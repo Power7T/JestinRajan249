@@ -160,7 +160,56 @@ def _watchdog_loop():
                 except Exception as exc:
                     log.error("[%s] Watchdog restart failed: %s", tenant_id, exc)
 
+        # ── Scheduled draft auto-send ────────────────────────────────
+        # Check for pending drafts whose scheduled_at has passed and
+        # auto-approve them (send via appropriate channel).
+        _process_scheduled_drafts()
+
     log.info("Worker watchdog stopped")
+
+
+def _process_scheduled_drafts():
+    """Find and auto-approve drafts whose scheduled_at has passed."""
+    from datetime import datetime, timezone
+    from web.db import SessionLocal
+    from web.models import Draft, ActivityLog
+
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+        due_drafts = (
+            db.query(Draft)
+            .filter(
+                Draft.status == "pending",
+                Draft.scheduled_at.isnot(None),
+                Draft.scheduled_at <= now,
+            )
+            .all()
+        )
+        if not due_drafts:
+            return
+
+        # Import the send function from app (deferred to avoid circular import)
+        from web.app import _execute_draft
+
+        for draft in due_drafts:
+            try:
+                _execute_draft(draft, draft.draft, draft.tenant_id, db)
+                db.add(ActivityLog(
+                    tenant_id=draft.tenant_id,
+                    event_type="draft_auto_sent",
+                    message=f"Scheduled draft auto-sent: {draft.guest_name}",
+                ))
+                db.commit()
+                log.info("[%s] Scheduled draft %s auto-sent", draft.tenant_id, draft.id)
+            except Exception as exc:
+                log.error("[%s] Scheduled draft %s auto-send failed: %s",
+                          draft.tenant_id, draft.id, exc)
+                db.rollback()
+    except Exception as exc:
+        log.warning("Scheduled draft processing error: %s", exc)
+    finally:
+        db.close()
 
 
 def start_all_workers():

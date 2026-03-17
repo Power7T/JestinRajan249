@@ -2970,91 +2970,68 @@ def checkin_portal(token: str, request: Request, db: Session = Depends(get_db)):
 def metrics_prometheus(db: Session = Depends(get_db)):
     """
     Prometheus text format metrics endpoint.
+    Uses prometheus_client for proper exposition format.
     Protect this route with a firewall rule or IP allowlist in production.
     """
     import threading
+    from prometheus_client import CollectorRegistry, Gauge, Counter, generate_latest, CONTENT_TYPE_LATEST
+
+    registry = CollectorRegistry()
+
+    # Define metrics
+    g_up          = Gauge("hostai_up",                     "Application is up (1) or down (0)", registry=registry)
+    g_db          = Gauge("hostai_db_up",                  "Database is reachable (1) or not (0)", registry=registry)
+    g_redis       = Gauge("hostai_redis_up",               "Redis is reachable (1) or not (0)", registry=registry)
+    g_tenants     = Gauge("hostai_tenants_total",          "Total number of registered tenants", registry=registry)
+    g_pending     = Gauge("hostai_drafts_pending",         "Current number of pending drafts", registry=registry)
+    c_approved    = Gauge("hostai_drafts_approved_today",  "Drafts approved today", registry=registry)
+    g_reservations = Gauge("hostai_reservations_confirmed","Confirmed reservations in the system", registry=registry)
+    g_workers     = Gauge("hostai_workers_active",         "Number of active email worker threads", registry=registry)
+    g_threads     = Gauge("hostai_threads_total",          "OS-level active thread count", registry=registry)
+    g_watchdog    = Gauge("hostai_watchdog_up",            "Worker watchdog thread is alive (1) or not (0)", registry=registry)
+
+    g_up.set(1)
 
     try:
-        total_tenants  = db.query(Tenant).count()
-        pending_drafts = db.query(Draft).filter_by(status="pending").count()
-        approved_today = db.query(Draft).filter(
+        g_tenants.set(db.query(Tenant).count())
+        g_pending.set(db.query(Draft).filter_by(status="pending").count())
+        c_approved.set(db.query(Draft).filter(
             Draft.status == "approved",
             Draft.approved_at >= datetime.now(timezone.utc).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ),
-        ).count()
-        total_reservations = db.query(Reservation).filter_by(status="confirmed").count()
-        db_ok = 1
+        ).count())
+        g_reservations.set(db.query(Reservation).filter_by(status="confirmed").count())
+        g_db.set(1)
     except Exception:
-        total_tenants = pending_drafts = approved_today = total_reservations = 0
-        db_ok = 0
+        g_db.set(0)
 
-    active_workers = sum(
+    g_workers.set(sum(
         1 for tid in list(worker_manager._workers.keys())
         if worker_manager.worker_status(tid)["email_running"]
-    )
+    ))
 
     from web.redis_client import get_redis
     r = get_redis()
-    redis_ok = 0
+    redis_val = 0
     if r is not None:
         try:
             r.ping()
-            redis_ok = 1
+            redis_val = 1
         except Exception:
             pass
+    g_redis.set(redis_val)
 
-    watchdog_ok = int(
+    g_threads.set(threading.active_count())
+    g_watchdog.set(int(
         worker_manager._watchdog_thread is not None
         and worker_manager._watchdog_thread.is_alive()
-    )
+    ))
 
-    lines = [
-        "# HELP hostai_up Application is up (1) or down (0)",
-        "# TYPE hostai_up gauge",
-        f"hostai_up 1",
-        "",
-        "# HELP hostai_db_up Database is reachable (1) or not (0)",
-        "# TYPE hostai_db_up gauge",
-        f"hostai_db_up {db_ok}",
-        "",
-        "# HELP hostai_redis_up Redis is reachable (1) or not (0)",
-        "# TYPE hostai_redis_up gauge",
-        f"hostai_redis_up {redis_ok}",
-        "",
-        "# HELP hostai_tenants_total Total number of registered tenants",
-        "# TYPE hostai_tenants_total gauge",
-        f"hostai_tenants_total {total_tenants}",
-        "",
-        "# HELP hostai_drafts_pending Current number of pending drafts awaiting approval",
-        "# TYPE hostai_drafts_pending gauge",
-        f"hostai_drafts_pending {pending_drafts}",
-        "",
-        "# HELP hostai_drafts_approved_today Drafts approved today",
-        "# TYPE hostai_drafts_approved_today counter",
-        f"hostai_drafts_approved_today {approved_today}",
-        "",
-        "# HELP hostai_reservations_confirmed Confirmed reservations in the system",
-        "# TYPE hostai_reservations_confirmed gauge",
-        f"hostai_reservations_confirmed {total_reservations}",
-        "",
-        "# HELP hostai_workers_active Number of active email worker threads",
-        "# TYPE hostai_workers_active gauge",
-        f"hostai_workers_active {active_workers}",
-        "",
-        "# HELP hostai_threads_total OS-level active thread count",
-        "# TYPE hostai_threads_total gauge",
-        f"hostai_threads_total {threading.active_count()}",
-        "",
-        "# HELP hostai_watchdog_up Worker watchdog thread is alive (1) or not (0)",
-        "# TYPE hostai_watchdog_up gauge",
-        f"hostai_watchdog_up {watchdog_ok}",
-        "",
-    ]
-
+    output = generate_latest(registry)
     return StreamingResponse(
-        iter(["\n".join(lines)]),
-        media_type="text/plain; version=0.0.4; charset=utf-8",
+        iter([output]),
+        media_type=CONTENT_TYPE_LATEST,
     )
 
 

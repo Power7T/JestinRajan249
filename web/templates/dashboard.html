@@ -224,7 +224,7 @@
              style="width:auto;margin-bottom:0;font-size:0.82rem"
              {% if draft.scheduled_at %}value="{{ draft.scheduled_at.strftime('%Y-%m-%dT%H:%M') }}"{% endif %}>
       <button type="submit" class="btn btn-primary btn-sm">Set schedule</button>
-      <span style="font-size:0.78rem;color:#6c757d">Draft stays pending until you approve it.</span>
+      <span style="font-size:0.78rem;color:#6c757d">Draft auto-sends when the scheduled time arrives.</span>
     </form>
     {% if draft.scheduled_at %}
     <p style="font-size:0.78rem;color:#6c757d;margin-top:0.3rem">
