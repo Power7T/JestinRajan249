@@ -19,7 +19,21 @@ from fastapi import HTTPException, Request
 from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-_SECRET = os.getenv("SECRET_KEY", "change-me-long-random-string").encode()
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
+_ALLOW_INSECURE_DEFAULTS = _ENVIRONMENT in {"development", "dev", "test"}
+
+
+def _load_required_secret(name: str, placeholder: str) -> bytes:
+    value = os.getenv(name, "").strip()
+    if value and not value.startswith("change-me"):
+        return value.encode()
+    if _ALLOW_INSECURE_DEFAULTS:
+        return (value or placeholder).encode()
+    raise RuntimeError(f"{name} must be set in non-development environments")
+
+
+_SECRET = _load_required_secret("SECRET_KEY", "change-me-long-random-string")
+_TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "").strip().lower() in {"1", "true", "yes"}
 
 # ---------------------------------------------------------------------------
 # CSRF — double-submit signed cookie
@@ -177,8 +191,8 @@ def rate_limit(key: str, max_requests: int, window_seconds: int) -> None:
 
 
 def client_ip(request: Request) -> str:
-    """Best-effort client IP; trusts X-Forwarded-For from Nginx."""
-    forwarded = request.headers.get("X-Forwarded-For", "")
+    """Best-effort client IP; only trusts proxy headers when explicitly enabled."""
+    forwarded = request.headers.get("X-Forwarded-For", "") if _TRUST_PROXY_HEADERS else ""
     if forwarded:
         return forwarded.split(",")[0].strip()
     return (request.client.host if request.client else "unknown")

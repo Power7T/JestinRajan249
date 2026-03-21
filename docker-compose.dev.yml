@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ============================================================
 # HostAI — Local Development Stack
 # Usage: docker compose -f docker-compose.dev.yml up
@@ -39,7 +37,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -62,7 +60,7 @@ services:
       DATABASE_REPLICA_URL: ""
       REDIS_URL:            redis://redis:6379/0
       SECRET_KEY:           dev-secret-key-change-in-production
-      FIELD_ENCRYPTION_KEY: dev-field-key-32-chars-padded-here
+      FIELD_ENCRYPTION_KEY: mR1ZucKnK-yZ83VUfz7ziQIkP61-5ZW9Re0MsDzx75o=
       APP_BASE_URL:         http://localhost:8000
       ENVIRONMENT:          development
       # Email (optional for local dev — leave blank to skip)
@@ -85,6 +83,7 @@ services:
     volumes:
       # Mount source for hot-reload
       - ./web:/app/web:ro
+      - ./airbnb-host/SKILL.md:/app/airbnb-host/SKILL.md:ro
     command: >
       uvicorn web.app:app
         --host 0.0.0.0

@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ============================================================
 # HostAI — Full Production Stack
 # Deploy:  cp .env.example .env && nano .env && ./deploy.sh

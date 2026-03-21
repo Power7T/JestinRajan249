@@ -13,11 +13,14 @@ Call restart_worker(tenant_id) whenever a tenant updates their settings.
 """
 
 import logging
+import os
+import socket
 import threading
 import time
 from typing import Optional
 
 from web import email_worker, calendar_worker, reservation_scheduler, pms_worker
+from web.redis_client import get_redis
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +33,95 @@ _lock = threading.Lock()
 _watchdog_stop = threading.Event()
 _watchdog_thread: Optional[threading.Thread] = None
 _WATCHDOG_INTERVAL = 60  # seconds
+_LEADER_LOCK_KEY = os.getenv("WORKER_LEADER_LOCK_KEY", "hostai:workers:leader")
+_LEADER_LOCK_TTL = int(os.getenv("WORKER_LEADER_LOCK_TTL", "120"))
+_LEADER_REFRESH_INTERVAL = max(15, _LEADER_LOCK_TTL // 3)
+_LEADER_TOKEN = f"{socket.gethostname()}:{os.getpid()}"
+_leader_refresh_stop = threading.Event()
+_leader_refresh_thread: Optional[threading.Thread] = None
+_leader_lock_owned = False
+
+
+def _embedded_workers_enabled() -> bool:
+    raw = os.getenv("RUN_EMBEDDED_WORKERS", "").strip().lower()
+    if not raw:
+        return True
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _acquire_leader_lock() -> bool:
+    """
+    Ensure only one web process owns embedded workers when Redis is available.
+    """
+    global _leader_lock_owned
+    redis_client = get_redis()
+    if redis_client is None:
+        _leader_lock_owned = True
+        return True
+    try:
+        acquired = bool(redis_client.set(_LEADER_LOCK_KEY, _LEADER_TOKEN, nx=True, ex=_LEADER_LOCK_TTL))
+        if acquired:
+            _leader_lock_owned = True
+            return True
+        owner = redis_client.get(_LEADER_LOCK_KEY)
+        if owner == _LEADER_TOKEN:
+            redis_client.expire(_LEADER_LOCK_KEY, _LEADER_LOCK_TTL)
+            _leader_lock_owned = True
+            return True
+        log.info("Embedded workers already owned by %s; skipping duplicate startup", owner)
+        _leader_lock_owned = False
+        return False
+    except Exception as exc:
+        log.warning("Worker leader lock unavailable (%s); continuing without coordination", exc)
+        _leader_lock_owned = True
+        return True
+
+
+def _leader_refresh_loop():
+    redis_client = get_redis()
+    if redis_client is None:
+        return
+    while not _leader_refresh_stop.wait(timeout=_LEADER_REFRESH_INTERVAL):
+        try:
+            if redis_client.get(_LEADER_LOCK_KEY) == _LEADER_TOKEN:
+                redis_client.expire(_LEADER_LOCK_KEY, _LEADER_LOCK_TTL)
+            else:
+                log.warning("Lost embedded worker leadership; no longer refreshing lock")
+                return
+        except Exception as exc:
+            log.warning("Worker leader lock refresh failed: %s", exc)
+
+
+def _start_leader_refresh():
+    global _leader_refresh_thread
+    redis_client = get_redis()
+    if redis_client is None:
+        return
+    _leader_refresh_stop.clear()
+    _leader_refresh_thread = threading.Thread(
+        target=_leader_refresh_loop,
+        name="worker-leader-refresh",
+        daemon=True,
+    )
+    _leader_refresh_thread.start()
+
+
+def _release_leader_lock():
+    global _leader_lock_owned, _leader_refresh_thread
+    _leader_refresh_stop.set()
+    if _leader_refresh_thread and _leader_refresh_thread.is_alive():
+        _leader_refresh_thread.join(timeout=5)
+    _leader_refresh_thread = None
+    redis_client = get_redis()
+    if redis_client is None or not _leader_lock_owned:
+        _leader_lock_owned = False
+        return
+    try:
+        if redis_client.get(_LEADER_LOCK_KEY) == _LEADER_TOKEN:
+            redis_client.delete(_LEADER_LOCK_KEY)
+    except Exception as exc:
+        log.warning("Failed to release worker leader lock: %s", exc)
+    _leader_lock_owned = False
 
 
 def _start_tenant(tenant_id: str):
@@ -215,6 +307,11 @@ def _process_scheduled_drafts():
 def start_all_workers():
     """Called at app startup — launch workers for all configured tenants + watchdog."""
     global _watchdog_thread, _watchdog_stop
+    if not _embedded_workers_enabled():
+        log.info("Embedded workers disabled by RUN_EMBEDDED_WORKERS")
+        return
+    if not _acquire_leader_lock():
+        return
     from web.db import SessionLocal
     from web.models import TenantConfig
     db = SessionLocal()
@@ -237,6 +334,7 @@ def start_all_workers():
         daemon=True,
     )
     _watchdog_thread.start()
+    _start_leader_refresh()
 
 
 def stop_all_workers():
@@ -250,6 +348,7 @@ def stop_all_workers():
         ids = list(_workers.keys())
     for tenant_id in ids:
         _stop_tenant(tenant_id)
+    _release_leader_lock()
 
 
 def restart_worker(tenant_id: str):

@@ -153,6 +153,12 @@
       <span class="info-value">{{ reservation.listing_name }}</span>
     </div>
     {% endif %}
+    {% if reservation.unit_identifier %}
+    <div class="info-row">
+      <span class="info-label">Room / Unit</span>
+      <span class="info-value">{{ reservation.unit_identifier }}</span>
+    </div>
+    {% endif %}
     {% if reservation.confirmation_code %}
     <div class="info-row">
       <span class="info-label">Booking ref</span>

@@ -5,6 +5,8 @@ Used when wa_mode == 'meta_cloud' or plan == 'pro'.
 """
 
 import json
+import hmac
+import hashlib
 import logging
 import urllib.request
 import urllib.error
@@ -58,6 +60,17 @@ def verify_webhook(verify_token_stored: str, mode: str, token: str, challenge: s
     if mode == "subscribe" and token == verify_token_stored:
         return challenge
     return None
+
+
+def verify_request_signature(payload: bytes, signature_header: str, app_secret: str) -> bool:
+    """
+    Validate the Meta X-Hub-Signature-256 header for webhook POST bodies.
+    """
+    if not app_secret or not signature_header.startswith("sha256="):
+        return False
+    expected = hmac.new(app_secret.encode(), payload, hashlib.sha256).hexdigest()
+    supplied = signature_header.split("=", 1)[1]
+    return hmac.compare_digest(expected, supplied)
 
 
 def extract_inbound(body: dict) -> list[dict]:

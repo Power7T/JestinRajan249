@@ -195,6 +195,8 @@ def _lookup_reservation(tenant_id: str, guest_name: str) -> Optional[str]:
                 lines = [f"Reservation: {r.confirmation_code}"]
                 if r.listing_name:
                     lines.append(f"Property: {r.listing_name}")
+                if r.unit_identifier:
+                    lines.append(f"Room / unit / property #: {r.unit_identifier}")
                 if r.checkin:
                     lines.append(f"Check-in: {r.checkin.strftime('%A, %B %d, %Y')}")
                 if r.checkout:

@@ -14,10 +14,11 @@ from sqlalchemy.orm import sessionmaker
 os.environ.setdefault("DATABASE_URL",         "sqlite:///:memory:")
 os.environ.setdefault("DATABASE_REPLICA_URL", "")
 os.environ.setdefault("SECRET_KEY",           "test-secret-key-not-for-production")
-os.environ.setdefault("FIELD_ENCRYPTION_KEY", "dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGU=")  # 32-char b64
+os.environ.setdefault("FIELD_ENCRYPTION_KEY", "mR1ZucKnK-yZ83VUfz7ziQIkP61-5ZW9Re0MsDzx75o=")
 os.environ.setdefault("APP_BASE_URL",         "http://testserver")
 os.environ.setdefault("REDIS_URL",            "")  # Redis disabled in tests
 os.environ.setdefault("ENVIRONMENT",          "test")
+os.environ.setdefault("RUN_EMBEDDED_WORKERS", "0")
 
 from web.db import Base, get_db  # noqa: E402
 from web.app import app           # noqa: E402

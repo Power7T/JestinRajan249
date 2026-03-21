@@ -82,6 +82,9 @@ def db_migrate():
         ("tenants", "verification_sent_at",  "DATETIME",     "NULL"),
         ("tenants", "reset_token",           "VARCHAR(128)", "NULL"),
         ("tenants", "reset_token_expires",   "DATETIME",     "NULL"),
+        # Reservation guest context mapping
+        ("reservations", "guest_phone",      "VARCHAR(32)",  "NULL"),
+        ("reservations", "unit_identifier",  "VARCHAR(64)",  "NULL"),
     ]
     with engine.connect() as conn:
         for table, col, col_type, default in new_columns:

@@ -19,10 +19,31 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Load SKILL.md system prompt (strips YAML frontmatter)
 # ---------------------------------------------------------------------------
-_SKILL_MD = pathlib.Path(__file__).parent.parent / "SKILL.md"
-_raw      = _SKILL_MD.read_text()
-_parts    = _raw.split("---", 2)
-SYSTEM_PROMPT = _parts[2].strip() if len(_parts) >= 3 else _raw
+_DEFAULT_SYSTEM_PROMPT = """
+You are HostAI, an assistant for property hosts.
+Reply clearly, warmly, and practically. Use the host-provided property context,
+FAQ, house rules, and reservation details as the source of truth. Never invent
+room numbers, access codes, fees, or refunds. If required context is missing,
+ask one concise clarifying question.
+""".strip()
+
+
+def _load_system_prompt() -> str:
+    candidate_paths = [
+        pathlib.Path(__file__).parent.parent / "SKILL.md",
+        pathlib.Path(__file__).parent.parent / "airbnb-host" / "SKILL.md",
+    ]
+    for candidate in candidate_paths:
+        if not candidate.exists():
+            continue
+        raw = candidate.read_text(encoding="utf-8")
+        parts = raw.split("---", 2)
+        return parts[2].strip() if len(parts) >= 3 else raw
+    log.warning("No SKILL.md found; using built-in fallback system prompt")
+    return _DEFAULT_SYSTEM_PROMPT
+
+
+SYSTEM_PROMPT = _load_system_prompt()
 
 # ---------------------------------------------------------------------------
 # Classification patterns (same as response_router.py)
@@ -62,6 +83,16 @@ _ESCALATION = [
 
 _MULTILINGUAL_RULE = """
 LANGUAGE RULE: Detect the language the guest is writing in. Always reply in the SAME language as the guest's message. If the guest writes in French, reply in French. If the guest writes in Spanish, reply in Spanish. If the guest writes in Arabic, reply in Arabic. The property information above is in English — translate your response for the guest automatically. The menu, house rules, and FAQ content should be translated on-the-fly as needed.
+"""
+
+_GUEST_CONTEXT_RULE = """
+GUEST CONTEXT RULES:
+- Treat host-provided FAQ, house rules, food menu, nearby recommendations, and custom instructions as the operating manual for this property.
+- Guests may ask about WiFi, check-in, check-out, parking, directions, amenities, food, local recommendations, extra towels, housekeeping, maintenance issues, late arrival, early check-in, late checkout, or help finding their room/unit.
+- If reservation context includes a room / unit / property number, use it naturally when it improves the answer.
+- Never reveal other guests' data or invent a room number. If a message depends on a room and no room is mapped, ask for a short confirmation.
+- If the host has mapped a phone number to a reservation, assume that reservation context belongs to the guest using that phone unless the guest clearly says otherwise.
+- When a guest raises a problem, acknowledge it, use the mapped stay context if available, and keep the reply specific to their room/unit and booking dates.
 """
 
 
@@ -137,7 +168,7 @@ def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, s
     system = SYSTEM_PROMPT
     if property_context:
         system = system + "\n\n" + property_context
-    system = system + "\n\n" + _MULTILINGUAL_RULE
+    system = system + "\n\n" + _MULTILINGUAL_RULE + "\n\n" + _GUEST_CONTEXT_RULE
 
     user_content = (
         f"[Automated pipeline — use {skill_cmd} flow]\n\n"

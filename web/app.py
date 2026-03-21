@@ -41,15 +41,19 @@ Routes:
 """
 
 import csv
+import hashlib
 import io
 import json
 import logging
 import os
+import re
 import secrets
 import zipfile
+from html import escape
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone, timedelta, date as date_type
 from typing import Optional
+from urllib.parse import urlsplit, urlunsplit
 
 import uvicorn
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, Header, UploadFile, File
@@ -67,7 +71,10 @@ from web.models import (
     Reservation, ReservationSyncLog, PMSIntegration, PMSProcessedMessage,
     PLAN_FREE, PLAN_BAILEYS, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
 )
-from web.auth import hash_password, verify_password, create_token, get_current_tenant_id
+from web.auth import (
+    hash_password, verify_password, create_token, get_current_tenant_id,
+    tenant_session_version,
+)
 from web.crypto import encrypt, decrypt
 from web import worker_manager
 from web import billing as billing_mod
@@ -81,6 +88,7 @@ from web.security import (
     CSRFMiddleware, SecurityHeadersMiddleware,
     validate_csrf, rate_limit, client_ip,
 )
+from web.request_safety import ensure_public_hostname, ensure_public_url
 
 class _JSONFormatter(logging.Formatter):
     """Emit log records as single-line JSON objects for structured log ingestion."""
@@ -146,6 +154,8 @@ _ADMIN_EMAILS: set = {
 templates.env.globals["is_admin"] = lambda email: bool(email) and email.lower() in _ADMIN_EMAILS
 
 APP_BASE_URL = os.getenv("APP_BASE_URL", "https://your-domain.com")
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
+_IS_DEV_ENV = _ENVIRONMENT in {"development", "dev", "test"}
 
 # ---------------------------------------------------------------------------
 # App lifecycle
@@ -164,8 +174,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Airbnb Host Assistant",
     lifespan=lifespan,
-    docs_url=None,     # disable Swagger UI in production
-    redoc_url=None,
+    docs_url="/docs" if _IS_DEV_ENV else None,
+    redoc_url="/redoc" if _IS_DEV_ENV else None,
 )
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
@@ -250,6 +260,25 @@ def _redirect_login():
     return RedirectResponse("/login", status_code=302)
 
 
+def _token_digest(raw_token: str) -> str:
+    return hashlib.sha256(raw_token.encode()).hexdigest()
+
+
+def _store_token(raw_token: str) -> str:
+    """Store only a digest for bearer-style one-time tokens."""
+    return _token_digest(raw_token)
+
+
+def _find_tenant_by_token(db: Session, column: str, token: str) -> Optional[Tenant]:
+    """Lookup a tenant by a token column, supporting legacy plaintext rows."""
+    token_digest = _token_digest(token)
+    col = getattr(Tenant, column)
+    tenant = db.query(Tenant).filter(col == token_digest).first()
+    if tenant:
+        return tenant
+    return db.query(Tenant).filter(col == token).first()
+
+
 def _auth_bot(request: Request, db: Session) -> TenantConfig:
     """Authenticate a Baileys bot request via Bearer token. Returns TenantConfig."""
     auth = request.headers.get("Authorization", "")
@@ -262,6 +291,57 @@ def _auth_bot(request: Request, db: Session) -> TenantConfig:
         if verify_bot_token(raw_token, cfg):
             return cfg
     raise HTTPException(status_code=401, detail="Invalid bot token")
+
+
+def _public_request_url(request: Request) -> str:
+    """
+    Build the public URL used by external webhook signature validators.
+    Prefer APP_BASE_URL so validation remains stable behind reverse proxies.
+    """
+    path = request.url.path
+    query = request.url.query
+    base = APP_BASE_URL.strip()
+    if base:
+        parsed = urlsplit(base)
+        return urlunsplit((parsed.scheme or "https", parsed.netloc, path, query, ""))
+    return str(request.url)
+
+
+def _validate_meta_signature(request_body: bytes, signature_header: str) -> bool:
+    """
+    Validate Meta webhook signatures when META_APP_SECRET is configured.
+    In dev/test we allow missing configuration to keep local iteration simple.
+    """
+    app_secret = os.getenv("META_APP_SECRET", "").strip()
+    if not app_secret:
+        if _IS_DEV_ENV:
+            return True
+        log.error("META_APP_SECRET is required for Meta webhook verification")
+        return False
+    from web.meta_sender import verify_request_signature
+    return verify_request_signature(request_body, signature_header, app_secret)
+
+
+def _validate_twilio_signature(request: Request, form_data: dict, cfg: TenantConfig) -> bool:
+    """
+    Validate Twilio webhook signatures against the tenant's auth token.
+    """
+    auth_token = decrypt(cfg.twilio_auth_token_enc or "").strip()
+    if not auth_token:
+        if _IS_DEV_ENV:
+            return True
+        log.error("[%s] Twilio auth token missing; rejecting webhook", cfg.tenant_id)
+        return False
+
+    try:
+        from twilio.request_validator import RequestValidator
+        validator = RequestValidator(auth_token)
+        signature = request.headers.get("X-Twilio-Signature", "")
+        candidate_urls = [_public_request_url(request), str(request.url)]
+        return any(validator.validate(url, form_data, signature) for url in dict.fromkeys(candidate_urls))
+    except Exception as exc:
+        log.warning("[%s] Twilio webhook validation error: %s", cfg.tenant_id, exc)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -289,10 +369,10 @@ def login_post(
     rate_limit(f"login:{client_ip(request)}", max_requests=10, window_seconds=900)
     validate_csrf(request, csrf_token)
     tenant = db.query(Tenant).filter_by(email=email.lower().strip()).first()
-    if not tenant or not verify_password(password, tenant.password_hash):
+    if not tenant or not tenant.is_active or not verify_password(password, tenant.password_hash):
         return templates.TemplateResponse("login.html",
                                           {"request": request, "error": "Invalid email or password"})
-    token = create_token(tenant.id)
+    token = create_token(tenant.id, tenant_session_version(tenant))
     is_secure = (request.url.scheme == "https"
                  or request.headers.get("X-Forwarded-Proto") == "https")
     # Resume onboarding if not yet complete
@@ -325,7 +405,7 @@ def signup_post(
     tenant = Tenant(
         email=email,
         password_hash=hash_password(password),
-        verification_token=ver_token,
+        verification_token=_store_token(ver_token),
         verification_sent_at=datetime.now(timezone.utc),
     )
     db.add(tenant)
@@ -335,7 +415,7 @@ def signup_post(
     db.commit()
     # Send verification email (non-blocking — failure just logs a warning)
     send_verification_email(email, ver_token)
-    token = create_token(tenant.id)
+    token = create_token(tenant.id, tenant_session_version(tenant))
     is_secure = (request.url.scheme == "https"
                  or request.headers.get("X-Forwarded-Proto") == "https")
     resp = RedirectResponse("/onboarding", status_code=302)
@@ -349,7 +429,7 @@ def verify_email(request: Request, token: str = "", db: Session = Depends(get_db
     if not token:
         return templates.TemplateResponse("verify_email.html",
                                           {"request": request, "success": False, "expired": False})
-    tenant = db.query(Tenant).filter_by(verification_token=token).first()
+    tenant = _find_tenant_by_token(db, "verification_token", token)
     if not tenant:
         return templates.TemplateResponse("verify_email.html",
                                           {"request": request, "success": False, "expired": False})
@@ -384,7 +464,7 @@ def resend_verification(
     tenant = _get_tenant(tenant_id, db)
     if not tenant.email_verified:
         ver_token = secrets.token_urlsafe(32)
-        tenant.verification_token = ver_token
+        tenant.verification_token = _store_token(ver_token)
         tenant.verification_sent_at = datetime.now(timezone.utc)
         db.commit()
         send_verification_email(tenant.email, ver_token)
@@ -410,7 +490,7 @@ def forgot_password_post(
     tenant = db.query(Tenant).filter_by(email=email).first()
     if tenant:
         reset_tok = secrets.token_urlsafe(32)
-        tenant.reset_token = reset_tok
+        tenant.reset_token = _store_token(reset_tok)
         tenant.reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=1)
         db.commit()
         send_password_reset_email(email, reset_tok)
@@ -421,7 +501,7 @@ def forgot_password_post(
 
 @app.get("/reset-password", response_class=HTMLResponse)
 def reset_password_page(request: Request, token: str = "", db: Session = Depends(get_db)):
-    tenant = db.query(Tenant).filter_by(reset_token=token).first()
+    tenant = _find_tenant_by_token(db, "reset_token", token)
     if not tenant or not token:
         return templates.TemplateResponse("reset_password.html",
                                           {"request": request, "invalid": True, "success": False, "token": "", "error": None})
@@ -444,7 +524,7 @@ def reset_password_post(
 ):
     rate_limit(f"reset:{client_ip(request)}", max_requests=10, window_seconds=3600)
     validate_csrf(request, csrf_token)
-    tenant = db.query(Tenant).filter_by(reset_token=token).first()
+    tenant = _find_tenant_by_token(db, "reset_token", token)
     if not tenant:
         return templates.TemplateResponse("reset_password.html",
                                           {"request": request, "invalid": True, "success": False, "token": "", "error": None})
@@ -470,6 +550,7 @@ def reset_password_post(
 def logout():
     resp = RedirectResponse("/login", status_code=302)
     resp.delete_cookie("session")
+    resp.delete_cookie("admin_session")
     return resp
 
 
@@ -989,6 +1070,7 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
     if not url or "airbnb.com" not in url:
         return JSONResponse({"error": "Please paste a valid Airbnb listing URL."})
     try:
+        url = ensure_public_url(url, allowed_hosts={"airbnb.com", "abnb.me"})
         import requests as req_lib
         from bs4 import BeautifulSoup
         headers = {"User-Agent": "Mozilla/5.0 (compatible; HostAI/1.0)"}
@@ -1058,7 +1140,8 @@ async def test_imap(
 
     try:
         import imapclient
-        c = imapclient.IMAPClient(imap_host, port=993, ssl=True, timeout=10)
+        safe_host = ensure_public_hostname(imap_host)
+        c = imapclient.IMAPClient(safe_host, port=993, ssl=True, timeout=10)
         c.login(email_address, email_password)
         c.select_folder("INBOX")
         c.logout()
@@ -1124,7 +1207,8 @@ async def test_ical(
         from icalendar import Calendar
         results = []
         for url in urls[:3]:
-            req = _urlreq.Request(url, headers={"User-Agent": "HostAI/1.0"})
+            safe_url = ensure_public_url(url)
+            req = _urlreq.Request(safe_url, headers={"User-Agent": "HostAI/1.0"})
             with _urlreq.urlopen(req, timeout=10) as r:
                 raw = r.read()
             cal = Calendar.from_ical(raw)
@@ -1460,7 +1544,10 @@ async def wa_webhook_inbound(tenant_id: str, request: Request, db: Session = Dep
     except HTTPException:
         return JSONResponse({"status": "ok"})
 
-    body = await request.json()
+    raw_body = await request.body()
+    if not _validate_meta_signature(raw_body, request.headers.get("X-Hub-Signature-256", "")):
+        return JSONResponse({"status": "forbidden"}, status_code=403)
+    body = json.loads(raw_body.decode("utf-8"))
     from web.meta_sender import extract_inbound
     for msg in extract_inbound(body):
         _handle_inbound_wa(tenant_id, msg["from"], msg["text"], db)
@@ -1485,8 +1572,11 @@ async def sms_webhook_inbound(tenant_id: str, request: Request, db: Session = De
         return HTMLResponse("<Response/>")
 
     form = await request.form()
+    form_data = dict(form)
+    if not _validate_twilio_signature(request, form_data, cfg):
+        return HTMLResponse("<Response/>", status_code=403)
     from web.sms_sender import parse_twilio_inbound
-    msg = parse_twilio_inbound(dict(form))
+    msg = parse_twilio_inbound(form_data)
     if msg:
         _handle_inbound_sms(tenant_id, msg["from"], msg["text"], db)
 
@@ -1503,21 +1593,36 @@ def _handle_inbound_wa(tenant_id: str, from_phone: str, text: str, db: Session):
     if not cfg:
         return
     try:
-        from web.classifier import classify_message
+        from web.classifier import classify_message, detect_vendor_type, generate_draft, build_property_context
         api_key = decrypt(cfg.anthropic_api_key_enc or "")
         if not api_key:
             return
-        result = classify_message(api_key, "WhatsApp guest", text, cfg.property_names or "")
+        reservation = _find_reservation_for_guest_context(
+            tenant_id, db, guest_phone=from_phone, guest_name="WhatsApp guest"
+        )
+        guest_name = reservation.guest_name if reservation else "WhatsApp guest"
+        msg_type = classify_message(text)
+        vendor_type = detect_vendor_type(text) if msg_type == "complex" else None
+        property_context = build_property_context(cfg)
+        if reservation:
+            property_context = (
+                property_context
+                + "\n\n<reservation>\n"
+                + _reservation_context_text(reservation)
+                + "\n</reservation>"
+            ).strip()
+        draft_text = generate_draft(api_key, guest_name, text, msg_type, property_context=property_context)
         draft_id = secrets.token_hex(8)
         db.add(Draft(
             id=draft_id,
             tenant_id=tenant_id,
             source="whatsapp",
-            guest_name="WhatsApp guest",
+            guest_name=guest_name,
             message=text,
             reply_to=from_phone,
-            msg_type=result.get("msg_type", "complex"),
-            draft=result.get("draft", text),
+            msg_type=msg_type,
+            vendor_type=vendor_type,
+            draft=draft_text,
         ))
         db.add(ActivityLog(tenant_id=tenant_id, event_type="whatsapp_received",
                            message=f"WhatsApp from {from_phone}: {text[:80]}"))
@@ -1532,21 +1637,36 @@ def _handle_inbound_sms(tenant_id: str, from_phone: str, text: str, db: Session)
     if not cfg:
         return
     try:
-        from web.classifier import classify_message
+        from web.classifier import classify_message, detect_vendor_type, generate_draft, build_property_context
         api_key = decrypt(cfg.anthropic_api_key_enc or "")
         if not api_key:
             return
-        result = classify_message(api_key, "SMS guest", text, cfg.property_names or "")
+        reservation = _find_reservation_for_guest_context(
+            tenant_id, db, guest_phone=from_phone, guest_name="SMS guest"
+        )
+        guest_name = reservation.guest_name if reservation else "SMS guest"
+        msg_type = classify_message(text)
+        vendor_type = detect_vendor_type(text) if msg_type == "complex" else None
+        property_context = build_property_context(cfg)
+        if reservation:
+            property_context = (
+                property_context
+                + "\n\n<reservation>\n"
+                + _reservation_context_text(reservation)
+                + "\n</reservation>"
+            ).strip()
+        draft_text = generate_draft(api_key, guest_name, text, msg_type, property_context=property_context)
         draft_id = secrets.token_hex(8)
         db.add(Draft(
             id=draft_id,
             tenant_id=tenant_id,
             source="sms",
-            guest_name="SMS guest",
+            guest_name=guest_name,
             message=text,
             reply_to=from_phone,
-            msg_type=result.get("msg_type", "complex"),
-            draft=result.get("draft", text),
+            msg_type=msg_type,
+            vendor_type=vendor_type,
+            draft=draft_text,
         ))
         db.add(ActivityLog(tenant_id=tenant_id, event_type="sms_received",
                            message=f"SMS from {from_phone}: {text[:80]}"))
@@ -1806,7 +1926,9 @@ def api_download_baileys(request: Request, db: Session = Depends(get_db)):
 _CSV_ALIASES = {
     "confirmation_code": ["confirmation code", "confirmation_code", "reservationid", "reservation id"],
     "guest_name":        ["guest name", "guest_name", "guest"],
+    "guest_phone":       ["guest phone", "guest_phone", "phone", "phone number", "guest phone number"],
     "listing_name":      ["listing", "listing name", "listing_name", "property"],
+    "unit_identifier":   ["unit", "unit identifier", "unit number", "room", "room number", "property no", "property number"],
     "checkin":           ["start date", "start_date", "check-in", "check_in", "checkin", "arrival"],
     "checkout":          ["end date", "end_date", "check-out", "check_out", "checkout", "departure"],
     "nights":            ["nights", "# nights", "number of nights", "duration"],
@@ -1822,6 +1944,103 @@ def _csv_col(headers: list[str], field: str) -> Optional[str]:
     for alias in _CSV_ALIASES.get(field, []):
         if alias in lower_headers:
             return lower_headers[alias]
+    return None
+
+
+def _normalize_phone(phone: str | None) -> str:
+    """Return a digits-only phone string for stable matching."""
+    return re.sub(r"\D+", "", phone or "")
+
+
+def _reservation_sort_key(res: Reservation, today: date_type) -> tuple[int, int, float]:
+    """
+    Rank reservations by how relevant they are to a live guest conversation.
+    Current stays win, then upcoming, then recent past stays.
+    """
+    imported_at = res.imported_at.timestamp() if res.imported_at else 0.0
+    if res.checkin and res.checkout and res.checkin <= today <= res.checkout:
+        return (0, 0, -imported_at)
+    if res.checkin and res.checkin >= today:
+        return (1, (res.checkin - today).days, -imported_at)
+    if res.checkout and res.checkout < today:
+        return (2, (today - res.checkout).days, -imported_at)
+    return (3, 9999, -imported_at)
+
+
+def _reservation_context_lines(res: Reservation) -> list[str]:
+    """Build a compact context block for chat prompts and logs."""
+    lines = [f"Reservation: {res.confirmation_code}"]
+    if res.guest_phone:
+        lines.append(f"Guest phone: {res.guest_phone}")
+    if res.listing_name:
+        lines.append(f"Listing: {res.listing_name}")
+    if res.unit_identifier:
+        lines.append(f"Room / unit / property #: {res.unit_identifier}")
+    if res.checkin:
+        lines.append(f"Check-in: {res.checkin.strftime('%A, %B %d, %Y')}")
+    if res.checkout:
+        lines.append(f"Check-out: {res.checkout.strftime('%A, %B %d, %Y')}")
+    if res.nights:
+        lines.append(f"Nights: {res.nights}")
+    if res.guests_count:
+        lines.append(f"Guests: {res.guests_count}")
+    return lines
+
+
+def _reservation_context_text(res: Reservation) -> str:
+    return "\n".join(_reservation_context_lines(res))
+
+
+def _find_reservation_for_guest_context(
+    tenant_id: str,
+    db: Session,
+    guest_phone: str = "",
+    guest_name: str = "",
+) -> Optional[Reservation]:
+    """Find the most relevant reservation for an inbound guest message."""
+    today = datetime.now(timezone.utc).date()
+    window_start = today - timedelta(days=30)
+    window_end = today + timedelta(days=120)
+    phone_digits = _normalize_phone(guest_phone)
+    if phone_digits:
+        phone_matches = [
+            res for res in (
+            db.query(Reservation)
+            .filter(
+                Reservation.tenant_id == tenant_id,
+                Reservation.status == "confirmed",
+                Reservation.guest_phone.isnot(None),
+                Reservation.checkout >= window_start,
+                Reservation.checkin <= window_end,
+            )
+            .all()
+            )
+            if _normalize_phone(res.guest_phone) == phone_digits
+        ]
+        if phone_matches:
+            phone_matches.sort(key=lambda res: _reservation_sort_key(res, today))
+            return phone_matches[0]
+
+    if guest_name:
+        name_parts = guest_name.lower().split()
+        candidate_rows = (
+            db.query(Reservation)
+            .filter(
+                Reservation.tenant_id == tenant_id,
+                Reservation.status == "confirmed",
+                Reservation.checkout >= window_start,
+                Reservation.checkin <= window_end,
+            )
+            .all()
+        )
+        matches: list[Reservation] = []
+        for res in candidate_rows:
+            db_name_lower = res.guest_name.lower()
+            if any(part in db_name_lower or db_name_lower in part for part in name_parts if len(part) > 2):
+                matches.append(res)
+        if matches:
+            matches.sort(key=lambda res: _reservation_sort_key(res, today))
+            return matches[0]
     return None
 
 
@@ -1861,6 +2080,12 @@ def reservations_page(request: Request,
                 .offset(offset).limit(per_page).all())
 
     sync_log = db.query(ReservationSyncLog).filter_by(tenant_id=tenant_id).first()
+    csv_stale = False
+    if sync_log and sync_log.last_synced:
+        last_synced = sync_log.last_synced
+        if last_synced.tzinfo is None:
+            last_synced = last_synced.replace(tzinfo=timezone.utc)
+        csv_stale = (datetime.now(timezone.utc) - last_synced) > timedelta(hours=24)
 
     # Analytics
     today   = datetime.now(timezone.utc).date()
@@ -1889,6 +2114,7 @@ def reservations_page(request: Request,
         "per_page":      per_page,
         "pages":         max(1, (total + per_page - 1) // per_page),
         "sync_log":      sync_log,
+        "csv_stale":     csv_stale,
         "month_revenue": month_revenue,
         "occupancy_pct": occupancy_pct,
         "upcoming":      upcoming,
@@ -1963,18 +2189,34 @@ async def reservations_upload(
         payout   = _parse_float(payout_str)
 
         guest_col   = _csv_col(headers, "guest_name")
+        phone_col   = _csv_col(headers, "guest_phone")
         listing_col = _csv_col(headers, "listing_name")
+        unit_col    = _csv_col(headers, "unit_identifier")
+        guest_phone = row.get(phone_col, "").strip() if phone_col else ""
+        unit_id     = row.get(unit_col, "").strip() if unit_col else ""
 
         if existing:
             existing.status       = status
             existing.payout_usd   = payout   or existing.payout_usd
             existing.guests_count = guests   or existing.guests_count
+            if guest_phone:
+                existing.guest_phone = guest_phone
+            if unit_id:
+                existing.unit_identifier = unit_id
+            if guest_col:
+                existing.guest_name = row.get(guest_col, existing.guest_name).strip() or existing.guest_name
+            if listing_col:
+                listing_value = row.get(listing_col, "").strip()
+                if listing_value:
+                    existing.listing_name = listing_value
         else:
             db.add(Reservation(
                 tenant_id=tenant_id,
                 confirmation_code=code,
                 guest_name=(row.get(guest_col, "Guest").strip() if guest_col else "Guest"),
+                guest_phone=guest_phone or None,
                 listing_name=(row.get(listing_col, "").strip() if listing_col else None),
+                unit_identifier=unit_id or None,
                 checkin=checkin,
                 checkout=checkout,
                 nights=nights,
@@ -1996,6 +2238,40 @@ async def reservations_upload(
                        message=f"Reservation CSV imported: {imported} new, {skipped} skipped"))
     db.commit()
     return RedirectResponse(f"/reservations?imported={imported}", status_code=302)
+
+
+@app.post("/reservations/{reservation_id}/context")
+def update_reservation_context(
+    reservation_id: int,
+    request: Request,
+    guest_phone: str = Form(""),
+    unit_identifier: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Attach guest phone and room/unit context to a reservation."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    res = db.query(Reservation).filter_by(id=reservation_id, tenant_id=tenant_id).first()
+    if not res:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    res.guest_phone = guest_phone.strip() or None
+    res.unit_identifier = unit_identifier.strip() or None
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="reservation_context_updated",
+        message=(
+            f"Reservation context updated for {res.guest_name} ({res.confirmation_code}): "
+            f"phone={res.guest_phone or '—'}, unit={res.unit_identifier or '—'}"
+        ),
+    ))
+    db.commit()
+    return RedirectResponse("/reservations?context_updated=1", status_code=302)
 
 
 # ---------------------------------------------------------------------------
@@ -2193,12 +2469,13 @@ def edit_form(draft_id: str, request: Request, db: Session = Depends(get_db)):
     if not draft:
         return HTMLResponse("")
     csrf = getattr(request.state, "csrf_token", "")
+    draft_text = escape(draft.draft or "")
     return HTMLResponse(f"""
     <form method="post" action="/drafts/{draft_id}/edit" style="margin-top:0.5rem">
-      <input type="hidden" name="csrf_token" value="{csrf}">
+      <input type="hidden" name="csrf_token" value="{escape(str(csrf))}">
       <textarea name="edited_text" style="width:100%;padding:8px;border:1px solid #ced4da;border-radius:6px;
         font-size:0.875rem;line-height:1.6;min-height:120px;resize:vertical"
-      >{draft.draft}</textarea>
+      >{draft_text}</textarea>
       <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
         <button type="submit" class="btn btn-primary btn-sm">Send edited version</button>
       </div>
@@ -2307,7 +2584,12 @@ def _require_admin(request: Request, db: Session) -> Tenant:
     except HTTPException:
         raise HTTPException(status_code=403, detail="Admin access required")
     tenant = db.query(Tenant).filter_by(id=tenant_id).first()
-    if not tenant or tenant.email.lower() not in _ADMIN_EMAILS:
+    if (
+        not tenant
+        or not tenant.is_active
+        or not tenant.email_verified
+        or tenant.email.lower() not in _ADMIN_EMAILS
+    ):
         raise HTTPException(status_code=403, detail="Admin access required")
     return tenant
 
@@ -2555,7 +2837,7 @@ def admin_impersonate(tid: str, request: Request, db: Session = Depends(get_db))
     if not t:
         raise HTTPException(status_code=404, detail="Tenant not found")
     admin_token = request.cookies.get("session")
-    new_token   = create_token(t.id)
+    new_token   = create_token(t.id, tenant_session_version(t))
     is_secure   = (request.url.scheme == "https"
                    or request.headers.get("X-Forwarded-Proto") == "https")
     cfg         = db.query(TenantConfig).filter_by(tenant_id=t.id).first()
@@ -2759,14 +3041,16 @@ def reservations_export_csv(
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow([
-        "Confirmation Code", "Guest Name", "Listing", "Check-in", "Check-out",
-        "Nights", "Guests", "Payout (USD)", "Status", "Imported At",
+        "Confirmation Code", "Guest Name", "Guest Phone", "Listing", "Unit / Room",
+        "Check-in", "Check-out", "Nights", "Guests", "Payout (USD)", "Status", "Imported At",
     ])
     for r in rows:
         writer.writerow([
             r.confirmation_code,
             r.guest_name,
+            r.guest_phone or "",
             r.listing_name or "",
+            r.unit_identifier or "",
             r.checkin.isoformat() if r.checkin else "",
             r.checkout.isoformat() if r.checkout else "",
             r.nights or "",

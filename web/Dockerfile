@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r /app/web/requirements.txt
 
 # Copy application
 COPY web/ /app/web/
+COPY airbnb-host/SKILL.md /app/airbnb-host/SKILL.md
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1

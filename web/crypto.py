@@ -8,13 +8,23 @@ Generate one with: python -c "from cryptography.fernet import Fernet; print(Fern
 import os
 from cryptography.fernet import Fernet
 
-_KEY = os.getenv("FIELD_ENCRYPTION_KEY", "")
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
+_ALLOW_INSECURE_DEFAULTS = _ENVIRONMENT in {"development", "dev", "test"}
 
-if _KEY:
-    _fernet = Fernet(_KEY.encode() if isinstance(_KEY, str) else _KEY)
-else:
-    # Dev mode — generate a temporary key (data won't survive restarts without env var)
-    _fernet = Fernet(Fernet.generate_key())
+
+def _load_required_key() -> bytes:
+    key = os.getenv("FIELD_ENCRYPTION_KEY", "").strip()
+    if key:
+        return key.encode()
+    if _ALLOW_INSECURE_DEFAULTS:
+        # Development/test convenience only; production must provide a stable key.
+        return Fernet.generate_key()
+    raise RuntimeError(
+        "FIELD_ENCRYPTION_KEY is required in production. "
+        "Set it to a base64-encoded 32-byte Fernet key."
+    )
+
+_fernet = Fernet(_load_required_key())
 
 
 def encrypt(plaintext: str) -> str:

@@ -133,6 +133,7 @@ def _maybe_pre_arrival(r, today, api_key: str, property_context: str, db, tenant
         f"Guest: {r.guest_name}\n"
         f"Confirmation: {r.confirmation_code}\n"
         f"Property: {prop}\n"
+        f"{'Room / unit / property #: ' + r.unit_identifier + chr(10) if r.unit_identifier else ''}"
         f"Check-in: {r.checkin.strftime('%A, %B %d, %Y')} ({_PRE_ARRIVAL_DAYS} days away)\n"
         f"Check-out: {r.checkout.strftime('%A, %B %d, %Y')}\n"
         f"Nights: {r.nights or 'N/A'} | Guests: {r.guests_count or 'N/A'}\n\n"
@@ -163,6 +164,7 @@ def _maybe_cleaner_brief(r, today, api_key: str, property_context: str, db, tena
     context = (
         f"[PROACTIVE — CLEANER TURNOVER BRIEF]\n"
         f"Property: {prop}\n"
+        f"{'Room / unit / property #: ' + r.unit_identifier + chr(10) if r.unit_identifier else ''}"
         f"Guest checking out today: {r.guest_name}\n"
         f"Confirmation: {r.confirmation_code}\n"
         f"Nights stayed: {r.nights or 'N/A'} | Guests: {r.guests_count or 'N/A'}\n\n"
@@ -194,6 +196,7 @@ def _maybe_checkout_message(r, today, api_key: str, property_context: str, db, t
         f"Guest: {r.guest_name}\n"
         f"Confirmation: {r.confirmation_code}\n"
         f"Property: {prop}\n"
+        f"{'Room / unit / property #: ' + r.unit_identifier + chr(10) if r.unit_identifier else ''}"
         f"Check-out today: {r.checkout.strftime('%A, %B %d, %Y')}\n"
         f"Stayed: {r.nights or 'N/A'} nights\n\n"
         f"Generate a warm, genuine thank-you message to send to {r.guest_name} on their checkout day. "
@@ -217,6 +220,7 @@ def _maybe_review_reminder(r, today, api_key: str, property_context: str, db, te
     context = (
         f"[PROACTIVE — REVIEW REMINDER TO HOST]\n"
         f"Guest: {r.guest_name} checked out {_REVIEW_REMIND_DAYS} days ago from {prop}.\n"
+        f"{'Room / unit / property #: ' + r.unit_identifier + chr(10) if r.unit_identifier else ''}"
         f"Confirmation: {r.confirmation_code}\n\n"
         f"Write a short, friendly reminder to the HOST (not the guest) reminding them to "
         f"leave a review for {r.guest_name} on Airbnb before the review window closes. "

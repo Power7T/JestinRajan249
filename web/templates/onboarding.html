@@ -297,6 +297,10 @@
       Anything you always want the AI to do or avoid. Examples: tone, upsells, what to mention.
     </p>
     <textarea name="custom_instructions" rows="4" placeholder="Always mention the rooftop terrace when guests ask about facilities.&#10;Never offer refunds directly — say you'll check with the host.&#10;Respond in a warm, friendly tone with the guest's first name.">{{ cfg.custom_instructions or '' }}</textarea>
+    <div class="help-text" style="margin-top:0.5rem;line-height:1.8">
+      Guests can use the bot for WiFi, check-in, check-out, parking, directions, food, local recommendations, late arrival, extra towels, and issue reporting.
+      When you later map a guest phone number to a reservation and room / unit / property number, HostAI uses that stay context automatically in WhatsApp and SMS replies.
+    </div>
 
     <label style="margin-top:0.5rem">Email for urgent alerts (human handoff)</label>
     <input type="email" name="escalation_email" value="{{ cfg.escalation_email or tenant.email }}" placeholder="{{ tenant.email }}">

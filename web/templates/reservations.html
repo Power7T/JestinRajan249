@@ -91,13 +91,18 @@
   Upload error: {{ request.query_params.get('error') | replace('_', ' ') }}. Please try again with a valid Airbnb CSV file.
 </div>
 {% endif %}
+{% if request.query_params.get('context_updated') %}
+<div class="alert alert-success">
+  ✓ Reservation guest context saved. HostAI will now use the mapped phone number and room / unit info in guest chat.
+</div>
+{% endif %}
 
 <!-- Upload card -->
 <div class="upload-card">
   <h3>Upload Airbnb Reservation CSV</h3>
   <p>
     On Airbnb → <strong>Reservations</strong> → <strong>Export CSV</strong>.<br>
-    Upload here twice a day — morning and evening — for best results.
+    Upload here twice a day for best results. CSV stays supported for hosts without a PMS.
   </p>
   <form method="post" action="/reservations/upload" enctype="multipart/form-data" style="display:inline-flex;gap:0.75rem;align-items:center;flex-wrap:wrap;justify-content:center">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
@@ -107,6 +112,23 @@
   <p style="font-size:0.75rem;color:#6c757d;margin-top:0.75rem;margin-bottom:0">
     Existing reservations are updated (not duplicated). Cancelled bookings are flagged automatically.
   </p>
+</div>
+
+<div class="card" style="margin-bottom:1.25rem;background:linear-gradient(135deg,#fff9f2 0%,#fff 100%);border:1px solid #f3d7b0">
+  <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap;justify-content:space-between">
+    <div style="max-width:760px">
+      <h3 style="margin-bottom:0.4rem;font-size:1rem">Guest context mapping</h3>
+      <p style="margin:0;color:#495057;font-size:0.86rem;line-height:1.7">
+        Add the guest phone number and room / unit / property number to a reservation. When the guest messages from that number, HostAI matches the reservation, injects the room context into the AI prompt, and replies more naturally.
+      </p>
+    </div>
+    <div style="font-size:0.82rem;color:#6c757d;line-height:1.7;min-width:240px">
+      Examples:
+      <div>• "Unit 12A" for a suite</div>
+      <div>• "Room 204" for a hotel room</div>
+      <div>• "+91 98765 43210" for the guest phone</div>
+    </div>
+  </div>
 </div>
 
 <!-- What happens after upload -->
@@ -150,6 +172,7 @@
         <th>Guests</th>
         <th>Payout</th>
         <th>Status</th>
+        <th>Guest context</th>
         <th>Drafts</th>
         <th>Portal</th>
       </tr>
@@ -184,6 +207,16 @@
       </td>
       <td>
         <span class="badge badge-{{ r.status }}">{{ r.status }}</span>
+      </td>
+      <td style="font-size:0.78rem;min-width:220px">
+        <form method="post" action="/reservations/{{ r.id }}/context" style="display:flex;flex-direction:column;gap:0.45rem">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <input type="tel" name="guest_phone" value="{{ r.guest_phone or '' }}" placeholder="Guest phone"
+                 style="width:100%;padding:6px 8px;font-size:0.78rem">
+          <input type="text" name="unit_identifier" value="{{ r.unit_identifier or '' }}" placeholder="Room / unit / property #"
+                 style="width:100%;padding:6px 8px;font-size:0.78rem">
+          <button type="submit" class="btn btn-outline btn-sm" style="align-self:flex-start">Save context</button>
+        </form>
       </td>
       <td style="font-size:0.72rem;color:#6c757d;white-space:nowrap">
         {% if r.pre_arrival_sent %}✓ pre-arrival<br>{% endif %}
