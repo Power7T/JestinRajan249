@@ -706,8 +706,8 @@ def _validate_twilio_signature(request: Request, form_data: dict, cfg: TenantCon
 # ---------------------------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
-def root():
-    return RedirectResponse("/dashboard", status_code=302)
+def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -5348,6 +5348,84 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
     # Calculate costs loosely
     total_cost = sum(log.cost_usd for log in db.query(ApiUsageLog).all())
     
+    return templates.TemplateResponse("admin_ai.html", {
+        "request": request,
+        "sys_conf": sys_conf,
+        "usage_logs": usage_logs,
+        "total_cost": total_cost,
+    })
+
+
+@app.get("/admin/costs", response_class=HTMLResponse)
+def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
+    """Phase 2: Internal Profitability Analysis."""
+    _require_admin(request, db)
+    
+    configs = db.query(TenantConfig).all()
+    
+    # Assume static ARR/MRR for standard plans
+    plan_revenue = {"free": 0, "pro": 29, "growth": 79, "enterprise": 1000}
+    
+    metrics = {
+        "free": {"users": 0, "revenue": 0.0, "cost": 0.0},
+        "pro": {"users": 0, "revenue": 0.0, "cost": 0.0},
+        "growth": {"users": 0, "revenue": 0.0, "cost": 0.0},
+        "enterprise": {"users": 0, "revenue": 0.0, "cost": 0.0},
+    }
+    
+    from sqlalchemy.sql import func
+    costs = db.query(ApiUsageLog.tenant_id, func.sum(ApiUsageLog.cost_usd).label("total_cost")).group_by(ApiUsageLog.tenant_id).all()
+    cost_dict = {t_id: float(cost or 0) for t_id, cost in costs}
+    
+    for c in configs:
+        plan = c.subscription_plan.lower()
+        if plan not in metrics:
+            if plan in ["baileys", "sms"]:
+                plan = "pro"
+            else:
+                plan = "free"
+            
+        metrics[plan]["users"] += 1
+        metrics[plan]["revenue"] += plan_revenue.get(plan, 0.0)
+        metrics[plan]["cost"] += cost_dict.get(c.tenant_id, 0.0)
+        
+    for p in metrics:
+        metrics[p]["margin"] = metrics[p]["revenue"] - metrics[p]["cost"]
+        metrics[p]["margin_pct"] = (metrics[p]["margin"] / metrics[p]["revenue"] * 100) if metrics[p]["revenue"] > 0 else 0
+        
+    total_rev = sum(m["revenue"] for m in metrics.values())
+    total_cost = sum(m["cost"] for m in metrics.values())
+    total_margin = total_rev - total_cost
+    margin_pct = (total_margin / total_rev * 100) if total_rev > 0 else 0
+    
+    return templates.TemplateResponse("admin_costs.html", {
+        "request": request,
+        "metrics": metrics,
+        "total_rev": total_rev,
+        "total_cost": total_cost,
+        "total_margin": total_margin,
+        "margin_pct": margin_pct,
+    })
+
+
+@app.get("/admin/health_api", response_class=HTMLResponse)
+def admin_api_health(request: Request, db: Session = Depends(get_db)):
+    """Phase 4: API Health & Performance Monitoring."""
+    _require_admin(request, db)
+    
+    # Calculate average cost per draft for "Cost Trends"
+    total_count = db.query(ApiUsageLog).count()
+    total_cost = db.query(func.sum(ApiUsageLog.cost_usd)).scalar() or 0.0
+    avg_cost = (total_cost / total_count) if total_count > 0 else 0.0
+    
+    # Predicted monthly loosely
+    predicted_monthly = (total_cost * 1.5)  # just a simple mock scalar for the display
+    
+    return templates.TemplateResponse("admin_api.html", {
+        "request": request,
+        "avg_cost": avg_cost,
+        "predicted_monthly": predicted_monthly,
+    })
     return templates.TemplateResponse("admin_ai.html", {
         "request": request,
         "sys_conf": sys_conf,

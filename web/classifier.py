@@ -344,8 +344,18 @@ def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, s
 
             last_exc = None
             for attempt, delay in zip(range(1, _MAX_RETRIES + 1), _RETRY_DELAYS):
-                # Hot-swap dynamically at request-time:
-                model_to_use = sys_conf.primary_model if attempt == 1 else sys_conf.fallback_model
+                
+                # Phase 3: Smart Routing
+                if attempt == 1:
+                    if msg_type == "routine":
+                        model_to_use = sys_conf.fallback_model or "meta-llama/llama-3.1-70b-instruct"
+                    elif msg_type == "escalation":
+                        model_to_use = "anthropic/claude-3-opus"  # Max intelligence for critical
+                    else:
+                        model_to_use = sys_conf.primary_model or "anthropic/claude-3.5-sonnet"
+                else:
+                    # On failure, always fallback to the reliable cheap model
+                    model_to_use = sys_conf.fallback_model or "meta-llama/llama-3.1-70b-instruct"
                 
                 try:
                     resp = client.chat.completions.create(

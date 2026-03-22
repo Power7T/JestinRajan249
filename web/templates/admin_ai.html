@@ -33,10 +33,12 @@
 {% block content %}
 <h1>AI Engine Configuration</h1>
 
-<div class="admin-nav">
+<div class="admin-nav" style="flex-wrap:wrap;">
   <a href="/admin">Overview</a>
   <a href="/admin/system">System Health</a>
   <a href="/admin/ai" class="active">AI Engine</a>
+  <a href="/admin/costs">Profitability</a>
+  <a href="/admin/health_api">API Health</a>
 </div>
 
 {% if request.query_params.get("msg") == "saved" %}
