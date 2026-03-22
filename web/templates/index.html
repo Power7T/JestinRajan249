@@ -304,11 +304,39 @@
 
         @media (max-width: 768px) {
             .hero h1 {
-                font-size: 3rem;
+                font-size: 2.5rem;
             }
-
+            .hero p {
+                font-size: 1.05rem;
+            }
             .nav-links {
-                display: none;
+                gap: 1rem;
+            }
+            .nav-links a:not(.btn-primary) {
+                display: none; /* Hide text links to save space, keep CTA */
+            }
+            .hero-btns {
+                flex-direction: column;
+                width: 100%;
+                max-width: 300px;
+                margin: 0 auto;
+            }
+            .hero-btns a {
+                width: 100%;
+                text-align: center;
+            }
+            .metrics {
+                flex-direction: column;
+                gap: 3rem;
+            }
+            .metric-item b {
+                font-size: 2.5rem;
+            }
+            .section-title {
+                font-size: 2rem;
+            }
+            .preview-img {
+                margin-top: 2rem;
             }
         }
     </style>
