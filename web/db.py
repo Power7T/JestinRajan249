@@ -67,6 +67,7 @@ def get_db():
 def init_db():
     """Create all tables (dev/test) and run lightweight migrations when enabled."""
     from web.models import (  # noqa: F401
+        SystemConfig, ApiUsageLog,
         Tenant, TenantConfig, Draft, ProcessedEmail, CalendarState,
         Vendor, ActivityLog, BaileysOutbound, Reservation, ReservationSyncLog,
         ReservationIntakeBatch, AutomationRule, TeamMember, GuestTimelineEvent,
@@ -148,6 +149,7 @@ def db_migrate():
         ("drafts", "guest_message_index",    "INTEGER",      "1"),
         ("drafts", "property_name_snapshot", "VARCHAR(256)", "NULL"),
         ("drafts", "unit_identifier_snapshot","VARCHAR(64)", "NULL"),
+        ("drafts", "confidence",            "FLOAT",        "NULL"),
         ("drafts", "auto_send_eligible",     "BOOLEAN",      false_default),
         ("drafts", "guest_history_score",    "FLOAT",        "NULL"),
         ("drafts", "guest_sentiment",        "VARCHAR(16)",  "NULL"),
@@ -157,6 +159,7 @@ def db_migrate():
         ("drafts", "host_feedback_score",    "FLOAT",        "NULL"),
         ("drafts", "host_feedback_note",     "TEXT",         "NULL"),
         ("drafts", "host_feedback_at",       datetime_type,  "NULL"),
+        ("drafts", "context_sources",        "TEXT",         "NULL"),
     ]
     inspector = inspect(engine)
     existing_tables = set(inspector.get_table_names())

@@ -4,42 +4,32 @@
 {% block head %}
 <style>
   /* Setup checklist */
-  .checklist-card { background:#fff;border:2px solid #e00b27;border-radius:10px;padding:1.5rem;margin-bottom:1.5rem; }
+  .checklist-card { background:var(--surface);border:1px solid var(--accent);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem; }
   .checklist-card h2 { font-size:1rem;margin-bottom:1rem; }
-  .checklist-item { display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid #f1f3f5;font-size:0.875rem; }
+  .checklist-item { display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.84rem; }
   .checklist-item:last-child { border-bottom:none;padding-bottom:0; }
-  .check-icon { font-size:1rem;width:1.5rem;text-align:center;flex-shrink:0; }
-  .check-icon.done  { color:#28a745; }
-  .check-icon.todo  { color:#dee2e6; }
-  .checklist-action { margin-left:auto;font-size:0.8rem; }
-
-  /* First-visit tour tooltip */
-  .tour-tip { position:relative; }
-  .tour-badge { display:inline-block;background:#e00b27;color:#fff;font-size:0.7rem;font-weight:700;
-                border-radius:12px;padding:2px 8px;margin-left:0.5rem;vertical-align:middle;animation:pulse 1.5s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.6} }
-  .tour-tooltip { position:absolute;bottom:calc(100%+8px);left:50%;transform:translateX(-50%);
-                  background:#212529;color:#fff;font-size:0.78rem;border-radius:6px;padding:6px 12px;
-                  white-space:nowrap;z-index:100;pointer-events:none; }
-  .tour-tooltip::after { content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
-                          border:5px solid transparent;border-top-color:#212529; }
+  .check-icon { font-size:0.9rem;width:1.5rem;text-align:center;flex-shrink:0; }
+  .check-icon.done  { color:var(--success); }
+  .check-icon.todo  { color:var(--bg-4); }
+  .checklist-action { margin-left:auto;font-size:0.76rem; }
 
   /* Escalation draft */
-  .draft-escalation { border-left:4px solid #dc3545 !important; }
+  .draft-escalation { border-left:3px solid var(--danger) !important; }
 
   /* Analytics widgets */
-  .analytics-row { display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem; }
-  .analytics-widget { background:#fff;border:1px solid #dee2e6;border-radius:8px;padding:1rem;text-align:center; }
-  .analytics-widget .widget-value { font-size:1.5rem;font-weight:700;color:#212529;line-height:1.2; }
-  .analytics-widget .widget-label { font-size:0.75rem;color:#6c757d;margin-top:0.25rem; }
-  .analytics-widget .widget-sub   { font-size:0.7rem;color:#adb5bd;margin-top:0.1rem; }
+  .analytics-row { display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0.85rem;margin-bottom:1.4rem; }
+  .analytics-widget { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;text-align:center;transition:all var(--t); }
+  .analytics-widget:hover { border-color:var(--border-2);box-shadow:var(--glow); }
+  .analytics-widget .widget-value { font-size:1.5rem;font-weight:800;color:var(--text-1);line-height:1.2;letter-spacing:-0.03em; }
+  .analytics-widget .widget-label { font-size:0.69rem;color:var(--text-3);margin-top:0.25rem;text-transform:uppercase;letter-spacing:0.06em; }
+  .analytics-widget .widget-sub   { font-size:0.66rem;color:var(--text-3);opacity:0.65;margin-top:0.1rem; }
 
   /* CSV stale banner */
-  .csv-banner { background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:0.6rem 1rem;
-                font-size:0.82rem;color:#856404;display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem; }
-  .csv-banner a { color:#856404;font-weight:600; }
-  .filter-bar { display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin:0.75rem 0 1.25rem; }
-  .feedback-row { display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.6rem; }
+  .csv-banner { background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:var(--radius-sm);padding:0.65rem 1rem;
+                font-size:0.8rem;color:var(--warn);display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem; }
+  .csv-banner a { color:var(--warn);font-weight:600;text-decoration:underline; }
+  .filter-bar { display:flex;gap:0.65rem;align-items:center;flex-wrap:wrap;margin:0.5rem 0 1.25rem; }
+  .feedback-row { display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.65rem; }
 </style>
 {% endblock %}
 

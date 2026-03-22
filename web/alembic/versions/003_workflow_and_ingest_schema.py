@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "003_workflow_and_ingest_schema"
-down_revision = "002_reservation_guest_context"
+down_revision = "002"
 branch_labels = None
 depends_on = None
 

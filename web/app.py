@@ -71,6 +71,7 @@ from sqlalchemy.orm import Session
 from web.db import get_db, init_db, SessionLocal
 from web.db_read import get_read_db
 from web.models import (
+    SystemConfig, ApiUsageLog,
     Tenant, TenantConfig, Draft, Vendor, ActivityLog, BaileysOutbound,
     Reservation, ReservationSyncLog, ReservationIntakeBatch,
     AutomationRule, TeamMember, GuestTimelineEvent, ArrivalActivation, IssueTicket, TenantKpiSnapshot,
@@ -5326,6 +5327,54 @@ def admin_system(request: Request, db: Session = Depends(get_db)):
         "dead_workers":   sum(1 for r in system_rows if r["any_dead"]),
         "now":            datetime.now(timezone.utc),
     })
+
+
+@app.get("/admin/ai", response_class=HTMLResponse)
+def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request, db)
+    
+    sys_conf = db.query(SystemConfig).first()
+    if not sys_conf:
+        sys_conf = SystemConfig()
+        db.add(sys_conf)
+        db.commit()
+        db.refresh(sys_conf)
+        
+    usage_logs = db.query(ApiUsageLog).order_by(ApiUsageLog.created_at.desc()).limit(100).all()
+    
+    # Calculate costs loosely
+    total_cost = sum(log.cost_usd for log in db.query(ApiUsageLog).all())
+    
+    return templates.TemplateResponse("admin_ai.html", {
+        "request": request,
+        "sys_conf": sys_conf,
+        "logs": usage_logs,
+        "total_cost": total_cost,
+    })
+
+@app.post("/admin/ai/save", response_class=HTMLResponse)
+def admin_ai_save(
+    request: Request,
+    openrouter_api_key_enc: str = Form(""),
+    primary_model: str = Form(...),
+    fallback_model: str = Form(...),
+    sentiment_model: str = Form("openai/gpt-4o-mini"),
+    db: Session = Depends(get_db)
+):
+    _require_admin(request, db)
+    sys_conf = db.query(SystemConfig).first()
+    if not sys_conf:
+        sys_conf = SystemConfig()
+        db.add(sys_conf)
+        
+    if openrouter_api_key_enc.strip() and openrouter_api_key_enc != "********":
+        sys_conf.openrouter_api_key_enc = openrouter_api_key_enc.strip()
+    sys_conf.primary_model = primary_model.strip()
+    sys_conf.fallback_model = fallback_model.strip()
+    sys_conf.sentiment_model = sentiment_model.strip()
+    db.commit()
+    
+    return RedirectResponse("/admin/ai?msg=saved", status_code=302)
 
 
 # ---------------------------------------------------------------------------

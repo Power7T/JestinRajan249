@@ -4,6 +4,7 @@ Auth helpers: password hashing (bcrypt) + JWT session tokens.
 """
 
 import hashlib
+import logging
 import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -14,6 +15,8 @@ from fastapi import Request, HTTPException
 
 from web.db import SessionLocal
 from web.models import Tenant
+
+log = logging.getLogger(__name__)
 
 _ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
 _ALLOW_INSECURE_DEFAULTS = _ENVIRONMENT in {"development", "dev", "test"}
@@ -41,7 +44,11 @@ def hash_password(plain: str) -> str:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
+    try:
+        return bcrypt.checkpw(plain.encode(), hashed.encode())
+    except ValueError:
+        log.warning("Invalid password hash encountered during login verification")
+        return False
 
 # ---------------------------------------------------------------------------
 # JWT

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}AI Engine — Admin{% endblock %}
+
+{% block head %}
+<style>
+  .admin-nav { display:flex; gap:1rem; margin-bottom:1.5rem; }
+  .admin-nav a { padding:6px 14px; border-radius:var(--radius-sm); font-size:0.85rem; font-weight:600; background:var(--bg-2); border:1px solid var(--border); color:var(--text-2); transition:all var(--t); }
+  .admin-nav a.active, .admin-nav a:hover { background:var(--bg-3); color:var(--text-1); border-color:var(--border-2); text-decoration:none; }
+  
+  .stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; text-align:center; transition:all var(--t); }
+  .stat-value { font-size:2rem; font-weight:800; color:var(--accent); line-height:1.1; letter-spacing:-0.03em; margin-bottom:0.25rem; }
+  .stat-label { font-size:0.8rem; color:var(--text-3); font-weight:500; text-transform:uppercase; letter-spacing:0.05em; }
+
+  .settings-form { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; margin-bottom:2rem; }
+  .form-group { margin-bottom:1.25rem; }
+  .form-group label { display:block; margin-bottom:0.5rem; font-weight:600; color:var(--text-2); font-size:0.9rem; }
+  .form-control { width:100%; padding:0.6rem 0.8rem; border-radius:var(--radius-sm); border:1px solid var(--border-2); background:var(--bg-1); color:var(--text-1); font-family:inherit; transition:border-color var(--t); }
+  .form-control:focus { outline:none; border-color:var(--accent); }
+  .form-desc { font-size:0.8rem; color:var(--text-3); margin-top:0.4rem; }
+
+  .btn-submit { background:var(--accent); color:#fff; border:none; padding:0.6rem 1.2rem; border-radius:var(--radius-sm); font-weight:600; cursor:pointer; transition:background var(--t); }
+  .btn-submit:hover { background:var(--accent-hover); }
+
+  .logs-table { width:100%; border-collapse:collapse; margin-top:1rem; font-size:0.85rem; text-align:left; }
+  .logs-table th { padding:0.75rem 1rem; border-bottom:1px solid var(--border-2); color:var(--text-3); font-weight:600; }
+  .logs-table td { padding:0.75rem 1rem; border-bottom:1px solid var(--border); color:var(--text-2); }
+  .logs-table tr:last-child td { border-bottom:none; }
+  .model-badge { display:inline-block; padding:2px 8px; border-radius:999px; background:var(--bg-3); border:1px solid var(--border-2); font-size:0.75rem; font-family:monospace; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>AI Engine Configuration</h1>
+
+<div class="admin-nav">
+  <a href="/admin">Overview</a>
+  <a href="/admin/system">System Health</a>
+  <a href="/admin/ai" class="active">AI Engine</a>
+</div>
+
+{% if request.query_params.get("msg") == "saved" %}
+<div style="background:var(--success-bg); color:var(--success); padding:0.75rem; border-radius:var(--radius-sm); margin-bottom:1.5rem; border:1px solid var(--success-border);">
+  <strong>Success!</strong> AI routing settings hot-swapped and saved.
+</div>
+{% endif %}
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-value">${{ "%.4f"|format(total_cost) }}</div>
+    <div class="stat-label">Total API Spend</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ logs|length }}</div>
+    <div class="stat-label">Recent Generations</div>
+  </div>
+</div>
+
+<div class="settings-form">
+  <h2 style="margin-top:0; margin-bottom:1.5rem; font-size:1.2rem; border-bottom:1px solid var(--border); padding-bottom:0.75rem;">Global OpenRouter Settings</h2>
+  <form method="POST" action="/admin/ai/save">
+    <div class="form-group">
+      <label for="openrouter_api_key_enc">OpenRouter API Key</label>
+      <input type="password" id="openrouter_api_key_enc" name="openrouter_api_key_enc" class="form-control" 
+             value="{{ '********' if sys_conf.openrouter_api_key_enc else '' }}" 
+             placeholder="sk-or-v1-...">
+      <div class="form-desc">Leave blank or as ******** to keep current key. Routing falls back to Anthropic if empty.</div>
+    </div>
+    
+    <div class="form-group">
+      <label for="primary_model">Primary Routine Model</label>
+      <input type="text" id="primary_model" name="primary_model" class="form-control" value="{{ sys_conf.primary_model }}">
+      <div class="form-desc">e.g. <code>anthropic/claude-3.5-sonnet</code></div>
+    </div>
+    
+    <div class="form-group">
+      <label for="fallback_model">Fallback Model (Complex / Outages)</label>
+      <input type="text" id="fallback_model" name="fallback_model" class="form-control" value="{{ sys_conf.fallback_model }}">
+      <div class="form-desc">e.g. <code>meta-llama/llama-3.1-70b-instruct</code></div>
+    </div>
+
+    <div class="form-group">
+      <label for="sentiment_model">Sentiment & Scoring Model</label>
+      <input type="text" id="sentiment_model" name="sentiment_model" class="form-control" value="{{ sys_conf.sentiment_model }}">
+      <div class="form-desc">e.g. <code>openai/gpt-4o-mini</code></div>
+    </div>
+    
+    <button type="submit" class="btn-submit">Save & Hot-Swap Models</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Live API Cost Logging (Recent 100)</h2>
+  <div style="overflow-x:auto;">
+    <table class="logs-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Model</th>
+          <th>Provider</th>
+          <th>Feature</th>
+          <th>Tokens (In/Out)</th>
+          <th>Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td style="white-space:nowrap;">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td><span class="model-badge">{{ log.model }}</span></td>
+          <td style="text-transform:capitalize;">{{ log.provider }}</td>
+          <td>{{ log.feature }}</td>
+          <td>{{ log.input_tokens }} / {{ log.output_tokens }}</td>
+          <td style="font-weight:600; color:var(--text-1);">${{ "%.5f"|format(log.cost_usd) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" style="text-align:center; padding:2rem; color:var(--text-3);">No API usage recorded yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

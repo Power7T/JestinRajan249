@@ -42,6 +42,19 @@ def _uuid() -> str:
 
 
 # ---------------------------------------------------------------------------
+# System Settings (Admin Panel)
+# ---------------------------------------------------------------------------
+class SystemConfig(Base):
+    __tablename__ = "system_config"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    openrouter_api_key_enc: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    primary_model: Mapped[str] = mapped_column(String(100), default="anthropic/claude-3.5-sonnet")
+    fallback_model: Mapped[str] = mapped_column(String(100), default="meta-llama/llama-3.1-70b-instruct")
+    sentiment_model: Mapped[str] = mapped_column(String(100), default="openai/gpt-4o-mini")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+# ---------------------------------------------------------------------------
 # Tenant — one row per registered host
 # ---------------------------------------------------------------------------
 
@@ -285,6 +298,26 @@ class ActivityLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="logs")
+
+
+# ---------------------------------------------------------------------------
+# ApiUsageLog — tracks LLM token usage and estimated cost
+# ---------------------------------------------------------------------------
+
+class ApiUsageLog(Base):
+    __tablename__ = "api_usage_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("tenants.id"), index=True, nullable=True)
+    model: Mapped[str] = mapped_column(String(100))
+    provider: Mapped[str] = mapped_column(String(50)) 
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    feature: Mapped[str] = mapped_column(String(50))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    tenant: Mapped[Optional["Tenant"]] = relationship("Tenant")
 
 
 # ---------------------------------------------------------------------------

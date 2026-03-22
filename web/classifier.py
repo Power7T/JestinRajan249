@@ -239,9 +239,12 @@ def detect_vendor_type(text: str) -> Optional[str]:
     return None
 
 
-def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, skill: str = None, property_context: str = "") -> str:
-    """Call Claude API with tenant's own key and return draft text."""
-    client     = anthropic.Anthropic(api_key=api_key)
+def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, skill: str = None, property_context: str = "", tenant_id: str = None) -> str:
+    """Generate draft via OpenRouter if configured centrally, else default to Tenant's Anthropic Key."""
+    from web.db import SessionLocal
+    from web.models import SystemConfig, ApiUsageLog
+    import openai
+
     skill_cmd  = _SKILL_CMD_MAP.get(skill) or ("/reply" if msg_type == "routine" else "/complaint")
     max_tokens = 1024 if skill in _CALENDAR_SKILLS else 512
 
@@ -257,23 +260,86 @@ def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, s
         f"<context>\n{message}\n</context>\n\n"
         "Return ONLY the output text ready to send or use. No headings, no meta-commentary. Just the content."
     )
-    last_exc = None
-    for attempt, delay in zip(range(1, _MAX_RETRIES + 1), _RETRY_DELAYS):
-        try:
-            resp = client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=max_tokens,
-                system=system,
-                messages=[{"role": "user", "content": user_content}],
+
+    with SessionLocal() as db:
+        sys_conf = db.query(SystemConfig).first()
+
+        # If OpenRouter is globally configured inside the local DB -> use hot-swapping router
+        if sys_conf and sys_conf.openrouter_api_key_enc:
+            client = openai.OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=sys_conf.openrouter_api_key_enc
             )
-            if not resp.content or not resp.content[0].text:
-                raise ValueError("Empty response from Claude API")
-            return resp.content[0].text.strip()
-        except Exception as exc:
-            last_exc = exc
-            log.warning("Claude API attempt %d failed: %s — retrying in %ds", attempt, exc, delay)
-            time.sleep(delay)
-    raise RuntimeError(f"Claude API failed after {_MAX_RETRIES} attempts: {last_exc}")
+
+            last_exc = None
+            for attempt, delay in zip(range(1, _MAX_RETRIES + 1), _RETRY_DELAYS):
+                # Hot-swap dynamically at request-time:
+                model_to_use = sys_conf.primary_model if attempt == 1 else sys_conf.fallback_model
+                
+                try:
+                    resp = client.chat.completions.create(
+                        model=model_to_use,
+                        max_tokens=max_tokens,
+                        messages=[
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": user_content}
+                        ],
+                    )
+                    content = resp.choices[0].message.content
+                    if not content:
+                        raise ValueError(f"Empty content from {model_to_use}")
+                    
+                    # Log usage
+                    log_entry = ApiUsageLog(
+                        tenant_id=tenant_id,
+                        model=model_to_use,
+                        provider="openrouter",
+                        input_tokens=resp.usage.prompt_tokens if hasattr(resp, 'usage') else 0,
+                        output_tokens=resp.usage.completion_tokens if hasattr(resp, 'usage') else 0,
+                        feature="generate_draft"
+                    )
+                    db.add(log_entry)
+                    db.commit()
+
+                    return content.strip()
+                except Exception as exc:
+                    last_exc = exc
+                    log.warning("OpenRouter API attempt %d (model: %s) failed: %s — retrying in %ds", attempt, model_to_use, exc, delay)
+                    time.sleep(delay)
+            
+            raise RuntimeError(f"OpenRouter API failed after {_MAX_RETRIES} attempts: {last_exc}")
+
+        # Fallback to Tenant API Key (original behavior)
+        client = anthropic.Anthropic(api_key=api_key)
+        last_exc = None
+        for attempt, delay in zip(range(1, _MAX_RETRIES + 1), _RETRY_DELAYS):
+            try:
+                resp = client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=max_tokens,
+                    system=system,
+                    messages=[{"role": "user", "content": user_content}],
+                )
+                if not resp.content or not resp.content[0].text:
+                    raise ValueError("Empty response from Claude API")
+                
+                log_entry = ApiUsageLog(
+                    tenant_id=tenant_id,
+                    model="claude-3-5-sonnet-20241022",
+                    provider="anthropic",
+                    input_tokens=resp.usage.input_tokens if hasattr(resp, 'usage') else 0,
+                    output_tokens=resp.usage.output_tokens if hasattr(resp, 'usage') else 0,
+                    feature="generate_draft"
+                )
+                db.add(log_entry)
+                db.commit()
+
+                return resp.content[0].text.strip()
+            except Exception as exc:
+                last_exc = exc
+                log.warning("Claude API attempt %d failed: %s — retrying in %ds", attempt, exc, delay)
+                time.sleep(delay)
+        raise RuntimeError(f"Claude API failed after {_MAX_RETRIES} attempts: {last_exc}")
 
 
 def make_draft_id(source: str) -> str:

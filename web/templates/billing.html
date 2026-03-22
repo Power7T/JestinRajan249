@@ -4,18 +4,19 @@
 {% block head %}
 <style>
   .billing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 2rem; }
-  .plan-badge-lg { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; background: #d4edda; color: #155724; }
-  .plan-badge-lg.inactive { background: #f8d7da; color: #721c24; }
-  .plan-badge-lg.past_due { background: #fff3cd; color: #856404; }
-  .plan-price-lg { font-size: 2rem; font-weight: 800; color: #e00b27; }
-  .channel-pill { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; margin: 2px; }
-  .pill-wa    { background: #d4edda; color: #155724; }
-  .pill-meta  { background: #cce5ff; color: #004085; }
-  .pill-sms   { background: #fff3cd; color: #856404; }
-  .pill-none  { background: #e2e3e5; color: #383d41; }
+  .plan-badge-lg { display: inline-flex; align-items:center; padding: 4px 14px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; background: var(--success-bg); color: var(--success); border:1px solid var(--success-border); }
+  .plan-badge-lg.inactive { background: var(--danger-bg); color: var(--danger); border-color:var(--danger-border); }
+  .plan-badge-lg.past_due { background: var(--warn-bg); color: var(--warn); border-color:var(--warn-border); }
+  .plan-price-lg { font-size: 2rem; font-weight: 800; background:linear-gradient(135deg,var(--accent),var(--rose)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .channel-pill { display: inline-flex; align-items:center; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; margin: 2px; border:1px solid; }
+  .pill-wa    { background: var(--success-bg); color: var(--success);   border-color:var(--success-border); }
+  .pill-meta  { background: var(--info-bg);    color: var(--info);      border-color:var(--info-border); }
+  .pill-sms   { background: var(--warn-bg);    color: var(--warn);      border-color:var(--warn-border); }
+  .pill-none  { background: var(--bg-3);       color: var(--text-3);    border-color:var(--border); }
   @media (max-width: 600px) { .billing-grid { grid-template-columns: 1fr; } }
 </style>
 {% endblock %}
+
 
 {% block content %}
 <h1>Billing</h1>

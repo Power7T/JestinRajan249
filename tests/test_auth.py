@@ -1,5 +1,16 @@
 """Tests for authentication routes (signup / login / logout)."""
 
+from web.auth import hash_password, verify_password
+
+
+def test_verify_password_returns_false_for_invalid_hash():
+    assert verify_password("whatever", "not-a-bcrypt-hash") is False
+
+
+def test_verify_password_accepts_valid_hash():
+    hashed = hash_password("securepassword1")
+    assert verify_password("securepassword1", hashed) is True
+
 
 class TestSignup:
     def test_signup_redirects_on_success(self, client):
