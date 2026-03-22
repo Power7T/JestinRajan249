@@ -239,6 +239,77 @@ def detect_vendor_type(text: str) -> Optional[str]:
     return None
 
 
+import json
+
+def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
+    """Uses the OpenRouter sentiment model to do JSON structured sentiment analysis."""
+    from web.workflow import analyze_guest_sentiment as fallback_analyze
+    from web.db import SessionLocal
+    from web.models import SystemConfig, ApiUsageLog
+    import openai
+    
+    if not text.strip():
+        return {"label": "neutral", "score": 0.0}
+        
+    db = SessionLocal()
+    try:
+        sys_conf = db.query(SystemConfig).first()
+        if not sys_conf or not sys_conf.openrouter_api_key_enc or sys_conf.openrouter_api_key_enc == "********":
+            return fallback_analyze(text)
+            
+        apiKey = sys_conf.openrouter_api_key_enc
+        model = sys_conf.sentiment_model or "openai/gpt-4o-mini"
+        
+        client = openai.OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=apiKey,
+        )
+        
+        prompt = (
+            "Analyze the sentiment of the following guest message. "
+            "Return ONLY valid JSON with exactly two keys: 'label' (string: 'positive', 'negative', or 'neutral') "
+            "and 'score' (float between -1.0 for very negative and 1.0 for very positive). "
+            f"Message: {text}"
+        )
+        
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.0
+        )
+        
+        usage = resp.usage
+        if usage:
+            cost = 0.0
+            if "gpt-4o-mini" in model:
+                cost = (usage.prompt_tokens / 1000000 * 0.15) + (usage.completion_tokens / 1000000 * 0.60)
+            log_entry = ApiUsageLog(
+                tenant_id=tenant_id,
+                feature="sentiment_analysis",
+                model=model,
+                provider="openrouter",
+                input_tokens=usage.prompt_tokens,
+                output_tokens=usage.completion_tokens,
+                cost_usd=cost
+            )
+            db.add(log_entry)
+            db.commit()
+            
+        content = resp.choices[0].message.content
+        result = json.loads(content)
+        
+        label = result.get("label", "neutral")
+        score = float(result.get("score", 0.0))
+        return {"label": label, "score": score}
+        
+    except Exception as exc:
+        log.warning(f"LLM Sentiment fallback to regex due to error: {exc}")
+        return fallback_analyze(text)
+    finally:
+        db.close()
+
+
 def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, skill: str = None, property_context: str = "", tenant_id: str = None) -> str:
     """Generate draft via OpenRouter if configured centrally, else default to Tenant's Anthropic Key."""
     from web.db import SessionLocal

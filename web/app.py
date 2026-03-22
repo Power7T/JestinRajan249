@@ -2608,7 +2608,10 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
         )
         guest_name = reservation.guest_name if reservation else f"{source.title()} guest"
         msg_type, confidence, _matched_patterns = classify_message_with_confidence(text)
-        sentiment = analyze_guest_sentiment(text)
+        
+        from web import classifier as classifier_mod
+        sentiment = classifier_mod.analyze_sentiment_and_intent_llm(tenant_id, text)
+        
         vendor_type = detect_vendor_type(text) if msg_type == "complex" else None
         property_context = build_property_context(cfg)
         if reservation:

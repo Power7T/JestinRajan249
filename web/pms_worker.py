@@ -338,7 +338,9 @@ def _process_message(tenant_id: str, cfg: dict, msg: PMSMessage,
         # ── 2. Classify + sentiment ──────────────────────────────────────
         msg_type, confidence, matched_patterns = classify_message_with_confidence(guest_msg)
         vendor_type = detect_vendor_type(guest_msg) if msg_type == "complex" else None
-        sentiment = analyze_guest_sentiment(guest_msg)
+        
+        from web import classifier as classifier_mod
+        sentiment = classifier_mod.analyze_sentiment_and_intent_llm(tenant_id, guest_msg)
 
         # ── 3. Reservation lookup + context ─────────────────────────────
         reservation = _lookup_reservation_row(db, tenant_id, msg.guest_name)
