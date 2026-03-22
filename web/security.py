@@ -213,6 +213,13 @@ def is_request_secure(request: Request) -> bool:
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Adds security headers to every response."""
 
+    # NOTE: 'unsafe-inline' in script-src exists because the Jinja2 templates
+    # embed inline <script> blocks (HTMX event wiring, dashboard polling).
+    # To remove it: extract all inline JS to /static/*.js files and add a
+    # per-request nonce via request.state, then pass that nonce into both the
+    # CSP header and each <script nonce="..."> tag.
+    # 'unsafe-inline' in style-src is required by per-page <style> blocks in
+    # templates and is lower-risk than script-src.
     _CSP = (
         "default-src 'self'; "
         "script-src 'self' https://unpkg.com 'unsafe-inline'; "
@@ -220,6 +227,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         "img-src 'self' data:; "
         "font-src 'self'; "
         "connect-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
         "frame-ancestors 'none';"
     )
 

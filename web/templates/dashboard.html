@@ -38,11 +38,28 @@
   .csv-banner { background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:0.6rem 1rem;
                 font-size:0.82rem;color:#856404;display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem; }
   .csv-banner a { color:#856404;font-weight:600; }
+  .filter-bar { display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin:0.75rem 0 1.25rem; }
+  .feedback-row { display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.6rem; }
 </style>
 {% endblock %}
 
 {% block content %}
 <h1>Dashboard</h1>
+
+<form method="get" action="/dashboard" class="filter-bar">
+  <label style="margin:0;font-size:0.82rem;color:#6c757d">Property view</label>
+  <select name="property" style="max-width:320px;margin-bottom:0">
+    <option value="">All properties</option>
+    {% for property_name in property_options or [] %}
+    <option value="{{ property_name }}" {% if property_name == selected_property %}selected{% endif %}>{{ property_name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-outline btn-sm">Apply</button>
+  {% if selected_property %}
+  <a href="/dashboard" class="btn btn-outline btn-sm">Clear</a>
+  <span class="chip good">Scoped to {{ selected_property }}</span>
+  {% endif %}
+</form>
 
 <!-- Worker status bar -->
 <div class="status-bar">
@@ -136,12 +153,23 @@
       <div class="kpi-label">Occupancy this month</div>
       <div class="kpi-note">Use this to prioritize host attention across properties.</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-value">{{ "Live" if status.cal_running else "Idle" }}</div>
-      <div class="kpi-label">Timeline / calendar signal</div>
-      <div class="kpi-note">Arrival and checkout messages need current booking data.</div>
+    <div class="kpi-card {% if approval_streak >= 5 %}kpi-streak{% endif %}">
+      <div class="kpi-value">{% if approval_streak >= 3 %}🔥{% endif %}{{ approval_streak }}</div>
+      <div class="kpi-label">Approval streak</div>
+      <div class="kpi-note">Consecutive approved drafts without a skip.</div>
     </div>
   </div>
+
+  {% if occupancy_gaps %}
+  <div style="margin-top:0.75rem;padding:0.75rem 1rem;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;font-size:0.85rem">
+    <strong>Occupancy gaps detected</strong> — {{ occupancy_gaps|length }} gap{% if occupancy_gaps|length != 1 %}s{% endif %} in the next 60 days:
+    <ul style="margin:0.4rem 0 0 1rem;padding:0">
+      {% for gap in occupancy_gaps[:4] %}
+      <li>{{ gap.gap_start.strftime('%b %d') if gap.gap_start else '?' }} – {{ gap.gap_end.strftime('%b %d') if gap.gap_end else '?' }}: <strong>{{ gap.gap_nights }} night{% if gap.gap_nights != 1 %}s{% endif %}</strong> (between {{ gap.before_guest }} and {{ gap.after_guest }})</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
 
   <div class="workflow-grid" style="margin-top:1rem">
     <div class="workflow-card">
@@ -246,9 +274,16 @@
       <span class="chip {% if kpis.reservations.context_completion_rate >= 60 %}good{% else %}warn{% endif %}">{{ kpis.reservations.context_completion_rate }}% stay context mapped</span>
       <span class="chip {% if kpis.drafts.overdue_pending %}bad{% else %}good{% endif %}">{{ kpis.drafts.overdue_pending }} overdue drafts</span>
       <span class="chip {% if open_issues|length %}warn{% else %}good{% endif %}">{{ open_issues|length }} open issues</span>
+      <span class="chip {% if sentiment_summary.trend == 'improving' %}good{% elif sentiment_summary.trend == 'worsening' %}bad{% endif %}">Guest tone {{ sentiment_summary.trend }}</span>
+      {% if kpis.reservations.avg_review_rating %}
+      <span class="chip good">{{ "%.2f"|format(kpis.reservations.avg_review_rating) }} avg review</span>
+      {% endif %}
     </div>
     <p style="margin-top:0.75rem;color:#495057;font-size:0.84rem;line-height:1.7">
-      KPI workflow is now driven by live reservation context, review pressure, and unresolved operations instead of only the pending draft list.
+      KPI workflow is now driven by live reservation context, review pressure, unresolved operations, and threaded guest sentiment instead of only the pending draft list.
+      {% if response_benchmark.hours is not none %}
+      Avg response is <strong>{{ "%.2f"|format(response_benchmark.hours) }}h</strong>, which is {{ response_benchmark.summary or 'still building a portfolio benchmark' }}.
+      {% endif %}
     </p>
   </div>
   <div class="workflow-card">
@@ -321,6 +356,16 @@
     <div class="kpi-label">Open issues</div>
     <div class="kpi-note">Maintenance, complaints, and unresolved guest problems.</div>
   </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.drafts.positive_feedback or 0 }}/{{ (kpis.drafts.positive_feedback or 0) + (kpis.drafts.negative_feedback or 0) }}</div>
+    <div class="kpi-label">Reply feedback</div>
+    <div class="kpi-note">Host thumbs-up/down on sent replies becomes your guest satisfaction signal.</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ sentiment_summary.trend }}</div>
+    <div class="kpi-label">Sentiment trend</div>
+    <div class="kpi-note">Based on recent guest tone plus imported review sentiment.</div>
+  </div>
 </div>
 
 {% if recent_timeline %}
@@ -361,16 +406,52 @@
   </div>
   <div class="workflow-card">
     <h3>Ops roles</h3>
-    <p>{{ team_members|length }} team roles are mapped. Use front desk, maintenance, cleaner, and owner queues so exceptions land in the right hands.</p>
-    <div class="chip-row">
+    <p>{{ team_members|length }} team member{% if team_members|length != 1 %}s{% endif %} on the roster. Add roles so escalations land in the right hands.</p>
+    <div class="chip-row" style="margin-bottom:0.75rem">
       {% for member in team_members[:4] %}
-      <span class="chip">{{ member.role|replace('_', ' ') }}</span>
+      <span class="chip">{{ member.display_name }} ({{ member.role|replace('_', ' ') }})</span>
       {% endfor %}
       {% if not team_members %}
       <span class="chip warn">No team roles yet</span>
       {% endif %}
     </div>
+    <details>
+      <summary style="cursor:pointer;font-size:0.82rem;color:#0d6efd;font-weight:600">+ Add team member</summary>
+      <form method="post" action="/api/team"
+            style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.4rem;align-items:flex-end">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="text" name="display_name" placeholder="Name" required
+               style="font-size:0.82rem;padding:5px 8px;border:1px solid #ced4da;border-radius:6px;width:130px">
+        <input type="email" name="email" placeholder="Email (opt.)"
+               style="font-size:0.82rem;padding:5px 8px;border:1px solid #ced4da;border-radius:6px;width:150px">
+        <select name="role" style="font-size:0.82rem;padding:5px 8px;border:1px solid #ced4da;border-radius:6px">
+          <option value="manager">Manager</option>
+          <option value="front_desk">Front desk</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="cleaner">Cleaner</option>
+          <option value="owner">Owner</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Add →</button>
+      </form>
+    </details>
   </div>
+</div>
+
+<!-- Weekly digest + review velocity row -->
+<div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem;padding:0.75rem 1rem;background:#f8f9fa;border-radius:8px;font-size:0.85rem">
+  {% if review_velocity is not none %}
+  <span>Review velocity: <strong>{{ "%.1f"|format(review_velocity) }}/30 days</strong></span>
+  <span style="color:#dee2e6">|</span>
+  {% endif %}
+  <span>Approval streak: <strong>{{ approval_streak }}</strong></span>
+  <span style="color:#dee2e6">|</span>
+  <form method="post" action="/api/digest/send" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button type="submit" class="btn btn-outline btn-sm"
+            onclick="return confirm('Send this week\'s digest to your email?')">
+      📧 Send weekly digest
+    </button>
+  </form>
 </div>
 {% endif %}
 
@@ -397,10 +478,22 @@
     <span>Claude API key added</span>
     {% if not cfg.anthropic_api_key_enc %}<a href="/onboarding?step=5" class="checklist-action btn btn-primary btn-sm">Add key →</a>{% endif %}
   </div>
-  <div class="checklist-item">
+  <div class="checklist-item" style="flex-wrap:wrap;gap:0.5rem">
     <span class="check-icon {% if cfg.ical_urls %}done{% else %}todo{% endif %}">{% if cfg.ical_urls %}✓{% else %}○{% endif %}</span>
     <span>Calendar connected</span>
-    {% if not cfg.ical_urls %}<a href="/onboarding?step=5" class="checklist-action btn btn-outline btn-sm">Add iCal →</a>{% endif %}
+    {% if not cfg.ical_urls %}
+    <a href="/onboarding?step=5" class="checklist-action btn btn-outline btn-sm">Add iCal →</a>
+    <details style="width:100%;margin-top:0.25rem">
+      <summary style="cursor:pointer;font-size:0.82rem;color:#0d6efd">Paste your Airbnb listing URL to auto-fill</summary>
+      <form method="post" action="/api/prefill-listing"
+            style="display:flex;gap:0.5rem;align-items:center;margin-top:0.4rem;flex-wrap:wrap">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="url" name="listing_url" placeholder="https://www.airbnb.com/rooms/12345678"
+               style="font-size:0.82rem;padding:5px 10px;border:1px solid #ced4da;border-radius:6px;flex:1;min-width:200px">
+        <button type="submit" class="btn btn-primary btn-sm">Extract iCal →</button>
+      </form>
+    </details>
+    {% endif %}
   </div>
   <div class="checklist-item">
     <span class="check-icon todo">○</span>
@@ -417,6 +510,19 @@
   <div class="empty-icon">{% if cfg.onboarding_complete %}✅{% else %}⏳{% endif %}</div>
   <p>{% if cfg.onboarding_complete %}No pending drafts — all caught up!{% else %}No drafts yet — complete setup above to start{% endif %}</p>
   <p style="font-size:0.8rem;margin-top:0.4rem">New guest messages will appear here for your approval.</p>
+  {% if cfg.onboarding_complete and cfg.anthropic_api_key_enc %}
+  <details style="margin-top:1rem;text-align:left">
+    <summary style="cursor:pointer;font-size:0.85rem;color:#0d6efd;font-weight:600">Simulate a guest message →</summary>
+    <form method="post" action="/api/simulate" style="margin-top:0.75rem;display:flex;flex-direction:column;gap:0.5rem">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <input type="text" name="guest_name" value="Demo Guest" placeholder="Guest name"
+             style="font-size:0.85rem;padding:6px 10px;border:1px solid #ced4da;border-radius:6px">
+      <textarea name="message" rows="2" placeholder="e.g. Hi, what time is check-in?"
+                style="font-size:0.85rem;padding:6px 10px;border:1px solid #ced4da;border-radius:6px;resize:vertical">Hi, what time is check-in?</textarea>
+      <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-start">Generate demo draft →</button>
+    </form>
+  </details>
+  {% endif %}
 </div>
 {% else %}
 <!-- Bulk action bar -->
@@ -444,6 +550,15 @@
       &nbsp;
       <span class="badge badge-{{ draft.msg_type }}">{{ draft.msg_type }}</span>
       <span class="badge badge-{{ draft.source }}">{{ draft.source }}</span>
+      {% if draft.confidence is not none %}
+      {% set conf_pct = (draft.confidence * 100)|int %}
+      {% set conf_color = '#198754' if draft.confidence >= 0.7 else ('#fd7e14' if draft.confidence >= 0.45 else '#dc3545') %}
+      <span title="AI confidence score" style="font-size:0.7rem;padding:2px 7px;border-radius:12px;background:{{ conf_color }};color:#fff;font-weight:600">{{ conf_pct }}% confident</span>
+      {% if draft.context_sources %}
+      <button type="button" onclick="toggleWhy('{{ draft.id }}')"
+              style="font-size:0.7rem;padding:2px 7px;border:1px solid #ced4da;border-radius:12px;background:transparent;cursor:pointer;color:#6c757d">why?</button>
+      {% endif %}
+      {% endif %}
       {% if draft.vendor_type %}
       <span class="badge badge-complex">{{ draft.vendor_type|replace('_', ' ') }}</span>
       {% endif %}
@@ -457,24 +572,48 @@
   </div>
   {% endif %}
 
+  <div class="chip-row" style="margin-bottom:0.6rem">
+    {% if draft.property_name_snapshot or (draft.reservation and draft.reservation.listing_name) %}
+    <span class="chip">{{ draft.property_name_snapshot or draft.reservation.listing_name }}</span>
+    {% endif %}
+    {% if draft.unit_identifier_snapshot or (draft.reservation and draft.reservation.unit_identifier) %}
+    <span class="chip">Unit {{ draft.unit_identifier_snapshot or draft.reservation.unit_identifier }}</span>
+    {% endif %}
+    {% if draft.guest_message_index and draft.guest_message_index > 1 %}
+    <span class="chip warn">Thread msg {{ draft.guest_message_index }}</span>
+    {% endif %}
+    {% if draft.guest_sentiment %}
+    <span class="chip {% if draft.guest_sentiment == 'negative' %}bad{% elif draft.guest_sentiment == 'positive' %}good{% endif %}">Tone {{ draft.guest_sentiment }}</span>
+    {% endif %}
+    {% if draft.guest_history_score is not none %}
+    <span class="chip">History {{ "%.2f"|format(draft.guest_history_score) }}</span>
+    {% endif %}
+  </div>
+
+  {% if draft.policy_conflicts_json %}
+  <div style="font-size:0.78rem;color:#856404;background:#fff3cd;border:1px solid #ffe69c;border-radius:6px;padding:0.55rem 0.7rem;margin-bottom:0.6rem">
+    Structured policy review required before send.
+  </div>
+  {% endif %}
+
   <div class="draft-text">{{ draft.draft }}</div>
 
   <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-start">
     <!-- Approve -->
-    <form method="post" action="/drafts/{{ draft.id }}/approve" style="display:inline">
+    <form method="post" action="/drafts/{{ draft.id }}/approve{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="display:inline">
       <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <button type="submit" class="btn btn-success btn-sm">✓ Send this</button>
     </form>
 
     <!-- Skip -->
-    <form method="post" action="/drafts/{{ draft.id }}/skip" style="display:inline">
+    <form method="post" action="/drafts/{{ draft.id }}/skip{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="display:inline">
       <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <button type="submit" class="btn btn-outline btn-sm">✗ Skip</button>
     </form>
 
     <!-- Edit toggle (HTMX inline) -->
     <button class="btn btn-secondary btn-sm"
-            hx-get="/drafts/{{ draft.id }}/edit-form"
+            hx-get="/drafts/{{ draft.id }}/edit-form{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}"
             hx-target="#edit-area-{{ draft.id }}"
             hx-swap="innerHTML">
       ✎ Edit &amp; send
@@ -487,12 +626,21 @@
     </button>
   </div>
 
+  <!-- "Why" confidence tooltip panel -->
+  {% if draft.context_sources %}
+  <div id="why-{{ draft.id }}" style="display:none;margin-top:0.5rem;font-size:0.78rem;color:#495057;background:#f8f9fa;border-radius:6px;padding:0.5rem 0.75rem">
+    <strong>AI used:</strong>
+    {% set sources = draft.context_sources | tojson %}
+    {{ draft.context_sources | replace('[', '') | replace(']', '') | replace('"', '') | replace(',', ' ·') }}
+  </div>
+  {% endif %}
+
   <!-- Inline edit form (loaded by HTMX) -->
   <div id="edit-area-{{ draft.id }}" style="margin-top:0.75rem"></div>
 
   <!-- Inline schedule form -->
   <div id="schedule-area-{{ draft.id }}" style="display:none;margin-top:0.75rem">
-    <form method="post" action="/drafts/{{ draft.id }}/schedule"
+    <form method="post" action="/drafts/{{ draft.id }}/schedule{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}"
           style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
       <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <input type="datetime-local" name="scheduled_at"
@@ -511,6 +659,46 @@
 {% endfor %}
 {% endif %}
 
+{% if recent_sent_drafts %}
+<div class="card" style="margin-top:1rem">
+  <div class="card-header">
+    <div class="card-title">Recent sent replies</div>
+    <span class="card-meta">Capture thumbs up/down so HostAI learns which replies actually worked.</span>
+  </div>
+  {% for draft in recent_sent_drafts %}
+  <div style="padding:0.85rem 0;border-top:1px solid #f1f3f5">
+    <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+      <div>
+        <strong>{{ draft.guest_name }}</strong>
+        <span class="badge badge-{{ draft.source }}">{{ draft.source }}</span>
+        {% if draft.property_name_snapshot %}<span class="chip">{{ draft.property_name_snapshot }}</span>{% endif %}
+      </div>
+      <span style="font-size:0.78rem;color:#6c757d">{{ draft.approved_at.strftime('%b %d, %H:%M') if draft.approved_at else '' }}</span>
+    </div>
+    <div style="font-size:0.8rem;color:#6c757d;margin-top:0.35rem">{{ draft.final_text or draft.draft }}</div>
+    <div class="feedback-row">
+      {% if draft.host_feedback_score is not none %}
+      <span class="chip {% if draft.host_feedback_score > 0 %}good{% else %}bad{% endif %}">
+        {% if draft.host_feedback_score > 0 %}Helpful{% else %}Needs work{% endif %}
+      </span>
+      {% else %}
+      <form method="post" action="/drafts/{{ draft.id }}/feedback{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="hidden" name="score" value="1">
+        <button type="submit" class="btn btn-outline btn-sm" title="Helpful response">👍</button>
+      </form>
+      <form method="post" action="/drafts/{{ draft.id }}/feedback{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="hidden" name="score" value="-1">
+        <button type="submit" class="btn btn-outline btn-sm" title="Needs improvement">👎</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <!-- Auto-refresh pending count every 30s via HTMX -->
 <div hx-get="/api/drafts" hx-trigger="every 30s" hx-swap="none"
      hx-on::after-request="if(JSON.parse(event.detail.xhr.responseText).length !== {{ drafts|length }}) location.reload()">
@@ -521,6 +709,10 @@
 function toggleSchedule(id) {
   var el = document.getElementById('schedule-area-' + id);
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function toggleWhy(id) {
+  var el = document.getElementById('why-' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 </script>
 

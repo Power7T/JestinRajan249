@@ -14,6 +14,8 @@ from typing import Optional
 
 import anthropic
 
+from web.workflow import build_structured_policy_context
+
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -117,6 +119,9 @@ def build_property_context(cfg) -> str:
         parts.append(f"Amenities: {cfg.amenities}")
     if getattr(cfg, "house_rules", None):
         parts.append(f"House rules:\n{cfg.house_rules}")
+    policy_context = build_structured_policy_context(cfg)
+    if policy_context:
+        parts.append(policy_context)
     if getattr(cfg, "food_menu", None):
         parts.append(f"Food menu / restaurant:\n{cfg.food_menu}")
     if getattr(cfg, "nearby_restaurants", None):
@@ -143,6 +148,82 @@ def classify_message(text: str) -> str:
     if any(re.search(p, lower) for p in _ROUTINE):
         return "routine"
     return "complex"
+
+
+def classify_message_with_confidence(text: str) -> tuple[str, float, list[str]]:
+    """
+    Classify a guest message and return (msg_type, confidence, matched_patterns).
+
+    confidence is 0.0–1.0:
+      - 1.0 = escalation (override, always human)
+      - >0.5 = clearly routine (multiple pattern hits)
+      - 0.5 = boundary / single hit
+      - <0.5 = complex / ambiguous (fewer hits or conflict)
+
+    matched_patterns is a list of human-readable labels for the "why" tooltip.
+    """
+    lower = text.lower()
+    sources: list[str] = []
+
+    if needs_escalation(text):
+        return "escalation", 1.0, ["escalation trigger"]
+
+    complex_hits  = [p for p in _COMPLEX  if re.search(p, lower)]
+    routine_hits  = [p for p in _ROUTINE  if re.search(p, lower)]
+
+    for p in complex_hits:
+        sources.append(f"complex: {p.strip(chr(92) + 'b').strip('()?')}")
+    for p in routine_hits:
+        sources.append(f"routine: {p.strip(chr(92) + 'b').strip('()?')}")
+
+    total = len(complex_hits) + len(routine_hits)
+
+    if complex_hits and not routine_hits:
+        # Pure complex signal
+        conf = min(0.45 + 0.05 * len(complex_hits), 0.49)
+        return "complex", round(conf, 2), sources
+
+    if routine_hits and not complex_hits:
+        # Pure routine signal
+        conf = min(0.55 + 0.05 * len(routine_hits), 0.95)
+        return "routine", round(conf, 2), sources
+
+    if not total:
+        # No signal at all — treat as complex but low confidence
+        return "complex", 0.30, ["no matching patterns"]
+
+    # Mixed signals — whichever dominates
+    if len(routine_hits) > len(complex_hits):
+        ratio = len(routine_hits) / total
+        return "routine", round(0.5 + 0.4 * (ratio - 0.5), 2), sources
+    else:
+        ratio = len(complex_hits) / total
+        return "complex", round(0.5 - 0.4 * (ratio - 0.5), 2), sources
+
+
+def extract_context_sources(cfg) -> list[str]:
+    """Return a list of context fields that are populated for this tenant config."""
+    fields = [
+        ("property_names",       "Property name"),
+        ("property_type",        "Property type"),
+        ("property_city",        "Location"),
+        ("check_in_time",        "Check-in time"),
+        ("check_out_time",       "Check-out time"),
+        ("house_rules",          "House rules"),
+        ("pet_policy",           "Pet policy"),
+        ("refund_policy",        "Refund policy"),
+        ("early_checkin_policy", "Early check-in policy"),
+        ("late_checkout_policy", "Late checkout policy"),
+        ("parking_policy",       "Parking policy"),
+        ("smoking_policy",       "Smoking policy"),
+        ("quiet_hours",          "Quiet hours"),
+        ("faq",                  "FAQ"),
+        ("amenities",            "Amenities"),
+        ("food_menu",            "Food menu"),
+        ("nearby_restaurants",   "Nearby restaurants"),
+        ("custom_instructions",  "Custom instructions"),
+    ]
+    return [label for attr, label in fields if getattr(cfg, attr, None)]
 
 
 def detect_vendor_type(text: str) -> Optional[str]:

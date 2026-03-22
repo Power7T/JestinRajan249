@@ -85,7 +85,7 @@ from web.auth import (
 from web.crypto import encrypt, decrypt
 from web import worker_manager
 from web import billing as billing_mod
-from web.mailer import send_verification_email, send_password_reset_email, send_welcome_email
+from web.mailer import send_verification_email, send_password_reset_email, send_welcome_email, send_weekly_digest
 from web.billing import (
     PLAN_INFO, ACTIVE_STATUSES, tenant_has_channel, require_channel,
     create_checkout_session, create_portal_session, handle_stripe_webhook,
@@ -97,10 +97,17 @@ from web.security import (
 )
 from web.request_safety import ensure_public_hostname, ensure_public_url
 from web.workflow import (
+    analyze_guest_sentiment,
     automation_rule_decision,
     build_activation_checklist,
     build_conversation_memory,
     build_guest_timeline,
+    build_thread_key,
+    compute_guest_history_score,
+    compute_portfolio_benchmark,
+    compute_review_velocity,
+    compute_stay_stage,
+    draft_policy_conflicts,
     derive_dashboard_kpis,
     surface_exception_queue,
 )
@@ -168,17 +175,65 @@ _ADMIN_EMAILS: set = {
 }
 templates.env.globals["is_admin"] = lambda email: bool(email) and email.lower() in _ADMIN_EMAILS
 
-APP_BASE_URL = os.getenv("APP_BASE_URL", "https://your-domain.com")
 _ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
 _IS_DEV_ENV = _ENVIRONMENT in {"development", "dev", "test"}
+
+_APP_BASE_URL_RAW = os.getenv("APP_BASE_URL", "").strip().rstrip("/")
+if not _APP_BASE_URL_RAW or _APP_BASE_URL_RAW == "https://your-domain.com":
+    if not _IS_DEV_ENV:
+        raise RuntimeError(
+            "APP_BASE_URL must be set to your actual public domain in production "
+            "(e.g. APP_BASE_URL=https://hostai.fly.dev). "
+            "Email verification links and password-reset emails will be broken without it."
+        )
+    _APP_BASE_URL_RAW = _APP_BASE_URL_RAW or "http://localhost:8000"
+APP_BASE_URL = _APP_BASE_URL_RAW
 INBOUND_EMAIL_DOMAIN = os.getenv("INBOUND_EMAIL_DOMAIN", "inbound.hostai.local").strip().lower()
 
 # ---------------------------------------------------------------------------
 # App lifecycle
 # ---------------------------------------------------------------------------
 
+def _startup_checks() -> None:
+    """Warn about common production misconfiguration at startup."""
+    if _IS_DEV_ENV:
+        return
+
+    warnings: list[str] = []
+
+    # Redis is required for cross-worker rate limiting and Stripe idempotency.
+    # With multiple workers and no Redis, rate limits are per-process only.
+    workers = int(os.getenv("WORKERS", "2"))
+    if workers > 1 and not os.getenv("REDIS_URL", ""):
+        warnings.append(
+            f"REDIS_URL is not set but WORKERS={workers}. Rate limits and Stripe "
+            "webhook idempotency are per-process only — set REDIS_URL to share state "
+            "across workers."
+        )
+
+    # STRIPE_SECRET_KEY must be set for any billing operation.
+    if not os.getenv("STRIPE_SECRET_KEY", ""):
+        warnings.append(
+            "STRIPE_SECRET_KEY is not set. All billing and subscription endpoints "
+            "will fail at runtime."
+        )
+
+    # INTERNAL_TOKEN should be set when the Baileys WhatsApp bot is deployed
+    # alongside this server so the bot ↔ server channel is authenticated.
+    if not os.getenv("INTERNAL_TOKEN", ""):
+        warnings.append(
+            "INTERNAL_TOKEN is not set. If you are running the Baileys WhatsApp bot "
+            "alongside this server, set INTERNAL_TOKEN to a shared secret so the "
+            "bot-to-server channel is authenticated."
+        )
+
+    for warning in warnings:
+        log.warning("[startup] %s", warning)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _startup_checks()
     init_db()
     worker_manager.start_all_workers()
     log.info("Airbnb Host Assistant web app started")
@@ -417,6 +472,144 @@ def _payload_header(payload: dict, *keys: str) -> str:
             if value:
                 return str(value)
     return ""
+
+
+def _split_csv_values(value: str | None) -> list[str]:
+    raw = (value or "").replace("\n", ",").replace(";", ",")
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
+def _draft_property_name(draft: Draft) -> str:
+    if draft.property_name_snapshot:
+        return draft.property_name_snapshot
+    if draft.reservation and draft.reservation.listing_name:
+        return draft.reservation.listing_name
+    return ""
+
+
+def _draft_unit_identifier(draft: Draft) -> str:
+    if draft.unit_identifier_snapshot:
+        return draft.unit_identifier_snapshot
+    if draft.reservation and draft.reservation.unit_identifier:
+        return draft.reservation.unit_identifier
+    return ""
+
+
+def _property_match(selected_property: str, candidate: str) -> bool:
+    if not selected_property:
+        return True
+    return selected_property.strip().lower() == (candidate or "").strip().lower()
+
+
+def _member_property_scope(member: TeamMember) -> list[str]:
+    return _split_csv_values(member.property_scope)
+
+
+def _team_member_matches_property(member: TeamMember, selected_property: str) -> bool:
+    if not selected_property:
+        return True
+    scope = _member_property_scope(member)
+    if not scope:
+        return True
+    return any(_property_match(selected_property, item) for item in scope)
+
+
+def _collect_property_options(
+    cfg: TenantConfig,
+    reservations: list[Reservation],
+    drafts: list[Draft],
+    open_issues: list[IssueTicket],
+    team_members: list[TeamMember],
+) -> list[str]:
+    values: set[str] = set()
+    for name in _split_csv_values(cfg.property_names):
+        values.add(name)
+    for reservation in reservations:
+        if reservation.listing_name:
+            values.add(reservation.listing_name)
+    for draft in drafts:
+        prop = _draft_property_name(draft)
+        if prop:
+            values.add(prop)
+    for issue in open_issues:
+        if issue.property_name:
+            values.add(issue.property_name)
+    for member in team_members:
+        for scoped in _member_property_scope(member):
+            values.add(scoped)
+    return sorted(values)
+
+
+def _recent_reservation_drafts(db: Session, tenant_id: str, reservation: Optional[Reservation], limit: int = 12) -> list[Draft]:
+    if not reservation:
+        return []
+    return (
+        db.query(Draft)
+        .filter(Draft.tenant_id == tenant_id, Draft.reservation_id == reservation.id)
+        .order_by(Draft.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def _draft_thread_metadata(
+    db: Session,
+    tenant_id: str,
+    reservation: Optional[Reservation],
+    reply_to: str,
+    guest_name: str,
+    source: str,
+) -> tuple[str, Optional[str], int]:
+    thread_key = build_thread_key(
+        tenant_id,
+        reservation_id=reservation.id if reservation else None,
+        reply_to=reply_to,
+        guest_name=guest_name,
+        channel=source,
+    )
+    parent = (
+        db.query(Draft)
+        .filter(Draft.tenant_id == tenant_id, Draft.thread_key == thread_key)
+        .order_by(Draft.created_at.desc())
+        .first()
+    )
+    return thread_key, (parent.id if parent else None), ((parent.guest_message_index + 1) if parent else 1)
+
+
+def _draft_policy_conflicts_json(conflicts: list[str]) -> Optional[str]:
+    return json.dumps(conflicts) if conflicts else None
+
+
+def _average_response_seconds(drafts: list[Draft]) -> Optional[float]:
+    durations: list[float] = []
+    for draft in drafts:
+        if draft.created_at and draft.approved_at and draft.approved_at >= draft.created_at:
+            durations.append((draft.approved_at - draft.created_at).total_seconds())
+    if not durations:
+        return None
+    return round(sum(durations) / len(durations), 1)
+
+
+def _sentiment_summary(drafts: list[Draft], reservations: list[Reservation]) -> dict[str, object]:
+    scores = [float(draft.sentiment_score) for draft in drafts if draft.sentiment_score is not None]
+    review_scores = [float(res.review_sentiment_score) for res in reservations if res.review_sentiment_score is not None]
+    recent_scores = scores[-5:]
+    earlier_scores = scores[:-5]
+    avg_guest = round(sum(scores) / len(scores), 2) if scores else 0.0
+    avg_review = round(sum(review_scores) / len(review_scores), 2) if review_scores else 0.0
+    trend = "stable"
+    if recent_scores and earlier_scores:
+        recent_avg = sum(recent_scores) / len(recent_scores)
+        earlier_avg = sum(earlier_scores) / len(earlier_scores)
+        if recent_avg - earlier_avg >= 0.15:
+            trend = "improving"
+        elif earlier_avg - recent_avg >= 0.15:
+            trend = "worsening"
+    return {
+        "avg_guest": avg_guest,
+        "avg_review": avg_review,
+        "trend": trend,
+    }
 
 
 def _redirect_login():
@@ -734,71 +927,113 @@ def dashboard(request: Request,
     except HTTPException:
         return _redirect_login()
 
-    tenant  = _get_tenant(tenant_id, db)        # write session (needed if cfg auto-create)
-    cfg     = _get_or_create_config(tenant_id, db)
-    draft_rows = (
+    tenant = _get_tenant(tenant_id, db)
+    cfg = _get_or_create_config(tenant_id, db)
+    selected_property = request.query_params.get("property", "").strip()
+    draft_rows_all = (
         rdb.query(Draft)
         .filter_by(tenant_id=tenant_id)
         .order_by(Draft.created_at.desc())
         .limit(500)
         .all()
     )
-    pending = [draft for draft in draft_rows if draft.status == "pending"]
-    status   = worker_manager.worker_status(tenant_id)
-    now      = datetime.now(timezone.utc)
-    today    = now.date()
+    status = worker_manager.worker_status(tenant_id)
+    now = datetime.now(timezone.utc)
+    today = now.date()
 
-    # Reservation analytics for dashboard widgets
-    sync_log     = db.query(ReservationSyncLog).filter_by(tenant_id=tenant_id).first()
-    month_start  = today.replace(day=1)
-    month_rows   = db.query(Reservation).filter(
-        Reservation.tenant_id == tenant_id,
-        Reservation.status == "confirmed",
-        Reservation.checkin >= month_start,
-    ).all()
-    month_revenue  = sum(r.payout_usd or 0 for r in month_rows)
-    month_nights   = sum(r.nights or 0 for r in month_rows)
-    occupancy_pct  = round((month_nights / 30) * 100) if month_nights else 0
-    upcoming_count = db.query(Reservation).filter(
-        Reservation.tenant_id == tenant_id,
-        Reservation.status == "confirmed",
-        Reservation.checkin >= today,
-    ).count()
-    next_checkin = (db.query(Reservation).filter(
-        Reservation.tenant_id == tenant_id,
-        Reservation.status == "confirmed",
-        Reservation.checkin >= today,
-    ).order_by(Reservation.checkin).first())
+    sync_log = db.query(ReservationSyncLog).filter_by(tenant_id=tenant_id).first()
     all_reservations = db.query(Reservation).filter_by(tenant_id=tenant_id).all()
     workflow_rules = db.query(AutomationRule).filter_by(tenant_id=tenant_id).order_by(AutomationRule.priority.asc()).all()
-    team_members = db.query(TeamMember).filter_by(tenant_id=tenant_id).order_by(TeamMember.role.asc(), TeamMember.display_name.asc()).all()
-    open_issues = (
+    team_members_all = db.query(TeamMember).filter_by(tenant_id=tenant_id).order_by(TeamMember.role.asc(), TeamMember.display_name.asc()).all()
+    open_issues_all = (
         db.query(IssueTicket)
         .filter(IssueTicket.tenant_id == tenant_id, IssueTicket.status != "resolved")
         .order_by(IssueTicket.created_at.desc())
         .all()
     )
-    timeline_events = (
+    timeline_events_all = (
         db.query(GuestTimelineEvent)
         .filter_by(tenant_id=tenant_id)
         .order_by(GuestTimelineEvent.created_at.desc())
-        .limit(8)
+        .limit(40)
         .all()
     )
-    kpis = derive_dashboard_kpis(draft_rows, all_reservations, now=now)
+
+    property_options = _collect_property_options(cfg, all_reservations, draft_rows_all, open_issues_all, team_members_all)
+    if selected_property and selected_property not in property_options:
+        selected_property = ""
+
+    draft_rows = [draft for draft in draft_rows_all if _property_match(selected_property, _draft_property_name(draft))]
+    pending = [draft for draft in draft_rows if draft.status == "pending"]
+    recent_sent_drafts = [draft for draft in draft_rows if draft.status == "approved"][:12]
+    filtered_reservations = [
+        reservation for reservation in all_reservations
+        if _property_match(selected_property, reservation.listing_name or "")
+    ]
+    team_members = [member for member in team_members_all if _team_member_matches_property(member, selected_property)]
+    open_issues = [issue for issue in open_issues_all if _property_match(selected_property, issue.property_name or "")]
+    timeline_events = [event for event in timeline_events_all if _property_match(selected_property, event.property_name or "")]
+
+    month_start = today.replace(day=1)
+    month_rows = [
+        reservation for reservation in filtered_reservations
+        if reservation.status == "confirmed" and reservation.checkin and reservation.checkin >= month_start
+    ]
+    month_revenue = sum(r.payout_usd or 0 for r in month_rows)
+    month_nights = sum(r.nights or 0 for r in month_rows)
+    occupancy_pct = round((month_nights / 30) * 100) if month_nights else 0
+    upcoming_rows = [
+        reservation for reservation in filtered_reservations
+        if reservation.status == "confirmed" and reservation.checkin and reservation.checkin >= today
+    ]
+    upcoming_count = len(upcoming_rows)
+    next_checkin = sorted(upcoming_rows, key=lambda row: row.checkin)[0] if upcoming_rows else None
+
+    kpis = derive_dashboard_kpis(draft_rows, filtered_reservations, now=now)
+    approval_streak = kpis["drafts"].get("approval_streak", 0)
+    occupancy_gaps = kpis["reservations"].get("occupancy_gaps", [])
+    review_velocity = compute_review_velocity(filtered_reservations)
+    sentiment_summary = _sentiment_summary(draft_rows, filtered_reservations)
     activation_checklist = build_activation_checklist(
         cfg,
-        reservations=all_reservations,
+        reservations=filtered_reservations or all_reservations,
         inbound_email_address=_tenant_inbound_email_address(cfg),
         inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
     )
-    exception_queue = surface_exception_queue(pending, all_reservations, now=now, stale_minutes=60, limit=8)
+    exception_queue = surface_exception_queue(pending, filtered_reservations, now=now, stale_minutes=60, limit=8)
     recent_timeline = build_guest_timeline(reversed(timeline_events), limit=8)
-    try:
-        _upsert_tenant_kpi_snapshot(db, tenant_id, kpis, open_issues, now)
-    except Exception as exc:
-        log.warning("[%s] KPI snapshot update failed: %s", tenant_id, exc)
-        db.rollback()
+    if not selected_property:
+        try:
+            _upsert_tenant_kpi_snapshot(db, tenant_id, kpis, open_issues, now)
+        except Exception as exc:
+            log.warning("[%s] KPI snapshot update failed: %s", tenant_id, exc)
+            db.rollback()
+
+    response_seconds = _average_response_seconds([draft for draft in draft_rows if draft.status == "approved"])
+    response_peer_values = []
+    review_peer_values = []
+    for property_name in property_options:
+        property_drafts = [
+            draft for draft in draft_rows_all
+            if _property_match(property_name, _draft_property_name(draft)) and draft.status == "approved"
+        ]
+        property_response = _average_response_seconds(property_drafts)
+        if property_response is not None:
+            response_peer_values.append(property_response)
+        property_ratings = [
+            float(reservation.review_rating)
+            for reservation in all_reservations
+            if _property_match(property_name, reservation.listing_name or "") and reservation.review_rating is not None
+        ]
+        if property_ratings:
+            review_peer_values.append(round(sum(property_ratings) / len(property_ratings), 2))
+    response_benchmark = compute_portfolio_benchmark(response_seconds, response_peer_values, lower_is_better=True)
+    response_benchmark["hours"] = round(response_seconds / 3600.0, 2) if response_seconds is not None else None
+    review_benchmark = compute_portfolio_benchmark(
+        kpis["reservations"].get("avg_review_rating"),
+        review_peer_values,
+        lower_is_better=False,
+    )
 
     # Stale CSV warning: > 12 hours since last upload
     csv_stale = False
@@ -815,6 +1050,7 @@ def dashboard(request: Request,
         "tenant":        tenant,
         "cfg":           cfg,
         "drafts":        pending,
+        "recent_sent_drafts": recent_sent_drafts,
         "status":        status,
         "show_tour":     show_tour,
         "plan_info":     PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, PLAN_INFO[PLAN_FREE]),
@@ -832,7 +1068,15 @@ def dashboard(request: Request,
         "recent_timeline": recent_timeline,
         "activation_checklist": activation_checklist,
         "exception_queue": exception_queue,
-        "kpis":           kpis,
+        "kpis":              kpis,
+        "approval_streak":   approval_streak,
+        "occupancy_gaps":    occupancy_gaps,
+        "review_velocity":   review_velocity,
+        "sentiment_summary": sentiment_summary,
+        "response_benchmark": response_benchmark,
+        "review_benchmark": review_benchmark,
+        "selected_property": selected_property,
+        "property_options": property_options,
         "active_arrivals": db.query(ArrivalActivation).filter(
             ArrivalActivation.tenant_id == tenant_id,
             ArrivalActivation.status.in_(["active", "pending"]),
@@ -865,7 +1109,11 @@ def approve_draft(draft_id: str, request: Request,
         raise HTTPException(status_code=404, detail="Draft not found")
 
     _execute_draft(draft, draft.draft, tenant_id, db)
-    return RedirectResponse("/dashboard", status_code=302)
+    redirect_to = "/dashboard"
+    selected_property = request.query_params.get("property", "").strip()
+    if selected_property:
+        redirect_to += f"?property={selected_property}"
+    return RedirectResponse(redirect_to, status_code=302)
 
 
 @app.post("/drafts/{draft_id}/edit")
@@ -884,7 +1132,11 @@ def edit_draft(draft_id: str, request: Request, edited_text: str = Form(...),
         raise HTTPException(status_code=404, detail="Draft not found")
 
     _execute_draft(draft, edited_text.strip(), tenant_id, db)
-    return RedirectResponse("/dashboard", status_code=302)
+    redirect_to = "/dashboard"
+    selected_property = request.query_params.get("property", "").strip()
+    if selected_property:
+        redirect_to += f"?property={selected_property}"
+    return RedirectResponse(redirect_to, status_code=302)
 
 
 @app.post("/drafts/{draft_id}/skip")
@@ -903,7 +1155,73 @@ def skip_draft(draft_id: str, request: Request,
         db.add(ActivityLog(tenant_id=tenant_id, event_type="draft_skipped",
                            message=f"Draft skipped: {draft.guest_name}"))
         db.commit()
-    return RedirectResponse("/dashboard", status_code=302)
+    redirect_to = "/dashboard"
+    selected_property = request.query_params.get("property", "").strip()
+    if selected_property:
+        redirect_to += f"?property={selected_property}"
+    return RedirectResponse(redirect_to, status_code=302)
+
+
+@app.post("/drafts/{draft_id}/feedback")
+def draft_feedback(
+    draft_id: str,
+    request: Request,
+    score: str = Form(...),
+    note: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    feedback_score = 1.0 if str(score).strip() in {"1", "up", "positive"} else -1.0
+    draft.host_feedback_score = feedback_score
+    draft.host_feedback_note = note.strip() or None
+    draft.host_feedback_at = datetime.now(timezone.utc)
+
+    if draft.reservation_id:
+        reservation = db.query(Reservation).filter_by(id=draft.reservation_id, tenant_id=tenant_id).first()
+        if reservation:
+            if feedback_score > 0:
+                reservation.guest_feedback_positive = (reservation.guest_feedback_positive or 0) + 1
+            else:
+                reservation.guest_feedback_negative = (reservation.guest_feedback_negative or 0) + 1
+            total_feedback = (reservation.guest_feedback_positive or 0) + (reservation.guest_feedback_negative or 0)
+            if total_feedback:
+                reservation.guest_satisfaction_score = round(
+                    ((reservation.guest_feedback_positive or 0) - (reservation.guest_feedback_negative or 0)) / total_feedback,
+                    2,
+                )
+            _record_timeline_event(
+                db,
+                tenant_id,
+                reservation,
+                "draft_feedback_recorded",
+                f"Host marked reply as {'positive' if feedback_score > 0 else 'negative'}",
+                channel=_draft_channel(draft),
+                draft=draft,
+                body=note.strip(),
+                payload_json={"score": feedback_score},
+            )
+
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="draft_feedback_recorded",
+        message=f"Draft feedback captured for {draft.guest_name}: {feedback_score:+.0f}",
+    ))
+    db.commit()
+    redirect_to = "/dashboard"
+    selected_property = request.query_params.get("property", "").strip()
+    if selected_property:
+        redirect_to += f"?property={selected_property}"
+    return RedirectResponse(redirect_to, status_code=302)
 
 
 def _execute_draft(
@@ -1151,7 +1469,7 @@ def _recommended_custom_instructions() -> str:
 
 
 def _ensure_effortless_defaults(tenant: Tenant, cfg: TenantConfig, db: Session) -> None:
-    if not cfg.email_ingest_mode:
+    if not cfg.email_ingest_mode or cfg.email_ingest_mode == "imap":
         cfg.email_ingest_mode = "forwarding"
     if not cfg.check_in_time:
         cfg.check_in_time = "3:00 PM"
@@ -1308,6 +1626,13 @@ async def onboarding_post(
     amenities:      list = Form([]),
     quiet_hours:    str = Form(""),
     pet_policy:     str = Form(""),
+    refund_policy:  str = Form(""),
+    early_checkin_policy: str = Form(""),
+    early_checkin_fee: str = Form(""),
+    late_checkout_policy: str = Form(""),
+    late_checkout_fee: str = Form(""),
+    parking_policy: str = Form(""),
+    smoking_policy: str = Form(""),
     # Step 3 fields
     food_menu:           str = Form(""),
     menu_pdf:            UploadFile = File(None),
@@ -1355,6 +1680,15 @@ async def onboarding_post(
             if pet_policy.strip():
                 extra_rules += f"\nPet policy: {pet_policy.strip()}"
             cfg.house_rules = (house_rules.strip() + extra_rules).strip() or cfg.house_rules
+            cfg.quiet_hours = quiet_hours.strip() or cfg.quiet_hours
+            cfg.pet_policy = pet_policy.strip() or cfg.pet_policy
+            cfg.refund_policy = refund_policy.strip() or cfg.refund_policy
+            cfg.early_checkin_policy = early_checkin_policy.strip() or cfg.early_checkin_policy
+            cfg.early_checkin_fee = early_checkin_fee.strip() or cfg.early_checkin_fee
+            cfg.late_checkout_policy = late_checkout_policy.strip() or cfg.late_checkout_policy
+            cfg.late_checkout_fee = late_checkout_fee.strip() or cfg.late_checkout_fee
+            cfg.parking_policy = parking_policy.strip() or cfg.parking_policy
+            cfg.smoking_policy = smoking_policy.strip() or cfg.smoking_policy
             cfg.amenities   = ", ".join(amenities) if amenities else cfg.amenities
 
         elif step == 3:
@@ -1732,9 +2066,28 @@ async def settings_save(
 
     # Extended property context fields (editable from Settings after onboarding)
     form_data = await request.form()
-    for field in ("property_type","property_city","check_in_time","check_out_time",
-                  "house_rules","amenities","food_menu","nearby_restaurants",
-                  "faq","custom_instructions","escalation_email"):
+    for field in (
+        "property_type",
+        "property_city",
+        "check_in_time",
+        "check_out_time",
+        "house_rules",
+        "pet_policy",
+        "refund_policy",
+        "early_checkin_policy",
+        "early_checkin_fee",
+        "late_checkout_policy",
+        "late_checkout_fee",
+        "parking_policy",
+        "smoking_policy",
+        "quiet_hours",
+        "amenities",
+        "food_menu",
+        "nearby_restaurants",
+        "faq",
+        "custom_instructions",
+        "escalation_email",
+    ):
         val = form_data.get(field, "")
         if val is not None and str(val).strip():
             setattr(cfg, field, str(val).strip())
@@ -1816,6 +2169,11 @@ def automation_rule_add(
     msg_types: list[str] = Form([]),
     mode: str = Form("auto_send"),
     min_confidence: str = Form("0.85"),
+    properties: str = Form(""),
+    allow_complex: str = Form(""),
+    allow_negative_sentiment: str = Form(""),
+    min_guest_history_score: str = Form(""),
+    stay_stages: list[str] = Form([]),
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -1830,7 +2188,14 @@ def automation_rule_add(
         name=name.strip(),
         channel=channel.strip() or "any",
         confidence_threshold=float(min_confidence) if min_confidence.strip() else 0.85,
-        conditions_json={"msg_types": msg_types or ["routine"]},
+        conditions_json={
+            "msg_types": msg_types or ["routine"],
+            "properties": _split_csv_values(properties),
+            "allow_complex": str(allow_complex).strip().lower() in {"1", "true", "yes", "on"},
+            "allow_negative_sentiment": str(allow_negative_sentiment).strip().lower() in {"1", "true", "yes", "on"},
+            "min_guest_history_score": float(min_guest_history_score) if min_guest_history_score.strip() else None,
+            "stay_stages": stay_stages or [],
+        },
         actions_json={"mode": mode.strip() or "auto_send"},
         priority=100,
     )
@@ -1870,6 +2235,7 @@ def team_member_add(
     role: str = Form("manager"),
     email: str = Form(""),
     phone: str = Form(""),
+    property_scope: str = Form(""),
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -1885,6 +2251,7 @@ def team_member_add(
         role=role.strip() or "manager",
         email=email.strip() or None,
         phone=phone.strip() or None,
+        property_scope=property_scope.strip() or None,
     )
     db.add(member)
     db.add(ActivityLog(
@@ -2202,12 +2569,12 @@ async def inbound_email_webhook(request: Request, db: Session = Depends(get_db))
     if db.query(ProcessedEmail).filter_by(tenant_id=cfg.tenant_id, email_uid=email_uid).first():
         return JSONResponse({"status": "duplicate"})
 
-    from web.email_worker import parse_structured_email, process_parsed_email
+    from web.email_worker import parse_structured_email, process_parsed_email_with_config
 
     parsed = parse_structured_email(subject, sender, reply_to, text_body, html_body)
     if not parsed:
         return JSONResponse({"status": "ignored"})
-    if not process_parsed_email(cfg.tenant_id, parsed, subject or "Forwarded Airbnb message"):
+    if not process_parsed_email_with_config(cfg, parsed, subject or "Forwarded Airbnb message", db_session=db):
         raise HTTPException(status_code=422, detail="Tenant email processing is not ready")
 
     cfg.last_inbound_email_at = datetime.now(timezone.utc)
@@ -2225,28 +2592,29 @@ async def inbound_email_webhook(request: Request, db: Session = Depends(get_db))
 # Shared inbound handler — creates a Draft for host review
 # ---------------------------------------------------------------------------
 
-def _handle_inbound_wa(tenant_id: str, from_phone: str, text: str, db: Session):
-    """Classify an inbound WhatsApp message and create a pending draft."""
+def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, text: str, db: Session):
+    """Classify an inbound guest message and create a draft with thread + policy context."""
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
     if not cfg:
         return
     try:
-        from web.classifier import classify_message, detect_vendor_type, generate_draft, build_property_context
+        from web.classifier import classify_message_with_confidence, detect_vendor_type, generate_draft, build_property_context
         api_key = decrypt(cfg.anthropic_api_key_enc or "")
         if not api_key:
             return
         reservation = _find_reservation_for_guest_context(
-            tenant_id, db, guest_phone=from_phone, guest_name="WhatsApp guest"
+            tenant_id, db, guest_phone=reply_to, guest_name=f"{source.title()} guest"
         )
-        guest_name = reservation.guest_name if reservation else "WhatsApp guest"
-        msg_type = classify_message(text)
+        guest_name = reservation.guest_name if reservation else f"{source.title()} guest"
+        msg_type, confidence, _matched_patterns = classify_message_with_confidence(text)
+        sentiment = analyze_guest_sentiment(text)
         vendor_type = detect_vendor_type(text) if msg_type == "complex" else None
         property_context = build_property_context(cfg)
         if reservation:
             property_context = (
                 property_context
                 + "\n\n<reservation>\n"
-                + _reservation_context_text(reservation)
+                + _reservation_context_text(reservation, cfg)
                 + "\n</reservation>"
             ).strip()
             memory_context = _timeline_memory_context(tenant_id, reservation, db)
@@ -2258,109 +2626,77 @@ def _handle_inbound_wa(tenant_id: str, from_phone: str, text: str, db: Session):
                     + "\n</recent_guest_history>"
                 ).strip()
         draft_text = generate_draft(api_key, guest_name, text, msg_type, property_context=property_context)
+        recent_drafts = _recent_reservation_drafts(db, tenant_id, reservation)
+        guest_history_score = compute_guest_history_score(reservation, recent_drafts)
+        stay_stage = compute_stay_stage(reservation)
+        policy_conflicts = draft_policy_conflicts(text, draft_text, cfg)
+        thread_key, parent_draft_id, guest_message_index = _draft_thread_metadata(
+            db, tenant_id, reservation, reply_to, guest_name, source
+        )
         draft_id = secrets.token_hex(8)
         draft = Draft(
             id=draft_id,
             tenant_id=tenant_id,
-            source="whatsapp",
+            source=source,
             reservation_id=reservation.id if reservation else None,
+            parent_draft_id=parent_draft_id,
+            thread_key=thread_key,
+            guest_message_index=guest_message_index,
             guest_name=guest_name,
             message=text,
-            reply_to=from_phone,
+            reply_to=reply_to,
             msg_type=msg_type,
             vendor_type=vendor_type,
             draft=draft_text,
+            confidence=confidence,
+            property_name_snapshot=reservation.listing_name if reservation else None,
+            unit_identifier_snapshot=reservation.unit_identifier if reservation else None,
+            auto_send_eligible=(msg_type == "routine" and confidence >= 0.7 and sentiment["label"] != "negative" and not policy_conflicts and guest_history_score >= 0.4),
+            guest_history_score=guest_history_score,
+            guest_sentiment=sentiment["label"],
+            sentiment_score=sentiment["score"],
+            stay_stage=stay_stage,
+            policy_conflicts_json=_draft_policy_conflicts_json(policy_conflicts),
         )
         db.add(draft)
         if reservation:
             reservation.last_guest_message_at = datetime.now(timezone.utc)
+            reservation.message_count = (reservation.message_count or 0) + 1
+            reservation.latest_guest_sentiment = sentiment["label"]
+            reservation.latest_guest_sentiment_score = sentiment["score"]
         _record_timeline_event(
             db,
             tenant_id,
             reservation,
             "guest_message_received",
-            f"WhatsApp message from {guest_name}",
-            channel="whatsapp",
+            f"{source.title()} message from {guest_name}",
+            channel=source,
             direction="inbound",
             body=text,
             draft=draft,
-            payload_json={"from_phone": from_phone},
+            payload_json={
+                "reply_to": reply_to,
+                "thread_key": thread_key,
+                "guest_sentiment": sentiment["label"],
+                "policy_conflicts": policy_conflicts,
+            },
         )
-        db.add(ActivityLog(tenant_id=tenant_id, event_type="whatsapp_received",
-                           message=f"WhatsApp from {from_phone}: {text[:80]}"))
+        db.add(ActivityLog(tenant_id=tenant_id, event_type=f"{source}_received",
+                           message=f"{source.upper()} from {reply_to}: {text[:80]}"))
         db.commit()
         _apply_automation_if_matched(db, tenant_id, draft, reservation)
     except Exception as exc:
-        log.error("[%s] WA inbound handler error: %s", tenant_id, exc)
+        log.error("[%s] %s inbound handler error: %s", tenant_id, source.upper(), exc)
+
+
+def _handle_inbound_wa(tenant_id: str, from_phone: str, text: str, db: Session):
+    """Classify an inbound WhatsApp message and create a pending draft."""
+    _handle_guest_inbound_message(tenant_id, "whatsapp", from_phone, text, db)
 
 
 def _handle_inbound_sms(tenant_id: str, from_phone: str, text: str, db: Session):
     """Classify an inbound SMS and create a pending draft."""
-    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
-    if not cfg:
-        return
-    try:
-        from web.classifier import classify_message, detect_vendor_type, generate_draft, build_property_context
-        api_key = decrypt(cfg.anthropic_api_key_enc or "")
-        if not api_key:
-            return
-        reservation = _find_reservation_for_guest_context(
-            tenant_id, db, guest_phone=from_phone, guest_name="SMS guest"
-        )
-        guest_name = reservation.guest_name if reservation else "SMS guest"
-        msg_type = classify_message(text)
-        vendor_type = detect_vendor_type(text) if msg_type == "complex" else None
-        property_context = build_property_context(cfg)
-        if reservation:
-            property_context = (
-                property_context
-                + "\n\n<reservation>\n"
-                + _reservation_context_text(reservation)
-                + "\n</reservation>"
-            ).strip()
-            memory_context = _timeline_memory_context(tenant_id, reservation, db)
-            if memory_context:
-                property_context = (
-                    property_context
-                    + "\n\n<recent_guest_history>\n"
-                    + memory_context
-                    + "\n</recent_guest_history>"
-                ).strip()
-        draft_text = generate_draft(api_key, guest_name, text, msg_type, property_context=property_context)
-        draft_id = secrets.token_hex(8)
-        draft = Draft(
-            id=draft_id,
-            tenant_id=tenant_id,
-            source="sms",
-            reservation_id=reservation.id if reservation else None,
-            guest_name=guest_name,
-            message=text,
-            reply_to=from_phone,
-            msg_type=msg_type,
-            vendor_type=vendor_type,
-            draft=draft_text,
-        )
-        db.add(draft)
-        if reservation:
-            reservation.last_guest_message_at = datetime.now(timezone.utc)
-        _record_timeline_event(
-            db,
-            tenant_id,
-            reservation,
-            "guest_message_received",
-            f"SMS from {guest_name}",
-            channel="sms",
-            direction="inbound",
-            body=text,
-            draft=draft,
-            payload_json={"from_phone": from_phone},
-        )
-        db.add(ActivityLog(tenant_id=tenant_id, event_type="sms_received",
-                           message=f"SMS from {from_phone}: {text[:80]}"))
-        db.commit()
-        _apply_automation_if_matched(db, tenant_id, draft, reservation)
-    except Exception as exc:
-        log.error("[%s] SMS inbound handler error: %s", tenant_id, exc)
+    _handle_guest_inbound_message(tenant_id, "sms", from_phone, text, db)
 
 
 # ---------------------------------------------------------------------------
@@ -2633,6 +2969,10 @@ _CSV_ALIASES = {
     "guests_count":      ["# guests", "guests", "number of guests", "guest count"],
     "payout_usd":        ["amount", "total payout", "payout", "earnings", "host payout"],
     "status":            ["status", "booking status"],
+    "review_rating":     ["review rating", "rating", "guest rating", "review stars", "stars"],
+    "review_text":       ["review text", "guest review", "review", "review body"],
+    "review_submitted_at": ["review date", "review submitted at", "reviewed at"],
+    "repeat_guest_count": ["repeat guest count", "repeat stays", "previous stays"],
 }
 
 
@@ -2665,7 +3005,7 @@ def _reservation_sort_key(res: Reservation, today: date_type) -> tuple[int, int,
     return (3, 9999, -imported_at)
 
 
-def _reservation_context_lines(res: Reservation) -> list[str]:
+def _reservation_context_lines(res: Reservation, cfg: TenantConfig | None = None) -> list[str]:
     """Build a compact context block for chat prompts and logs."""
     lines = [f"Reservation: {res.confirmation_code}"]
     if res.guest_phone:
@@ -2682,11 +3022,32 @@ def _reservation_context_lines(res: Reservation) -> list[str]:
         lines.append(f"Nights: {res.nights}")
     if res.guests_count:
         lines.append(f"Guests: {res.guests_count}")
+    stay_stage = compute_stay_stage(res)
+    if stay_stage:
+        lines.append(f"Stay stage: {stay_stage.replace('_', ' ')}")
+    today = datetime.now(timezone.utc).date()
+    if res.checkin and res.checkout and res.nights and res.checkin <= today <= res.checkout:
+        lines.append(f"Guest is on day {(today - res.checkin).days + 1} of {res.nights} nights.")
+    if cfg:
+        if cfg.early_checkin_policy:
+            line = f"Early check-in: {cfg.early_checkin_policy}"
+            if cfg.early_checkin_fee:
+                line += f" (fee: {cfg.early_checkin_fee})"
+            lines.append(line)
+        if cfg.late_checkout_policy:
+            line = f"Late checkout: {cfg.late_checkout_policy}"
+            if cfg.late_checkout_fee:
+                line += f" (fee: {cfg.late_checkout_fee})"
+            lines.append(line)
+        if cfg.pet_policy:
+            lines.append(f"Pet policy: {cfg.pet_policy}")
+        if cfg.refund_policy:
+            lines.append(f"Refund policy: {cfg.refund_policy}")
     return lines
 
 
-def _reservation_context_text(res: Reservation) -> str:
-    return "\n".join(_reservation_context_lines(res))
+def _reservation_context_text(res: Reservation, cfg: TenantConfig | None = None) -> str:
+    return "\n".join(_reservation_context_lines(res, cfg))
 
 
 def _find_reservation_for_guest_context(
@@ -2834,8 +3195,13 @@ def _matching_automation_rule(
         "property_name": reservation.listing_name if reservation else "",
         "unit_identifier": reservation.unit_identifier if reservation else "",
         "needs_escalation": draft.msg_type == "escalation",
-        "confidence": 0.95 if draft.msg_type == "routine" else 0.45,
+        "confidence": draft.confidence if draft.confidence is not None else (0.95 if draft.msg_type == "routine" else 0.45),
         "reply_to": draft.reply_to or "",
+        "guest_history_score": draft.guest_history_score,
+        "guest_sentiment": draft.guest_sentiment,
+        "sentiment_score": draft.sentiment_score,
+        "stay_stage": draft.stay_stage,
+        "policy_conflicts": json.loads(draft.policy_conflicts_json) if draft.policy_conflicts_json else [],
     }
     for rule in rules:
         conditions = rule.conditions_json or {}
@@ -2849,8 +3215,11 @@ def _matching_automation_rule(
                 "min_confidence": rule.confidence_threshold,
                 "properties": conditions.get("properties") or [],
                 "allow_complex": conditions.get("allow_complex", False),
+                "allow_negative_sentiment": conditions.get("allow_negative_sentiment", False),
+                "min_guest_history_score": conditions.get("min_guest_history_score"),
                 "block_keywords": conditions.get("block_keywords") or [],
                 "allow_keywords": conditions.get("allow_keywords") or [],
+                "stay_stages": conditions.get("stay_stages") or [],
                 "requires_approval": False if action_mode in {"review", "escalate"} else action_mode == "review",
             },
             draft_view,
@@ -2974,10 +3343,7 @@ def _upsert_tenant_kpi_snapshot(
     draft_kpis = kpis.get("drafts", {})
     reservation_kpis = kpis.get("reservations", {})
     approvals = int(draft_kpis.get("approved", 0) or 0)
-    auto_sent = 0
-    for issue in open_issues:
-        if (issue.payload_json or {}).get("source") == "automation":
-            auto_sent += 1
+    auto_sent = int(draft_kpis.get("auto_sent", 0) or 0)
 
     snapshot.messages_total = int(draft_kpis.get("total", 0) or 0)
     snapshot.drafts_total = int(draft_kpis.get("total", 0) or 0)
@@ -2986,12 +3352,27 @@ def _upsert_tenant_kpi_snapshot(
     snapshot.escalations_total = int(draft_kpis.get("escalations", 0) or 0)
     snapshot.open_issues_total = len([issue for issue in open_issues if issue.status != "resolved"])
     snapshot.resolved_issues_total = len([issue for issue in open_issues if issue.status == "resolved"])
+    snapshot.avg_response_seconds = (
+        float(draft_kpis.get("avg_response_seconds"))
+        if draft_kpis.get("avg_response_seconds") is not None else None
+    )
     snapshot.automation_rate_pct = float(kpis.get("ops", {}).get("automation_ready_ratio", 0.0) or 0.0)
     snapshot.edit_rate_pct = max(0.0, round(100.0 - float(draft_kpis.get("approval_rate", 0.0) or 0.0), 1))
     snapshot.saved_hours = round((approvals + auto_sent) * 0.08, 2)
     snapshot.payload_json = {
         "drafts": draft_kpis,
         "reservations": reservation_kpis,
+        "ops": kpis.get("ops", {}),
+        "reviews": {
+            "count": reservation_kpis.get("review_count"),
+            "avg_rating": reservation_kpis.get("avg_review_rating"),
+        },
+        "sentiment": {
+            "avg_guest": kpis.get("ops", {}).get("avg_guest_sentiment"),
+            "avg_review": kpis.get("ops", {}).get("avg_review_sentiment"),
+            "positive_feedback": draft_kpis.get("positive_feedback"),
+            "negative_feedback": draft_kpis.get("negative_feedback"),
+        },
         "captured_at": now.isoformat(),
     }
     db.add(snapshot)
@@ -3041,14 +3422,23 @@ def reservations_page(request: Request,
     except HTTPException:
         return _redirect_login()
 
-    tenant   = _get_tenant(tenant_id, db)
+    tenant = _get_tenant(tenant_id, db)
+    cfg = _get_or_create_config(tenant_id, db)
+    selected_property = request.query_params.get("property", "").strip()
+    all_rows = (
+        db.query(Reservation)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(Reservation.checkin.desc())
+        .all()
+    )
+    property_options = _collect_property_options(cfg, all_rows, [], [], [])
+    if selected_property and selected_property not in property_options:
+        selected_property = ""
+    filtered_rows = [row for row in all_rows if _property_match(selected_property, row.listing_name or "")]
     per_page = 25
-    offset   = (page - 1) * per_page
-    total    = db.query(Reservation).filter_by(tenant_id=tenant_id).count()
-    rows     = (db.query(Reservation)
-                .filter_by(tenant_id=tenant_id)
-                .order_by(Reservation.checkin.desc())
-                .offset(offset).limit(per_page).all())
+    offset = (page - 1) * per_page
+    total = len(filtered_rows)
+    rows = filtered_rows[offset: offset + per_page]
     row_ids = [row.id for row in rows]
     issue_counts: dict[int, int] = {}
     if row_ids:
@@ -3073,6 +3463,7 @@ def reservations_page(request: Request,
         .order_by(TeamMember.role.asc(), TeamMember.display_name.asc())
         .all()
     )
+    team_members = [member for member in team_members if _team_member_matches_property(member, selected_property)]
     csv_stale = False
     if sync_log and sync_log.last_synced:
         last_synced = sync_log.last_synced
@@ -3083,20 +3474,18 @@ def reservations_page(request: Request,
     # Analytics
     today   = datetime.now(timezone.utc).date()
     month_start = today.replace(day=1)
-    month_rows  = db.query(Reservation).filter(
-        Reservation.tenant_id == tenant_id,
-        Reservation.status == "confirmed",
-        Reservation.checkin >= month_start,
-    ).all()
+    month_rows = [
+        row for row in filtered_rows
+        if row.status == "confirmed" and row.checkin and row.checkin >= month_start
+    ]
     month_revenue = sum(r.payout_usd or 0 for r in month_rows)
     month_nights  = sum(r.nights or 0 for r in month_rows)
     days_in_month = 30
     occupancy_pct = round((month_nights / days_in_month) * 100) if month_nights else 0
-    upcoming = db.query(Reservation).filter(
-        Reservation.tenant_id == tenant_id,
-        Reservation.status == "confirmed",
-        Reservation.checkin >= today,
-    ).count()
+    upcoming = len([
+        row for row in filtered_rows
+        if row.status == "confirmed" and row.checkin and row.checkin >= today
+    ])
     activation_count = (
         db.query(ArrivalActivation)
         .filter(
@@ -3105,10 +3494,18 @@ def reservations_page(request: Request,
         )
         .count()
     )
+    review_velocity = compute_review_velocity(filtered_rows)
+    avg_review_rating = round(
+        sum(float(row.review_rating) for row in filtered_rows if row.review_rating is not None)
+        / len([row for row in filtered_rows if row.review_rating is not None]),
+        2,
+    ) if [row for row in filtered_rows if row.review_rating is not None] else None
+    sentiment_summary = _sentiment_summary([], filtered_rows)
 
     return templates.TemplateResponse("reservations.html", {
         "request":       request,
         "tenant":        tenant,
+        "cfg":           cfg,
         "rows":          rows,
         "total":         total,
         "page":          page,
@@ -3124,6 +3521,11 @@ def reservations_page(request: Request,
         "recent_batches": recent_batches,
         "issue_counts": issue_counts,
         "today":         today,
+        "review_velocity": review_velocity,
+        "avg_review_rating": avg_review_rating,
+        "sentiment_summary": sentiment_summary,
+        "selected_property": selected_property,
+        "property_options": property_options,
     })
 
 
@@ -3190,6 +3592,10 @@ async def reservations_upload(
         nights_str   = _get("nights")
         guests_str   = _get("guests_count")
         payout_str   = _get("payout_usd")
+        review_rating_str = _get("review_rating")
+        review_text = _get("review_text")
+        review_submitted_at_str = _get("review_submitted_at")
+        repeat_guest_count_str = _get("repeat_guest_count")
         status_raw   = _get("status").lower()
         status = "cancelled" if "cancel" in status_raw else "confirmed"
 
@@ -3200,6 +3606,14 @@ async def reservations_upload(
         )
         guests   = int(guests_str) if guests_str.isdigit() else None
         payout   = _parse_float(payout_str)
+        review_rating = _parse_float(review_rating_str)
+        review_submitted_at_date = _parse_date(review_submitted_at_str) if review_submitted_at_str else None
+        review_submitted_at = (
+            datetime.combine(review_submitted_at_date, datetime.min.time(), tzinfo=timezone.utc)
+            if review_submitted_at_date else None
+        )
+        repeat_guest_count = int(repeat_guest_count_str) if repeat_guest_count_str.isdigit() else 0
+        review_sentiment = analyze_guest_sentiment(review_text) if review_text else {"label": None, "score": None}
 
         guest_col   = _csv_col(headers, "guest_name")
         phone_col   = _csv_col(headers, "guest_phone")
@@ -3213,6 +3627,14 @@ async def reservations_upload(
             existing.payout_usd   = payout   or existing.payout_usd
             existing.guests_count = guests   or existing.guests_count
             existing.intake_batch_id = batch.id
+            existing.review_rating = review_rating if review_rating is not None else existing.review_rating
+            existing.review_text = review_text or existing.review_text
+            existing.review_submitted_at = review_submitted_at or existing.review_submitted_at
+            existing.review_sentiment = review_sentiment["label"] or existing.review_sentiment
+            existing.review_sentiment_score = (
+                review_sentiment["score"] if review_sentiment["score"] is not None else existing.review_sentiment_score
+            )
+            existing.repeat_guest_count = max(existing.repeat_guest_count or 0, repeat_guest_count)
             if guest_phone:
                 existing.guest_phone = guest_phone
             if unit_id:
@@ -3236,6 +3658,12 @@ async def reservations_upload(
                 nights=nights,
                 guests_count=guests,
                 payout_usd=payout,
+                review_rating=review_rating,
+                review_text=review_text or None,
+                review_submitted_at=review_submitted_at,
+                review_sentiment=review_sentiment["label"],
+                review_sentiment_score=review_sentiment["score"],
+                repeat_guest_count=repeat_guest_count,
                 status=status,
                 intake_batch_id=batch.id,
             ))
@@ -3299,7 +3727,11 @@ def update_reservation_context(
         body=f"phone={res.guest_phone or '—'}\nunit={res.unit_identifier or '—'}",
     )
     db.commit()
-    return RedirectResponse("/reservations?context_updated=1", status_code=302)
+    redirect_to = "/reservations?context_updated=1"
+    selected_property = request.query_params.get("property", "").strip()
+    if selected_property:
+        redirect_to += f"&property={selected_property}"
+    return RedirectResponse(redirect_to, status_code=302)
 
 
 @app.post("/reservations/manual", response_class=HTMLResponse)
@@ -3429,7 +3861,11 @@ def activate_reservation_chat(
         message=f"Guest chat activated for {reservation.guest_name} ({reservation.confirmation_code})",
     ))
     db.commit()
-    return RedirectResponse("/reservations?context_updated=1", status_code=302)
+    redirect_to = "/reservations?context_updated=1"
+    selected_property = request.query_params.get("property", "").strip()
+    if selected_property:
+        redirect_to += f"&property={selected_property}"
+    return RedirectResponse(redirect_to, status_code=302)
 
 
 @app.get("/reservations/{reservation_id}/timeline", response_class=HTMLResponse)
@@ -4163,8 +4599,10 @@ def edit_form(draft_id: str, request: Request, db: Session = Depends(get_db)):
         return HTMLResponse("")
     csrf = getattr(request.state, "csrf_token", "")
     draft_text = escape(draft.draft or "")
+    selected_property = request.query_params.get("property", "").strip()
+    action_suffix = f"?property={escape(selected_property)}" if selected_property else ""
     return HTMLResponse(f"""
-    <form method="post" action="/drafts/{draft_id}/edit" style="margin-top:0.5rem">
+    <form method="post" action="/drafts/{draft_id}/edit{action_suffix}" style="margin-top:0.5rem">
       <input type="hidden" name="csrf_token" value="{escape(str(csrf))}">
       <textarea name="edited_text" style="width:100%;padding:8px;border:1px solid #ced4da;border-radius:6px;
         font-size:0.875rem;line-height:1.6;min-height:120px;resize:vertical"
@@ -4271,6 +4709,219 @@ def metrics(request: Request, db: Session = Depends(get_db)):
         "watchdog_ok":    (worker_manager._watchdog_thread is not None
                            and worker_manager._watchdog_thread.is_alive()),
     })
+
+
+# ---------------------------------------------------------------------------
+# Simulate — generate a demo draft from a fake guest message (onboarding UX)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/simulate")
+def simulate_guest(request: Request,
+                   guest_name: str = Form("Demo Guest"),
+                   message:    str = Form("Hi, what time is check-in?"),
+                   csrf_token: str = Form(None),
+                   db: Session = Depends(get_db)):
+    """Generate a simulated guest message draft for onboarding preview."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+    validate_csrf(request, csrf_token)
+    rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
+
+    cfg = _get_or_create_config(tenant_id, db)
+    api_key = decrypt(cfg.anthropic_api_key_enc or "")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Claude API key not configured")
+
+    from web.classifier import (
+        classify_message_with_confidence, extract_context_sources, generate_draft, make_draft_id
+    )
+    import json
+
+    guest_name = guest_name.strip()[:128] or "Demo Guest"
+    message    = message.strip()[:2000] or "Hi, what time is check-in?"
+
+    msg_type, confidence, matched = classify_message_with_confidence(message)
+    ctx_sources = matched + extract_context_sources(cfg)
+    property_context = build_property_context(cfg)
+
+    try:
+        draft_text = generate_draft(api_key, guest_name, message, msg_type,
+                                    property_context=property_context)
+    except Exception as exc:
+        log.error("[%s] Simulate draft generation failed: %s", tenant_id, exc)
+        raise HTTPException(status_code=500, detail="Draft generation failed — check your Claude API key")
+
+    draft_id = make_draft_id("simulate")
+    db.add(Draft(
+        id=draft_id, tenant_id=tenant_id, source="simulate",
+        guest_name=guest_name, message=message,
+        reply_to=None, msg_type=msg_type, vendor_type=None,
+        draft=draft_text, status="pending",
+        confidence=confidence,
+        context_sources=json.dumps(ctx_sources),
+    ))
+    db.commit()
+    return RedirectResponse("/dashboard", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Team member CRUD (quick-add / deactivate)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/team")
+def add_team_member(request: Request,
+                    display_name: str = Form(...),
+                    email:        str = Form(""),
+                    phone:        str = Form(""),
+                    role:         str = Form("manager"),
+                    csrf_token:   str = Form(None),
+                    db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+    validate_csrf(request, csrf_token)
+    rate_limit(f"team:{tenant_id}", max_requests=30, window_seconds=3600)
+
+    display_name = display_name.strip()[:128]
+    if not display_name:
+        raise HTTPException(status_code=400, detail="display_name is required")
+    email = email.strip()[:255] or None
+    phone = phone.strip()[:32]  or None
+    valid_roles = {"owner", "manager", "front_desk", "maintenance", "cleaner"}
+    if role not in valid_roles:
+        role = "manager"
+
+    member = TeamMember(
+        tenant_id=tenant_id,
+        display_name=display_name,
+        email=email,
+        phone=phone,
+        role=role,
+        is_active=True,
+        permissions_json={},
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db.add(member)
+    db.commit()
+    return RedirectResponse("/dashboard", status_code=302)
+
+
+@app.delete("/api/team/{member_id}")
+def deactivate_team_member(member_id: int, request: Request,
+                           db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+    member = db.query(TeamMember).filter_by(id=member_id, tenant_id=tenant_id).first()
+    if not member:
+        raise HTTPException(status_code=404)
+    member.is_active  = False
+    member.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# Weekly digest — manual send trigger
+# ---------------------------------------------------------------------------
+
+@app.post("/api/digest/send")
+def send_digest(request: Request, db: Session = Depends(get_db)):
+    """Trigger an on-demand weekly digest email for the current tenant."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+    rate_limit(f"digest:{tenant_id}", max_requests=3, window_seconds=86400)
+
+    tenant = _get_tenant(tenant_id, db)
+    cfg    = _get_or_create_config(tenant_id, db)
+
+    now  = datetime.now(timezone.utc)
+    week_start = now - timedelta(days=7)
+    draft_rows = db.query(Draft).filter(
+        Draft.tenant_id == tenant_id,
+        Draft.created_at >= week_start,
+    ).all()
+    all_reservations = db.query(Reservation).filter_by(tenant_id=tenant_id).all()
+    kpis = derive_dashboard_kpis(draft_rows, all_reservations, now=now)
+
+    stats = {
+        "property_name":    (cfg.property_names or "your property").split(",")[0].strip(),
+        "week_label":       f"week of {week_start.strftime('%b %d')}",
+        **kpis["drafts"],
+        **kpis["reservations"],
+        "review_velocity":  compute_review_velocity(all_reservations),
+    }
+    ok = send_weekly_digest(tenant.email, stats)
+    if not ok:
+        raise HTTPException(status_code=500, detail="Failed to send digest — check SMTP configuration")
+    return JSONResponse({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# Onboarding: prefill listing URL
+# ---------------------------------------------------------------------------
+
+@app.post("/api/prefill-listing")
+def prefill_listing(request: Request,
+                    listing_url: str = Form(...),
+                    csrf_token:  str = Form(None),
+                    db: Session = Depends(get_db)):
+    """
+    Accept a public Airbnb/VRBO listing URL and extract the iCal feed URL from it.
+    Saves the iCal URL into tenant config so onboarding is faster.
+    """
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+    validate_csrf(request, csrf_token)
+    rate_limit(f"prefill:{tenant_id}", max_requests=10, window_seconds=3600)
+
+    listing_url = listing_url.strip()
+    if not listing_url:
+        raise HTTPException(status_code=400, detail="listing_url is required")
+
+    # SSRF protection: only allow public internet URLs
+    try:
+        ensure_public_url(listing_url)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    # Airbnb iCal export pattern: replace /rooms/ URL with /ical/LISTING_ID.ics
+    import re as _re
+    airbnb_match = _re.search(r"airbnb\.com/rooms/(\d+)", listing_url)
+    if airbnb_match:
+        listing_id = airbnb_match.group(1)
+        ical_url = f"https://www.airbnb.com/calendar/ical/{listing_id}.ics?currency=USD"
+        cfg = _get_or_create_config(tenant_id, db)
+        existing = [u.strip() for u in (cfg.ical_urls or "").split(",") if u.strip()]
+        if ical_url not in existing:
+            existing.append(ical_url)
+            cfg.ical_urls = ",".join(existing)
+            db.commit()
+        return JSONResponse({"ok": True, "ical_url": ical_url})
+
+    # For non-Airbnb URLs (e.g. VRBO), just store the URL as-is if it ends with .ics
+    if listing_url.endswith(".ics"):
+        cfg = _get_or_create_config(tenant_id, db)
+        existing = [u.strip() for u in (cfg.ical_urls or "").split(",") if u.strip()]
+        if listing_url not in existing:
+            existing.append(listing_url)
+            cfg.ical_urls = ",".join(existing)
+            db.commit()
+        return JSONResponse({"ok": True, "ical_url": listing_url})
+
+    raise HTTPException(
+        status_code=400,
+        detail="Could not extract an iCal URL from the listing. For Airbnb: paste the /rooms/ URL. For other platforms: paste the .ics URL directly."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -4767,7 +5418,11 @@ def schedule_draft(
         message=f"Draft scheduled for {parsed.strftime('%Y-%m-%d %H:%M UTC')}: {draft.guest_name}",
     ))
     db.commit()
-    return RedirectResponse("/dashboard", status_code=302)
+    redirect_to = "/dashboard"
+    selected_property = request.query_params.get("property", "").strip()
+    if selected_property:
+        redirect_to += f"?property={selected_property}"
+    return RedirectResponse(redirect_to, status_code=302)
 
 
 # ---------------------------------------------------------------------------
@@ -4785,18 +5440,22 @@ def reservations_export_csv(
     except HTTPException:
         return _redirect_login()
 
+    selected_property = request.query_params.get("property", "").strip()
     rows = (
         db.query(Reservation)
         .filter_by(tenant_id=tenant_id)
         .order_by(Reservation.checkin.desc())
         .all()
     )
+    if selected_property:
+        rows = [row for row in rows if _property_match(selected_property, row.listing_name or "")]
 
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow([
         "Confirmation Code", "Guest Name", "Guest Phone", "Listing", "Unit / Room",
-        "Check-in", "Check-out", "Nights", "Guests", "Payout (USD)", "Status", "Imported At",
+        "Check-in", "Check-out", "Nights", "Guests", "Payout (USD)", "Review Rating",
+        "Review Sentiment", "Status", "Imported At",
     ])
     for r in rows:
         writer.writerow([
@@ -4810,6 +5469,8 @@ def reservations_export_csv(
             r.nights or "",
             r.guests_count or "",
             f"{r.payout_usd:.2f}" if r.payout_usd is not None else "",
+            r.review_rating if r.review_rating is not None else "",
+            r.review_sentiment or "",
             r.status,
             r.imported_at.strftime("%Y-%m-%d %H:%M") if r.imported_at else "",
         ])

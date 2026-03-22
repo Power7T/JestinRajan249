@@ -209,6 +209,34 @@ def check_cleaner_brief(cfg: CalendarConfig, booking: dict, label: str, now: dat
             _fire_state(cfg.tenant_id, key)
 
 
+def check_extension_offer(cfg: CalendarConfig, booking: dict, label: str, now: datetime):
+    """
+    Fire a late-checkout / extension offer draft 2 hours before checkout.
+    Trigger window: checkout day, between _EXTENSION_OFFER_HOUR and _EXTENSION_OFFER_HOUR+2.
+    Only fires once per booking (state key: extension:<uid>).
+    """
+    key = f"extension:{booking['uid']}"
+    if _state_fired(cfg.tenant_id, key):
+        return
+    if booking["checkout"] != now.date():
+        return
+    if not (_EXTENSION_OFFER_HOUR <= now.hour < _EXTENSION_OFFER_HOUR + 2):
+        return
+    guest   = booking["guest_name"]
+    co_str  = booking["checkout"].strftime("%A, %B %d, %Y")
+    context = (
+        f"[CALENDAR TRIGGER — LATE CHECKOUT / EXTENSION OFFER]\nProperty: {label}\nGuest: {guest}\n"
+        f"Checkout date: {co_str}\n"
+        f"Please generate a friendly message asking if the guest would like to extend their stay "
+        f"or arrange a late checkout, and if so to let us know so we can check availability."
+    )
+    result = _request_draft(cfg, "reply", guest, context)
+    if result:
+        draft_id, draft = result
+        _save_draft(cfg.tenant_id, draft_id, f"{guest} — extension offer", context, draft, "extension")
+        _fire_state(cfg.tenant_id, key)
+
+
 # ---------------------------------------------------------------------------
 # Main poll loop
 # ---------------------------------------------------------------------------
@@ -234,6 +262,7 @@ def run_for_tenant(cfg: CalendarConfig, stop_flag: "threading.Event"):
                     check_pre_arrival(cfg, booking, label, now)
                     check_checkin(cfg, booking, label, now)
                     check_cleaner_brief(cfg, booking, label, now)
+                    check_extension_offer(cfg, booking, label, now)
             fail_streak = 0
         except Exception as exc:
             fail_streak += 1

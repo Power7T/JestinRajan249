@@ -40,6 +40,21 @@
 {% block content %}
 <h1>Reservations</h1>
 
+<form method="get" action="/reservations" style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin:0.75rem 0 1.25rem">
+  <label style="margin:0;font-size:0.82rem;color:#6c757d">Property view</label>
+  <select name="property" style="max-width:320px;margin-bottom:0">
+    <option value="">All properties</option>
+    {% for property_name in property_options or [] %}
+    <option value="{{ property_name }}" {% if property_name == selected_property %}selected{% endif %}>{{ property_name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-outline btn-sm">Apply</button>
+  {% if selected_property %}
+  <a href="/reservations" class="btn btn-outline btn-sm">Clear</a>
+  <span class="chip good">Scoped to {{ selected_property }}</span>
+  {% endif %}
+</form>
+
 <!-- Upload frequency recommendation -->
 <div style="display:flex;gap:0.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center">
   <div class="freq-badge">
@@ -82,6 +97,14 @@
     <div class="widget-value">{{ activation_count }}</div>
     <div class="widget-label">Active arrival mappings</div>
   </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{% if avg_review_rating %}{{ "%.2f"|format(avg_review_rating) }}{% else %}—{% endif %}</div>
+    <div class="widget-label">Average review rating</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ sentiment_summary.trend }}</div>
+    <div class="widget-label">Guest sentiment trend</div>
+  </div>
 </div>
 {% endif %}
 
@@ -92,7 +115,7 @@
   </div>
   <div class="workflow-card">
     <h3>Intake fallbacks</h3>
-    <p>CSV stays first-class for hosts without a PMS. Manual booking is the final fallback when CSV or PMS is not available.</p>
+    <p>CSV stays first-class for hosts without a PMS. Manual booking is the final fallback when CSV or PMS is not available. Review data from CSV now feeds sentiment and rating analytics too.</p>
   </div>
   <div class="workflow-card">
     <h3>Ops coverage</h3>
@@ -364,7 +387,7 @@
 <!-- Reservations table -->
 {% if rows %}
 <div style="display:flex;justify-content:flex-end;margin-bottom:0.75rem">
-  <a href="/reservations/export.csv" class="btn btn-outline btn-sm">⬇ Export CSV</a>
+  <a href="/reservations/export.csv{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" class="btn btn-outline btn-sm">⬇ Export CSV</a>
 </div>
 <div class="card" style="padding:0;overflow:hidden">
   <table>
@@ -377,6 +400,7 @@
         <th>Nights</th>
         <th>Guests</th>
         <th>Payout</th>
+        <th>Review</th>
         <th>Status</th>
         <th>Guest context</th>
         <th>Drafts</th>
@@ -411,11 +435,19 @@
       <td style="text-align:right;font-size:0.85rem">
         {% if r.payout_usd %}${{ "%.2f"|format(r.payout_usd) }}{% else %}—{% endif %}
       </td>
+      <td style="font-size:0.78rem;min-width:120px">
+        {% if r.review_rating is not none %}
+        <div><strong>{{ "%.1f"|format(r.review_rating) }}</strong> stars</div>
+        {% if r.review_sentiment %}<div style="color:#6c757d">{{ r.review_sentiment }}</div>{% endif %}
+        {% else %}
+        <span style="color:#adb5bd">No review yet</span>
+        {% endif %}
+      </td>
       <td>
         <span class="badge badge-{{ r.status }}">{{ r.status }}</span>
       </td>
       <td style="font-size:0.78rem;min-width:220px">
-        <form method="post" action="/reservations/{{ r.id }}/context" style="display:flex;flex-direction:column;gap:0.45rem">
+        <form method="post" action="/reservations/{{ r.id }}/context{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="display:flex;flex-direction:column;gap:0.45rem">
           <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
           <input type="tel" name="guest_phone" value="{{ r.guest_phone or '' }}" placeholder="Guest phone"
                  style="width:100%;padding:6px 8px;font-size:0.78rem">
@@ -425,7 +457,7 @@
             <button type="submit" class="btn btn-outline btn-sm" style="align-self:flex-start">Save context</button>
           </div>
         </form>
-        <form method="post" action="/reservations/{{ r.id }}/activate" style="margin-top:0.45rem;display:flex;flex-direction:column;gap:0.35rem">
+        <form method="post" action="/reservations/{{ r.id }}/activate{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="margin-top:0.45rem;display:flex;flex-direction:column;gap:0.35rem">
           <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
           <input type="hidden" name="guest_phone" value="{{ r.guest_phone or '' }}">
           <input type="hidden" name="unit_identifier" value="{{ r.unit_identifier or '' }}">
@@ -471,11 +503,11 @@
 <!-- Pagination -->
 {% if pages > 1 %}
 <div class="pagination">
-  {% if page > 1 %}<a href="/reservations?page={{ page - 1 }}">← Prev</a>{% endif %}
+  {% if page > 1 %}<a href="/reservations?page={{ page - 1 }}{% if selected_property %}&property={{ selected_property|replace(' ', '%20') }}{% endif %}">← Prev</a>{% endif %}
   {% for p in range(1, pages + 1) %}
-    <a href="/reservations?page={{ p }}" class="{% if p == page %}active{% endif %}">{{ p }}</a>
+    <a href="/reservations?page={{ p }}{% if selected_property %}&property={{ selected_property|replace(' ', '%20') }}{% endif %}" class="{% if p == page %}active{% endif %}">{{ p }}</a>
   {% endfor %}
-  {% if page < pages %}<a href="/reservations?page={{ page + 1 }}">Next →</a>{% endif %}
+  {% if page < pages %}<a href="/reservations?page={{ page + 1 }}{% if selected_property %}&property={{ selected_property|replace(' ', '%20') }}{% endif %}">Next →</a>{% endif %}
 </div>
 {% endif %}
 

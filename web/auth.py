@@ -91,7 +91,9 @@ def get_current_tenant_id(request: Request) -> str:
     if not tenant_id:
         raise HTTPException(status_code=401, detail="Session expired")
 
-    db = SessionLocal()
+    provider = getattr(request.app.state, "auth_db_session_provider", None)
+    db = provider() if callable(provider) else SessionLocal()
+    owns_session = not callable(provider)
     try:
         tenant = db.query(Tenant).filter_by(id=tenant_id).first()
         if not tenant or not tenant.is_active:
@@ -99,5 +101,6 @@ def get_current_tenant_id(request: Request) -> str:
         if payload.get("ver") != tenant_session_version(tenant):
             raise HTTPException(status_code=401, detail="Session expired")
     finally:
-        db.close()
+        if owns_session:
+            db.close()
     return tenant_id

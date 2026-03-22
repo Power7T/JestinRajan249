@@ -22,7 +22,19 @@ SMTP_PORT    = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER    = os.getenv("SMTP_USER", "")
 SMTP_PASS    = os.getenv("SMTP_PASS", "")
 SMTP_FROM    = os.getenv("SMTP_FROM", SMTP_USER) or "noreply@hostai.app"
-APP_BASE_URL = os.getenv("APP_BASE_URL", "https://your-domain.com")
+
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
+_ALLOW_INSECURE_DEFAULTS = _ENVIRONMENT in {"development", "dev", "test"}
+_APP_BASE_URL_RAW = os.getenv("APP_BASE_URL", "").strip().rstrip("/")
+if not _APP_BASE_URL_RAW or _APP_BASE_URL_RAW == "https://your-domain.com":
+    if not _ALLOW_INSECURE_DEFAULTS:
+        raise RuntimeError(
+            "APP_BASE_URL must be set to your actual public domain in production "
+            "(e.g. APP_BASE_URL=https://hostai.fly.dev). "
+            "Email verification and password-reset links will be broken without it."
+        )
+    _APP_BASE_URL_RAW = _APP_BASE_URL_RAW or "http://localhost:8000"
+APP_BASE_URL = _APP_BASE_URL_RAW
 APP_NAME     = "HostAI"
 
 
@@ -124,6 +136,88 @@ def send_escalation_alert(to: str, guest_name: str, guest_message: str) -> bool:
     </div>
     """
     return _send(to, f"{APP_NAME} — Urgent: {guest_name} needs immediate attention", html)
+
+
+def send_weekly_digest(to: str, stats: dict) -> bool:
+    """
+    Send a weekly performance digest email.
+
+    stats keys (all optional with sensible defaults):
+      property_name, week_label,
+      drafts_total, approved, skipped, escalations,
+      approval_rate, approval_streak,
+      active_stays, upcoming_checkins,
+      occupancy_gaps (list of dicts with gap_nights/gap_start/gap_end),
+      review_velocity
+    """
+    property_name   = stats.get("property_name", "your property")
+    week_label      = stats.get("week_label", "this week")
+    drafts_total    = stats.get("drafts_total", 0)
+    approved        = stats.get("approved", 0)
+    skipped         = stats.get("skipped", 0)
+    escalations     = stats.get("escalations", 0)
+    approval_rate   = stats.get("approval_rate", 0.0)
+    streak          = stats.get("approval_streak", 0)
+    active_stays    = stats.get("active_stays", 0)
+    upcoming        = stats.get("upcoming_checkins", 0)
+    gaps            = stats.get("occupancy_gaps", [])
+    review_velocity = stats.get("review_velocity")
+    url             = f"{APP_BASE_URL}/dashboard"
+
+    streak_badge = f"🔥 {streak}-draft approval streak!" if streak >= 3 else ""
+
+    gap_rows = ""
+    for g in gaps[:5]:
+        gap_start = g.get("gap_start", "")
+        gap_end   = g.get("gap_end", "")
+        nights    = g.get("gap_nights", "?")
+        if hasattr(gap_start, "strftime"):
+            gap_start = gap_start.strftime("%b %d")
+        if hasattr(gap_end, "strftime"):
+            gap_end = gap_end.strftime("%b %d")
+        gap_rows += (
+            f"<tr><td style='padding:4px 8px;border-bottom:1px solid #dee2e6'>{gap_start} – {gap_end}</td>"
+            f"<td style='padding:4px 8px;border-bottom:1px solid #dee2e6'>{nights} nights</td></tr>"
+        )
+
+    gap_section = ""
+    if gap_rows:
+        gap_section = f"""
+      <p style="margin-top:1.5rem;font-weight:600">Occupancy gaps to fill:</p>
+      <table style="width:100%;border-collapse:collapse;font-size:0.875rem">
+        <thead><tr>
+          <th style="text-align:left;padding:4px 8px;background:#f8f9fa">Gap window</th>
+          <th style="text-align:left;padding:4px 8px;background:#f8f9fa">Duration</th>
+        </tr></thead>
+        <tbody>{gap_rows}</tbody>
+      </table>"""
+
+    review_line = ""
+    if review_velocity is not None:
+        review_line = f"<li>Review velocity: <strong>{review_velocity:.1f} reviews/30 days</strong></li>"
+
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:0 auto;padding:2rem;color:#212529">
+      <h2 style="color:#e00b27;margin-bottom:0.5rem">🏠 {APP_NAME} — Weekly digest</h2>
+      <p style="color:#6c757d;margin-top:0">{property_name} · {week_label}</p>
+      {"<p style='background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:0.75rem;font-weight:600'>" + streak_badge + "</p>" if streak_badge else ""}
+      <ul style="line-height:2;padding-left:1.25rem">
+        <li>Drafts generated: <strong>{drafts_total}</strong></li>
+        <li>Approved: <strong>{approved}</strong> &nbsp;·&nbsp; Skipped: <strong>{skipped}</strong> &nbsp;·&nbsp; Escalations: <strong>{escalations}</strong></li>
+        <li>Approval rate: <strong>{approval_rate:.0f}%</strong></li>
+        <li>Active stays: <strong>{active_stays}</strong> &nbsp;·&nbsp; Upcoming check-ins: <strong>{upcoming}</strong></li>
+        {review_line}
+      </ul>
+      {gap_section}
+      <p style="margin:2rem 0">
+        <a href="{url}" style="background:#e00b27;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">
+          View Dashboard →
+        </a>
+      </p>
+      <p style="color:#adb5bd;font-size:0.75rem">You're receiving this because you're a {APP_NAME} host. Manage preferences in Settings.</p>
+    </div>
+    """
+    return _send(to, f"{APP_NAME} — Weekly digest for {property_name}", html)
 
 
 def send_password_reset_email(to: str, token: str) -> bool:

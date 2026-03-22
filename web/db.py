@@ -99,6 +99,15 @@ def db_migrate():
         ("tenant_configs", "email_ingest_mode",       "VARCHAR(32)",  "'imap'"),
         ("tenant_configs", "inbound_email_alias",     "VARCHAR(64)",  "NULL"),
         ("tenant_configs", "last_inbound_email_at",   datetime_type,  "NULL"),
+        ("tenant_configs", "pet_policy",              "TEXT",         "NULL"),
+        ("tenant_configs", "refund_policy",           "TEXT",         "NULL"),
+        ("tenant_configs", "early_checkin_policy",    "TEXT",         "NULL"),
+        ("tenant_configs", "early_checkin_fee",       "VARCHAR(64)",  "NULL"),
+        ("tenant_configs", "late_checkout_policy",    "TEXT",         "NULL"),
+        ("tenant_configs", "late_checkout_fee",       "VARCHAR(64)",  "NULL"),
+        ("tenant_configs", "parking_policy",          "TEXT",         "NULL"),
+        ("tenant_configs", "smoking_policy",          "TEXT",         "NULL"),
+        ("tenant_configs", "quiet_hours",             "VARCHAR(128)", "NULL"),
         ("tenant_configs", "subscription_plan",       "VARCHAR(32)",  "'free'"),
         ("tenant_configs", "subscription_status",     "VARCHAR(32)",  "'inactive'"),
         ("tenant_configs", "subscription_expires_at", datetime_type,  "NULL"),
@@ -118,13 +127,43 @@ def db_migrate():
         ("reservations", "intake_batch_id",  "INTEGER",      "NULL"),
         ("reservations", "last_guest_message_at", datetime_type, "NULL"),
         ("reservations", "last_host_reply_at",    datetime_type, "NULL"),
+        ("reservations", "review_rating",         "FLOAT",        "NULL"),
+        ("reservations", "review_text",           "TEXT",         "NULL"),
+        ("reservations", "review_submitted_at",   datetime_type,  "NULL"),
+        ("reservations", "review_sentiment",      "VARCHAR(16)",  "NULL"),
+        ("reservations", "review_sentiment_score","FLOAT",        "NULL"),
+        ("reservations", "guest_feedback_positive","INTEGER",     "0"),
+        ("reservations", "guest_feedback_negative","INTEGER",     "0"),
+        ("reservations", "guest_satisfaction_score","FLOAT",      "NULL"),
+        ("reservations", "repeat_guest_count",    "INTEGER",      "0"),
+        ("reservations", "message_count",         "INTEGER",      "0"),
+        ("reservations", "latest_guest_sentiment","VARCHAR(16)",  "NULL"),
+        ("reservations", "latest_guest_sentiment_score","FLOAT",  "NULL"),
+        ("team_members", "property_scope",        "TEXT",         "NULL"),
         # Draft workflow links
         ("drafts", "reservation_id",         "INTEGER",      "NULL"),
         ("drafts", "automation_rule_id",     "INTEGER",      "NULL"),
+        ("drafts", "parent_draft_id",        "VARCHAR(64)",  "NULL"),
+        ("drafts", "thread_key",             "VARCHAR(128)", "NULL"),
+        ("drafts", "guest_message_index",    "INTEGER",      "1"),
+        ("drafts", "property_name_snapshot", "VARCHAR(256)", "NULL"),
+        ("drafts", "unit_identifier_snapshot","VARCHAR(64)", "NULL"),
+        ("drafts", "auto_send_eligible",     "BOOLEAN",      false_default),
+        ("drafts", "guest_history_score",    "FLOAT",        "NULL"),
+        ("drafts", "guest_sentiment",        "VARCHAR(16)",  "NULL"),
+        ("drafts", "sentiment_score",        "FLOAT",        "NULL"),
+        ("drafts", "stay_stage",             "VARCHAR(32)",  "NULL"),
+        ("drafts", "policy_conflicts_json",  "TEXT",         "NULL"),
+        ("drafts", "host_feedback_score",    "FLOAT",        "NULL"),
+        ("drafts", "host_feedback_note",     "TEXT",         "NULL"),
+        ("drafts", "host_feedback_at",       datetime_type,  "NULL"),
     ]
     inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
     with engine.connect() as conn:
         for table, col, col_type, default in new_columns:
+            if table not in existing_tables:
+                continue
             existing_columns = {c["name"] for c in inspector.get_columns(table)}
             if col in existing_columns:
                 continue
@@ -133,6 +172,7 @@ def db_migrate():
                 conn.commit()
                 log.info("Added missing column %s.%s for %s", table, col, dialect)
                 inspector = inspect(engine)
+                existing_tables = set(inspector.get_table_names())
             except Exception as exc:
                 conn.rollback()
                 log.warning("Failed to add missing column %s.%s on %s: %s", table, col, dialect, exc)

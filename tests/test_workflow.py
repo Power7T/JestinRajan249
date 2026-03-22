@@ -93,12 +93,12 @@ def test_build_conversation_memory_orders_and_formats_events():
 
     memory = build_conversation_memory(events, limit=2)
 
-    assert "We arrived early" in memory
+    assert "Check-in is at 3 PM" in memory
     assert "Can we leave bags?" in memory
-    assert "Check-in is at 3 PM" not in memory
+    assert "We arrived early" not in memory
     assert "booking=ABC123" in memory
     assert "room=12A" in memory
-    assert memory.index("We arrived early") < memory.index("Can we leave bags?")
+    assert memory.index("Check-in is at 3 PM") < memory.index("Can we leave bags?")
 
 
 def test_build_guest_timeline_uses_summary_and_body_for_event_rows():

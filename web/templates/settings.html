@@ -61,6 +61,83 @@
     <input type="text" name="property_names" value="{{ cfg.property_names or '' }}" placeholder="Beach House, City Flat">
     <p class="help-text">Comma-separated if multiple properties.</p>
 
+    <div class="form-row">
+      <div>
+        <label>Property city</label>
+        <input type="text" name="property_city" value="{{ cfg.property_city or '' }}" placeholder="Goa">
+      </div>
+      <div>
+        <label>Property type</label>
+        <input type="text" name="property_type" value="{{ cfg.property_type or '' }}" placeholder="Villa / Apartment / Hotel">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Check-in time</label>
+        <input type="text" name="check_in_time" value="{{ cfg.check_in_time or '' }}" placeholder="15:00">
+      </div>
+      <div>
+        <label>Check-out time</label>
+        <input type="text" name="check_out_time" value="{{ cfg.check_out_time or '' }}" placeholder="11:00">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Max guests</label>
+        <input type="text" name="max_guests" value="{{ cfg.max_guests or '' }}" placeholder="4">
+      </div>
+      <div>
+        <label>Quiet hours</label>
+        <input type="text" name="quiet_hours" value="{{ cfg.quiet_hours or '' }}" placeholder="10pm-7am">
+      </div>
+    </div>
+
+    <h3 style="font-size:0.95rem;margin-top:1.25rem">Structured stay policies</h3>
+    <p class="help-text">These fields are used to validate drafts so HostAI does not promise something that conflicts with house policy.</p>
+    <label>Pet policy</label>
+    <textarea name="pet_policy" placeholder="No pets allowed, or dogs under 20kg with a $25 cleaning fee.">{{ cfg.pet_policy or '' }}</textarea>
+    <label>Refund policy</label>
+    <textarea name="refund_policy" placeholder="No refunds inside 48 hours of check-in unless there is a verified property issue.">{{ cfg.refund_policy or '' }}</textarea>
+    <div class="form-row">
+      <div>
+        <label>Early check-in policy</label>
+        <textarea name="early_checkin_policy" placeholder="Subject to availability after 1pm.">{{ cfg.early_checkin_policy or '' }}</textarea>
+      </div>
+      <div>
+        <label>Early check-in fee</label>
+        <input type="text" name="early_checkin_fee" value="{{ cfg.early_checkin_fee or '' }}" placeholder="$25">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Late checkout policy</label>
+        <textarea name="late_checkout_policy" placeholder="Subject to availability until 1pm.">{{ cfg.late_checkout_policy or '' }}</textarea>
+      </div>
+      <div>
+        <label>Late checkout fee</label>
+        <input type="text" name="late_checkout_fee" value="{{ cfg.late_checkout_fee or '' }}" placeholder="$30">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Parking policy</label>
+        <textarea name="parking_policy" placeholder="One street parking spot only. No oversized vehicles.">{{ cfg.parking_policy or '' }}</textarea>
+      </div>
+      <div>
+        <label>Smoking policy</label>
+        <textarea name="smoking_policy" placeholder="No smoking indoors.">{{ cfg.smoking_policy or '' }}</textarea>
+      </div>
+    </div>
+
+    <label>House rules</label>
+    <textarea name="house_rules" placeholder="No parties. Respect neighbors.">{{ cfg.house_rules or '' }}</textarea>
+    <label>Amenities</label>
+    <textarea name="amenities" placeholder="Wi-Fi, pool, gym, washer">{{ cfg.amenities or '' }}</textarea>
+    <label>FAQ / Guest guide</label>
+    <textarea name="faq" placeholder="Q: Wi-Fi password? A: See the welcome card.">{{ cfg.faq or '' }}</textarea>
+    <label>Custom instructions for HostAI</label>
+    <textarea name="custom_instructions" placeholder="Always mention the unit number when giving directions.">{{ cfg.custom_instructions or '' }}</textarea>
+
     <label>Airbnb iCal URL(s)</label>
     <textarea name="ical_urls" placeholder="https://www.airbnb.com/calendar/ical/...ics&#10;One per line or comma-separated">{{ cfg.ical_urls or '' }}</textarea>
     <p class="help-text">Airbnb → Calendar → Availability settings → Export Calendar → copy .ics link</p>
@@ -320,7 +397,7 @@
   {% if automation_rules %}
   <table style="margin-bottom:1rem">
     <thead>
-      <tr><th>Name</th><th>Channel</th><th>Mode</th><th>Confidence</th><th></th></tr>
+      <tr><th>Name</th><th>Channel</th><th>Mode</th><th>Confidence</th><th>Properties</th><th></th></tr>
     </thead>
     <tbody>
       {% for rule in automation_rules %}
@@ -329,6 +406,7 @@
         <td>{{ rule.channel }}</td>
         <td>{{ (rule.actions_json or {}).get('mode', 'auto_send') }}</td>
         <td>{{ "%.2f"|format(rule.confidence_threshold or 0) }}</td>
+        <td>{{ ((rule.conditions_json or {}).get('properties') or [])|join(', ') or 'All' }}</td>
         <td>
           <form method="post" action="/settings/automation/{{ rule.id }}/delete">
             <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
@@ -378,6 +456,32 @@
     </div>
     <label>Minimum confidence</label>
     <input type="text" name="min_confidence" value="0.85">
+    <label>Property scope</label>
+    <input type="text" name="properties" placeholder="Beach House, City Flat">
+    <div class="form-row">
+      <div>
+        <label>Stay stages</label>
+        <select name="stay_stages" multiple>
+          <option value="pre_arrival">Pre-arrival</option>
+          <option value="arrival_day">Arrival day</option>
+          <option value="in_stay" selected>In stay</option>
+          <option value="checkout_day">Checkout day</option>
+          <option value="post_checkout">Post-checkout</option>
+        </select>
+      </div>
+      <div>
+        <label>Minimum guest history score</label>
+        <input type="text" name="min_guest_history_score" value="0.50">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label><input type="checkbox" name="allow_complex" value="1"> Allow complex auto-send when other safeguards pass</label>
+      </div>
+      <div>
+        <label><input type="checkbox" name="allow_negative_sentiment" value="1"> Allow negative guest sentiment</label>
+      </div>
+    </div>
     <button type="submit" class="btn btn-outline btn-sm">Add automation rule</button>
   </form>
 </div>
@@ -388,7 +492,7 @@
   {% if team_members %}
   <table style="margin-bottom:1rem">
     <thead>
-      <tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th></th></tr>
+      <tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Property scope</th><th></th></tr>
     </thead>
     <tbody>
       {% for member in team_members %}
@@ -397,6 +501,7 @@
         <td>{{ member.role|replace('_', ' ') }}</td>
         <td>{{ member.email or '—' }}</td>
         <td>{{ member.phone or '—' }}</td>
+        <td>{{ member.property_scope or 'All properties' }}</td>
         <td>
           <form method="post" action="/settings/team/{{ member.id }}/delete">
             <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
@@ -437,6 +542,9 @@
         <input type="text" name="phone" placeholder="+1 555 000 0000">
       </div>
     </div>
+    <label>Property scope</label>
+    <input type="text" name="property_scope" placeholder="Beach House, City Flat">
+    <p class="help-text">Leave blank for all properties. Use this for per-property dashboards and issue routing.</p>
     <button type="submit" class="btn btn-outline btn-sm">Add team member</button>
   </form>
 </div>

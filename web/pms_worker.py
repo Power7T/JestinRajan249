@@ -19,7 +19,8 @@ from typing import Optional
 from web.db import SessionLocal
 from web.models import Draft, ActivityLog, Reservation, PMSIntegration, PMSProcessedMessage
 from web.classifier import (
-    classify_message, detect_vendor_type, generate_draft,
+    classify_message, classify_message_with_confidence, extract_context_sources,
+    detect_vendor_type, generate_draft,
     make_draft_id, needs_escalation, build_property_context,
 )
 from web.crypto import decrypt
@@ -113,7 +114,9 @@ def _lookup_reservation(db, tenant_id: str, guest_name: str) -> Optional[str]:
 
 def _save_draft(db, tenant_id: str, draft_id: str, msg: PMSMessage,
                 msg_type: str, vendor_type: Optional[str], draft_text: str,
-                integration_id: int):
+                integration_id: int, confidence: Optional[float] = None,
+                context_sources: Optional[list] = None):
+    import json
     db.add(Draft(
         id=draft_id,
         tenant_id=tenant_id,
@@ -126,6 +129,8 @@ def _save_draft(db, tenant_id: str, draft_id: str, msg: PMSMessage,
         draft=draft_text,
         status="pending",
         created_at=datetime.now(timezone.utc),
+        confidence=confidence,
+        context_sources=json.dumps(context_sources) if context_sources else None,
     ))
     db.add(ActivityLog(
         tenant_id=tenant_id,
@@ -162,7 +167,7 @@ def _process_message(tenant_id: str, cfg: dict, msg: PMSMessage,
                     log.error("[%s] Escalation alert failed: %s", tenant_id, exc)
             return
 
-        msg_type    = classify_message(guest_msg)
+        msg_type, confidence, matched_patterns = classify_message_with_confidence(guest_msg)
         vendor_type = detect_vendor_type(guest_msg) if msg_type == "complex" else None
 
         # Enrich with reservation context
@@ -180,9 +185,17 @@ def _process_message(tenant_id: str, cfg: dict, msg: PMSMessage,
             log.error("[%s] PMS draft generation failed: %s", tenant_id, exc)
             return
 
+        # Gather context sources
+        ctx_sources = matched_patterns[:]
+        from web.models import TenantConfig as _TC
+        _tenant_cfg = db.query(_TC).filter_by(tenant_id=tenant_id).first()
+        if _tenant_cfg:
+            ctx_sources += extract_context_sources(_tenant_cfg)
+
         draft_id = make_draft_id("pms")
         _save_draft(db, tenant_id, draft_id, msg, msg_type, vendor_type,
-                    draft_text, integration_id)
+                    draft_text, integration_id, confidence=confidence,
+                    context_sources=ctx_sources)
         _mark_processed(db, tenant_id, integration_id, msg.message_id)
         db.commit()
 

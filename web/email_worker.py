@@ -8,6 +8,7 @@ Each tenant runs this in its own background thread via worker_manager.py.
 import re
 import time
 import email
+import json
 import smtplib
 import logging
 from email.message import EmailMessage
@@ -22,9 +23,20 @@ from bs4 import BeautifulSoup
 
 from web.db import SessionLocal
 from web.models import Draft, ProcessedEmail, ActivityLog, Reservation, AutomationRule, GuestTimelineEvent, IssueTicket
-from web.classifier import classify_message, detect_vendor_type, generate_draft, make_draft_id, needs_escalation, build_property_context
+from web.classifier import (
+    classify_message, classify_message_with_confidence, extract_context_sources,
+    detect_vendor_type, make_draft_id, needs_escalation, build_property_context,
+)
 from web.crypto import decrypt
-from web.workflow import automation_rule_decision, build_conversation_memory
+from web.workflow import (
+    analyze_guest_sentiment,
+    automation_rule_decision,
+    build_conversation_memory,
+    build_thread_key,
+    compute_guest_history_score,
+    compute_stay_stage,
+    draft_policy_conflicts,
+)
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +61,12 @@ class EmailConfig:
     anthropic_api_key: str  # already decrypted
     property_context: str = ""   # injected into Claude system prompt
     escalation_email: str = ""   # host email for human-handoff alerts
+    pet_policy: str = ""
+    refund_policy: str = ""
+    early_checkin_policy: str = ""
+    early_checkin_fee: str = ""
+    late_checkout_policy: str = ""
+    late_checkout_fee: str = ""
     poll_interval: int = 30
     imap_timeout:  int = 20
 
@@ -214,16 +232,44 @@ def _save_draft(
     draft_text: str,
     reservation: Optional[Reservation] = None,
     automation_rule_id: Optional[int] = None,
+    confidence: Optional[float] = None,
+    context_sources: Optional[list] = None,
+    parent_draft_id: Optional[str] = None,
+    thread_key: Optional[str] = None,
+    guest_message_index: int = 1,
+    property_name_snapshot: Optional[str] = None,
+    unit_identifier_snapshot: Optional[str] = None,
+    auto_send_eligible: bool = False,
+    guest_history_score: Optional[float] = None,
+    guest_sentiment: Optional[str] = None,
+    sentiment_score: Optional[float] = None,
+    stay_stage: Optional[str] = None,
+    policy_conflicts: Optional[list[str]] = None,
+    db_override=None,
 ):
-    db = SessionLocal()
+    db = db_override or SessionLocal()
+    owns_session = db_override is None
     try:
         draft = Draft(
             id=draft_id, tenant_id=tenant_id, source="email",
             reservation_id=reservation.id if reservation else None,
             automation_rule_id=automation_rule_id,
+            parent_draft_id=parent_draft_id,
+            thread_key=thread_key,
+            guest_message_index=guest_message_index,
             guest_name=parsed["guest_name"], message=parsed["guest_message"],
             reply_to=parsed["reply_to"], msg_type=msg_type, vendor_type=vendor_type,
             draft=draft_text, status="pending", created_at=datetime.now(timezone.utc),
+            property_name_snapshot=property_name_snapshot,
+            unit_identifier_snapshot=unit_identifier_snapshot,
+            confidence=confidence,
+            auto_send_eligible=auto_send_eligible,
+            guest_history_score=guest_history_score,
+            guest_sentiment=guest_sentiment,
+            sentiment_score=sentiment_score,
+            stay_stage=stay_stage,
+            policy_conflicts_json=json.dumps(policy_conflicts) if policy_conflicts else None,
+            context_sources=json.dumps(context_sources) if context_sources else None,
         )
         db.add(draft)
         db.add(ActivityLog(tenant_id=tenant_id, event_type="email_received",
@@ -241,7 +287,8 @@ def _save_draft(
                 automation_rule_id=automation_rule_id,
             )
     finally:
-        db.close()
+        if owns_session:
+            db.close()
 
 
 def _mark_draft_approved(tenant_id: str, draft_id: str, final_text: str):
@@ -252,6 +299,10 @@ def _mark_draft_approved(tenant_id: str, draft_id: str, final_text: str):
             draft.status     = "approved"
             draft.final_text = final_text
             draft.approved_at = datetime.now(timezone.utc)
+            if draft.reservation_id:
+                reservation = db.query(Reservation).filter_by(id=draft.reservation_id, tenant_id=tenant_id).first()
+                if reservation:
+                    reservation.last_host_reply_at = draft.approved_at
             db.commit()
     finally:
         db.close()
@@ -336,7 +387,92 @@ def _timeline_memory(tenant_id: str, reservation: Optional[Reservation]) -> str:
         db.close()
 
 
-def _process_message(cfg: EmailConfig, parsed: dict, subject: str):
+def _reservation_context_text(reservation: Reservation, cfg: EmailConfig) -> str:
+    lines = [f"Reservation: {reservation.confirmation_code}"]
+    if reservation.guest_phone:
+        lines.append(f"Guest phone: {reservation.guest_phone}")
+    if reservation.listing_name:
+        lines.append(f"Property: {reservation.listing_name}")
+    if reservation.unit_identifier:
+        lines.append(f"Room / unit / property #: {reservation.unit_identifier}")
+    if reservation.checkin:
+        lines.append(f"Check-in: {reservation.checkin.strftime('%A, %B %d, %Y')}")
+    if reservation.checkout:
+        lines.append(f"Check-out: {reservation.checkout.strftime('%A, %B %d, %Y')}")
+    if reservation.nights:
+        lines.append(f"Nights: {reservation.nights}")
+    if reservation.guests_count:
+        lines.append(f"Guests: {reservation.guests_count}")
+
+    today = datetime.now(timezone.utc).date()
+    stay_stage = compute_stay_stage(reservation, today=today)
+    if stay_stage:
+        lines.append(f"Stay stage: {stay_stage.replace('_', ' ')}")
+    if reservation.checkin and reservation.checkout and reservation.nights and reservation.checkin <= today <= reservation.checkout:
+        day_of_stay = (today - reservation.checkin).days + 1
+        lines.append(f"Guest is on day {day_of_stay} of {reservation.nights} nights.")
+
+    if cfg.early_checkin_policy:
+        early_line = f"Early check-in: {cfg.early_checkin_policy}"
+        if cfg.early_checkin_fee:
+            early_line += f" (fee: {cfg.early_checkin_fee})"
+        lines.append(early_line)
+    if cfg.late_checkout_policy:
+        late_line = f"Late checkout: {cfg.late_checkout_policy}"
+        if cfg.late_checkout_fee:
+            late_line += f" (fee: {cfg.late_checkout_fee})"
+        lines.append(late_line)
+    if cfg.pet_policy:
+        lines.append(f"Pet policy: {cfg.pet_policy}")
+    if cfg.refund_policy:
+        lines.append(f"Refund policy: {cfg.refund_policy}")
+    return "\n".join(lines)
+
+
+def _recent_reservation_drafts(tenant_id: str, reservation: Optional[Reservation]) -> list[Draft]:
+    if not reservation:
+        return []
+    db = SessionLocal()
+    try:
+        return (
+            db.query(Draft)
+            .filter(Draft.tenant_id == tenant_id, Draft.reservation_id == reservation.id)
+            .order_by(Draft.created_at.desc())
+            .limit(12)
+            .all()
+        )
+    finally:
+        db.close()
+
+
+def _thread_metadata(
+    tenant_id: str,
+    reservation: Optional[Reservation],
+    parsed: dict,
+    *,
+    channel: str,
+) -> tuple[str, Optional[str], int]:
+    thread_key = build_thread_key(
+        tenant_id,
+        reservation_id=reservation.id if reservation else None,
+        reply_to=parsed.get("reply_to", ""),
+        guest_name=parsed.get("guest_name", ""),
+        channel=channel,
+    )
+    db = SessionLocal()
+    try:
+        parent = (
+            db.query(Draft)
+            .filter(Draft.tenant_id == tenant_id, Draft.thread_key == thread_key)
+            .order_by(Draft.created_at.desc())
+            .first()
+        )
+        return thread_key, (parent.id if parent else None), ((parent.guest_message_index + 1) if parent else 1)
+    finally:
+        db.close()
+
+
+def _process_message(cfg: EmailConfig, parsed: dict, subject: str, db_override=None):
     guest_msg = parsed["guest_message"]
 
     # Human handoff: escalation check before anything else
@@ -358,22 +494,27 @@ def _process_message(cfg: EmailConfig, parsed: dict, subject: str):
                 log.error("[%s] Escalation alert email failed: %s", cfg.tenant_id, exc)
         return
 
-    msg_type    = classify_message(guest_msg)
+    msg_type, confidence, matched_patterns = classify_message_with_confidence(guest_msg)
     vendor_type = detect_vendor_type(guest_msg) if msg_type == "complex" else None
+    sentiment = analyze_guest_sentiment(guest_msg)
 
-    # Enrich property context with live reservation data if a match is found
     reservation = _lookup_reservation_row(cfg.tenant_id, parsed["guest_name"])
-    res_context = _lookup_reservation(cfg.tenant_id, parsed["guest_name"])
     full_context = cfg.property_context
-    if res_context:
-        full_context = (full_context + "\n\n<reservation>\n" + res_context + "\n</reservation>").strip()
+    if reservation:
+        full_context = (
+            full_context
+            + "\n\n<reservation>\n"
+            + _reservation_context_text(reservation, cfg)
+            + "\n</reservation>"
+        ).strip()
         log.info("[%s] Reservation match found for %s", cfg.tenant_id, parsed["guest_name"])
     memory_context = _timeline_memory(cfg.tenant_id, reservation)
     if memory_context:
         full_context = (full_context + "\n\n<recent_guest_history>\n" + memory_context + "\n</recent_guest_history>").strip()
 
     try:
-        draft_text = generate_draft(
+        from web import classifier as classifier_mod
+        draft_text = classifier_mod.generate_draft(
             cfg.anthropic_api_key, parsed["guest_name"], guest_msg, msg_type,
             property_context=full_context,
         )
@@ -382,6 +523,23 @@ def _process_message(cfg: EmailConfig, parsed: dict, subject: str):
         return
 
     draft_id = make_draft_id("email")
+    thread_key, parent_draft_id, guest_message_index = _thread_metadata(
+        cfg.tenant_id,
+        reservation,
+        parsed,
+        channel="email",
+    )
+    recent_drafts = _recent_reservation_drafts(cfg.tenant_id, reservation)
+    guest_history_score = compute_guest_history_score(reservation, recent_drafts)
+    stay_stage = compute_stay_stage(reservation)
+    policy_conflicts = draft_policy_conflicts(guest_msg, draft_text, cfg)
+    auto_send_eligible = (
+        msg_type == "routine"
+        and confidence >= 0.7
+        and sentiment["label"] != "negative"
+        and not policy_conflicts
+        and guest_history_score >= 0.4
+    )
     automation_rule_id = None
     if reservation:
         db = SessionLocal()
@@ -402,30 +560,87 @@ def _process_message(cfg: EmailConfig, parsed: dict, subject: str):
                 "listing_name": reservation.listing_name or "",
                 "property_name": reservation.listing_name or "",
                 "reply_to": parsed["reply_to"],
-                "confidence": 0.95 if msg_type == "routine" else 0.45,
+                "confidence": confidence,
+                "guest_history_score": guest_history_score,
+                "guest_sentiment": sentiment["label"],
+                "sentiment_score": sentiment["score"],
+                "stay_stage": stay_stage,
+                "policy_conflicts": policy_conflicts,
             }
             for rule in rules:
+                conditions = rule.conditions_json or {}
                 decision = automation_rule_decision(
                     {
                         "enabled": rule.is_active,
                         "status": "active" if rule.is_active else "disabled",
                         "channels": [rule.channel] if rule.channel != "any" else [],
-                        "msg_types": (rule.conditions_json or {}).get("msg_types") or [],
+                        "msg_types": conditions.get("msg_types") or [],
                         "min_confidence": rule.confidence_threshold,
-                        "properties": (rule.conditions_json or {}).get("properties") or [],
+                        "properties": conditions.get("properties") or [],
+                        "allow_complex": conditions.get("allow_complex", False),
+                        "allow_negative_sentiment": conditions.get("allow_negative_sentiment", False),
+                        "min_guest_history_score": conditions.get("min_guest_history_score"),
+                        "stay_stages": conditions.get("stay_stages") or [],
                         "requires_approval": (rule.actions_json or {}).get("mode") == "review",
                     },
                     draft_view,
                 )
                 if decision["should_send"]:
                     automation_rule_id = rule.id
+                    auto_send_eligible = True
                     break
         finally:
             db.close()
 
-    _save_draft(cfg.tenant_id, draft_id, parsed, msg_type, vendor_type, draft_text, reservation, automation_rule_id)
+    from web.models import TenantConfig
+    _ctx_sources = matched_patterns[:]
+    _db = SessionLocal()
+    try:
+        _tenant_cfg = _db.query(TenantConfig).filter_by(tenant_id=cfg.tenant_id).first()
+        if _tenant_cfg:
+            _ctx_sources += extract_context_sources(_tenant_cfg)
+    finally:
+        _db.close()
 
-    if msg_type == "routine" and cfg.smtp_host and cfg.email_address and cfg.email_password:
+    _save_draft(
+        cfg.tenant_id,
+        draft_id,
+        parsed,
+        msg_type,
+        vendor_type,
+        draft_text,
+        reservation,
+        automation_rule_id,
+        confidence=confidence,
+        context_sources=_ctx_sources,
+        parent_draft_id=parent_draft_id,
+        thread_key=thread_key,
+        guest_message_index=guest_message_index,
+        property_name_snapshot=reservation.listing_name if reservation else None,
+        unit_identifier_snapshot=reservation.unit_identifier if reservation else None,
+        auto_send_eligible=auto_send_eligible,
+        guest_history_score=guest_history_score,
+        guest_sentiment=sentiment["label"],
+        sentiment_score=sentiment["score"],
+        stay_stage=stay_stage,
+        policy_conflicts=policy_conflicts,
+        db_override=db_override,
+    )
+
+    if reservation:
+        db = SessionLocal()
+        try:
+            live_reservation = db.query(Reservation).filter_by(id=reservation.id, tenant_id=cfg.tenant_id).first()
+            if live_reservation:
+                live_reservation.last_guest_message_at = datetime.now(timezone.utc)
+                live_reservation.message_count = (live_reservation.message_count or 0) + 1
+                live_reservation.latest_guest_sentiment = sentiment["label"]
+                live_reservation.latest_guest_sentiment_score = sentiment["score"]
+                db.commit()
+        finally:
+            db.close()
+
+    if auto_send_eligible and cfg.smtp_host and cfg.email_address and cfg.email_password:
         try:
             _send_smtp_reply(cfg, parsed["reply_to"], subject, draft_text)
             _mark_draft_approved(cfg.tenant_id, draft_id, draft_text)
@@ -444,7 +659,12 @@ def _process_message(cfg: EmailConfig, parsed: dict, subject: str):
         except Exception as exc:
             log.error("[%s] SMTP send failed: %s", cfg.tenant_id, exc)
     elif msg_type == "routine":
-        log.info("[%s] Routine draft %s saved — SMTP not configured for auto-send", cfg.tenant_id, draft_id)
+        if policy_conflicts:
+            log.info("[%s] Routine draft %s saved — policy conflict requires review", cfg.tenant_id, draft_id)
+        elif sentiment["label"] == "negative":
+            log.info("[%s] Routine draft %s saved — negative guest tone requires review", cfg.tenant_id, draft_id)
+        else:
+            log.info("[%s] Routine draft %s saved — auto-send threshold not met", cfg.tenant_id, draft_id)
     else:
         log.info("[%s] Complex draft %s saved — awaiting host approval on dashboard", cfg.tenant_id, draft_id)
 
@@ -486,6 +706,33 @@ def run_for_tenant(cfg: EmailConfig, stop_flag: "threading.Event"):
     log.info("[%s] Email watcher stopped.", cfg.tenant_id)
 
 
+def _email_config_from_record(cfg) -> Optional[EmailConfig]:
+    if not cfg:
+        return None
+    api_key = decrypt(cfg.anthropic_api_key_enc or "")
+    if not api_key:
+        return None
+    smtp_host = cfg.smtp_host or (cfg.imap_host.replace("imap.", "smtp.") if cfg.imap_host else "")
+    return EmailConfig(
+        tenant_id=cfg.tenant_id,
+        imap_host=cfg.imap_host or "",
+        imap_port=cfg.imap_port,
+        smtp_host=smtp_host,
+        smtp_port=cfg.smtp_port,
+        email_address=cfg.email_address or "",
+        email_password=decrypt(cfg.email_password_enc or ""),
+        anthropic_api_key=api_key,
+        property_context=build_property_context(cfg),
+        escalation_email=cfg.escalation_email or cfg.email_address or "",
+        pet_policy=cfg.pet_policy or "",
+        refund_policy=cfg.refund_policy or "",
+        early_checkin_policy=cfg.early_checkin_policy or "",
+        early_checkin_fee=cfg.early_checkin_fee or "",
+        late_checkout_policy=cfg.late_checkout_policy or "",
+        late_checkout_fee=cfg.late_checkout_fee or "",
+    )
+
+
 def make_config_from_db(tenant_id: str, require_imap: bool = True) -> Optional[EmailConfig]:
     """Build EmailConfig from DB for a given tenant."""
     db = SessionLocal()
@@ -496,22 +743,7 @@ def make_config_from_db(tenant_id: str, require_imap: bool = True) -> Optional[E
             return None
         if require_imap and (cfg.email_ingest_mode == "forwarding" or not cfg.email_address or not cfg.imap_host):
             return None
-        api_key = decrypt(cfg.anthropic_api_key_enc or "")
-        if not api_key:
-            return None
-        smtp_host = cfg.smtp_host or (cfg.imap_host.replace("imap.", "smtp.") if cfg.imap_host else "")
-        return EmailConfig(
-            tenant_id=tenant_id,
-            imap_host=cfg.imap_host or "",
-            imap_port=cfg.imap_port,
-            smtp_host=smtp_host,
-            smtp_port=cfg.smtp_port,
-            email_address=cfg.email_address or "",
-            email_password=decrypt(cfg.email_password_enc or ""),
-            anthropic_api_key=api_key,
-            property_context=build_property_context(cfg),
-            escalation_email=cfg.escalation_email or cfg.email_address or "",
-        )
+        return _email_config_from_record(cfg)
     finally:
         db.close()
 
@@ -524,4 +756,12 @@ def process_parsed_email(tenant_id: str, parsed: dict, subject: str) -> bool:
     if not cfg:
         return False
     _process_message(cfg, parsed, subject)
+    return True
+
+
+def process_parsed_email_with_config(cfg_record, parsed: dict, subject: str, db_session=None) -> bool:
+    cfg = _email_config_from_record(cfg_record)
+    if not cfg:
+        return False
+    _process_message(cfg, parsed, subject, db_override=db_session)
     return True

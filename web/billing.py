@@ -104,7 +104,16 @@ PLAN_INFO: dict[str, dict] = {
     },
 }
 
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
+_ALLOW_INSECURE_DEFAULTS = _ENVIRONMENT in {"development", "dev", "test"}
+
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+if not WEBHOOK_SECRET and not _ALLOW_INSECURE_DEFAULTS:
+    raise RuntimeError(
+        "STRIPE_WEBHOOK_SECRET must be set in production. "
+        "Copy it from your Stripe dashboard under Webhooks → your endpoint → Signing secret. "
+        "Without it every incoming Stripe webhook will be rejected with HTTP 400."
+    )
 
 # ---------------------------------------------------------------------------
 # Subscription helpers

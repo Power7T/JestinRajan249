@@ -9,6 +9,8 @@ evaluation, and exception surfacing without pulling in request or DB context.
 
 from __future__ import annotations
 
+import hashlib
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
@@ -17,6 +19,36 @@ _AUTO_SEND_STATUSES = {"active", "enabled", "on", "ready"}
 _FAILURE_STATUSES = {"failed", "error", "errored", "bounced", "rejected"}
 _PENDING_STATUSES = {"pending", "queued", "waiting", "needs_review"}
 _ESCALATION_TYPES = {"escalation", "complex"}
+_NEGATIVE_SENTIMENT_PATTERNS = (
+    r"\bangry\b",
+    r"\bawful\b",
+    r"\bbad\b",
+    r"\bbroken\b",
+    r"\bcomplain\b",
+    r"\bdirty\b",
+    r"\bdisappointed\b",
+    r"\bfrustrat",
+    r"\bhorrible\b",
+    r"\bissue\b",
+    r"\blate\b",
+    r"\bleak\b",
+    r"\bmissing\b",
+    r"\bnot working\b",
+    r"\bproblem\b",
+    r"\brefund\b",
+    r"\bterrible\b",
+    r"\bunacceptable\b",
+)
+_POSITIVE_SENTIMENT_PATTERNS = (
+    r"\bawesome\b",
+    r"\bexcellent\b",
+    r"\bgreat\b",
+    r"\bhelpful\b",
+    r"\blove\b",
+    r"\bperfect\b",
+    r"\bthank(s| you)\b",
+    r"\bwonderful\b",
+)
 
 
 def _value(item: Any, key: str, default: Any = None) -> Any:
@@ -117,6 +149,16 @@ def _normalize_confidence(value: Any) -> float:
     return max(0.0, min(number, 1.0))
 
 
+def _normalize_score(value: Any, default: float = 0.0) -> float:
+    if value is None or value == "":
+        return default
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    return max(-1.0, min(number, 1.0))
+
+
 def _sort_key(item: Any) -> tuple[datetime, str]:
     stamp = _dt(_value(item, "created_at") or _value(item, "timestamp") or _value(item, "time"))
     if stamp is None:
@@ -184,6 +226,180 @@ def build_conversation_memory(events: Iterable[Any], limit: int = 12, max_chars:
     return memory[-max_chars:]
 
 
+def analyze_guest_sentiment(text: str) -> dict[str, Any]:
+    body = (text or "").strip().lower()
+    if not body:
+        return {"label": "neutral", "score": 0.0}
+    positive_hits = sum(1 for pattern in _POSITIVE_SENTIMENT_PATTERNS if re.search(pattern, body))
+    negative_hits = sum(1 for pattern in _NEGATIVE_SENTIMENT_PATTERNS if re.search(pattern, body))
+    total = positive_hits + negative_hits
+    if total == 0:
+        return {"label": "neutral", "score": 0.0}
+    score = (positive_hits - negative_hits) / max(total, 1)
+    if score >= 0.2:
+        label = "positive"
+    elif score <= -0.2:
+        label = "negative"
+    else:
+        label = "neutral"
+    return {"label": label, "score": round(max(-1.0, min(score, 1.0)), 2)}
+
+
+def build_thread_key(
+    tenant_id: str,
+    *,
+    reservation_id: Any = None,
+    reply_to: str = "",
+    guest_name: str = "",
+    channel: str = "",
+) -> str:
+    if reservation_id:
+        return f"{tenant_id}:reservation:{reservation_id}"
+    identity = (reply_to or guest_name or "").strip().lower()
+    normalized = re.sub(r"\s+", "", identity)
+    digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16] if normalized else "unknown"
+    return f"{tenant_id}:{(channel or 'guest').lower()}:{digest}"
+
+
+def compute_stay_stage(reservation: Any, today: Optional[Any] = None) -> str:
+    if today is None:
+        today = datetime.now(timezone.utc).date()
+    elif isinstance(today, datetime):
+        today = today.date()
+    checkin = _date_from_any(_value(reservation, "checkin"))
+    checkout = _date_from_any(_value(reservation, "checkout"))
+    if not checkin or not checkout:
+        return ""
+    if today < checkin:
+        return "pre_arrival"
+    if today > checkout:
+        return "post_checkout"
+    if today == checkin:
+        return "arrival_day"
+    if today == checkout:
+        return "checkout_day"
+    return "in_stay"
+
+
+def build_structured_policy_context(config: Any) -> str:
+    if not config:
+        return ""
+    policy_fields = [
+        ("pet_policy", "Pet policy"),
+        ("refund_policy", "Refund policy"),
+        ("early_checkin_policy", "Early check-in"),
+        ("early_checkin_fee", "Early check-in fee"),
+        ("late_checkout_policy", "Late checkout"),
+        ("late_checkout_fee", "Late checkout fee"),
+        ("parking_policy", "Parking"),
+        ("smoking_policy", "Smoking"),
+        ("quiet_hours", "Quiet hours"),
+    ]
+    lines: list[str] = []
+    for attr, label in policy_fields:
+        value = _value(config, attr)
+        if value is None or value == "":
+            continue
+        lines.append(f"{label}: {value}")
+    if not lines:
+        return ""
+    return "<structured_policies>\n" + "\n".join(lines) + "\n</structured_policies>"
+
+
+def draft_policy_conflicts(message: str, draft_text: str, config: Any) -> list[str]:
+    guest_text = (message or "").lower()
+    reply_text = (draft_text or "").lower()
+    conflicts: list[str] = []
+    pet_policy = _text(config, "pet_policy").lower()
+    refund_policy = _text(config, "refund_policy").lower()
+    early_policy = _text(config, "early_checkin_policy").lower()
+    early_fee = _text(config, "early_checkin_fee").lower()
+    late_policy = _text(config, "late_checkout_policy").lower()
+    late_fee = _text(config, "late_checkout_fee").lower()
+    parking_policy = _text(config, "parking_policy").lower()
+    smoking_policy = _text(config, "smoking_policy").lower()
+
+    if "pet" in guest_text and pet_policy:
+        if any(term in pet_policy for term in {"no", "not allowed", "prohibit"}) and any(term in reply_text for term in {"yes", "allowed", "welcome"}):
+            conflicts.append("Draft appears to allow pets against the configured pet policy.")
+    if "refund" in guest_text and refund_policy:
+        if any(term in refund_policy for term in {"no refund", "non-refundable", "48 hours"}) and any(term in reply_text for term in {"refund approved", "full refund", "we can refund"}):
+            conflicts.append("Draft appears to promise a refund that conflicts with the configured refund policy.")
+    if "early check" in guest_text and (early_policy or early_fee):
+        if any(term in early_policy for term in {"subject to availability", "not guaranteed", "fee"}) and any(term in reply_text for term in {"any time", "whenever", "free early"}):
+            conflicts.append("Draft appears to over-promise early check-in against policy.")
+    if "late check" in guest_text and (late_policy or late_fee):
+        if any(term in late_policy for term in {"subject to availability", "not guaranteed", "fee"}) and any(term in reply_text for term in {"free late", "any time", "whenever"}):
+            conflicts.append("Draft appears to over-promise late checkout against policy.")
+    if "parking" in guest_text and parking_policy:
+        if any(term in parking_policy for term in {"no parking", "street only", "not included"}) and any(term in reply_text for term in {"private parking", "reserved parking", "garage"}):
+            conflicts.append("Draft parking instructions appear to conflict with the configured parking policy.")
+    if "smok" in guest_text and smoking_policy:
+        if any(term in smoking_policy for term in {"no", "not allowed", "prohibit"}) and any(term in reply_text for term in {"yes", "allowed", "fine"}):
+            conflicts.append("Draft appears to allow smoking against the configured smoking policy.")
+    return conflicts
+
+
+def compute_guest_history_score(
+    reservation: Any = None,
+    drafts: Iterable[Any] = (),
+) -> float:
+    score = 0.5
+    if reservation is not None:
+        rating = _number(reservation, "review_rating", None)
+        if rating is not None:
+            score += ((rating - 3.0) / 2.0) * 0.2
+        repeat_guest_count = _number(reservation, "repeat_guest_count", 0.0) or 0.0
+        score += min(repeat_guest_count, 3.0) * 0.05
+        positive_feedback = _number(reservation, "guest_feedback_positive", 0.0) or 0.0
+        negative_feedback = _number(reservation, "guest_feedback_negative", 0.0) or 0.0
+        score += min(positive_feedback, 5.0) * 0.03
+        score -= min(negative_feedback, 5.0) * 0.06
+        review_sentiment_score = _normalize_score(_value(reservation, "review_sentiment_score"), 0.0)
+        score += review_sentiment_score * 0.08
+    recent_drafts = sorted(
+        list(drafts or []),
+        key=lambda row: _dt(_value(row, "approved_at") or _value(row, "created_at")) or datetime.now(timezone.utc),
+        reverse=True,
+    )[:10]
+    for draft in recent_drafts:
+        feedback_score = _number(draft, "host_feedback_score", None)
+        if feedback_score is not None:
+            score += max(-1.0, min(feedback_score, 1.0)) * 0.04
+        score += _normalize_score(_value(draft, "sentiment_score"), 0.0) * 0.02
+    return round(max(0.0, min(score, 1.0)), 2)
+
+
+def compute_portfolio_benchmark(
+    current_value: Optional[float],
+    peer_values: Iterable[Any],
+    *,
+    lower_is_better: bool = True,
+) -> dict[str, Any]:
+    if current_value is None:
+        return {"percentile": None, "summary": ""}
+    peers = [float(value) for value in peer_values if value not in {None, ""}]
+    if not peers:
+        return {"percentile": None, "summary": ""}
+    if lower_is_better:
+        better_or_equal = sum(1 for value in peers if current_value <= value)
+    else:
+        better_or_equal = sum(1 for value in peers if current_value >= value)
+    percentile = round((better_or_equal / len(peers)) * 100.0, 1)
+    if percentile >= 85:
+        band = "top 15%"
+    elif percentile >= 70:
+        band = "top 30%"
+    elif percentile >= 50:
+        band = "around median"
+    else:
+        band = "below portfolio median"
+    return {
+        "percentile": percentile,
+        "summary": band,
+    }
+
+
 def derive_dashboard_kpis(
     drafts: Iterable[Any],
     reservations: Iterable[Any],
@@ -205,6 +421,13 @@ def derive_dashboard_kpis(
     complex_ = 0
     escalations = 0
     overdue_pending = 0
+    auto_sent = 0
+    positive_feedback = 0
+    negative_feedback = 0
+    sentiment_total = 0.0
+    sentiment_count = 0
+    thread_depth_max = 0
+    approval_seconds: list[float] = []
 
     for draft in draft_rows:
         status = _text(draft, "status").lower()
@@ -218,6 +441,23 @@ def derive_dashboard_kpis(
             approved += 1
         elif status == "skipped":
             skipped += 1
+        if _bool(draft, "auto_send_eligible") or _bool(draft, "auto_sent"):
+            auto_sent += 1
+        feedback_score = _number(draft, "host_feedback_score", None)
+        if feedback_score is not None:
+            if feedback_score > 0:
+                positive_feedback += 1
+            elif feedback_score < 0:
+                negative_feedback += 1
+        sentiment_score = _number(draft, "sentiment_score", None)
+        if sentiment_score is not None:
+            sentiment_total += sentiment_score
+            sentiment_count += 1
+        guest_message_index = int(_number(draft, "guest_message_index", 1) or 1)
+        thread_depth_max = max(thread_depth_max, guest_message_index)
+        approved_at = _dt(_value(draft, "approved_at"))
+        if created_at and approved_at and approved_at >= created_at:
+            approval_seconds.append((approved_at - created_at).total_seconds())
         if msg_type == "routine":
             routine += 1
         elif msg_type == "complex":
@@ -231,6 +471,10 @@ def derive_dashboard_kpis(
     missing_guest_phone = 0
     missing_unit = 0
     context_complete = 0
+    reviews_count = 0
+    review_rating_total = 0.0
+    review_sentiment_total = 0.0
+    review_sentiment_count = 0
 
     for reservation in reservation_rows:
         status = _text(reservation, "status").lower() or "confirmed"
@@ -250,12 +494,27 @@ def derive_dashboard_kpis(
             missing_unit += 1
         if guest_phone and unit_identifier:
             context_complete += 1
+        review_rating = _number(reservation, "review_rating", None)
+        if review_rating is not None:
+            reviews_count += 1
+            review_rating_total += review_rating
+        review_sentiment_score = _number(reservation, "review_sentiment_score", None)
+        if review_sentiment_score is not None:
+            review_sentiment_total += review_sentiment_score
+            review_sentiment_count += 1
 
     total_drafts = len(draft_rows)
     total_reservations = len(reservation_rows)
     approval_rate = round((approved / total_drafts) * 100, 1) if total_drafts else 0.0
     context_completion_rate = round((context_complete / total_reservations) * 100, 1) if total_reservations else 0.0
     automation_ready_ratio = round(((routine + approved) / total_drafts) * 100, 1) if total_drafts else 0.0
+    avg_sentiment = round(sentiment_total / sentiment_count, 2) if sentiment_count else 0.0
+    avg_review_rating = round(review_rating_total / reviews_count, 2) if reviews_count else None
+    avg_review_sentiment = round(review_sentiment_total / review_sentiment_count, 2) if review_sentiment_count else 0.0
+    avg_response_seconds = round(sum(approval_seconds) / len(approval_seconds), 1) if approval_seconds else None
+
+    streak = compute_approval_streak(draft_rows)
+    gaps   = find_occupancy_gaps(reservation_rows, today=today)
 
     return {
         "drafts": {
@@ -268,6 +527,12 @@ def derive_dashboard_kpis(
             "escalations": escalations,
             "overdue_pending": overdue_pending,
             "approval_rate": approval_rate,
+            "approval_streak": streak,
+            "auto_sent": auto_sent,
+            "positive_feedback": positive_feedback,
+            "negative_feedback": negative_feedback,
+            "max_thread_depth": thread_depth_max,
+            "avg_response_seconds": avg_response_seconds,
         },
         "reservations": {
             "total": total_reservations,
@@ -278,10 +543,15 @@ def derive_dashboard_kpis(
             "missing_unit_identifier": missing_unit,
             "context_complete": context_complete,
             "context_completion_rate": context_completion_rate,
+            "occupancy_gaps": gaps,
+            "review_count": reviews_count,
+            "avg_review_rating": avg_review_rating,
         },
         "ops": {
             "automation_ready_ratio": automation_ready_ratio,
             "needs_attention": pending + escalations + missing_guest_phone + missing_unit,
+            "avg_guest_sentiment": avg_sentiment,
+            "avg_review_sentiment": avg_review_sentiment,
         },
     }
 
@@ -407,16 +677,32 @@ def automation_rule_decision(
     if draft_type == "complex" and not _bool(rule, "allow_complex", False):
         return {"should_send": False, "reason": "complex drafts require review"}
 
+    policy_conflicts = _listify(_value(draft, "policy_conflicts"))
+    if policy_conflicts or _bool(draft, "policy_conflict", False):
+        return {"should_send": False, "reason": "draft conflicts with structured property policy"}
+
     min_confidence = _number(rule, "min_confidence", None)
     if min_confidence is None:
         min_confidence = _number(rule, "confidence_threshold", None)
+    draft_confidence = _normalize_confidence(_value(draft, "confidence"))
     if min_confidence is not None:
-        draft_confidence = _normalize_confidence(_value(draft, "confidence"))
         if draft_confidence < min_confidence:
             return {
                 "should_send": False,
                 "reason": f"confidence {draft_confidence:.2f} below threshold {min_confidence:.2f}",
             }
+    elif draft_type == "complex" and draft_confidence < 0.92:
+        return {"should_send": False, "reason": "complex auto-send requires very high confidence"}
+
+    min_guest_history_score = _number(rule, "min_guest_history_score", None)
+    guest_history_score = _number(draft, "guest_history_score", None)
+    if min_guest_history_score is not None and guest_history_score is not None and guest_history_score < min_guest_history_score:
+        return {
+            "should_send": False,
+            "reason": f"guest history score {guest_history_score:.2f} below threshold {min_guest_history_score:.2f}",
+        }
+    if draft_type == "complex" and guest_history_score is not None and guest_history_score < 0.6:
+        return {"should_send": False, "reason": "complex auto-send requires a stronger guest history"}
 
     allowed_properties = _listify(_value(rule, "properties") or _value(rule, "property_names"))
     draft_property = _text(draft, "property_name") or _text(draft, "listing_name")
@@ -431,6 +717,13 @@ def automation_rule_decision(
     allow_keywords = _listify(_value(rule, "allow_keywords"))
     if allow_keywords and not any(keyword.lower() in draft_text for keyword in allow_keywords):
         return {"should_send": False, "reason": "required keyword not present"}
+
+    guest_sentiment = _text(draft, "guest_sentiment").lower()
+    sentiment_score = _normalize_score(_value(draft, "guest_sentiment_score") or _value(draft, "sentiment_score"), 0.0)
+    if guest_sentiment == "negative" and not _bool(rule, "allow_negative_sentiment", False):
+        return {"should_send": False, "reason": "negative guest sentiment requires review"}
+    if draft_type == "complex" and sentiment_score < -0.2:
+        return {"should_send": False, "reason": "guest sentiment is too negative for safe complex auto-send"}
 
     allowed_days = _listify(_value(rule, "days_of_week") or _value(rule, "days"))
     if allowed_days:
@@ -447,6 +740,11 @@ def automation_rule_decision(
         if not (start_hour <= current_hour < end_hour):
             return {"should_send": False, "reason": "outside allowed hours"}
 
+    allowed_stay_stages = _listify(_value(rule, "stay_stages"))
+    stay_stage = _text(draft, "stay_stage").lower()
+    if allowed_stay_stages and stay_stage and stay_stage not in {item.lower() for item in allowed_stay_stages}:
+        return {"should_send": False, "reason": f"stay stage {stay_stage} is not allowed"}
+
     if _bool(rule, "requires_approval", False):
         return {"should_send": False, "reason": "rule requires manual approval"}
 
@@ -456,6 +754,122 @@ def automation_rule_decision(
 def should_auto_send(rule: Any, draft: Any, when: Optional[datetime] = None) -> bool:
     """Boolean convenience wrapper around automation_rule_decision()."""
     return bool(automation_rule_decision(rule, draft, when=when)["should_send"])
+
+
+def compute_approval_streak(drafts: Iterable[Any]) -> int:
+    """
+    Return the number of consecutive most-recent drafts the host approved
+    without skipping or escalating.
+
+    A streak resets on any non-approved terminal status (skipped, failed, etc.).
+    Pending drafts are ignored (streak looks at resolved ones only).
+    """
+    terminal_statuses = {"approved", "skipped", "failed", "error", "bounced", "escalation"}
+    resolved: list[Any] = []
+    for d in drafts or []:
+        if _text(d, "status").lower() in terminal_statuses:
+            resolved.append(d)
+
+    # Sort newest first
+    resolved.sort(key=lambda d: _dt(_value(d, "approved_at") or _value(d, "created_at")) or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+
+    streak = 0
+    for d in resolved:
+        if _text(d, "status").lower() == "approved":
+            streak += 1
+        else:
+            break
+    return streak
+
+
+def find_occupancy_gaps(
+    reservations: Iterable[Any],
+    today: Optional[Any] = None,
+    window_days: int = 60,
+) -> list[dict[str, Any]]:
+    """
+    Find gap nights between confirmed reservations within the next window_days.
+
+    Returns a list of dicts: {gap_start, gap_end, gap_nights, before_guest, after_guest}.
+    Only gaps ≥ 1 night are returned, sorted by gap_start ascending.
+    """
+    if today is None:
+        today = datetime.now(timezone.utc).date()
+    elif isinstance(today, datetime):
+        today = today.date()
+
+    window_end = today + timedelta(days=window_days)
+
+    # Collect confirmed reservations with valid dates
+    confirmed: list[tuple] = []
+    for res in reservations or []:
+        status = _text(res, "status").lower() or "confirmed"
+        if status not in {"confirmed", "active"}:
+            continue
+        checkin  = _date_from_any(_value(res, "checkin"))
+        checkout = _date_from_any(_value(res, "checkout"))
+        if not checkin or not checkout or checkout <= checkin:
+            continue
+        if checkout < today or checkin > window_end:
+            continue
+        guest_name = _text(res, "guest_name") or "Guest"
+        confirmed.append((checkin, checkout, guest_name))
+
+    if len(confirmed) < 2:
+        return []
+
+    confirmed.sort(key=lambda t: t[0])
+
+    gaps: list[dict[str, Any]] = []
+    for i in range(len(confirmed) - 1):
+        _, prev_checkout, prev_guest = confirmed[i]
+        next_checkin, _, next_guest = confirmed[i + 1]
+        gap_nights = (next_checkin - prev_checkout).days
+        if gap_nights >= 1:
+            gaps.append({
+                "gap_start":    prev_checkout,
+                "gap_end":      next_checkin,
+                "gap_nights":   gap_nights,
+                "before_guest": prev_guest,
+                "after_guest":  next_guest,
+            })
+    return gaps
+
+
+def compute_review_velocity(reservations: Iterable[Any]) -> Optional[float]:
+    """
+    Estimate reviews per 30 days based on reservations with review data.
+
+    Returns None if no review data is available.
+    Looks for a `review_count` or `rating` field to infer a review was left,
+    combined with `checkout` date to compute velocity over time.
+    """
+    reviewed: list[Any] = []
+    for res in reservations or []:
+        has_review = (
+            _number(res, "review_count") is not None
+            or _number(res, "rating") is not None
+            or _bool(res, "has_review")
+            or _text(res, "review_text").strip()
+        )
+        checkout = _date_from_any(_value(res, "checkout"))
+        if has_review and checkout:
+            reviewed.append(checkout)
+
+    if not reviewed:
+        return None
+
+    if len(reviewed) == 1:
+        return 1.0
+
+    reviewed.sort()
+    earliest = reviewed[0]
+    latest   = reviewed[-1]
+    span_days = (latest - earliest).days
+    if span_days < 1:
+        return float(len(reviewed))
+
+    return round(len(reviewed) / (span_days / 30.0), 2)
 
 
 def surface_exception_queue(
@@ -499,7 +913,6 @@ def surface_exception_queue(
                 "title": f"Escalation needed for {guest_name}",
                 "detail": _text(draft, "message")[:200],
             })
-            continue
 
         if status in _PENDING_STATUSES:
             age_minutes = None
