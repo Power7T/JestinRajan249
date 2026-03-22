@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,14 +15,18 @@
             --accent-glow: rgba(59, 130, 246, 0.4);
             --text-main: #FFFFFF;
             --text-muted: #94A3B8;
-            --border: rgba(255,255,255,0.08);
+            --border: rgba(255, 255, 255, 0.08);
             --radius-lg: 16px;
             --radius: 8px;
             --t: 0.2s ease;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg);
@@ -37,21 +42,47 @@
             align-items: center;
             padding: 1.5rem 5%;
             border-bottom: 1px solid var(--border);
-            background: rgba(11, 14, 20, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(10px);
             position: sticky;
             top: 0;
             z-index: 100;
         }
-        
-        .logo { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.05em; display:flex; align-items:center; gap:0.5rem; }
-        .logo-icon { width:24px; height:24px; background:var(--accent); border-radius:4px; box-shadow: 0 0 15px var(--accent-glow); }
-        
-        .nav-links { display: flex; gap: 2rem; align-items: center; }
-        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.95rem; font-weight: 500; transition: color var(--t); }
-        .nav-links a:hover { color: var(--text-main); }
-        
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            border-radius: 4px;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color var(--t);
+        }
+
+        .nav-links a:hover {
+            color: var(--text-main);
+        }
+
         .btn-primary {
             background: var(--accent);
             color: #fff;
@@ -64,6 +95,7 @@
             border: 1px solid transparent;
             box-shadow: 0 4px 14px var(--accent-glow);
         }
+
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px var(--accent-glow);
@@ -81,7 +113,11 @@
             border: 1px solid var(--border);
             transition: all var(--t);
         }
-        .btn-outline:hover { background: var(--surface); border-color: var(--text-muted); }
+
+        .btn-outline:hover {
+            background: var(--surface);
+            border-color: var(--text-muted);
+        }
 
         /* Hero */
         .hero {
@@ -91,35 +127,62 @@
             max-width: 1000px;
             margin: 0 auto;
         }
-        
+
         /* Glow background */
         .hero::before {
-            content: ''; position: absolute; top: 10%; left: 50%; transform: translateX(-50%);
-            width: 600px; height: 600px; background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-            z-index: -1; opacity: 0.5; filter: blur(50px);
+            content: '';
+            position: absolute;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            z-index: -1;
+            opacity: 0.5;
+            filter: blur(50px);
         }
 
         .hero-badge {
-            display: inline-block; padding: 6px 16px; border-radius: 99px;
-            background: rgba(59,130,246,0.1); color: var(--accent); border: 1px solid rgba(59,130,246,0.2);
-            font-size: 0.85rem; font-weight: 600; margin-bottom: 1.5rem; letter-spacing: 0.05em; text-transform:uppercase;
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 99px;
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
         }
 
         .hero h1 {
-            font-size: 4.5rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.04em;
+            font-size: 4.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -0.04em;
             margin-bottom: 1.5rem;
         }
-        
+
         .text-gradient {
             background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .hero p {
-            font-size: 1.25rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 2.5rem;
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 2.5rem;
         }
 
-        .hero-btns { display: flex; justify-content: center; gap: 1rem; }
+        .hero-btns {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
 
         /* Dashboard Preview */
         .preview-img {
@@ -127,49 +190,130 @@
             max-width: 900px;
             border-radius: var(--radius-lg);
             border: 1px solid var(--border);
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             overflow: hidden;
             background: var(--surface);
             position: relative;
         }
-        
-        .preview-img img { width: 100%; display: block; border-radius: inherit; }
-        
+
+        .preview-img img {
+            width: 100%;
+            display: block;
+            border-radius: inherit;
+        }
+
         /* Features */
-        .features { padding: 6rem 5%; max-width: 1200px; margin: 0 auto; }
-        .section-title { text-align: center; font-size: 2.5rem; font-weight: 800; margin-bottom: 4rem; letter-spacing: -0.03em; }
-        
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
-        
+        .features {
+            padding: 6rem 5%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 4rem;
+            letter-spacing: -0.03em;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
         .feature-card {
-            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-            padding: 2.5rem; transition: transform var(--t), border-color var(--t);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            transition: transform var(--t), border-color var(--t);
         }
-        .feature-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.2); }
-        
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
         .feature-icon {
-            width: 50px; height: 50px; background: rgba(59,130,246,0.1); color: var(--accent);
-            border-radius: 12px; display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; margin-bottom: 1.5rem;
+            width: 50px;
+            height: 50px;
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
         }
-        
-        .feature-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-main); }
-        .feature-desc { color: var(--text-muted); font-size: 0.95rem; line-height: 1.7; }
+
+        .feature-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-main);
+        }
+
+        .feature-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
 
         /* Value Prop / Metrics */
-        .metrics { padding: 4rem 5%; display: flex; justify-content: center; gap: 4rem; flex-wrap: wrap; text-align: center; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); }
-        .metric-item b { display: block; font-size: 3rem; font-weight: 800; color: var(--text-main); line-height: 1; margin-bottom: 0.5rem; }
-        .metric-item span { color: var(--text-muted); font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        .metrics {
+            padding: 4rem 5%;
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            flex-wrap: wrap;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .metric-item b {
+            display: block;
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-item span {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
 
         /* Footer */
-        footer { padding: 4rem 5%; text-align: center; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 6rem; background: var(--surface); }
-        
+        footer {
+            padding: 4rem 5%;
+            text-align: center;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            margin-top: 6rem;
+            background: var(--surface);
+        }
+
         @media (max-width: 768px) {
-            .hero h1 { font-size: 3rem; }
-            .nav-links { display: none; }
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
         }
     </style>
 </head>
+
 <body>
 
     <nav>
@@ -188,37 +332,49 @@
     <div class="hero">
         <div class="hero-badge">AI Powered Property Management</div>
         <h1>Put your properties on <span class="text-gradient">Autopilot.</span></h1>
-        <p>Omnichannel AI agent that texts your guests on WhatsApp, handles Airbnb messaging, detects sentiment, and generates beautiful automated replies.</p>
-        
+        <p>Omnichannel AI agent that texts your guests on WhatsApp, handles Airbnb messaging, detects sentiment, and
+            generates beautiful automated replies.</p>
+
         <div class="hero-btns">
             <a href="/login" class="btn-primary" style="padding: 0.8rem 2rem; font-size: 1.1rem;">Start Free Trial</a>
-            <a href="#features" class="btn-outline" style="padding: 0.8rem 2rem; font-size: 1.1rem;">See How it Works</a>
+            <a href="#features" class="btn-outline" style="padding: 0.8rem 2rem; font-size: 1.1rem;">See How it
+                Works</a>
         </div>
-        
+
         <div class="preview-img">
             <!-- Simulated mocked dashboard view -->
-            <div style="background:#1E293B; height: 40px; border-bottom:1px solid #334155; display:flex; align-items:center; padding:0 1rem; gap:0.5rem;">
+            <div
+                style="background:#1E293B; height: 40px; border-bottom:1px solid #334155; display:flex; align-items:center; padding:0 1rem; gap:0.5rem;">
                 <div style="width:12px; height:12px; border-radius:50%; background:#EF4444;"></div>
                 <div style="width:12px; height:12px; border-radius:50%; background:#EAB308;"></div>
                 <div style="width:12px; height:12px; border-radius:50%; background:#22C55E;"></div>
             </div>
             <div style="padding: 2rem; text-align:left; background:#0F172A; min-height:300px;">
-                <h3 style="margin-top:0; color:#F8FAFC; margin-bottom:1.5rem; font-weight:600;">Incoming Inquiries Filtered by AI</h3>
-                
-                <div style="background:#1E293B; border:1px solid #334155; padding:1.25rem; border-radius:8px; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin-top:0; color:#F8FAFC; margin-bottom:1.5rem; font-weight:600;">Incoming Inquiries
+                    Filtered by AI</h3>
+
+                <div
+                    style="background:#1E293B; border:1px solid #334155; padding:1.25rem; border-radius:8px; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
                     <div>
-                        <div style="color:#94A3B8; font-size:0.85rem; margin-bottom:0.25rem;">WhatsApp • 2 mins ago</div>
-                        <div style="color:#F1F5F9; font-weight:500;">"Can I get an early check-in at 1PM?"</div>
+                        <div style="color:#94A3B8; font-size:0.85rem; margin-bottom:0.25rem;">WhatsApp • 2 mins ago
+                        </div>
+                        <div style="color:#F1F5F9; font-weight:500;">"What is the WiFi password again?"</div>
                     </div>
-                    <div style="background:rgba(34,197,94,0.1); color:#22C55E; border:1px solid rgba(34,197,94,0.2); padding:4px 10px; border-radius:99px; font-size:0.75rem; font-weight:700;">AI Auto-Replied (Success)</div>
+                    <div
+                        style="background:rgba(34,197,94,0.1); color:#22C55E; border:1px solid rgba(34,197,94,0.2); padding:4px 10px; border-radius:99px; font-size:0.75rem; font-weight:700;">
+                        AI Auto-Replied (Success)</div>
                 </div>
 
-                <div style="background:#1E293B; border:1px solid #334155; padding:1.25rem; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                <div
+                    style="background:#1E293B; border:1px solid #334155; padding:1.25rem; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
                     <div>
                         <div style="color:#94A3B8; font-size:0.85rem; margin-bottom:0.25rem;">Airbnb • 10 mins ago</div>
-                        <div style="color:#F1F5F9; font-weight:500;">"The wifi router isn't showing up on my phone."</div>
+                        <div style="color:#F1F5F9; font-weight:500;">"Can we get a late checkout tomorrow? Flight is delayed."
+                        </div>
                     </div>
-                    <div style="background:rgba(59,130,246,0.1); color:#3B82F6; border:1px solid rgba(59,130,246,0.2); padding:4px 10px; border-radius:99px; font-size:0.75rem; font-weight:700;">Draft Awaiting Approval</div>
+                    <div
+                        style="background:rgba(59,130,246,0.1); color:#3B82F6; border:1px solid rgba(59,130,246,0.2); padding:4px 10px; border-radius:99px; font-size:0.75rem; font-weight:700;">
+                        Draft Awaiting Approval</div>
                 </div>
             </div>
         </div>
@@ -241,36 +397,41 @@
 
     <section id="features" class="features">
         <h2 class="section-title">A complete operating system for hospitality.</h2>
-        
+
         <div class="grid">
             <div class="feature-card">
                 <div class="feature-icon">🤖</div>
                 <h3 class="feature-title">Smart AI Routing</h3>
-                <p class="feature-desc">We use LLM routing to save you money. Routine queries go to cost-effective models like Llama 3, while complex escalations are handled seamlessly by Claude 3.5 Sonnet.</p>
+                <p class="feature-desc">We use LLM routing to save you money. Routine queries go to cost-effective
+                    models like Llama 3, while complex escalations are handled seamlessly by Claude 3.5 Sonnet.</p>
             </div>
-            
+
             <div class="feature-card">
                 <div class="feature-icon">💬</div>
                 <h3 class="feature-title">Omnichannel Inbox</h3>
-                <p class="feature-desc">Connect Email, iCal, WhatsApp (via Baileys), and SMS (via Twilio). View all your guest communications and reservations in one unified dashboard.</p>
+                <p class="feature-desc">Connect Email, iCal, WhatsApp (via Baileys), and SMS (via Twilio). View all your
+                    guest communications and reservations in one unified dashboard.</p>
             </div>
-            
+
             <div class="feature-card">
                 <div class="feature-icon">📊</div>
                 <h3 class="feature-title">Sentiment Analysis</h3>
-                <p class="feature-desc">Our AI instantly tags incoming messages. If a guest is frustrated or escalating, the message bypasses the AI and alerts you immediately for human intervention.</p>
+                <p class="feature-desc">Our AI instantly tags incoming messages. If a guest is frustrated or escalating,
+                    the message bypasses the AI and alerts you immediately for human intervention.</p>
             </div>
-            
+
             <div class="feature-card">
                 <div class="feature-icon">📅</div>
                 <h3 class="feature-title">Vendor & Maintenance</h3>
-                <p class="feature-desc">Automatically detect issues from guest messages and generate one-click dispatch messages to your cleaners or maintenance staff.</p>
+                <p class="feature-desc">Automatically detect issues from guest messages and generate one-click dispatch
+                    messages to your cleaners or maintenance staff.</p>
             </div>
         </div>
     </section>
 
     <footer>
-        <div style="font-size:1.5rem; font-weight:800; color:#fff; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem;">
+        <div
+            style="font-size:1.5rem; font-weight:800; color:#fff; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem;">
             <div class="logo-icon" style="width:20px; height:20px;"></div>
             BNB Assistant
         </div>
@@ -278,4 +439,5 @@
     </footer>
 
 </body>
+
 </html>
