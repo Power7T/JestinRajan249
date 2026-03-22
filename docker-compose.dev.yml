@@ -62,10 +62,10 @@ services:
       REDIS_URL:            redis://redis:6379/0
       SECRET_KEY:           dev-secret-key-change-in-production
       FIELD_ENCRYPTION_KEY: mR1ZucKnK-yZ83VUfz7ziQIkP61-5ZW9Re0MsDzx75o=
-      APP_BASE_URL:         http://localhost:8000
+      APP_BASE_URL:         ${APP_BASE_URL:-http://localhost:8000}
       ENVIRONMENT:          development
       ADMIN_EMAILS:         admin@hostai.local
-      TRUST_PROXY_HEADERS:  "0"
+      TRUST_PROXY_HEADERS:  ${TRUST_PROXY_HEADERS:-1}
       RUN_EMBEDDED_WORKERS: "1"
       AUTO_CREATE_TABLES:   "1"
       AUTO_MIGRATE:         "1"

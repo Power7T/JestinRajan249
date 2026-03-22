@@ -505,6 +505,19 @@
 </div>
 {% endif %}
 
+{% if cfg.onboarding_complete and not (cfg.pet_policy or cfg.refund_policy or cfg.early_checkin_policy or cfg.late_checkout_policy or cfg.parking_policy or cfg.smoking_policy) %}
+<div class="card" style="margin-bottom:1rem;border-left:4px solid #fd7e14">
+  <div class="card-header">
+    <div class="card-title" style="color:#fd7e14">⚠️ Guest policies not configured</div>
+    <a href="/settings#policies" class="btn btn-outline btn-sm">Configure now →</a>
+  </div>
+  <p style="font-size:0.84rem;color:#495057;margin:0.5rem 0 0">
+    Without pet, refund, check-in/out, parking, and smoking policies, HostAI cannot detect policy conflicts in AI-generated replies.<br>
+    Add policies in <a href="/settings#policies"><strong>Settings → Guest Policies</strong></a> to enable conflict detection and protect against inappropriate auto-sends.
+  </p>
+</div>
+{% endif %}
+
 {% if not drafts %}
 <div class="empty" id="empty-state">
   <div class="empty-icon">{% if cfg.onboarding_complete %}✅{% else %}⏳{% endif %}</div>
@@ -579,20 +592,49 @@
     {% if draft.unit_identifier_snapshot or (draft.reservation and draft.reservation.unit_identifier) %}
     <span class="chip">Unit {{ draft.unit_identifier_snapshot or draft.reservation.unit_identifier }}</span>
     {% endif %}
+    {% if draft.stay_stage %}
+    <span class="chip" style="font-size:0.72rem">{{ draft.stay_stage|replace('_',' ')|title }}</span>
+    {% endif %}
     {% if draft.guest_message_index and draft.guest_message_index > 1 %}
-    <span class="chip warn">Thread msg {{ draft.guest_message_index }}</span>
+    <span class="chip warn">Thread msg {{ draft.guest_message_index }}
+      {% if draft.thread_key %}
+      <button type="button" onclick="toggleThread('{{ draft.id }}')"
+              style="background:none;border:none;color:#6c757d;cursor:pointer;font-size:0.7rem;padding:0 2px;margin-left:2px">▾</button>
+      {% endif %}
+    </span>
     {% endif %}
     {% if draft.guest_sentiment %}
-    <span class="chip {% if draft.guest_sentiment == 'negative' %}bad{% elif draft.guest_sentiment == 'positive' %}good{% endif %}">Tone {{ draft.guest_sentiment }}</span>
+    <span class="chip {% if draft.guest_sentiment == 'negative' %}bad{% elif draft.guest_sentiment == 'positive' %}good{% endif %}">Tone {{ draft.guest_sentiment }}{% if draft.sentiment_score is not none %} ({{ "%.0f"|format(draft.sentiment_score * 100) }}%){% endif %}</span>
     {% endif %}
     {% if draft.guest_history_score is not none %}
-    <span class="chip">History {{ "%.2f"|format(draft.guest_history_score) }}</span>
+    <span class="chip" title="Guest history score: how reliably this guest has received positive AI replies">History {{ "%.2f"|format(draft.guest_history_score) }}</span>
+    {% endif %}
+    {% if draft.auto_send_eligible %}
+    <span class="chip good" style="font-size:0.7rem">✓ Auto-send eligible</span>
     {% endif %}
   </div>
 
   {% if draft.policy_conflicts_json %}
+  {% set conflicts = draft.policy_conflicts_json | from_json if draft.policy_conflicts_json else [] %}
   <div style="font-size:0.78rem;color:#856404;background:#fff3cd;border:1px solid #ffe69c;border-radius:6px;padding:0.55rem 0.7rem;margin-bottom:0.6rem">
-    Structured policy review required before send.
+    ⚠️ <strong>Policy review required</strong> — this reply may conflict with your configured policies:
+    {% if conflicts %}
+    <ul style="margin:0.25rem 0 0 1rem;padding:0">
+      {% for c in conflicts %}<li>{{ c }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if draft.thread_key and draft.guest_message_index and draft.guest_message_index > 1 %}
+  <div id="thread-{{ draft.id }}" style="display:none;margin-bottom:0.6rem;font-size:0.78rem;color:#495057;
+       background:#f0f4ff;border:1px solid #c5d4f0;border-radius:6px;padding:0.5rem 0.75rem">
+    <strong>Thread context ({{ draft.guest_message_index - 1 }} earlier message{% if draft.guest_message_index > 2 %}s{% endif %}):</strong>
+    This is message #{{ draft.guest_message_index }} in thread <code style="font-size:0.7rem">{{ draft.thread_key[-16:] }}…</code>.<br>
+    Review the guest timeline for the full conversation history.
+    {% if draft.reservation_id %}
+    <a href="/reservations" style="font-size:0.75rem;color:#0d6efd"> → View full guest timeline</a>
+    {% endif %}
   </div>
   {% endif %}
 
@@ -712,6 +754,10 @@ function toggleSchedule(id) {
 }
 function toggleWhy(id) {
   var el = document.getElementById('why-' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function toggleThread(id) {
+  var el = document.getElementById('thread-' + id);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 </script>

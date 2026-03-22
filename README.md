@@ -41,6 +41,37 @@ Open:
 Default dev admin email:
 - `admin@hostai.local`
 
+## Public Testing With Cloudflare Tunnel
+Use this only for public testing or webhook development. Quick Tunnel URLs are temporary and should not be committed into the repo.
+
+1. Install `cloudflared` on macOS:
+```bash
+brew install cloudflared
+```
+2. Create a local tunnel env file from the example:
+```bash
+cd /Users/chandan/Desktop/BNB/JestinRajan249
+cp cloudflare-tunnel.env.example cloudflare-tunnel.env
+```
+3. Start the tunnel and copy the generated `https://...trycloudflare.com` URL:
+```bash
+cloudflared tunnel --url http://localhost:8000
+```
+4. Put that URL into `cloudflare-tunnel.env` as `APP_BASE_URL` and keep `TRUST_PROXY_HEADERS=1`.
+5. Start or restart the dev stack with the tunnel env file:
+```bash
+docker compose --env-file cloudflare-tunnel.env -f docker-compose.dev.yml up -d --build
+```
+6. Run the public smoke checks:
+```bash
+BASE_URL=https://your-tunnel.trycloudflare.com ./scripts/verify_webhooks.sh
+```
+
+Notes:
+- `TRUST_PROXY_HEADERS=1` is required behind Cloudflare so HTTPS-aware cookies and redirects work correctly.
+- Quick Tunnel URLs rotate. When the URL changes, update `cloudflare-tunnel.env` and restart the stack.
+- For stable production, move to a named tunnel or a real domain.
+
 ## Production Deploy
 ```bash
 cd /Users/chandan/Desktop/BNB/JestinRajan249

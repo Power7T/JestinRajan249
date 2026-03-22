@@ -12,6 +12,7 @@ build/
 # Environments
 .env
 .env.*
+cloudflare-tunnel.env
 venv/
 .venv/
 env/
