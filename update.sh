@@ -10,9 +10,10 @@
 # How it achieves zero downtime:
 #   1. Pulls latest code
 #   2. Builds the new Docker image while the old container is still running
-#   3. Scales web to 2 — nginx starts round-robining to both old & new
-#   4. Waits for the new container to pass its health check
-#   5. Scales back to 1 — Docker stops the old container
+#   3. Runs Alembic migrations with the new image
+#   4. Scales web to 2 — nginx starts round-robining to both old & new
+#   5. Waits for the new container to pass its health check
+#   6. Scales back to 1 — Docker stops the old container
 #   Nginx serves all in-flight requests from the old container to completion.
 #   Typical user-visible gap: 0 seconds.
 #
@@ -69,13 +70,7 @@ if [ "$SKIP_PULL" -eq 0 ]; then
   fi
 fi
 
-# ── 2. Run DB migrations check ───────────────────────────────
-# Our migrations run automatically at app startup (db_migrate()), so
-# they are backward-compatible (only ADD COLUMN, never DROP/RENAME).
-# No action needed here — just a reminder.
-info "DB migrations run automatically at startup (backward-compatible ALTER TABLE only)"
-
-# ── 3. Determine what to update ──────────────────────────────
+# ── 2. Determine what to update ──────────────────────────────
 if [ -n "$TARGET_SERVICE" ] && [ "$TARGET_SERVICE" != "web" ]; then
   # Non-web services (nginx, redis, db) don't need zero-downtime tricks
   info "Rebuilding & restarting service: ${TARGET_SERVICE}..."
@@ -85,10 +80,15 @@ if [ -n "$TARGET_SERVICE" ] && [ "$TARGET_SERVICE" != "web" ]; then
   exit 0
 fi
 
-# ── 4. Build new web image (old container still running) ──────
-info "Building new web image (old container still running)..."
-$DC build web 2>&1 | tail -10
+# ── 3. Build new images (web + worker) ────────────────────────
+info "Building new web + worker images (old containers still running)..."
+$DC build web worker 2>&1 | tail -10
 ok "Build complete"
+
+# ── 4. Run DB migrations ─────────────────────────────────────
+info "Running database migrations..."
+$DC run --rm web alembic upgrade head
+ok "Migrations complete"
 
 # ── 5. Scale to 2 — old + new run in parallel ────────────────
 info "Starting new container alongside old one..."
@@ -138,7 +138,7 @@ ok "Old container stopped. Zero-downtime update complete."
 
 # ── 8. Also update other non-disruptive services ─────────────
 info "Ensuring all other services are current..."
-$DC up -d certbot-renew db-backup
+$DC up -d --no-deps worker certbot-renew db-backup
 ok "All services running"
 
 # ── 9. Summary ───────────────────────────────────────────────

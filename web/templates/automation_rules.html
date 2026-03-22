@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Automation Rules — HostAI{% endblock %}
+
+{% block content %}
+<h1>Automation Rules</h1>
+<p class="section-lead">
+  The host should not review every message. Rules decide when HostAI can send, when it should wait for approval, and when it must escalate.
+</p>
+
+<div class="workflow-grid" style="margin-bottom:1rem">
+  <div class="workflow-card">
+    <h3>Trigger</h3>
+    <p>What happened: guest message, arrival reminder, checkout follow-up, or vendor request.</p>
+    <div class="chip-row"><span class="chip good">Guest message</span><span class="chip">Calendar event</span><span class="chip">Vendor issue</span></div>
+  </div>
+  <div class="workflow-card">
+    <h3>Condition</h3>
+    <p>When the rule should apply: routine intent, confidence threshold, property scope, or channel-specific behavior.</p>
+    <div class="chip-row"><span class="chip good">Routine</span><span class="chip warn">Low confidence</span><span class="chip">Property scope</span></div>
+  </div>
+  <div class="workflow-card">
+    <h3>Action</h3>
+    <p>What HostAI should do: auto-send, draft only, escalate, schedule, or create a maintenance ticket.</p>
+    <div class="chip-row"><span class="chip good">Auto-send</span><span class="chip warn">Draft</span><span class="chip bad">Escalate</span></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1rem">
+  <h2 style="margin-bottom:0.75rem">Rule builder</h2>
+  <div class="form-row">
+    <div>
+      <label>Rule name</label>
+      <input type="text" placeholder="Auto-send Wi-Fi replies">
+    </div>
+    <div>
+      <label>Scope</label>
+      <select>
+        <option>All properties</option>
+        <option>Selected property</option>
+        <option>Selected room type</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-row">
+    <div>
+      <label>Trigger</label>
+      <select>
+        <option>Inbound guest message</option>
+        <option>Arrival date approaching</option>
+        <option>Checkout date reached</option>
+        <option>Vendor update</option>
+      </select>
+    </div>
+    <div>
+      <label>Action</label>
+      <select>
+        <option>Auto-send draft</option>
+        <option>Save as pending draft</option>
+        <option>Escalate to host</option>
+        <option>Create maintenance task</option>
+      </select>
+    </div>
+  </div>
+  <label>Rule notes</label>
+  <textarea placeholder="Example: Auto-send only when the guest asks about Wi-Fi, towels, or parking and the reservation has a mapped room number."></textarea>
+  <p class="help-text">This is the UI shell for a future rule engine. It is designed so the backend can wire the same concepts later without changing the host-facing experience.</p>
+</div>
+
+<div class="workflow-grid">
+  <div class="workflow-card">
+    <h3>Sample rules</h3>
+    <p>Reply to Wi-Fi requests automatically. Escalate refunds and complaints. Create maintenance tasks from "AC is broken" or "leak" messages.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>Default policy</h3>
+    <p>Prefer automation for routine asks, draft for ambiguity, and escalation for anything involving money, safety, or property damage.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>Fallbacks</h3>
+    <p>If a PMS is not available, use CSV or manual booking intake to keep the rule engine fed with stay context.</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Workflow Center — HostAI{% endblock %}
+
+{% block content %}
+<h1>Workflow Center</h1>
+<p class="section-lead">
+  This is the operating model HostAI should enforce: automate routine replies, activate the stay at arrival, and keep humans focused on exceptions, vendors, and unresolved guest issues.
+</p>
+
+<div class="kpi-grid" style="margin-bottom:1.25rem">
+  <div class="kpi-card"><div class="kpi-value">{{ kpis.ops.automation_ready_ratio }}%</div><div class="kpi-label">Automation-ready asks</div><div class="kpi-note">Routine messages with enough context to move fast.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ exception_queue|length }}</div><div class="kpi-label">Open exceptions</div><div class="kpi-note">Needs a host or vendor to touch it.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ kpis.reservations.context_complete }}</div><div class="kpi-label">Stay contexts ready</div><div class="kpi-note">Reservations with guest phone and room mapped.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ automation_rules|length }}</div><div class="kpi-label">Automation rules</div><div class="kpi-note">Rules decide what auto-sends, reviews, or escalates.</div></div>
+</div>
+
+<div class="workflow-grid" style="margin-bottom:1rem">
+  <div class="workflow-card">
+    <h3>Automation rules</h3>
+    <p>Define what gets answered automatically, what gets queued for review, and what should always escalate.</p>
+    <div class="chip-row">
+      {% for rule in automation_rules[:4] %}
+      <span class="chip {% if (rule.actions_json or {}).get('mode', 'auto_send') == 'auto_send' %}good{% elif (rule.actions_json or {}).get('mode') == 'escalate' %}bad{% else %}warn{% endif %}">
+        {{ rule.name }}
+      </span>
+      {% endfor %}
+      {% if not automation_rules %}<span class="chip warn">No rules configured yet</span>{% endif %}
+    </div>
+  </div>
+  <div class="workflow-card">
+    <h3>Arrival activation</h3>
+    <p>Host enters guest phone and room number once. The bot can then answer with room-aware context for the rest of the stay.</p>
+    <div class="chip-row">
+      <span class="chip {% if kpis.reservations.context_complete %}good{% else %}warn{% endif %}">Context ready {{ kpis.reservations.context_complete }}</span>
+      <span class="chip {% if cfg.ical_urls %}good{% else %}warn{% endif %}">Calendar</span>
+      <span class="chip {% if cfg.email_ingest_mode == 'forwarding' %}good{% else %}warn{% endif %}">Email intake</span>
+    </div>
+  </div>
+  <div class="workflow-card">
+    <h3>Unified guest timeline</h3>
+    <p>Bring email, WhatsApp, SMS, approval history, and follow-up actions into one thread so the host sees the full story.</p>
+    <div class="chip-row">
+      <span class="chip">{{ timeline_events|length }} recent events</span>
+      <span class="chip">{{ open_issues|length }} open issues</span>
+    </div>
+  </div>
+  <div class="workflow-card">
+    <h3>Fallback intake</h3>
+    <p>CSV remains the fallback for hosts without a PMS. PMS sync and manual entry stay available as the next layers.</p>
+    <div class="chip-row">
+      {% for batch in recent_batches[:3] %}
+      <span class="chip">{{ batch.source_kind|upper }}</span>
+      {% endfor %}
+      {% if not recent_batches %}<span class="chip warn">No intake batches yet</span>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1rem">
+  <h2>Activation checklist</h2>
+  {% for item in activation_checklist %}
+  <div class="checklist-item">
+    <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
+    <span>{{ item.label }}</span>
+    <span style="color:#6c757d;font-size:0.8rem">{{ item.detail }}</span>
+    {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="workflow-grid">
+  <div class="workflow-card">
+    <h3>Recent timeline</h3>
+    <div class="timeline" style="padding-left:0">
+      {% for event in timeline_events[:5] %}
+      <div class="timeline-item">
+        <div class="timeline-meta">{{ event.created_at.strftime('%b %d %H:%M') if event.created_at else '' }}{% if event.channel %} · {{ event.channel }}{% endif %}</div>
+        <div class="timeline-title">{{ event.message or event.summary }}</div>
+        <div class="timeline-text">{{ event.detail or event.status or '' }}</div>
+      </div>
+      {% endfor %}
+      {% if not timeline_events %}<p style="font-size:0.85rem;color:#6c757d">No timeline events yet.</p>{% endif %}
+    </div>
+  </div>
+  <div class="workflow-card">
+    <h3>Exception queue</h3>
+    {% for item in exception_queue[:5] %}
+    <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
+      <div style="font-size:0.84rem;font-weight:600">{{ item.title }}</div>
+      <div style="font-size:0.78rem;color:#6c757d">{{ item.detail }}</div>
+    </div>
+    {% endfor %}
+    {% if not exception_queue %}<p style="font-size:0.85rem;color:#6c757d">No exceptions right now.</p>{% endif %}
+  </div>
+  <div class="workflow-card">
+    <h3>Open issues</h3>
+    {% for issue in open_issues[:5] %}
+    <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
+      <div style="font-size:0.84rem;font-weight:600">{{ issue.title }}</div>
+      <div style="font-size:0.78rem;color:#6c757d">{{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}</div>
+    </div>
+    {% endfor %}
+    {% if not open_issues %}<p style="font-size:0.85rem;color:#6c757d">No open issues.</p>{% endif %}
+  </div>
+  <div class="workflow-card">
+    <h3>Recent intake</h3>
+    {% for batch in recent_batches[:5] %}
+    <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
+      <div style="font-size:0.84rem;font-weight:600">{{ batch.source_name or batch.source_kind|upper }}</div>
+      <div style="font-size:0.78rem;color:#6c757d">{{ batch.source_kind|upper }} · {{ batch.rows_imported }}/{{ batch.rows_total }} rows</div>
+    </div>
+    {% endfor %}
+    {% if not recent_batches %}<p style="font-size:0.85rem;color:#6c757d">No reservation intake yet.</p>{% endif %}
+  </div>
+</div>
+
+<div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem">
+  <a class="btn btn-primary btn-sm" href="/dashboard">Back to dashboard</a>
+  <a class="btn btn-outline btn-sm" href="/reservations">Open reservations</a>
+  <a class="btn btn-outline btn-sm" href="/settings#workflow">Open settings</a>
+  <a class="btn btn-outline btn-sm" href="/ops">Open ops queue</a>
+</div>
+{% endblock %}

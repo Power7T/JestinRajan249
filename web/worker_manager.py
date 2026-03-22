@@ -132,24 +132,21 @@ def _start_tenant(tenant_id: str):
     email_cfg = email_worker.make_config_from_db(tenant_id)
     cal_cfg   = calendar_worker.make_config_from_db(tenant_id)
 
-    if not email_cfg:
-        log.info("[%s] Email not configured — skipping worker start", tenant_id)
-        return
-
     entry: dict = {}
 
     # Email worker
-    email_stop = threading.Event()
-    t_email = threading.Thread(
-        target=email_worker.run_for_tenant,
-        args=(email_cfg, email_stop),
-        name=f"email-{tenant_id[:8]}",
-        daemon=True,
-    )
-    t_email.start()
-    entry["email"]      = t_email
-    entry["email_stop"] = email_stop
-    entry["email_cfg"]  = email_cfg  # saved for watchdog restarts
+    if email_cfg:
+        email_stop = threading.Event()
+        t_email = threading.Thread(
+            target=email_worker.run_for_tenant,
+            args=(email_cfg, email_stop),
+            name=f"email-{tenant_id[:8]}",
+            daemon=True,
+        )
+        t_email.start()
+        entry["email"]      = t_email
+        entry["email_stop"] = email_stop
+        entry["email_cfg"]  = email_cfg  # saved for watchdog restarts
 
     # Calendar worker (only if iCal URLs present)
     if cal_cfg:
@@ -193,11 +190,15 @@ def _start_tenant(tenant_id: str):
         entry["pms"]      = t_pms
         entry["pms_stop"] = pms_stop
 
+    if not entry:
+        log.info("[%s] No workers configured — skipping worker start", tenant_id)
+        return
+
     with _lock:
         _workers[tenant_id] = entry
 
     log.info("[%s] Workers started (email=%s, calendar=%s, pms=%s)",
-             tenant_id, True, cal_cfg is not None, pms_worker.has_active_pms(tenant_id))
+             tenant_id, email_cfg is not None, cal_cfg is not None, pms_worker.has_active_pms(tenant_id))
 
 
 def _stop_tenant(tenant_id: str):

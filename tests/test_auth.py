@@ -66,12 +66,16 @@ class TestLogin:
 
 class TestLogout:
     def test_logout_redirects_to_login(self, client):
-        resp = client.get("/logout", follow_redirects=False)
+        page = client.get("/logout", follow_redirects=False)
+        csrf = page.cookies.get("csrf_token", "") or client.cookies.get("csrf_token", "")
+        resp = client.post("/logout", data={"csrf_token": csrf}, follow_redirects=False)
         assert resp.status_code in (302, 303)
         assert "/login" in resp.headers.get("location", "")
 
     def test_logout_clears_session_cookie(self, client):
-        resp = client.get("/logout", follow_redirects=False)
+        page = client.get("/logout", follow_redirects=False)
+        csrf = page.cookies.get("csrf_token", "") or client.cookies.get("csrf_token", "")
+        resp = client.post("/logout", data={"csrf_token": csrf}, follow_redirects=False)
         set_cookie = resp.headers.get("set-cookie", "")
         assert "session" in set_cookie
 

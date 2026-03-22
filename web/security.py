@@ -116,10 +116,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
 
-        is_secure = (
-            request.url.scheme == "https"
-            or request.headers.get("X-Forwarded-Proto") == "https"
-        )
+        is_secure = is_request_secure(request)
         response.set_cookie(
             key=CSRF_COOKIE,
             value=csrf,
@@ -198,6 +195,17 @@ def client_ip(request: Request) -> str:
     return (request.client.host if request.client else "unknown")
 
 
+def is_request_secure(request: Request) -> bool:
+    """Return True when the request is HTTPS (optionally via trusted proxy headers)."""
+    if request.url.scheme == "https":
+        return True
+    if _TRUST_PROXY_HEADERS:
+        forwarded = request.headers.get("X-Forwarded-Proto", "")
+        proto = forwarded.split(",")[0].strip().lower()
+        return proto == "https"
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Security headers middleware
 # ---------------------------------------------------------------------------
@@ -224,10 +232,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         h["Referrer-Policy"]          = "strict-origin-when-cross-origin"
         h["Permissions-Policy"]       = "geolocation=(), microphone=(), camera=()"
         h["Content-Security-Policy"]  = self._CSP
-        is_https = (
-            request.url.scheme == "https"
-            or request.headers.get("X-Forwarded-Proto") == "https"
-        )
-        if is_https:
+        if is_request_secure(request):
             h["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         return response

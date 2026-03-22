@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Vendor Workflow — HostAI{% endblock %}
+
+{% block content %}
+<h1>Vendor Workflow</h1>
+<p class="section-lead">
+  Maintenance should move like a ticket system, not an inbox. Guests report the issue, HostAI creates the task, and the right vendor gets the right context.
+</p>
+
+<div class="kpi-grid" style="margin-bottom:1rem">
+  <div class="kpi-card"><div class="kpi-value">{{ open_vendor_issues|length }}</div><div class="kpi-label">Open vendor tickets</div><div class="kpi-note">Still waiting for action or confirmation.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ resolved_vendor_issues|length }}</div><div class="kpi-label">Recently resolved</div><div class="kpi-note">Closed and ready for guest follow-up.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ vendors|length }}</div><div class="kpi-label">Known vendors</div><div class="kpi-note">Cleaner, plumber, AC, locksmith, and more.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ team_members|length }}</div><div class="kpi-label">Ops staff</div><div class="kpi-note">People available to coordinate the work.</div></div>
+</div>
+
+<div class="workflow-grid" style="margin-bottom:1rem">
+  {% for vendor in vendors[:4] %}
+  <div class="workflow-card">
+    <h3>{{ vendor.name }}</h3>
+    <p>{{ vendor.category|replace('_', ' ') }} · {{ vendor.phone }}</p>
+    {% if vendor.notes %}<div class="chip-row"><span class="chip">{{ vendor.notes }}</span></div>{% endif %}
+  </div>
+  {% endfor %}
+  {% if not vendors %}
+  <div class="workflow-card">
+    <h3>No vendors added</h3>
+    <p>Add cleaners, technicians, and service partners in settings so tickets can be routed without friction.</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-bottom:1rem">
+  <h2>Open vendor tickets</h2>
+  {% if open_vendor_issues %}
+  <div class="timeline">
+    {% for issue in open_vendor_issues %}
+    <div class="timeline-item">
+      <div class="timeline-meta">{{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}{% if issue.reservation %} · {{ issue.reservation.confirmation_code }}{% endif %}</div>
+      <div class="timeline-title">{{ issue.title }}</div>
+      <div class="timeline-text">{{ issue.description or 'No issue description provided.' }}</div>
+      <div class="chip-row" style="margin-top:0.5rem">
+        <span class="chip">{{ issue.status|replace('_', ' ') }}</span>
+        <span class="chip">{% if issue.assigned_to_member %}{{ issue.assigned_to_member.display_name }}{% else %}Unassigned{% endif %}</span>
+        <span class="chip">{% if issue.vendor %}{{ issue.vendor.name }}{% else %}No vendor{% endif %}</span>
+      </div>
+      <form method="post" action="/issues/{{ issue.id }}/assign" style="margin-top:0.75rem">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <div class="form-row">
+          <div>
+            <label>Ops owner</label>
+            <select name="assigned_to_member_id">
+              <option value="">Unassigned</option>
+              {% for member in team_members %}
+              <option value="{{ member.id }}" {% if issue.assigned_to_member_id == member.id %}selected{% endif %}>{{ member.display_name }} — {{ member.role|replace('_', ' ') }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>Vendor</label>
+            <select name="vendor_id">
+              <option value="">No vendor</option>
+              {% for vendor in vendors %}
+              <option value="{{ vendor.id }}" {% if issue.vendor_id == vendor.id %}selected{% endif %}>{{ vendor.name }} — {{ vendor.category|replace('_', ' ') }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-outline btn-sm">Dispatch / update</button>
+      </form>
+      <form method="post" action="/issues/{{ issue.id }}/resolve" style="margin-top:0.5rem">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <label>Resolution notes</label>
+        <input type="text" name="resolution_notes" value="{{ issue.resolution_notes or '' }}" placeholder="What was fixed and what the guest should be told">
+        <button type="submit" class="btn btn-primary btn-sm">Mark resolved</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="font-size:0.85rem;color:#6c757d">No open vendor tickets.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Recently resolved</h2>
+  {% if resolved_vendor_issues %}
+  <div class="timeline">
+    {% for issue in resolved_vendor_issues %}
+    <div class="timeline-item">
+      <div class="timeline-meta">{{ issue.resolved_at.strftime('%b %d %H:%M') if issue.resolved_at else '' }}</div>
+      <div class="timeline-title">{{ issue.title }}</div>
+      <div class="timeline-text">{{ issue.resolution_notes or 'Resolved without notes.' }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="font-size:0.85rem;color:#6c757d">No recently resolved vendor tickets.</p>
+  {% endif %}
+</div>
+{% endblock %}

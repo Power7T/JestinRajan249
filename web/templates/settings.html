@@ -14,6 +14,18 @@
   .copy-btn { white-space: nowrap; padding: 6px 12px; font-size: 0.8rem; }
   .token-display { font-family: monospace; font-size: 0.85rem; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px 12px; word-break: break-all; margin-bottom: 0.75rem; }
   .download-box { background: #f0faf4; border: 1px solid #c3e6cb; border-radius: 8px; padding: 1.25rem; }
+  .checklist-item { display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid #f1f3f5;font-size:0.875rem; }
+  .checklist-item:last-child { border-bottom:none;padding-bottom:0; }
+  .check-icon { font-size:1rem;width:1.5rem;text-align:center;flex-shrink:0; }
+  .check-icon.done { color:#28a745; }
+  .check-icon.todo { color:#adb5bd; }
+  .checklist-action { margin-left:auto;font-size:0.8rem; }
+  details { margin-bottom: 0.75rem; }
+  details summary { cursor:pointer; font-size:0.82rem; color:#e00b27; font-weight:600; user-select:none; padding:4px 0; }
+  details summary::-webkit-details-marker { display:none; }
+  details summary::before { content:"▶ "; font-size:0.65rem; }
+  details[open] summary::before { content:"▼ "; }
+  .accordion-body { background:#f8f9fa; border-radius:6px; padding:0.75rem 1rem; font-size:0.8rem; line-height:1.7; color:#495057; margin-top:0.25rem; }
 </style>
 {% endblock %}
 
@@ -23,6 +35,21 @@
 {% if saved %}
 <div class="alert alert-success">Settings saved — workers restarted with new configuration.</div>
 {% endif %}
+
+<div class="card" style="background:linear-gradient(135deg,#fff9f2 0%,#fff 100%);border:1px solid #f3d7b0">
+  <h2 style="margin-bottom:0.5rem">Recommended setup</h2>
+  <p class="help-text" style="margin-top:0;margin-bottom:1rem">
+    Keep this simple: use forwarding for email intake, map one real reservation with guest phone and room number, then let HostAI handle routine questions and show you only exceptions.
+  </p>
+  {% for item in activation_checklist or [] %}
+  <div class="checklist-item">
+    <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
+    <span>{{ item.label }}</span>
+    <span style="color:#6c757d;font-size:0.8rem">{{ item.detail }}</span>
+    {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
+  </div>
+  {% endfor %}
+</div>
 
 <form method="post" action="/settings">
   <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
@@ -41,25 +68,90 @@
 
   <!-- ── Email ────────────────────────────────────────────────────── -->
   <div class="form-section">
-    <h2>Email (IMAP / SMTP)</h2>
-    <div class="form-row">
-      <div>
-        <label>IMAP host</label>
-        <input type="text" name="imap_host" value="{{ cfg.imap_host or '' }}" placeholder="imap.gmail.com">
+    <h2>Email intake</h2>
+    <label>How HostAI should receive guest emails</label>
+    <select name="email_ingest_mode">
+      <option value="forwarding" {% if (cfg.email_ingest_mode or 'imap') == 'forwarding' %}selected{% endif %}>Forward Airbnb emails to HostAI (recommended)</option>
+      <option value="imap" {% if (cfg.email_ingest_mode or 'imap') == 'imap' %}selected{% endif %}>Connect mailbox with IMAP / SMTP</option>
+    </select>
+    <label>Your private HostAI forwarding address</label>
+    <div class="copy-box">
+      <input type="text" readonly value="{{ inbound_email_address }}" id="inbound-forward-address">
+      <button type="button" class="btn btn-outline copy-btn" onclick="copyField('inbound-forward-address')">Copy</button>
+    </div>
+    <p class="help-text">
+      Recommended: create an auto-forward rule for Airbnb guest emails to this address. HostAI will receive them through the inbound email webhook at <code>{{ inbound_webhook_url }}</code>.
+    </p>
+
+    <details>
+      <summary>Advanced fallback: connect mailbox with IMAP / SMTP</summary>
+      <div class="accordion-body">
+        <div class="form-row">
+          <div>
+            <label>IMAP host</label>
+            <input type="text" name="imap_host" value="{{ cfg.imap_host or '' }}" placeholder="imap.gmail.com">
+          </div>
+          <div>
+            <label>SMTP host</label>
+            <input type="text" name="smtp_host" value="{{ cfg.smtp_host or '' }}" placeholder="smtp.gmail.com">
+          </div>
+        </div>
+        <label>Email address</label>
+        <input type="email" name="email_address" value="{{ cfg.email_address or '' }}" placeholder="yourhost@gmail.com">
+        <label>App password <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
+        <input type="password" name="email_password" placeholder="xxxx xxxx xxxx xxxx">
+        <p class="help-text">
+          Gmail: <a href="https://myaccount.google.com/apppasswords" target="_blank">Create an App Password</a> →
+          Google Account → Security → App Passwords.
+        </p>
       </div>
-      <div>
-        <label>SMTP host</label>
-        <input type="text" name="smtp_host" value="{{ cfg.smtp_host or '' }}" placeholder="smtp.gmail.com">
+    </details>
+  </div>
+
+  <div class="form-section" id="workflow">
+    <h2>Workflow controls</h2>
+    <p class="help-text">
+      Use these patterns to keep hosts out of the weeds: automate the obvious, activate the stay at arrival, and reserve human attention for exceptions.
+    </p>
+    <div class="workflow-grid">
+      <div class="workflow-card">
+        <h3>Automation rules</h3>
+        <p>Routine asks should auto-send. Refunds, complaints, and anything low-confidence should escalate for review.</p>
+        <div class="chip-row">
+          <span class="chip good">Routine</span>
+          <span class="chip warn">Low confidence</span>
+          <span class="chip bad">Escalate</span>
+        </div>
+      </div>
+      <div class="workflow-card">
+        <h3>Arrival activation</h3>
+        <p>When the guest phone and room number are mapped, the bot can speak with the right stay context and check-in details.</p>
+        <div class="chip-row">
+          <span class="chip good">Guest phone</span>
+          <span class="chip good">Room mapped</span>
+          <span class="chip warn">Guest portal</span>
+        </div>
+      </div>
+      <div class="workflow-card">
+        <h3>Role-aware ops</h3>
+        <p>Owner, front desk, maintenance, and cleaners should each get only the queue that matches their responsibility.</p>
+        <div class="chip-row">
+          <span class="chip">Owner</span>
+          <span class="chip">Front desk</span>
+          <span class="chip">Maintenance</span>
+          <span class="chip">Cleaner</span>
+        </div>
+      </div>
+      <div class="workflow-card">
+        <h3>Fallback intake</h3>
+        <p>Keep CSV for hosts without a PMS, wire PMS sync when available, and leave room for manual booking entry as the last resort.</p>
+        <div class="chip-row">
+          <span class="chip good">CSV</span>
+          <span class="chip good">PMS</span>
+          <span class="chip warn">Manual</span>
+        </div>
       </div>
     </div>
-    <label>Email address</label>
-    <input type="email" name="email_address" value="{{ cfg.email_address or '' }}" placeholder="yourhost@gmail.com">
-    <label>App password <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
-    <input type="password" name="email_password" placeholder="xxxx xxxx xxxx xxxx">
-    <p class="help-text">
-      Gmail: <a href="https://myaccount.google.com/apppasswords" target="_blank">Create an App Password</a> →
-      Google Account → Security → App Passwords.
-    </p>
   </div>
 
   <!-- ── Claude API ────────────────────────────────────────────────── -->
@@ -221,6 +313,133 @@
 
   <button type="submit" class="btn btn-primary">Save settings</button>
 </form>
+
+<div class="form-section" id="workflow-automation" style="margin-top:2.5rem">
+  <h2>Automation Rules</h2>
+  <p class="help-text">Use this to auto-send routine replies while keeping risky conversations in review.</p>
+  {% if automation_rules %}
+  <table style="margin-bottom:1rem">
+    <thead>
+      <tr><th>Name</th><th>Channel</th><th>Mode</th><th>Confidence</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for rule in automation_rules %}
+      <tr>
+        <td>{{ rule.name }}</td>
+        <td>{{ rule.channel }}</td>
+        <td>{{ (rule.actions_json or {}).get('mode', 'auto_send') }}</td>
+        <td>{{ "%.2f"|format(rule.confidence_threshold or 0) }}</td>
+        <td>
+          <form method="post" action="/settings/automation/{{ rule.id }}/delete">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="btn btn-outline btn-sm">Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form method="post" action="/settings/automation">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div class="form-row">
+      <div>
+        <label>Rule name</label>
+        <input type="text" name="name" placeholder="Auto-send routine stay questions" required>
+      </div>
+      <div>
+        <label>Channel</label>
+        <select name="channel">
+          <option value="any">Any</option>
+          <option value="email">Email</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="sms">SMS</option>
+          <option value="pms">PMS</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Message types</label>
+        <select name="msg_types" multiple>
+          <option value="routine" selected>Routine</option>
+          <option value="complex">Complex</option>
+        </select>
+      </div>
+      <div>
+        <label>Mode</label>
+        <select name="mode">
+          <option value="auto_send">Auto-send</option>
+          <option value="review">Review</option>
+          <option value="escalate">Escalate</option>
+        </select>
+      </div>
+    </div>
+    <label>Minimum confidence</label>
+    <input type="text" name="min_confidence" value="0.85">
+    <button type="submit" class="btn btn-outline btn-sm">Add automation rule</button>
+  </form>
+</div>
+
+<div class="form-section" id="workflow-team" style="margin-top:2.5rem">
+  <h2>Team Roles</h2>
+  <p class="help-text">Track who handles owner, front desk, maintenance, and cleaner workflows.</p>
+  {% if team_members %}
+  <table style="margin-bottom:1rem">
+    <thead>
+      <tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for member in team_members %}
+      <tr>
+        <td>{{ member.display_name }}</td>
+        <td>{{ member.role|replace('_', ' ') }}</td>
+        <td>{{ member.email or '—' }}</td>
+        <td>{{ member.phone or '—' }}</td>
+        <td>
+          <form method="post" action="/settings/team/{{ member.id }}/delete">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="btn btn-outline btn-sm">Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form method="post" action="/settings/team">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div class="form-row">
+      <div>
+        <label>Name</label>
+        <input type="text" name="display_name" placeholder="Operations manager" required>
+      </div>
+      <div>
+        <label>Role</label>
+        <select name="role">
+          <option value="owner">Owner</option>
+          <option value="manager" selected>Manager</option>
+          <option value="front_desk">Front desk</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="cleaner">Cleaner</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Email</label>
+        <input type="email" name="email" placeholder="ops@example.com">
+      </div>
+      <div>
+        <label>Phone</label>
+        <input type="text" name="phone" placeholder="+1 555 000 0000">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-outline btn-sm">Add team member</button>
+  </form>
+</div>
 
 <!-- ── Property Context Uploads ─────────────────────────────────── -->
 <div class="form-section" id="uploads" style="margin-top:2.5rem">

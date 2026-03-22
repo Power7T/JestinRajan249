@@ -82,7 +82,10 @@
     </div>
   </div>
   <div class="tenant-actions">
-    <a href="/admin/tenants/{{ t.id }}/impersonate" class="btn btn-outline btn-sm">Impersonate</a>
+    <form method="post" action="/admin/tenants/{{ t.id }}/impersonate" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button class="btn btn-outline btn-sm" type="submit">Impersonate</button>
+    </form>
     {% if t.is_active %}
     <form method="post" action="/admin/tenants/{{ t.id }}/deactivate" style="display:inline"
           onsubmit="return confirm('Deactivate {{ t.email }}? Their workers will stop.')">

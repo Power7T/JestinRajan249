@@ -57,12 +57,25 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL:         postgresql://hostai:devpassword@db:5432/hostai
+      DATABASE_DIRECT_URL:  postgresql://hostai:devpassword@db:5432/hostai
       DATABASE_REPLICA_URL: ""
       REDIS_URL:            redis://redis:6379/0
       SECRET_KEY:           dev-secret-key-change-in-production
       FIELD_ENCRYPTION_KEY: mR1ZucKnK-yZ83VUfz7ziQIkP61-5ZW9Re0MsDzx75o=
       APP_BASE_URL:         http://localhost:8000
       ENVIRONMENT:          development
+      ADMIN_EMAILS:         admin@hostai.local
+      TRUST_PROXY_HEADERS:  "0"
+      RUN_EMBEDDED_WORKERS: "1"
+      AUTO_CREATE_TABLES:   "1"
+      AUTO_MIGRATE:         "1"
+      INBOUND_EMAIL_DOMAIN: inbound.hostai.local
+      INBOUND_PARSE_WEBHOOK_SECRET: dev-inbound-secret
+      INBOUND_PARSE_PROVIDER: ""
+      INBOUND_PARSE_MAX_AGE: "300"
+      INBOUND_PARSE_REQUIRE_REPLAY: "0"
+      METRICS_PUBLIC: "1"
+      METRICS_TOKEN: ""
       # Email (optional for local dev — leave blank to skip)
       SMTP_HOST:            ""
       SMTP_PORT:            "587"

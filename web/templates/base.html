@@ -84,6 +84,52 @@
     .dot-red   { background: #dc3545; }
     .dot-grey  { background: #adb5bd; }
 
+    /* Workflow primitives */
+    .section-lead { font-size: 0.88rem; color: #6c757d; max-width: 72ch; line-height: 1.7; margin-bottom: 1rem; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+    .kpi-card { background: linear-gradient(180deg, #fff 0%, #fbfbfb 100%); border: 1px solid #dee2e6; border-radius: 10px; padding: 1rem; }
+    .kpi-value { font-size: 1.45rem; font-weight: 700; line-height: 1.2; color: #212529; }
+    .kpi-label { font-size: 0.75rem; color: #6c757d; margin-top: 0.25rem; }
+    .kpi-note { font-size: 0.7rem; color: #adb5bd; margin-top: 0.1rem; }
+    .workflow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .workflow-card { background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 1rem; }
+    .workflow-card h3 { font-size: 0.95rem; margin-bottom: 0.45rem; }
+    .workflow-card p { font-size: 0.84rem; color: #495057; line-height: 1.6; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.75rem; }
+    .chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 4px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; }
+    .chip.good { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+    .chip.warn { background: #fff3cd; color: #856404; border-color: #ffeeba; }
+    .chip.bad { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+    .stepper { display: grid; gap: 0.75rem; }
+    .step { display: flex; gap: 0.75rem; align-items: flex-start; background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 0.9rem; }
+    .step .num { width: 28px; height: 28px; border-radius: 50%; background: #f8f9fa; border: 1px solid #dee2e6; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; color: #495057; flex-shrink: 0; }
+    .step.done .num { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+    .step.warn .num { background: #fff3cd; border-color: #ffeeba; color: #856404; }
+    .step .body h4 { font-size: 0.9rem; margin-bottom: 0.2rem; }
+    .step .body p { font-size: 0.82rem; color: #495057; line-height: 1.6; }
+    .timeline { position: relative; padding-left: 1.4rem; display: grid; gap: 0.9rem; }
+    .timeline::before { content: ''; position: absolute; top: 0.2rem; bottom: 0.2rem; left: 0.45rem; width: 2px; background: #dee2e6; }
+    .timeline-item { position: relative; background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 0.95rem 1rem 0.95rem 1.1rem; }
+    .timeline-item::before { content: ''; position: absolute; left: -0.98rem; top: 1.05rem; width: 10px; height: 10px; border-radius: 50%; background: #e00b27; border: 2px solid #fff; box-shadow: 0 0 0 1px #dee2e6; }
+    .timeline-meta { font-size: 0.72rem; color: #6c757d; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .timeline-title { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .timeline-text { font-size: 0.82rem; color: #495057; line-height: 1.6; white-space: pre-wrap; }
+    .queue-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+    .queue-card { background: #fff; border: 1px solid #dee2e6; border-left: 4px solid #adb5bd; border-radius: 10px; padding: 1rem; }
+    .queue-card.critical { border-left-color: #dc3545; }
+    .queue-card.warn { border-left-color: #ffc107; }
+    .queue-card.good { border-left-color: #28a745; }
+    .queue-card h3 { font-size: 0.95rem; margin-bottom: 0.35rem; }
+    .queue-card p { font-size: 0.82rem; color: #495057; line-height: 1.6; }
+    .queue-meta { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+    .queue-meta .chip { font-size: 0.68rem; }
+    .checklist-item { display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid #f1f3f5;font-size:0.875rem; }
+    .checklist-item:last-child { border-bottom:none;padding-bottom:0; }
+    .check-icon { font-size:1rem;width:1.5rem;text-align:center;flex-shrink:0; }
+    .check-icon.done { color:#28a745; }
+    .check-icon.todo { color:#dee2e6; }
+    .checklist-action { margin-left:auto;font-size:0.8rem; }
+
     @media (max-width: 600px) {
       .form-row { grid-template-columns: 1fr; }
       nav { gap: 1rem; }
@@ -96,21 +142,30 @@
 <nav>
   <span class="brand">🏠 HostAI</span>
   <a href="/dashboard"     class="{% if request.url.path == '/dashboard' %}active{% endif %}">Dashboard</a>
+  <a href="/workflow" class="{% if request.url.path == '/workflow' %}active{% endif %}">Workflow</a>
   <a href="/reservations"  class="{% if request.url.path == '/reservations' %}active{% endif %}">Reservations</a>
   <a href="/activity"      class="{% if request.url.path == '/activity' %}active{% endif %}">Activity</a>
+  <a href="/activity#timeline" class="{% if request.url.path == '/activity' %}active{% endif %}">Timeline</a>
+  <a href="/ops" class="{% if request.url.path == '/ops' or request.url.path == '/vendors/workflow' %}active{% endif %}">Ops</a>
   <a href="/settings"      class="{% if request.url.path == '/settings' %}active{% endif %}">Settings</a>
   <a href="/billing"       class="{% if request.url.path == '/billing' %}active{% endif %}">Billing</a>
   {% if tenant is defined and tenant and is_admin(tenant.email) %}
   <a href="/admin" class="{% if request.url.path.startswith('/admin') %}active{% endif %}" style="color:#e00b27;font-weight:700">Admin</a>
   {% endif %}
-  <a href="/logout" class="logout">Sign out</a>
+  <form method="post" action="/logout" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button type="submit" class="logout" style="background:none;border:none;cursor:pointer;padding:0">Sign out</button>
+  </form>
 </nav>
 {% endblock %}
 
 {% if request.cookies.get("admin_session") %}
 <div style="background:#212529;color:#fff;padding:0.5rem 1.5rem;font-size:0.82rem;display:flex;align-items:center;gap:1rem">
   <span>🔍 Impersonating session</span>
-  <a href="/admin/unimpersonate" style="color:#ffc107;font-weight:600">← Back to Admin</a>
+  <form method="post" action="/admin/unimpersonate" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button type="submit" style="background:none;border:none;color:#ffc107;font-weight:600;cursor:pointer;padding:0">← Back to Admin</button>
+  </form>
 </div>
 {% endif %}
 

@@ -50,10 +50,63 @@ jobs:
             node --check "$f" && echo "OK: $f" || exit 1
           done
 
+  # ── Tests + migrations ──────────────────────────────────────
+  test:
+    name: Tests & migrations
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: hostai
+          POSTGRES_USER: hostai
+          POSTGRES_PASSWORD: hostai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hostai"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --quiet -r web/requirements.txt
+          pip install --quiet pytest
+
+      - name: Install Postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Wait for Postgres
+        run: |
+          export PGPASSWORD=hostai
+          for i in {1..30}; do
+            pg_isready -h localhost -U hostai && exit 0
+            sleep 2
+          done
+          echo "Postgres not ready" && exit 1
+
+      - name: Alembic upgrade head
+        env:
+          DATABASE_URL: postgresql://hostai:hostai@localhost:5432/hostai
+          PYTHONPATH: .
+        run: alembic upgrade head
+
+      - name: Run pytest
+        run: pytest -q
+
   # ── Deploy ───────────────────────────────────────────────────
   deploy:
     name: Zero-downtime deploy
-    needs: lint
+    needs: [lint, test]
     runs-on: ubuntu-latest
     environment: production   # optional: add approval gate in GitHub Environments
 

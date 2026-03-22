@@ -99,6 +99,18 @@
     This information is given to the AI so it can answer guest questions accurately.
   </p>
 
+  <div class="card" style="background:linear-gradient(135deg,#fff9f2 0%,#fff 100%);border:1px solid #f3d7b0;margin-bottom:1.25rem">
+    <h3 style="margin-bottom:0.45rem">Fastest path</h3>
+    <p style="font-size:0.84rem;color:#495057;line-height:1.7;margin-bottom:0.75rem">
+      If you want the easiest setup, only fill in property name and city. HostAI will apply recommended defaults for house rules, FAQ, escalation handling, and starter automation rules.
+    </p>
+    <div class="chip-row" style="margin-top:0">
+      <span class="chip good">Starter automation</span>
+      <span class="chip good">Owner role added</span>
+      <span class="chip warn">You can refine later</span>
+    </div>
+  </div>
+
   <!-- Optional: Airbnb listing import -->
   <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:1rem;margin-bottom:1.5rem">
     <p style="font-size:0.85rem;font-weight:600;margin-bottom:0.5rem">Auto-import from Airbnb (optional)</p>
@@ -150,7 +162,12 @@
     <input type="number" name="max_guests" id="f-max-guests" value="{{ cfg.max_guests or '' }}" placeholder="6" min="1" max="100" style="max-width:120px">
 
     <div class="step-nav">
-      <span></span>
+      <button type="submit"
+              class="btn btn-outline"
+              formaction="/onboarding/quick-start"
+              formmethod="post">
+        Use recommended quick start
+      </button>
       <button type="submit" class="btn btn-primary">Continue →</button>
     </div>
   </form>
@@ -189,7 +206,7 @@
     <div class="form-row" style="margin-top:1rem">
       <div>
         <label>Quiet hours</label>
-        <input type="text" name="quiet_hours" value="{{ cfg.faq | default('') | truncate(0, true, '') }}" placeholder="10:00 PM – 8:00 AM">
+        <input type="text" name="quiet_hours" value="" placeholder="10:00 PM – 8:00 AM">
         <p class="help-text">Will be included in house rules context.</p>
       </div>
       <div>
@@ -327,8 +344,35 @@
 <div class="card">
   <h2>Step 5 — Connect your channels</h2>
   <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1.5rem">
-    HostAI reads your Airbnb emails and replies via SMTP. It also watches your calendar for proactive messages.
+    Preferred setup: forward Airbnb guest emails to your private HostAI inbox below. IMAP remains available as a fallback if you want direct mailbox polling.
   </p>
+
+  <div class="card" style="background:linear-gradient(135deg,#eef8ff 0%,#fff 100%);border:1px solid #cfe3f1;margin-bottom:1rem">
+    <h3 style="margin-bottom:0.45rem">Do only these 3 things</h3>
+    <div class="stepper">
+      <div class="step done">
+        <div class="num">1</div>
+        <div class="body">
+          <h4>Copy your forwarding address</h4>
+          <p>Forward Airbnb guest emails there. This is the recommended path and avoids mailbox-password setup.</p>
+        </div>
+      </div>
+      <div class="step {% if cfg.ical_urls %}done{% else %}warn{% endif %}">
+        <div class="num">{% if cfg.ical_urls %}✓{% else %}2{% endif %}</div>
+        <div class="body">
+          <h4>Paste your Airbnb iCal link</h4>
+          <p>This gives HostAI stay timing so arrival, stay, and checkout messages use the right reservation context.</p>
+        </div>
+      </div>
+      <div class="step {% if cfg.anthropic_api_key_enc %}done{% else %}warn{% endif %}">
+        <div class="num">{% if cfg.anthropic_api_key_enc %}✓{% else %}3{% endif %}</div>
+        <div class="body">
+          <h4>Add your Claude API key</h4>
+          <p>Without it the bot cannot draft replies. You can still finish setup now and add the key later from Settings.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <form method="post" action="/onboarding">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
@@ -364,44 +408,121 @@
 
     <!-- Email / IMAP -->
     <div class="form-section">
-      <h2>Email (IMAP / SMTP)</h2>
-      <div class="form-row">
-        <div>
-          <label>IMAP host</label>
-          <input type="text" name="imap_host" value="{{ cfg.imap_host or '' }}" placeholder="imap.gmail.com">
-        </div>
-        <div>
-          <label>SMTP host</label>
-          <input type="text" name="smtp_host" value="{{ cfg.smtp_host or '' }}" placeholder="smtp.gmail.com">
-        </div>
+      <h2>Email intake</h2>
+      <label>How HostAI should receive guest emails</label>
+      <select name="email_ingest_mode">
+        <option value="forwarding" {% if (cfg.email_ingest_mode or 'imap') == 'forwarding' %}selected{% endif %}>Forward Airbnb emails to HostAI (recommended)</option>
+        <option value="imap" {% if (cfg.email_ingest_mode or 'imap') == 'imap' %}selected{% endif %}>Connect my mailbox with IMAP / SMTP</option>
+      </select>
+      <label>Your private HostAI forwarding address</label>
+      <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem">
+        <input type="text" readonly value="{{ inbound_email_address }}" id="inbound-forward-address" style="font-family:monospace;background:#f8f9fa;margin-bottom:0">
+        <button type="button" class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('inbound-forward-address').value)">Copy</button>
       </div>
-      <label>Email address</label>
-      <input type="email" name="email_address" value="{{ cfg.email_address or '' }}" placeholder="yourhost@gmail.com">
-      <label>App password <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
-      <input type="password" name="email_password" id="email-password" placeholder="xxxx xxxx xxxx xxxx">
+      <p class="help-text" style="margin-bottom:1rem">
+        Create an auto-forward rule in Gmail or Outlook for Airbnb guest emails to this address. HostAI will ingest them through a webhook and create drafts without needing your inbox password.
+      </p>
+
       <details>
-        <summary>How to create a Gmail App Password</summary>
+        <summary>Advanced fallback: connect mailbox with IMAP / SMTP</summary>
         <div class="accordion-body">
-          <ol>
-            <li>Go to <a href="https://myaccount.google.com" target="_blank">myaccount.google.com</a></li>
-            <li>Click <strong>Security</strong> in the left menu</li>
-            <li>Scroll to <strong>How you sign in to Google</strong> and click <strong>2-Step Verification</strong> (must be ON)</li>
-            <li>Scroll to the bottom and click <strong>App passwords</strong></li>
-            <li>Choose app: <em>Mail</em>, device: <em>Other</em> → type "HostAI" → click <strong>Generate</strong></li>
-            <li>Copy the 16-character password and paste it above</li>
-          </ol>
-          <p style="margin-top:0.5rem">Not using Gmail? Use your provider's equivalent app password or IMAP credentials.</p>
+          <div class="form-row">
+            <div>
+              <label>IMAP host</label>
+              <input type="text" name="imap_host" value="{{ cfg.imap_host or '' }}" placeholder="imap.gmail.com">
+            </div>
+            <div>
+              <label>SMTP host</label>
+              <input type="text" name="smtp_host" value="{{ cfg.smtp_host or '' }}" placeholder="smtp.gmail.com">
+            </div>
+          </div>
+          <label>Email address</label>
+          <input type="email" name="email_address" value="{{ cfg.email_address or '' }}" placeholder="yourhost@gmail.com">
+          <label>App password <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
+          <input type="password" name="email_password" id="email-password" placeholder="xxxx xxxx xxxx xxxx">
+          <details>
+            <summary>How to create a Gmail App Password</summary>
+            <div class="accordion-body">
+              <ol>
+                <li>Go to <a href="https://myaccount.google.com" target="_blank">myaccount.google.com</a></li>
+                <li>Click <strong>Security</strong> in the left menu</li>
+                <li>Scroll to <strong>How you sign in to Google</strong> and click <strong>2-Step Verification</strong> (must be ON)</li>
+                <li>Scroll to the bottom and click <strong>App passwords</strong></li>
+                <li>Choose app: <em>Mail</em>, device: <em>Other</em> → type "HostAI" → click <strong>Generate</strong></li>
+                <li>Copy the 16-character password and paste it above</li>
+              </ol>
+              <p style="margin-top:0.5rem">Not using Gmail? Use your provider's equivalent app password or IMAP credentials.</p>
+            </div>
+          </details>
+          <div id="email-test-area"></div>
+          <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:1rem"
+                  hx-post="/test/imap"
+                  hx-include="[name='imap_host'],[name='email_address'],[name='email_password']"
+                  hx-target="#email-test-area"
+                  hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'>
+            Test email connection
+          </button>
         </div>
       </details>
-      <!-- Email test -->
-      <div id="email-test-area"></div>
-      <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:1rem"
-              hx-post="/test/imap"
-              hx-include="[name='imap_host'],[name='email_address'],[name='email_password']"
-              hx-target="#email-test-area"
-              hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'>
-        Test email connection
-      </button>
+    </div>
+
+    <div class="form-section">
+      <h2>Activation checklist</h2>
+      <div class="stepper">
+        <div class="step {% if cfg.property_names %}done{% else %}warn{% endif %}">
+          <div class="num">{% if cfg.property_names %}✓{% else %}1{% endif %}</div>
+          <div class="body">
+            <h4>Property and stay context added</h4>
+            <p>Add the property name, house rules, FAQ, and check-in / check-out details so the bot has something useful to say.</p>
+          </div>
+        </div>
+        <div class="step {% if cfg.ical_urls %}done{% else %}warn{% endif %}">
+          <div class="num">{% if cfg.ical_urls %}✓{% else %}2{% endif %}</div>
+          <div class="body">
+            <h4>Calendar or reservation source connected</h4>
+            <p>Airbnb iCal, PMS sync, or CSV upload can all feed the stay timeline. CSV stays as the fallback for hosts without a PMS.</p>
+          </div>
+        </div>
+        <div class="step {% if inbound_email_address %}done{% else %}warn{% endif %}">
+          <div class="num">{% if inbound_email_address %}✓{% else %}3{% endif %}</div>
+          <div class="body">
+            <h4>Forwarding address ready</h4>
+            <p>Forward Airbnb emails to the private HostAI address above. This removes mailbox passwords from the setup path.</p>
+          </div>
+        </div>
+        <div class="step {% if cfg.anthropic_api_key_enc %}done{% else %}warn{% endif %}">
+          <div class="num">{% if cfg.anthropic_api_key_enc %}✓{% else %}4{% endif %}</div>
+          <div class="body">
+            <h4>AI reply engine ready</h4>
+            <p>Add the Claude key so the bot can generate replies using the host's property context and the guest's reservation data.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h2>Guest interaction ideas</h2>
+      <p class="help-text" style="margin-bottom:0.75rem">
+        This is the sort of concierge behavior the bot should support once the host has mapped the booking and room number.
+      </p>
+      <div class="workflow-grid">
+        <div class="workflow-card">
+          <h3>Arrival and access</h3>
+          <p>"Can we check in early?" "What is the room number?" "How do we get inside?"</p>
+        </div>
+        <div class="workflow-card">
+          <h3>Stay support</h3>
+          <p>"What is the Wi-Fi?" "Can we get more towels?" "Is parking included?"</p>
+        </div>
+        <div class="workflow-card">
+          <h3>Local help</h3>
+          <p>"Where should we eat?" "Any grocery stores nearby?" "What should we do in the area?"</p>
+        </div>
+        <div class="workflow-card">
+          <h3>Exceptions</h3>
+          <p>"The AC is not working." "We have a leak." "We need a late checkout."</p>
+        </div>
+      </div>
     </div>
 
     <!-- Anthropic API key -->
@@ -434,9 +555,12 @@
 
     <div class="step-nav">
       <a href="/onboarding?step=4" style="color:#6c757d;font-size:0.85rem">← Back</a>
-      <button type="submit" class="btn btn-primary" style="font-size:1rem;padding:10px 28px">
-        Finish setup →
-      </button>
+      <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+        <button type="submit" name="skip" value="1" class="btn btn-outline">Finish with recommended defaults</button>
+        <button type="submit" class="btn btn-primary" style="font-size:1rem;padding:10px 28px">
+          Finish setup →
+        </button>
+      </div>
     </div>
   </form>
 </div>
@@ -471,6 +595,35 @@
     <a href="/settings" class="btn btn-outline">Full Settings</a>
   </div>
 </div>
+
+{% if activation_checklist %}
+<div class="card" style="margin-top:1rem">
+  <h2>Activation checklist</h2>
+  {% for item in activation_checklist %}
+  <div class="checklist-item">
+    <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
+    <span>{{ item.label }}</span>
+    <span style="color:#6c757d;font-size:0.8rem">{{ item.detail }}</span>
+    {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="workflow-grid" style="margin-top:1rem">
+  <div class="workflow-card">
+    <h3>Best next step</h3>
+    <p>Import one stay, add the guest phone, map the room or unit, then activate the guest bot. That is the shortest path to a real end-to-end test.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>What guests can ask</h3>
+    <p>Guests can ask for Wi-Fi, parking, check-in help, towels, breakfast info, local recommendations, late checkout, and maintenance support.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>How HostAI handles it</h3>
+    <p>Once the stay is mapped, replies use the property context, FAQ, room number, and recent timeline so the guest gets a stay-specific answer instead of a generic one.</p>
+  </div>
+</div>
 {% endif %}
 
 <script>
@@ -500,7 +653,6 @@ function importListing() {
   })
   .catch(() => { stat.style.color='#721c24'; stat.textContent = '✗ Could not reach that URL. Please fill in manually.'; });
 }
-
 // Demo draft generation
 function runDemo() {
   const btn = event.target;

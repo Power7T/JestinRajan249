@@ -9,7 +9,8 @@ Routes:
   GET  /login         → login/signup page
   POST /login         → authenticate + set session cookie
   POST /signup        → create account
-  GET  /logout        → clear cookie
+  GET  /logout        → logout confirmation page
+  POST /logout        → clear cookie
   GET  /dashboard     → pending drafts
   POST /drafts/{id}/approve  → approve draft (send via appropriate channel)
   POST /drafts/{id}/edit     → edit + approve draft
@@ -40,14 +41,17 @@ Routes:
   GET  /api/workers   → worker status JSON
 """
 
+import base64
 import csv
 import hashlib
+import hmac
 import io
 import json
 import logging
 import os
 import re
 import secrets
+import time
 import zipfile
 from html import escape
 from contextlib import asynccontextmanager
@@ -68,12 +72,15 @@ from web.db import get_db, init_db, SessionLocal
 from web.db_read import get_read_db
 from web.models import (
     Tenant, TenantConfig, Draft, Vendor, ActivityLog, BaileysOutbound,
-    Reservation, ReservationSyncLog, PMSIntegration, PMSProcessedMessage,
+    Reservation, ReservationSyncLog, ReservationIntakeBatch,
+    AutomationRule, TeamMember, GuestTimelineEvent, ArrivalActivation, IssueTicket, TenantKpiSnapshot,
+    PMSIntegration, PMSProcessedMessage,
+    ProcessedEmail,
     PLAN_FREE, PLAN_BAILEYS, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
 )
 from web.auth import (
     hash_password, verify_password, create_token, get_current_tenant_id,
-    tenant_session_version,
+    tenant_session_version, decode_token,
 )
 from web.crypto import encrypt, decrypt
 from web import worker_manager
@@ -86,9 +93,17 @@ from web.billing import (
 )
 from web.security import (
     CSRFMiddleware, SecurityHeadersMiddleware,
-    validate_csrf, rate_limit, client_ip,
+    validate_csrf, rate_limit, client_ip, is_request_secure,
 )
 from web.request_safety import ensure_public_hostname, ensure_public_url
+from web.workflow import (
+    automation_rule_decision,
+    build_activation_checklist,
+    build_conversation_memory,
+    build_guest_timeline,
+    derive_dashboard_kpis,
+    surface_exception_queue,
+)
 
 class _JSONFormatter(logging.Formatter):
     """Emit log records as single-line JSON objects for structured log ingestion."""
@@ -156,6 +171,7 @@ templates.env.globals["is_admin"] = lambda email: bool(email) and email.lower() 
 APP_BASE_URL = os.getenv("APP_BASE_URL", "https://your-domain.com")
 _ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
 _IS_DEV_ENV = _ENVIRONMENT in {"development", "dev", "test"}
+INBOUND_EMAIL_DOMAIN = os.getenv("INBOUND_EMAIL_DOMAIN", "inbound.hostai.local").strip().lower()
 
 # ---------------------------------------------------------------------------
 # App lifecycle
@@ -254,6 +270,153 @@ def _get_or_create_config(tenant_id: str, db: Session) -> TenantConfig:
         db.commit()
         db.refresh(cfg)
     return cfg
+
+
+def _slug_email_alias(seed: str) -> str:
+    alias = re.sub(r"[^a-z0-9]+", "-", (seed or "").lower()).strip("-")
+    return alias[:24] or "host"
+
+
+def _ensure_inbound_email_alias(tenant: Tenant, cfg: TenantConfig, db: Session) -> str:
+    alias = (cfg.inbound_email_alias or "").strip().lower()
+    if alias:
+        return alias
+
+    base = _slug_email_alias((tenant.email or "").split("@")[0])
+    suffix = (tenant.id or secrets.token_hex(4)).replace("-", "")[:6]
+    candidate = f"{base}-{suffix}"
+    counter = 1
+    while db.query(TenantConfig).filter(
+        TenantConfig.inbound_email_alias == candidate,
+        TenantConfig.tenant_id != tenant.id,
+    ).first():
+        candidate = f"{base}-{suffix}{counter}"
+        counter += 1
+    cfg.inbound_email_alias = candidate
+    return candidate
+
+
+def _tenant_inbound_email_address(cfg: TenantConfig) -> str:
+    alias = (cfg.inbound_email_alias or "").strip().lower()
+    return f"{alias}@{INBOUND_EMAIL_DOMAIN}" if alias else ""
+
+
+def _extract_recipient_alias(recipient: str) -> str:
+    if not recipient:
+        return ""
+    address = recipient.strip().lower()
+    if "<" in address and ">" in address:
+        address = address.split("<", 1)[1].split(">", 1)[0]
+    local = address.split("@", 1)[0]
+    return local.split("+", 1)[0]
+
+def _inbound_replay_guard(key: str, ttl_seconds: int) -> bool:
+    """Prevent replay of inbound webhooks when Redis is available."""
+    from web.redis_client import get_redis
+
+    require_raw = os.getenv("INBOUND_PARSE_REQUIRE_REPLAY", "").strip().lower()
+    require = require_raw in {"1", "true", "yes", "on"} or (not require_raw and not _IS_DEV_ENV)
+
+    r = get_redis()
+    if r is None:
+        if require:
+            log.warning("Inbound replay guard requires Redis; rejecting webhook")
+            return False
+        return True
+
+    try:
+        digest = hashlib.sha256(key.encode()).hexdigest()
+        stored = r.set(f"inbound:replay:{digest}", "1", nx=True, ex=ttl_seconds)
+        if not stored:
+            log.warning("Inbound webhook replay detected")
+            return False
+        return True
+    except Exception as exc:
+        if require:
+            log.warning("Inbound replay guard failed: %s", exc)
+            return False
+        return True
+
+
+def _verify_inbound_email_webhook(request: Request, payload: dict, raw_body: bytes) -> bool:
+    provider = os.getenv("INBOUND_PARSE_PROVIDER", "").strip().lower()
+    secret = os.getenv("INBOUND_PARSE_WEBHOOK_SECRET", "").strip()
+
+    if secret:
+        supplied = request.headers.get("X-Inbound-Webhook-Secret", "").strip()
+        if not supplied and _IS_DEV_ENV:
+            supplied = (
+                request.query_params.get("token", "").strip()
+                or str(payload.get("token", "")).strip()
+            )
+        if not supplied:
+            return False
+        if not secrets.compare_digest(supplied, secret):
+            return False
+    elif not _IS_DEV_ENV and provider not in {"mailgun", "postmark"}:
+        log.error("Inbound webhook requires INBOUND_PARSE_WEBHOOK_SECRET or provider signature in production")
+        return False
+
+    max_age = int(os.getenv("INBOUND_PARSE_MAX_AGE", "300"))
+
+    if provider == "mailgun":
+        signing_key = os.getenv("MAILGUN_SIGNING_KEY", "").strip()
+        if not signing_key:
+            return _IS_DEV_ENV
+        timestamp = str(payload.get("timestamp", "")).strip()
+        token = str(payload.get("token", "")).strip()
+        signature = str(payload.get("signature", "")).strip()
+        if not (timestamp and token and signature):
+            return False
+        try:
+            if abs(time.time() - int(timestamp)) > max_age:
+                log.warning("Mailgun webhook timestamp outside tolerance")
+                return False
+        except ValueError:
+            return False
+        expected = hmac.new(signing_key.encode(), f"{timestamp}{token}".encode(), hashlib.sha256).hexdigest()
+        if not secrets.compare_digest(signature, expected):
+            return False
+        if not _inbound_replay_guard(f"mailgun:{timestamp}:{token}:{signature}", max_age):
+            return False
+
+    elif provider == "postmark":
+        signing_key = os.getenv("POSTMARK_INBOUND_SECRET", "").strip()
+        signature = request.headers.get("X-Postmark-Signature", "").strip()
+        if not signing_key:
+            return _IS_DEV_ENV
+        if not signature:
+            return False
+        expected = base64.b64encode(hmac.new(signing_key.encode(), raw_body, hashlib.sha256).digest()).decode()
+        if not secrets.compare_digest(signature, expected):
+            return False
+        replay_key = (
+            signature
+            or _payload_header(payload, "Message-Id", "Message-ID")
+            or _payload_value(payload, "message-id", "Message-ID")
+        )
+        if replay_key and not _inbound_replay_guard(f"postmark:{replay_key}", max_age):
+            return False
+
+    return True
+
+
+def _payload_value(payload: dict, *keys: str) -> str:
+    for key in keys:
+        value = payload.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def _payload_header(payload: dict, *keys: str) -> str:
+    headers = payload.get("headers")
+    if isinstance(headers, dict):
+        for key in keys:
+            value = headers.get(key)
+            if value:
+                return str(value)
+    return ""
 
 
 def _redirect_login():
@@ -373,8 +536,7 @@ def login_post(
         return templates.TemplateResponse("login.html",
                                           {"request": request, "error": "Invalid email or password"})
     token = create_token(tenant.id, tenant_session_version(tenant))
-    is_secure = (request.url.scheme == "https"
-                 or request.headers.get("X-Forwarded-Proto") == "https")
+    is_secure = is_request_secure(request)
     # Resume onboarding if not yet complete
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant.id).first()
     redirect_to = "/dashboard" if (cfg and cfg.onboarding_complete) else "/onboarding"
@@ -416,8 +578,7 @@ def signup_post(
     # Send verification email (non-blocking — failure just logs a warning)
     send_verification_email(email, ver_token)
     token = create_token(tenant.id, tenant_session_version(tenant))
-    is_secure = (request.url.scheme == "https"
-                 or request.headers.get("X-Forwarded-Proto") == "https")
+    is_secure = is_request_secure(request)
     resp = RedirectResponse("/onboarding", status_code=302)
     resp.set_cookie("session", token, httponly=True,
                     samesite="strict", secure=is_secure, max_age=72 * 3600)
@@ -546,8 +707,14 @@ def reset_password_post(
                                       {"request": request, "invalid": False, "success": True, "token": "", "error": None})
 
 
-@app.get("/logout")
-def logout():
+@app.get("/logout", response_class=HTMLResponse)
+def logout_confirm(request: Request):
+    return templates.TemplateResponse("logout_confirm.html", {"request": request})
+
+
+@app.post("/logout")
+def logout_post(request: Request, csrf_token: str = Form(None)):
+    validate_csrf(request, csrf_token)
     resp = RedirectResponse("/login", status_code=302)
     resp.delete_cookie("session")
     resp.delete_cookie("admin_session")
@@ -569,12 +736,17 @@ def dashboard(request: Request,
 
     tenant  = _get_tenant(tenant_id, db)        # write session (needed if cfg auto-create)
     cfg     = _get_or_create_config(tenant_id, db)
-    pending = (rdb.query(Draft)                  # read replica for the draft list scan
-               .filter_by(tenant_id=tenant_id, status="pending")
-               .order_by(Draft.created_at.desc())
-               .all())
+    draft_rows = (
+        rdb.query(Draft)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(Draft.created_at.desc())
+        .limit(500)
+        .all()
+    )
+    pending = [draft for draft in draft_rows if draft.status == "pending"]
     status   = worker_manager.worker_status(tenant_id)
-    today    = datetime.now(timezone.utc).date()
+    now      = datetime.now(timezone.utc)
+    today    = now.date()
 
     # Reservation analytics for dashboard widgets
     sync_log     = db.query(ReservationSyncLog).filter_by(tenant_id=tenant_id).first()
@@ -597,6 +769,36 @@ def dashboard(request: Request,
         Reservation.status == "confirmed",
         Reservation.checkin >= today,
     ).order_by(Reservation.checkin).first())
+    all_reservations = db.query(Reservation).filter_by(tenant_id=tenant_id).all()
+    workflow_rules = db.query(AutomationRule).filter_by(tenant_id=tenant_id).order_by(AutomationRule.priority.asc()).all()
+    team_members = db.query(TeamMember).filter_by(tenant_id=tenant_id).order_by(TeamMember.role.asc(), TeamMember.display_name.asc()).all()
+    open_issues = (
+        db.query(IssueTicket)
+        .filter(IssueTicket.tenant_id == tenant_id, IssueTicket.status != "resolved")
+        .order_by(IssueTicket.created_at.desc())
+        .all()
+    )
+    timeline_events = (
+        db.query(GuestTimelineEvent)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(GuestTimelineEvent.created_at.desc())
+        .limit(8)
+        .all()
+    )
+    kpis = derive_dashboard_kpis(draft_rows, all_reservations, now=now)
+    activation_checklist = build_activation_checklist(
+        cfg,
+        reservations=all_reservations,
+        inbound_email_address=_tenant_inbound_email_address(cfg),
+        inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
+    )
+    exception_queue = surface_exception_queue(pending, all_reservations, now=now, stale_minutes=60, limit=8)
+    recent_timeline = build_guest_timeline(reversed(timeline_events), limit=8)
+    try:
+        _upsert_tenant_kpi_snapshot(db, tenant_id, kpis, open_issues, now)
+    except Exception as exc:
+        log.warning("[%s] KPI snapshot update failed: %s", tenant_id, exc)
+        db.rollback()
 
     # Stale CSV warning: > 12 hours since last upload
     csv_stale = False
@@ -623,6 +825,18 @@ def dashboard(request: Request,
         "occupancy_pct": occupancy_pct,
         "upcoming_count": upcoming_count,
         "next_checkin":  next_checkin,
+        "now":           now,
+        "workflow_rules": workflow_rules,
+        "team_members":   team_members,
+        "open_issues":    open_issues,
+        "recent_timeline": recent_timeline,
+        "activation_checklist": activation_checklist,
+        "exception_queue": exception_queue,
+        "kpis":           kpis,
+        "active_arrivals": db.query(ArrivalActivation).filter(
+            ArrivalActivation.tenant_id == tenant_id,
+            ArrivalActivation.status.in_(["active", "pending"]),
+        ).count(),
         "today":         today,
     })
     if show_tour:
@@ -692,9 +906,21 @@ def skip_draft(draft_id: str, request: Request,
     return RedirectResponse("/dashboard", status_code=302)
 
 
-def _execute_draft(draft: Draft, final_text: str, tenant_id: str, db: Session):
+def _execute_draft(
+    draft: Draft,
+    final_text: str,
+    tenant_id: str,
+    db: Session,
+    *,
+    reservation: Optional[Reservation] = None,
+    automation_rule: Optional[AutomationRule] = None,
+):
     """Send reply via the appropriate channel and mark draft approved."""
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    reservation = reservation or (
+        db.query(Reservation).filter_by(id=draft.reservation_id, tenant_id=tenant_id).first()
+        if draft.reservation_id else None
+    )
 
     if draft.source == "email" and draft.reply_to and cfg and cfg.email_address:
         try:
@@ -771,8 +997,22 @@ def _execute_draft(draft: Draft, final_text: str, tenant_id: str, db: Session):
     draft.status      = "approved"
     draft.final_text  = final_text
     draft.approved_at = datetime.now(timezone.utc)
+    if reservation:
+        reservation.last_host_reply_at = draft.approved_at
     db.add(ActivityLog(tenant_id=tenant_id, event_type="draft_approved",
                        message=f"Draft approved: {draft.guest_name}"))
+    _record_timeline_event(
+        db,
+        tenant_id,
+        reservation,
+        "draft_approved",
+        f"Reply sent for {draft.guest_name}",
+        channel=_draft_channel(draft),
+        direction="outbound",
+        body=final_text,
+        draft=draft,
+        automation_rule=automation_rule,
+    )
     db.commit()
 
 
@@ -878,6 +1118,105 @@ def _onboarding_redirect(step: int):
     return RedirectResponse(f"/onboarding?step={step}", status_code=302)
 
 
+def _recommended_house_rules(cfg: TenantConfig) -> str:
+    checkout = cfg.check_out_time or "11:00 AM"
+    return "\n".join([
+        "No parties or events.",
+        "No smoking inside the property.",
+        "Quiet hours are 10:00 PM to 8:00 AM.",
+        f"Standard checkout is by {checkout}.",
+        "If guests need an exception, the bot should say it will confirm with the host.",
+    ])
+
+
+def _recommended_faq(cfg: TenantConfig) -> str:
+    property_name = (cfg.property_names or "the property").split(",")[0].strip()
+    checkin = cfg.check_in_time or "3:00 PM"
+    checkout = cfg.check_out_time or "11:00 AM"
+    return "\n\n".join([
+        f"Q: What time is check-in?\nA: Standard check-in for {property_name} starts at {checkin}. If you need early access, ask and the host will confirm if the room is ready.",
+        f"Q: What time is check-out?\nA: Standard check-out is by {checkout}. Late checkout is never promised automatically; the host must confirm it.",
+        "Q: What if something is not working?\nA: The guest should describe the issue and the room or unit. HostAI should reassure the guest, open an issue if needed, and escalate urgent problems.",
+        "Q: Can the guest ask for Wi-Fi, parking, towels, directions, and local recommendations?\nA: Yes. HostAI should answer directly when the information exists in the property context, FAQ, or reservation timeline.",
+    ])
+
+
+def _recommended_custom_instructions() -> str:
+    return "\n".join([
+        "Be warm, concise, and practical.",
+        "Use the guest's stay context, room number, and reservation details whenever available.",
+        "Never promise refunds, late checkout, or policy exceptions without host confirmation.",
+        "If the guest reports a maintenance, safety, billing, or complaint issue, move into escalation-aware behavior.",
+    ])
+
+
+def _ensure_effortless_defaults(tenant: Tenant, cfg: TenantConfig, db: Session) -> None:
+    if not cfg.email_ingest_mode:
+        cfg.email_ingest_mode = "forwarding"
+    if not cfg.check_in_time:
+        cfg.check_in_time = "3:00 PM"
+    if not cfg.check_out_time:
+        cfg.check_out_time = "11:00 AM"
+    if not cfg.house_rules:
+        cfg.house_rules = _recommended_house_rules(cfg)
+    if not cfg.faq:
+        cfg.faq = _recommended_faq(cfg)
+    if not cfg.custom_instructions:
+        cfg.custom_instructions = _recommended_custom_instructions()
+    if not cfg.escalation_email:
+        cfg.escalation_email = tenant.email
+
+    owner = (
+        db.query(TeamMember)
+        .filter_by(tenant_id=tenant.id, email=tenant.email)
+        .first()
+    )
+    if not owner:
+        db.add(TeamMember(
+            tenant_id=tenant.id,
+            display_name=(tenant.email.split("@")[0].replace(".", " ").replace("_", " ").title() or "Owner"),
+            email=tenant.email,
+            role="owner",
+        ))
+
+    existing_rules = db.query(AutomationRule).filter_by(tenant_id=tenant.id).count()
+    if existing_rules == 0:
+        db.add_all([
+            AutomationRule(
+                tenant_id=tenant.id,
+                name="Auto-send routine stay questions",
+                channel="any",
+                priority=10,
+                confidence_threshold=0.88,
+                conditions_json={"msg_types": ["routine"]},
+                actions_json={"mode": "auto_send"},
+            ),
+            AutomationRule(
+                tenant_id=tenant.id,
+                name="Review complex guest requests",
+                channel="any",
+                priority=20,
+                confidence_threshold=0.45,
+                conditions_json={"msg_types": ["complex"], "allow_complex": True},
+                actions_json={"mode": "review"},
+            ),
+            AutomationRule(
+                tenant_id=tenant.id,
+                name="Escalate maintenance, safety, and complaint language",
+                channel="any",
+                priority=5,
+                confidence_threshold=0.0,
+                conditions_json={
+                    "allow_keywords": [
+                        "refund", "broken", "not working", "leak", "unsafe",
+                        "emergency", "complaint", "angry", "dirty",
+                    ]
+                },
+                actions_json={"mode": "escalate"},
+            ),
+        ])
+
+
 @app.get("/onboarding", response_class=HTMLResponse)
 def onboarding_get(request: Request, step: int = None, db: Session = Depends(get_db)):
     try:
@@ -886,17 +1225,68 @@ def onboarding_get(request: Request, step: int = None, db: Session = Depends(get
         return _redirect_login()
     tenant = _get_tenant(tenant_id, db)
     cfg    = _get_or_create_config(tenant_id, db)
+    if not cfg.inbound_email_alias:
+        _ensure_inbound_email_alias(tenant, cfg, db)
+        db.commit()
     if cfg.onboarding_complete and step is None:
         return RedirectResponse("/dashboard", status_code=302)
     current_step = step if step is not None else max(cfg.onboarding_step + 1, 1)
     current_step = max(1, min(current_step, 6))
+    reservations = db.query(Reservation).filter_by(tenant_id=tenant_id).all()
     return templates.TemplateResponse("onboarding.html", {
         "request": request,
         "tenant":  tenant,
         "cfg":     cfg,
         "step":    current_step,
         "saved":   False,
+        "inbound_email_address": _tenant_inbound_email_address(cfg),
+        "activation_checklist": build_activation_checklist(
+            cfg,
+            reservations=reservations,
+            inbound_email_address=_tenant_inbound_email_address(cfg),
+            inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
+        ),
     })
+
+
+@app.post("/onboarding/quick-start")
+def onboarding_quick_start(
+    request: Request,
+    property_names: str = Form(""),
+    property_city: str = Form(""),
+    check_in_time: str = Form(""),
+    check_out_time: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    tenant = _get_tenant(tenant_id, db)
+    cfg = _get_or_create_config(tenant_id, db)
+    _ensure_inbound_email_alias(tenant, cfg, db)
+
+    if property_names.strip():
+        cfg.property_names = property_names.strip()
+    if property_city.strip():
+        cfg.property_city = property_city.strip()
+    if check_in_time.strip():
+        cfg.check_in_time = check_in_time.strip()
+    if check_out_time.strip():
+        cfg.check_out_time = check_out_time.strip()
+
+    _ensure_effortless_defaults(tenant, cfg, db)
+    cfg.onboarding_step = max(cfg.onboarding_step, 4)
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="onboarding_quick_start",
+        message="Recommended quick-start defaults applied",
+    ))
+    db.commit()
+    return RedirectResponse("/onboarding?step=5", status_code=302)
 
 
 @app.post("/onboarding", response_class=HTMLResponse)
@@ -931,6 +1321,7 @@ async def onboarding_post(
     escalation_email:    str = Form(""),
     # Step 5 fields
     ical_urls:           str = Form(""),
+    email_ingest_mode:   str = Form("imap"),
     imap_host:           str = Form(""),
     smtp_host:           str = Form(""),
     email_address:       str = Form(""),
@@ -945,6 +1336,7 @@ async def onboarding_post(
 
     tenant = _get_tenant(tenant_id, db)
     cfg    = _get_or_create_config(tenant_id, db)
+    _ensure_inbound_email_alias(tenant, cfg, db)
 
     if not skip:
         if step == 1:
@@ -996,6 +1388,7 @@ async def onboarding_post(
             cfg.escalation_email    = escalation_email.strip() or cfg.escalation_email
 
         elif step == 5:
+            cfg.email_ingest_mode = email_ingest_mode.strip() or cfg.email_ingest_mode or "imap"
             cfg.ical_urls     = ical_urls.strip() or cfg.ical_urls
             cfg.imap_host     = imap_host.strip() or cfg.imap_host
             cfg.smtp_host     = smtp_host.strip() or cfg.smtp_host
@@ -1006,12 +1399,14 @@ async def onboarding_post(
                 cfg.anthropic_api_key_enc = encrypt(anthropic_key.strip())
 
     cfg.onboarding_step = step
+    _ensure_effortless_defaults(tenant, cfg, db)
     db.commit()
 
     next_step = step + 1
     if next_step > _ONBOARDING_STEPS:
         # Onboarding complete
         cfg.onboarding_complete = True
+        _ensure_effortless_defaults(tenant, cfg, db)
         db.commit()
         worker_manager.restart_worker(tenant_id)
         # Send welcome email
@@ -1021,7 +1416,14 @@ async def onboarding_post(
             log.warning("[%s] Welcome email failed: %s", tenant_id, exc)
         # Set cookie so dashboard shows one-time tour
         resp = RedirectResponse("/onboarding?step=6", status_code=302)
-        resp.set_cookie("show_tour", "1", max_age=300, httponly=True)
+        resp.set_cookie(
+            "show_tour",
+            "1",
+            max_age=300,
+            httponly=True,
+            samesite="lax",
+            secure=is_request_secure(request),
+        )
         return resp
 
     return _onboarding_redirect(next_step)
@@ -1233,22 +1635,48 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
 
     tenant  = _get_tenant(tenant_id, db)
     cfg     = _get_or_create_config(tenant_id, db)
+    if not cfg.inbound_email_alias:
+        _ensure_inbound_email_alias(tenant, cfg, db)
+        db.commit()
     vendors = db.query(Vendor).filter_by(tenant_id=tenant_id).order_by(Vendor.category, Vendor.name).all()
     pms_integrations = db.query(PMSIntegration).filter_by(
         tenant_id=tenant_id, is_active=True
     ).order_by(PMSIntegration.created_at).all()
+    automation_rules = (
+        db.query(AutomationRule)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(AutomationRule.priority.asc(), AutomationRule.created_at.asc())
+        .all()
+    )
+    team_members = (
+        db.query(TeamMember)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(TeamMember.role.asc(), TeamMember.display_name.asc())
+        .all()
+    )
+    reservations = db.query(Reservation).filter_by(tenant_id=tenant_id).all()
     return templates.TemplateResponse("settings.html", {
         "request":          request,
         "tenant":           tenant,
         "cfg":              cfg,
         "vendors":          vendors,
         "pms_integrations": pms_integrations,
+        "automation_rules": automation_rules,
+        "team_members":     team_members,
         "saved":            False,
         "plan_info": PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, PLAN_INFO[PLAN_FREE]),
         "has_baileys":    tenant_has_channel(cfg, PLAN_BAILEYS),
         "has_meta_cloud": tenant_has_channel(cfg, PLAN_META_CLOUD),
         "has_sms":        tenant_has_channel(cfg, PLAN_SMS),
         "app_base_url":   APP_BASE_URL,
+        "inbound_email_address": _tenant_inbound_email_address(cfg),
+        "inbound_webhook_url": f"{APP_BASE_URL}/email/inbound",
+        "activation_checklist": build_activation_checklist(
+            cfg,
+            reservations=reservations,
+            inbound_email_address=_tenant_inbound_email_address(cfg),
+            inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
+        ),
     })
 
 
@@ -1257,6 +1685,7 @@ async def settings_save(
     request:        Request,
     property_names:        str = Form(""),
     ical_urls:             str = Form(""),
+    email_ingest_mode:     str = Form("imap"),
     imap_host:             str = Form(""),
     smtp_host:             str = Form(""),
     email_address:         str = Form(""),
@@ -1286,10 +1715,13 @@ async def settings_save(
     rate_limit(f"settings:{tenant_id}", max_requests=30, window_seconds=3600)
 
     cfg = _get_or_create_config(tenant_id, db)
+    tenant = _get_tenant(tenant_id, db)
+    _ensure_inbound_email_alias(tenant, cfg, db)
 
     # Core settings
     cfg.property_names = property_names.strip()
     cfg.ical_urls      = ical_urls.strip()
+    cfg.email_ingest_mode = email_ingest_mode.strip() or cfg.email_ingest_mode or "imap"
     cfg.imap_host      = imap_host.strip() or None
     cfg.smtp_host      = smtp_host.strip() or None
     cfg.email_address  = email_address.strip() or None
@@ -1334,24 +1766,153 @@ async def settings_save(
     db.commit()
     worker_manager.restart_worker(tenant_id)
 
-    tenant  = _get_tenant(tenant_id, db)
     vendors = db.query(Vendor).filter_by(tenant_id=tenant_id).order_by(Vendor.category, Vendor.name).all()
     pms_integrations = db.query(PMSIntegration).filter_by(
         tenant_id=tenant_id, is_active=True
     ).order_by(PMSIntegration.created_at).all()
+    automation_rules = (
+        db.query(AutomationRule)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(AutomationRule.priority.asc(), AutomationRule.created_at.asc())
+        .all()
+    )
+    team_members = (
+        db.query(TeamMember)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(TeamMember.role.asc(), TeamMember.display_name.asc())
+        .all()
+    )
+    reservations = db.query(Reservation).filter_by(tenant_id=tenant_id).all()
     return templates.TemplateResponse("settings.html", {
         "request":          request,
         "tenant":           tenant,
         "cfg":              cfg,
         "vendors":          vendors,
         "pms_integrations": pms_integrations,
+        "automation_rules": automation_rules,
+        "team_members":     team_members,
         "saved":            True,
         "plan_info": PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, PLAN_INFO[PLAN_FREE]),
         "has_baileys":    tenant_has_channel(cfg, PLAN_BAILEYS),
         "has_meta_cloud": tenant_has_channel(cfg, PLAN_META_CLOUD),
         "has_sms":        tenant_has_channel(cfg, PLAN_SMS),
         "app_base_url":   APP_BASE_URL,
+        "inbound_email_address": _tenant_inbound_email_address(cfg),
+        "inbound_webhook_url": f"{APP_BASE_URL}/email/inbound",
+        "activation_checklist": build_activation_checklist(
+            cfg,
+            reservations=reservations,
+            inbound_email_address=_tenant_inbound_email_address(cfg),
+            inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
+        ),
     })
+
+
+@app.post("/settings/automation")
+def automation_rule_add(
+    request: Request,
+    name: str = Form(...),
+    channel: str = Form("any"),
+    msg_types: list[str] = Form([]),
+    mode: str = Form("auto_send"),
+    min_confidence: str = Form("0.85"),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    rule = AutomationRule(
+        tenant_id=tenant_id,
+        name=name.strip(),
+        channel=channel.strip() or "any",
+        confidence_threshold=float(min_confidence) if min_confidence.strip() else 0.85,
+        conditions_json={"msg_types": msg_types or ["routine"]},
+        actions_json={"mode": mode.strip() or "auto_send"},
+        priority=100,
+    )
+    db.add(rule)
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="automation_rule_added",
+        message=f"Automation rule added: {rule.name}",
+    ))
+    db.commit()
+    return RedirectResponse("/settings#workflow", status_code=302)
+
+
+@app.post("/settings/automation/{rule_id}/delete")
+def automation_rule_delete(
+    rule_id: int,
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rule = db.query(AutomationRule).filter_by(id=rule_id, tenant_id=tenant_id).first()
+    if rule:
+        db.delete(rule)
+        db.commit()
+    return RedirectResponse("/settings#workflow", status_code=302)
+
+
+@app.post("/settings/team")
+def team_member_add(
+    request: Request,
+    display_name: str = Form(...),
+    role: str = Form("manager"),
+    email: str = Form(""),
+    phone: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    member = TeamMember(
+        tenant_id=tenant_id,
+        display_name=display_name.strip(),
+        role=role.strip() or "manager",
+        email=email.strip() or None,
+        phone=phone.strip() or None,
+    )
+    db.add(member)
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="team_member_added",
+        message=f"Team member added: {member.display_name} ({member.role})",
+    ))
+    db.commit()
+    return RedirectResponse("/settings#workflow", status_code=302)
+
+
+@app.post("/settings/team/{member_id}/delete")
+def team_member_delete(
+    member_id: int,
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    member = db.query(TeamMember).filter_by(id=member_id, tenant_id=tenant_id).first()
+    if member:
+        db.delete(member)
+        db.commit()
+    return RedirectResponse("/settings#workflow", status_code=302)
 
 
 @app.post("/vendors/add")
@@ -1518,6 +2079,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 @app.get("/wa/webhook/{tenant_id}")
 def wa_webhook_verify(tenant_id: str, request: Request, db: Session = Depends(get_db)):
     """Meta webhook verification handshake."""
+    rate_limit(f"wa-verify:{tenant_id}:{client_ip(request)}", max_requests=120, window_seconds=60)
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
     if not cfg:
         raise HTTPException(status_code=404)
@@ -1535,6 +2097,7 @@ def wa_webhook_verify(tenant_id: str, request: Request, db: Session = Depends(ge
 @app.post("/wa/webhook/{tenant_id}")
 async def wa_webhook_inbound(tenant_id: str, request: Request, db: Session = Depends(get_db)):
     """Receive inbound messages from Meta Cloud API."""
+    rate_limit(f"wa-inbound:{tenant_id}:{client_ip(request)}", max_requests=300, window_seconds=60)
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
     if not cfg:
         return JSONResponse({"status": "ok"})   # always 200 to Meta
@@ -1562,6 +2125,7 @@ async def wa_webhook_inbound(tenant_id: str, request: Request, db: Session = Dep
 @app.post("/sms/webhook/{tenant_id}")
 async def sms_webhook_inbound(tenant_id: str, request: Request, db: Session = Depends(get_db)):
     """Receive inbound SMS from Twilio."""
+    rate_limit(f"sms-inbound:{tenant_id}:{client_ip(request)}", max_requests=200, window_seconds=60)
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
     if not cfg:
         return HTMLResponse("<Response/>")
@@ -1581,6 +2145,80 @@ async def sms_webhook_inbound(tenant_id: str, request: Request, db: Session = De
         _handle_inbound_sms(tenant_id, msg["from"], msg["text"], db)
 
     return HTMLResponse("<Response/>")   # TwiML empty response
+
+
+@app.post("/email/inbound")
+async def inbound_email_webhook(request: Request, db: Session = Depends(get_db)):
+    """
+    Generic inbound email webhook for forwarding + parse providers.
+    Expected fields are flexible enough for Mailgun/Postmark/SendGrid style payloads.
+    """
+    content_type = request.headers.get("content-type", "").lower()
+    rate_limit(f"inbound-email:{client_ip(request)}", max_requests=120, window_seconds=60)
+    raw_body = await request.body()
+    if "application/json" in content_type:
+        try:
+            payload = json.loads(raw_body.decode("utf-8") or "{}")
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON payload")
+    else:
+        payload = dict(await request.form())
+    if not _verify_inbound_email_webhook(request, payload, raw_body):
+        raise HTTPException(status_code=403, detail="Invalid inbound email webhook authentication")
+
+    recipient = _payload_value(
+        payload,
+        "recipient",
+        "to",
+        "To",
+        "envelope[to]",
+        "original_recipient",
+    )
+    alias = _extract_recipient_alias(recipient)
+    if not alias:
+        raise HTTPException(status_code=400, detail="Recipient address missing")
+
+    cfg = db.query(TenantConfig).filter_by(inbound_email_alias=alias).first()
+    if not cfg:
+        raise HTTPException(status_code=404, detail="Inbound email route not found")
+
+    subject = _payload_value(payload, "subject", "Subject")
+    sender = _payload_value(payload, "sender", "from", "From") or _payload_header(payload, "From")
+    reply_to = (
+        _payload_value(payload, "reply_to", "Reply-To", "reply-to")
+        or _payload_header(payload, "Reply-To", "reply-to")
+        or sender
+    )
+    text_body = _payload_value(payload, "stripped-text", "body-plain", "text", "body_plain", "body")
+    html_body = _payload_value(payload, "stripped-html", "body-html", "html", "body_html")
+    message_id = (
+        _payload_value(payload, "Message-Id", "message-id", "message_id", "Message-ID")
+        or _payload_header(payload, "Message-Id", "Message-ID")
+    )
+    dedupe_key = message_id.strip() or hashlib.sha256(
+        f"{recipient}|{sender}|{subject}|{text_body[:500]}".encode()
+    ).hexdigest()
+    email_uid = f"inbound:{dedupe_key}"
+    if db.query(ProcessedEmail).filter_by(tenant_id=cfg.tenant_id, email_uid=email_uid).first():
+        return JSONResponse({"status": "duplicate"})
+
+    from web.email_worker import parse_structured_email, process_parsed_email
+
+    parsed = parse_structured_email(subject, sender, reply_to, text_body, html_body)
+    if not parsed:
+        return JSONResponse({"status": "ignored"})
+    if not process_parsed_email(cfg.tenant_id, parsed, subject or "Forwarded Airbnb message"):
+        raise HTTPException(status_code=422, detail="Tenant email processing is not ready")
+
+    cfg.last_inbound_email_at = datetime.now(timezone.utc)
+    db.add(ProcessedEmail(tenant_id=cfg.tenant_id, email_uid=email_uid))
+    db.add(ActivityLog(
+        tenant_id=cfg.tenant_id,
+        event_type="email_forward_received",
+        message=f"Forwarded inbound email received for {recipient}",
+    ))
+    db.commit()
+    return JSONResponse({"status": "ok", "tenant_id": cfg.tenant_id})
 
 
 # ---------------------------------------------------------------------------
@@ -1611,22 +2249,47 @@ def _handle_inbound_wa(tenant_id: str, from_phone: str, text: str, db: Session):
                 + _reservation_context_text(reservation)
                 + "\n</reservation>"
             ).strip()
+            memory_context = _timeline_memory_context(tenant_id, reservation, db)
+            if memory_context:
+                property_context = (
+                    property_context
+                    + "\n\n<recent_guest_history>\n"
+                    + memory_context
+                    + "\n</recent_guest_history>"
+                ).strip()
         draft_text = generate_draft(api_key, guest_name, text, msg_type, property_context=property_context)
         draft_id = secrets.token_hex(8)
-        db.add(Draft(
+        draft = Draft(
             id=draft_id,
             tenant_id=tenant_id,
             source="whatsapp",
+            reservation_id=reservation.id if reservation else None,
             guest_name=guest_name,
             message=text,
             reply_to=from_phone,
             msg_type=msg_type,
             vendor_type=vendor_type,
             draft=draft_text,
-        ))
+        )
+        db.add(draft)
+        if reservation:
+            reservation.last_guest_message_at = datetime.now(timezone.utc)
+        _record_timeline_event(
+            db,
+            tenant_id,
+            reservation,
+            "guest_message_received",
+            f"WhatsApp message from {guest_name}",
+            channel="whatsapp",
+            direction="inbound",
+            body=text,
+            draft=draft,
+            payload_json={"from_phone": from_phone},
+        )
         db.add(ActivityLog(tenant_id=tenant_id, event_type="whatsapp_received",
                            message=f"WhatsApp from {from_phone}: {text[:80]}"))
         db.commit()
+        _apply_automation_if_matched(db, tenant_id, draft, reservation)
     except Exception as exc:
         log.error("[%s] WA inbound handler error: %s", tenant_id, exc)
 
@@ -1655,22 +2318,47 @@ def _handle_inbound_sms(tenant_id: str, from_phone: str, text: str, db: Session)
                 + _reservation_context_text(reservation)
                 + "\n</reservation>"
             ).strip()
+            memory_context = _timeline_memory_context(tenant_id, reservation, db)
+            if memory_context:
+                property_context = (
+                    property_context
+                    + "\n\n<recent_guest_history>\n"
+                    + memory_context
+                    + "\n</recent_guest_history>"
+                ).strip()
         draft_text = generate_draft(api_key, guest_name, text, msg_type, property_context=property_context)
         draft_id = secrets.token_hex(8)
-        db.add(Draft(
+        draft = Draft(
             id=draft_id,
             tenant_id=tenant_id,
             source="sms",
+            reservation_id=reservation.id if reservation else None,
             guest_name=guest_name,
             message=text,
             reply_to=from_phone,
             msg_type=msg_type,
             vendor_type=vendor_type,
             draft=draft_text,
-        ))
+        )
+        db.add(draft)
+        if reservation:
+            reservation.last_guest_message_at = datetime.now(timezone.utc)
+        _record_timeline_event(
+            db,
+            tenant_id,
+            reservation,
+            "guest_message_received",
+            f"SMS from {guest_name}",
+            channel="sms",
+            direction="inbound",
+            body=text,
+            draft=draft,
+            payload_json={"from_phone": from_phone},
+        )
         db.add(ActivityLog(tenant_id=tenant_id, event_type="sms_received",
                            message=f"SMS from {from_phone}: {text[:80]}"))
         db.commit()
+        _apply_automation_if_matched(db, tenant_id, draft, reservation)
     except Exception as exc:
         log.error("[%s] SMS inbound handler error: %s", tenant_id, exc)
 
@@ -1928,7 +2616,17 @@ _CSV_ALIASES = {
     "guest_name":        ["guest name", "guest_name", "guest"],
     "guest_phone":       ["guest phone", "guest_phone", "phone", "phone number", "guest phone number"],
     "listing_name":      ["listing", "listing name", "listing_name", "property"],
-    "unit_identifier":   ["unit", "unit identifier", "unit number", "room", "room number", "property no", "property number"],
+    "unit_identifier":   [
+        "unit",
+        "unit identifier",
+        "unit number",
+        "unit / room",
+        "room",
+        "room number",
+        "room / unit",
+        "property no",
+        "property number",
+    ],
     "checkin":           ["start date", "start_date", "check-in", "check_in", "checkin", "arrival"],
     "checkout":          ["end date", "end_date", "check-out", "check_out", "checkout", "departure"],
     "nights":            ["nights", "# nights", "number of nights", "duration"],
@@ -2044,6 +2742,279 @@ def _find_reservation_for_guest_context(
     return None
 
 
+def _draft_channel(draft: Draft) -> str:
+    source = (draft.source or "").lower()
+    if source in {"whatsapp", "wa"}:
+        return "whatsapp"
+    if source == "sms":
+        return "sms"
+    if source == "email":
+        return "email"
+    if source == "pms":
+        return "pms"
+    return source or "system"
+
+
+def _recent_timeline_events(tenant_id: str, reservation: Optional[Reservation], db: Session, limit: int = 10) -> list[GuestTimelineEvent]:
+    if not reservation:
+        return []
+    return (
+        db.query(GuestTimelineEvent)
+        .filter(
+            GuestTimelineEvent.tenant_id == tenant_id,
+            GuestTimelineEvent.reservation_id == reservation.id,
+        )
+        .order_by(GuestTimelineEvent.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def _timeline_memory_context(tenant_id: str, reservation: Optional[Reservation], db: Session) -> str:
+    events = _recent_timeline_events(tenant_id, reservation, db)
+    return build_conversation_memory(reversed(events), limit=8)
+
+
+def _record_timeline_event(
+    db: Session,
+    tenant_id: str,
+    reservation: Optional[Reservation],
+    event_type: str,
+    summary: str,
+    *,
+    channel: str = "system",
+    direction: str = "internal",
+    body: str = "",
+    draft: Optional[Draft] = None,
+    issue: Optional[IssueTicket] = None,
+    automation_rule: Optional[AutomationRule] = None,
+    payload_json: Optional[dict] = None,
+) -> GuestTimelineEvent:
+    event = GuestTimelineEvent(
+        tenant_id=tenant_id,
+        reservation_id=reservation.id if reservation else None,
+        draft_id=draft.id if draft else None,
+        issue_ticket_id=issue.id if issue else None,
+        automation_rule_id=automation_rule.id if automation_rule else None,
+        guest_name=reservation.guest_name if reservation else (draft.guest_name if draft else None),
+        guest_phone=reservation.guest_phone if reservation else None,
+        property_name=reservation.listing_name if reservation else None,
+        unit_identifier=reservation.unit_identifier if reservation else None,
+        channel=channel,
+        direction=direction,
+        event_type=event_type,
+        summary=summary,
+        body=body or None,
+        payload_json=payload_json or {},
+    )
+    db.add(event)
+    return event
+
+
+def _matching_automation_rule(
+    tenant_id: str,
+    db: Session,
+    draft: Draft,
+    reservation: Optional[Reservation],
+) -> Optional[AutomationRule]:
+    rules = (
+        db.query(AutomationRule)
+        .filter_by(tenant_id=tenant_id, is_active=True)
+        .order_by(AutomationRule.priority.asc(), AutomationRule.created_at.asc())
+        .all()
+    )
+    draft_view = {
+        "status": draft.status,
+        "source": _draft_channel(draft),
+        "channel": _draft_channel(draft),
+        "msg_type": draft.msg_type,
+        "message": draft.message,
+        "draft": draft.draft,
+        "listing_name": reservation.listing_name if reservation else "",
+        "property_name": reservation.listing_name if reservation else "",
+        "unit_identifier": reservation.unit_identifier if reservation else "",
+        "needs_escalation": draft.msg_type == "escalation",
+        "confidence": 0.95 if draft.msg_type == "routine" else 0.45,
+        "reply_to": draft.reply_to or "",
+    }
+    for rule in rules:
+        conditions = rule.conditions_json or {}
+        action_mode = (rule.actions_json or {}).get("mode", "auto_send")
+        decision = automation_rule_decision(
+            {
+                "enabled": rule.is_active,
+                "status": "active" if rule.is_active else "disabled",
+                "channels": conditions.get("channels") or ([rule.channel] if rule.channel != "any" else []),
+                "msg_types": conditions.get("msg_types") or [],
+                "min_confidence": rule.confidence_threshold,
+                "properties": conditions.get("properties") or [],
+                "allow_complex": conditions.get("allow_complex", False),
+                "block_keywords": conditions.get("block_keywords") or [],
+                "allow_keywords": conditions.get("allow_keywords") or [],
+                "requires_approval": False if action_mode in {"review", "escalate"} else action_mode == "review",
+            },
+            draft_view,
+        )
+        if decision["should_send"] or decision["reason"] == "rule matched":
+            return rule
+    return None
+
+
+def _apply_automation_if_matched(
+    db: Session,
+    tenant_id: str,
+    draft: Draft,
+    reservation: Optional[Reservation],
+) -> None:
+    rule = _matching_automation_rule(tenant_id, db, draft, reservation)
+    if not rule:
+        return
+    draft.automation_rule_id = rule.id
+    action_mode = (rule.actions_json or {}).get("mode", "auto_send")
+    if action_mode == "auto_send":
+        rule.last_triggered_at = datetime.now(timezone.utc)
+        _record_timeline_event(
+            db,
+            tenant_id,
+            reservation,
+            "automation_rule_matched",
+            f"Automation rule matched: {rule.name}",
+            channel=_draft_channel(draft),
+            draft=draft,
+            automation_rule=rule,
+            payload_json={"action": action_mode},
+        )
+        _execute_draft(draft, draft.draft, tenant_id, db, reservation=reservation, automation_rule=rule)
+    elif action_mode == "review":
+        rule.last_triggered_at = datetime.now(timezone.utc)
+        _record_timeline_event(
+            db,
+            tenant_id,
+            reservation,
+            "automation_rule_matched",
+            f"Automation review rule matched: {rule.name}",
+            channel=_draft_channel(draft),
+            draft=draft,
+            automation_rule=rule,
+            payload_json={"action": action_mode},
+        )
+        db.add(ActivityLog(
+            tenant_id=tenant_id,
+            event_type="automation_rule_review",
+            message=f"Automation review rule matched for {draft.guest_name}: {rule.name}",
+        ))
+        db.commit()
+    elif action_mode == "escalate":
+        draft.status = "escalation"
+        issue = IssueTicket(
+            tenant_id=tenant_id,
+            reservation_id=reservation.id if reservation else None,
+            property_name=reservation.listing_name if reservation else None,
+            unit_identifier=reservation.unit_identifier if reservation else None,
+            guest_name=draft.guest_name,
+            guest_phone=reservation.guest_phone if reservation else None,
+            category="guest_issue",
+            priority="high",
+            status="open",
+            title=f"Escalated guest issue: {draft.guest_name}",
+            description=draft.message[:500],
+            payload_json={"source": "automation", "rule_id": rule.id},
+        )
+        db.add(issue)
+        db.flush()
+        _record_timeline_event(
+            db,
+            tenant_id,
+            reservation,
+            "issue_opened",
+            issue.title,
+            channel=_draft_channel(draft),
+            draft=draft,
+            issue=issue,
+            automation_rule=rule,
+            body=draft.message,
+            payload_json={"action": action_mode},
+        )
+        rule.last_triggered_at = datetime.now(timezone.utc)
+        db.add(ActivityLog(
+            tenant_id=tenant_id,
+            event_type="automation_rule_escalation",
+            message=f"Automation escalated issue for {draft.guest_name}: {rule.name}",
+        ))
+        db.commit()
+
+
+def _upsert_tenant_kpi_snapshot(
+    db: Session,
+    tenant_id: str,
+    kpis: dict,
+    open_issues: list[IssueTicket],
+    now: datetime,
+) -> None:
+    period_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    period_end = period_start + timedelta(days=1)
+    snapshot = (
+        db.query(TenantKpiSnapshot)
+        .filter_by(
+            tenant_id=tenant_id,
+            property_name=None,
+            period_start=period_start,
+            period_end=period_end,
+        )
+        .first()
+    )
+    if not snapshot:
+        snapshot = TenantKpiSnapshot(
+            tenant_id=tenant_id,
+            property_name=None,
+            period_start=period_start,
+            period_end=period_end,
+        )
+
+    draft_kpis = kpis.get("drafts", {})
+    reservation_kpis = kpis.get("reservations", {})
+    approvals = int(draft_kpis.get("approved", 0) or 0)
+    auto_sent = 0
+    for issue in open_issues:
+        if (issue.payload_json or {}).get("source") == "automation":
+            auto_sent += 1
+
+    snapshot.messages_total = int(draft_kpis.get("total", 0) or 0)
+    snapshot.drafts_total = int(draft_kpis.get("total", 0) or 0)
+    snapshot.auto_sent_total = auto_sent
+    snapshot.approvals_total = approvals
+    snapshot.escalations_total = int(draft_kpis.get("escalations", 0) or 0)
+    snapshot.open_issues_total = len([issue for issue in open_issues if issue.status != "resolved"])
+    snapshot.resolved_issues_total = len([issue for issue in open_issues if issue.status == "resolved"])
+    snapshot.automation_rate_pct = float(kpis.get("ops", {}).get("automation_ready_ratio", 0.0) or 0.0)
+    snapshot.edit_rate_pct = max(0.0, round(100.0 - float(draft_kpis.get("approval_rate", 0.0) or 0.0), 1))
+    snapshot.saved_hours = round((approvals + auto_sent) * 0.08, 2)
+    snapshot.payload_json = {
+        "drafts": draft_kpis,
+        "reservations": reservation_kpis,
+        "captured_at": now.isoformat(),
+    }
+    db.add(snapshot)
+    db.commit()
+
+
+def _issue_role_queue(issue: IssueTicket, team_members: list[TeamMember]) -> str:
+    member_by_id = {member.id: member for member in team_members}
+    assignee = member_by_id.get(issue.assigned_to_member_id)
+    if assignee and assignee.role:
+        return assignee.role
+    category = (issue.category or "").lower()
+    if category in {"maintenance", "cleaning"}:
+        return "maintenance" if category == "maintenance" else "cleaner"
+    if category in {"billing", "complaint", "refund"}:
+        return "owner"
+    return "front_desk"
+
+
+def _issue_priority_rank(issue: IssueTicket) -> int:
+    return {"urgent": 0, "high": 1, "medium": 2, "low": 3}.get((issue.priority or "medium").lower(), 4)
+
+
 def _parse_date(val: str) -> Optional[date_type]:
     val = val.strip()
     for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%b %d, %Y", "%d-%b-%Y"):
@@ -2078,8 +3049,30 @@ def reservations_page(request: Request,
                 .filter_by(tenant_id=tenant_id)
                 .order_by(Reservation.checkin.desc())
                 .offset(offset).limit(per_page).all())
+    row_ids = [row.id for row in rows]
+    issue_counts: dict[int, int] = {}
+    if row_ids:
+        for ticket in db.query(IssueTicket).filter(
+            IssueTicket.tenant_id == tenant_id,
+            IssueTicket.reservation_id.in_(row_ids),
+            IssueTicket.status != "resolved",
+        ).all():
+            issue_counts[ticket.reservation_id] = issue_counts.get(ticket.reservation_id, 0) + 1
 
     sync_log = db.query(ReservationSyncLog).filter_by(tenant_id=tenant_id).first()
+    recent_batches = (
+        db.query(ReservationIntakeBatch)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(ReservationIntakeBatch.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    team_members = (
+        db.query(TeamMember)
+        .filter_by(tenant_id=tenant_id, is_active=True)
+        .order_by(TeamMember.role.asc(), TeamMember.display_name.asc())
+        .all()
+    )
     csv_stale = False
     if sync_log and sync_log.last_synced:
         last_synced = sync_log.last_synced
@@ -2104,6 +3097,14 @@ def reservations_page(request: Request,
         Reservation.status == "confirmed",
         Reservation.checkin >= today,
     ).count()
+    activation_count = (
+        db.query(ArrivalActivation)
+        .filter(
+            ArrivalActivation.tenant_id == tenant_id,
+            ArrivalActivation.status.in_(["active", "pending"]),
+        )
+        .count()
+    )
 
     return templates.TemplateResponse("reservations.html", {
         "request":       request,
@@ -2118,6 +3119,10 @@ def reservations_page(request: Request,
         "month_revenue": month_revenue,
         "occupancy_pct": occupancy_pct,
         "upcoming":      upcoming,
+        "activation_count": activation_count,
+        "team_members": team_members,
+        "recent_batches": recent_batches,
+        "issue_counts": issue_counts,
         "today":         today,
     })
 
@@ -2154,6 +3159,14 @@ async def reservations_upload(
     headers = reader.fieldnames or []
     imported = 0
     skipped  = 0
+    batch = ReservationIntakeBatch(
+        tenant_id=tenant_id,
+        source_kind="csv",
+        source_name=csv_file.filename,
+        status="processing",
+    )
+    db.add(batch)
+    db.flush()
 
     for row in reader:
         code_col   = _csv_col(headers, "confirmation_code")
@@ -2199,6 +3212,7 @@ async def reservations_upload(
             existing.status       = status
             existing.payout_usd   = payout   or existing.payout_usd
             existing.guests_count = guests   or existing.guests_count
+            existing.intake_batch_id = batch.id
             if guest_phone:
                 existing.guest_phone = guest_phone
             if unit_id:
@@ -2223,6 +3237,7 @@ async def reservations_upload(
                 guests_count=guests,
                 payout_usd=payout,
                 status=status,
+                intake_batch_id=batch.id,
             ))
             imported += 1
 
@@ -2233,6 +3248,11 @@ async def reservations_upload(
         sync_log.rows_imported = imported
     else:
         db.add(ReservationSyncLog(tenant_id=tenant_id, rows_imported=imported))
+    batch.status = "completed"
+    batch.rows_total = imported + skipped
+    batch.rows_imported = imported
+    batch.rows_failed = skipped
+    batch.completed_at = datetime.now(timezone.utc)
 
     db.add(ActivityLog(tenant_id=tenant_id, event_type="csv_imported",
                        message=f"Reservation CSV imported: {imported} new, {skipped} skipped"))
@@ -2270,8 +3290,324 @@ def update_reservation_context(
             f"phone={res.guest_phone or '—'}, unit={res.unit_identifier or '—'}"
         ),
     ))
+    _record_timeline_event(
+        db,
+        tenant_id,
+        res,
+        "reservation_context_updated",
+        f"Guest context mapped for {res.guest_name}",
+        body=f"phone={res.guest_phone or '—'}\nunit={res.unit_identifier or '—'}",
+    )
     db.commit()
     return RedirectResponse("/reservations?context_updated=1", status_code=302)
+
+
+@app.post("/reservations/manual", response_class=HTMLResponse)
+def reservations_manual_create(
+    request: Request,
+    guest_name: str = Form(...),
+    confirmation_code: str = Form(""),
+    listing_name: str = Form(""),
+    unit_identifier: str = Form(""),
+    guest_phone: str = Form(""),
+    checkin: str = Form(""),
+    checkout: str = Form(""),
+    guests_count: str = Form(""),
+    notes: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    batch = ReservationIntakeBatch(
+        tenant_id=tenant_id,
+        source_kind="manual",
+        source_name="manual booking",
+        status="completed",
+        rows_total=1,
+        rows_imported=1,
+        notes=notes.strip() or None,
+        completed_at=datetime.now(timezone.utc),
+    )
+    db.add(batch)
+    db.flush()
+
+    checkin_date = _parse_date(checkin) if checkin.strip() else None
+    checkout_date = _parse_date(checkout) if checkout.strip() else None
+    reservation = Reservation(
+        tenant_id=tenant_id,
+        confirmation_code=confirmation_code.strip() or f"MANUAL-{secrets.token_hex(4).upper()}",
+        guest_name=guest_name.strip(),
+        guest_phone=guest_phone.strip() or None,
+        listing_name=listing_name.strip() or None,
+        unit_identifier=unit_identifier.strip() or None,
+        checkin=checkin_date,
+        checkout=checkout_date,
+        guests_count=int(guests_count) if guests_count.strip().isdigit() else None,
+        status="confirmed",
+        intake_batch_id=batch.id,
+    )
+    db.add(reservation)
+    db.flush()
+    _record_timeline_event(
+        db,
+        tenant_id,
+        reservation,
+        "reservation_manually_created",
+        f"Manual booking added for {reservation.guest_name}",
+        body=notes.strip(),
+        payload_json={"source": "manual"},
+    )
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="manual_booking_created",
+        message=f"Manual reservation created for {reservation.guest_name}",
+    ))
+    db.commit()
+    return RedirectResponse("/reservations?imported=1", status_code=302)
+
+
+@app.post("/reservations/{reservation_id}/activate")
+def activate_reservation_chat(
+    reservation_id: int,
+    request: Request,
+    guest_phone: str = Form(""),
+    unit_identifier: str = Form(""),
+    notes: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    reservation = db.query(Reservation).filter_by(id=reservation_id, tenant_id=tenant_id).first()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if guest_phone.strip():
+        reservation.guest_phone = guest_phone.strip()
+    if unit_identifier.strip():
+        reservation.unit_identifier = unit_identifier.strip()
+
+    activation = ArrivalActivation(
+        tenant_id=tenant_id,
+        reservation_id=reservation.id,
+        property_name=reservation.listing_name,
+        unit_identifier=reservation.unit_identifier,
+        guest_name=reservation.guest_name,
+        guest_phone=reservation.guest_phone,
+        activation_source="manual",
+        status="active",
+        notes=notes.strip() or None,
+        activated_at=datetime.now(timezone.utc),
+        payload_json={
+            "checkin": reservation.checkin.isoformat() if reservation.checkin else "",
+            "checkout": reservation.checkout.isoformat() if reservation.checkout else "",
+        },
+    )
+    db.add(activation)
+    db.flush()
+    _record_timeline_event(
+        db,
+        tenant_id,
+        reservation,
+        "arrival_activation",
+        f"Arrival activated for {reservation.guest_name}",
+        body=notes.strip(),
+        payload_json={"activation_id": activation.id},
+    )
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="arrival_activation",
+        message=f"Guest chat activated for {reservation.guest_name} ({reservation.confirmation_code})",
+    ))
+    db.commit()
+    return RedirectResponse("/reservations?context_updated=1", status_code=302)
+
+
+@app.get("/reservations/{reservation_id}/timeline", response_class=HTMLResponse)
+def reservation_timeline(
+    reservation_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    tenant = _get_tenant(tenant_id, db)
+    reservation = db.query(Reservation).filter_by(id=reservation_id, tenant_id=tenant_id).first()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    events = (
+        db.query(GuestTimelineEvent)
+        .filter_by(tenant_id=tenant_id, reservation_id=reservation.id)
+        .order_by(GuestTimelineEvent.created_at.asc())
+        .all()
+    )
+    issues = (
+        db.query(IssueTicket)
+        .filter_by(tenant_id=tenant_id, reservation_id=reservation.id)
+        .order_by(IssueTicket.created_at.desc())
+        .all()
+    )
+    team_members = (
+        db.query(TeamMember)
+        .filter_by(tenant_id=tenant_id, is_active=True)
+        .order_by(TeamMember.role.asc(), TeamMember.display_name.asc())
+        .all()
+    )
+    vendors = (
+        db.query(Vendor)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(Vendor.category.asc(), Vendor.name.asc())
+        .all()
+    )
+    return templates.TemplateResponse(
+        "guest_timeline.html",
+        {
+            "request": request,
+            "tenant": tenant,
+            "reservation": reservation,
+            "timeline_events": build_guest_timeline(events, limit=100),
+            "open_issues": [issue for issue in issues if issue.status != "resolved"],
+            "conversation_memory": build_conversation_memory(events, limit=10),
+            "team_members": team_members,
+            "vendors": vendors,
+        },
+    )
+
+
+@app.post("/reservations/{reservation_id}/issues")
+def create_issue_ticket(
+    reservation_id: int,
+    request: Request,
+    title: str = Form(...),
+    category: str = Form("general"),
+    priority: str = Form("medium"),
+    description: str = Form(""),
+    assigned_to_member_id: str = Form(""),
+    vendor_id: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    reservation = db.query(Reservation).filter_by(id=reservation_id, tenant_id=tenant_id).first()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    issue = IssueTicket(
+        tenant_id=tenant_id,
+        reservation_id=reservation.id,
+        property_name=reservation.listing_name,
+        unit_identifier=reservation.unit_identifier,
+        guest_name=reservation.guest_name,
+        guest_phone=reservation.guest_phone,
+        category=category.strip() or "general",
+        priority=priority.strip() or "medium",
+        status="open",
+        title=title.strip(),
+        description=description.strip() or None,
+        assigned_to_member_id=int(assigned_to_member_id) if assigned_to_member_id.strip().isdigit() else None,
+        vendor_id=int(vendor_id) if vendor_id.strip().isdigit() else None,
+    )
+    db.add(issue)
+    db.flush()
+    _record_timeline_event(
+        db,
+        tenant_id,
+        reservation,
+        "issue_opened",
+        issue.title,
+        body=issue.description or "",
+        issue=issue,
+        payload_json={"priority": issue.priority, "category": issue.category},
+    )
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="issue_opened",
+        message=f"Issue opened for {reservation.guest_name}: {issue.title}",
+    ))
+    db.commit()
+    return RedirectResponse(f"/reservations/{reservation.id}/timeline", status_code=302)
+
+
+@app.post("/issues/{issue_id}/update")
+def update_issue_ticket(
+    issue_id: int,
+    request: Request,
+    status: str = Form("open"),
+    assigned_to_member_id: str = Form(""),
+    vendor_id: str = Form(""),
+    resolution_notes: str = Form(""),
+    next_path: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    issue = db.query(IssueTicket).filter_by(id=issue_id, tenant_id=tenant_id).first()
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    issue.status = status.strip() or issue.status
+    issue.assigned_to_member_id = int(assigned_to_member_id) if assigned_to_member_id.strip().isdigit() else None
+    issue.vendor_id = int(vendor_id) if vendor_id.strip().isdigit() else None
+    issue.resolution_notes = resolution_notes.strip() or issue.resolution_notes
+    if issue.status == "resolved":
+        issue.resolved_at = datetime.now(timezone.utc)
+    elif issue.status in {"open", "triage", "assigned", "vendor_dispatched"}:
+        issue.resolved_at = None
+
+    reservation = None
+    if issue.reservation_id:
+        reservation = db.query(Reservation).filter_by(id=issue.reservation_id, tenant_id=tenant_id).first()
+
+    assignee_name = issue.assigned_to_member.display_name if issue.assigned_to_member else "Unassigned"
+    vendor_name = issue.vendor.name if issue.vendor else "No vendor"
+    summary = f"Issue updated: {issue.title}"
+    body = f"Status={issue.status}; assignee={assignee_name}; vendor={vendor_name}"
+    if issue.resolution_notes:
+        body = f"{body}; notes={issue.resolution_notes}"
+    _record_timeline_event(
+        db,
+        tenant_id,
+        reservation,
+        "issue_updated",
+        summary,
+        body=body,
+        issue=issue,
+        payload_json={"status": issue.status},
+    )
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="issue_updated",
+        message=f"Issue updated: {issue.title} ({issue.status})",
+    ))
+    db.commit()
+
+    destination = next_path.strip()
+    if not destination.startswith("/"):
+        destination = f"/reservations/{issue.reservation_id}/timeline" if issue.reservation_id else "/activity"
+    return RedirectResponse(destination, status_code=302)
 
 
 # ---------------------------------------------------------------------------
@@ -2290,7 +3626,364 @@ def activity_log(request: Request,
     tenant = _get_tenant(tenant_id, db)
     logs   = (rdb.query(ActivityLog).filter_by(tenant_id=tenant_id)  # read replica
               .order_by(ActivityLog.created_at.desc()).limit(200).all())
-    return templates.TemplateResponse("activity.html", {"request": request, "tenant": tenant, "logs": logs})
+    timeline_events = (
+        rdb.query(GuestTimelineEvent)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(GuestTimelineEvent.created_at.desc())
+        .limit(60)
+        .all()
+    )
+    reservations = rdb.query(Reservation).filter_by(tenant_id=tenant_id).all()
+    drafts = rdb.query(Draft).filter_by(tenant_id=tenant_id).order_by(Draft.created_at.desc()).limit(60).all()
+    open_issues = (
+        db.query(IssueTicket)
+        .filter(IssueTicket.tenant_id == tenant_id, IssueTicket.status != "resolved")
+        .order_by(IssueTicket.priority.desc(), IssueTicket.created_at.desc())
+        .all()
+    )
+    team_members = (
+        db.query(TeamMember)
+        .filter_by(tenant_id=tenant_id, is_active=True)
+        .order_by(TeamMember.role.asc(), TeamMember.display_name.asc())
+        .all()
+    )
+    vendors = (
+        db.query(Vendor)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(Vendor.category.asc(), Vendor.name.asc())
+        .all()
+    )
+    activations = (
+        db.query(ArrivalActivation)
+        .filter(ArrivalActivation.tenant_id == tenant_id, ArrivalActivation.status.in_(["pending", "active"]))
+        .order_by(ArrivalActivation.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    exceptions = surface_exception_queue(drafts, reservations, now=datetime.now(timezone.utc), stale_minutes=60, limit=12)
+    return templates.TemplateResponse(
+        "activity.html",
+        {
+            "request": request,
+            "tenant": tenant,
+            "logs": logs,
+            "timeline_events": build_guest_timeline(reversed(timeline_events), limit=60),
+            "exceptions": exceptions,
+            "open_issues": open_issues,
+            "team_members": team_members,
+            "vendors": vendors,
+            "activations": activations,
+        },
+    )
+
+
+@app.get("/workflow", response_class=HTMLResponse)
+def workflow_center(request: Request,
+                    db: Session = Depends(get_db),
+                    rdb: Session = Depends(get_read_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    tenant = _get_tenant(tenant_id, db)
+    cfg = _get_or_create_config(tenant_id, db)
+    now = datetime.now(timezone.utc)
+    drafts = (
+        rdb.query(Draft)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(Draft.created_at.desc())
+        .limit(80)
+        .all()
+    )
+    reservations = rdb.query(Reservation).filter_by(tenant_id=tenant_id).all()
+    rules = (
+        rdb.query(AutomationRule)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(AutomationRule.priority.asc(), AutomationRule.created_at.asc())
+        .all()
+    )
+    issues = (
+        rdb.query(IssueTicket)
+        .filter(IssueTicket.tenant_id == tenant_id, IssueTicket.status != "resolved")
+        .order_by(IssueTicket.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    batches = (
+        rdb.query(ReservationIntakeBatch)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(ReservationIntakeBatch.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    timeline_events = (
+        rdb.query(GuestTimelineEvent)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(GuestTimelineEvent.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    kpis = derive_dashboard_kpis(drafts, reservations, now=now)
+    checklist = build_activation_checklist(
+        cfg,
+        reservations=reservations,
+        inbound_email_address=_tenant_inbound_email_address(cfg),
+        inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
+    )
+    exceptions = surface_exception_queue(drafts, reservations, now=now, stale_minutes=60, limit=12)
+    return templates.TemplateResponse(
+        "workflow_center.html",
+        {
+            "request": request,
+            "tenant": tenant,
+            "cfg": cfg,
+            "kpis": kpis,
+            "automation_rules": rules,
+            "open_issues": issues,
+            "recent_batches": batches,
+            "timeline_events": build_guest_timeline(reversed(timeline_events), limit=20),
+            "activation_checklist": checklist,
+            "exception_queue": exceptions,
+        },
+    )
+
+
+@app.get("/ops", response_class=HTMLResponse)
+def ops_queue(request: Request,
+              role: str = "",
+              db: Session = Depends(get_db),
+              rdb: Session = Depends(get_read_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    tenant = _get_tenant(tenant_id, db)
+    team_members = (
+        rdb.query(TeamMember)
+        .filter_by(tenant_id=tenant_id, is_active=True)
+        .order_by(TeamMember.role.asc(), TeamMember.display_name.asc())
+        .all()
+    )
+    vendors = (
+        rdb.query(Vendor)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(Vendor.category.asc(), Vendor.name.asc())
+        .all()
+    )
+    issues = (
+        rdb.query(IssueTicket)
+        .filter(IssueTicket.tenant_id == tenant_id, IssueTicket.status != "resolved")
+        .order_by(IssueTicket.created_at.desc())
+        .all()
+    )
+    reservations = rdb.query(Reservation).filter_by(tenant_id=tenant_id).all()
+    drafts = (
+        rdb.query(Draft)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(Draft.created_at.desc())
+        .limit(80)
+        .all()
+    )
+    exceptions = surface_exception_queue(drafts, reservations, now=datetime.now(timezone.utc), stale_minutes=60, limit=20)
+    role_counts: dict[str, int] = {"all": len(issues), "unassigned": len([issue for issue in issues if not issue.assigned_to_member_id])}
+    for issue in issues:
+        queue_name = _issue_role_queue(issue, team_members)
+        role_counts[queue_name] = role_counts.get(queue_name, 0) + 1
+    selected_role = (role or "all").strip().lower()
+    filtered_issues = issues
+    if selected_role == "unassigned":
+        filtered_issues = [issue for issue in issues if not issue.assigned_to_member_id]
+    elif selected_role and selected_role != "all":
+        filtered_issues = [issue for issue in issues if _issue_role_queue(issue, team_members) == selected_role]
+    filtered_issues.sort(key=lambda issue: (_issue_priority_rank(issue), issue.created_at or datetime.now(timezone.utc)))
+    return templates.TemplateResponse(
+        "ops_queue.html",
+        {
+            "request": request,
+            "tenant": tenant,
+            "selected_role": selected_role,
+            "role_counts": role_counts,
+            "team_members": team_members,
+            "vendors": vendors,
+            "issues": filtered_issues,
+            "exceptions": exceptions,
+        },
+    )
+
+
+@app.get("/vendors/workflow", response_class=HTMLResponse)
+def vendor_workflow(request: Request,
+                    db: Session = Depends(get_db),
+                    rdb: Session = Depends(get_read_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    tenant = _get_tenant(tenant_id, db)
+    vendors = db.query(Vendor).filter_by(tenant_id=tenant_id).order_by(Vendor.category.asc(), Vendor.name.asc()).all()
+    team_members = (
+        db.query(TeamMember)
+        .filter_by(tenant_id=tenant_id, is_active=True)
+        .order_by(TeamMember.role.asc(), TeamMember.display_name.asc())
+        .all()
+    )
+    vendor_issues = (
+        rdb.query(IssueTicket)
+        .filter(
+            IssueTicket.tenant_id == tenant_id,
+            IssueTicket.category.in_(["maintenance", "cleaning", "guest_request"]),
+        )
+        .order_by(IssueTicket.created_at.desc())
+        .limit(40)
+        .all()
+    )
+    open_vendor_issues = [issue for issue in vendor_issues if issue.status != "resolved"]
+    resolved_vendor_issues = [issue for issue in vendor_issues if issue.status == "resolved"][:10]
+    return templates.TemplateResponse(
+        "vendor_workflow.html",
+        {
+            "request": request,
+            "tenant": tenant,
+            "vendors": vendors,
+            "team_members": team_members,
+            "open_vendor_issues": open_vendor_issues,
+            "resolved_vendor_issues": resolved_vendor_issues,
+        },
+    )
+
+
+@app.post("/issues/{issue_id}/assign")
+def assign_issue_ticket(
+    issue_id: int,
+    request: Request,
+    assigned_to_member_id: str = Form(""),
+    vendor_id: str = Form(""),
+    status: str = Form("assigned"),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    issue = db.query(IssueTicket).filter_by(id=issue_id, tenant_id=tenant_id).first()
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    issue.assigned_to_member_id = int(assigned_to_member_id) if assigned_to_member_id.strip().isdigit() else None
+    issue.vendor_id = int(vendor_id) if vendor_id.strip().isdigit() else None
+    issue.status = status.strip() or issue.status
+    _record_timeline_event(
+        db,
+        tenant_id,
+        issue.reservation,
+        "issue_assigned",
+        f"Issue assigned: {issue.title}",
+        issue=issue,
+        body=f"status={issue.status}",
+        payload_json={"assigned_to_member_id": issue.assigned_to_member_id, "vendor_id": issue.vendor_id},
+    )
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="issue_assigned",
+        message=f"Issue assigned: {issue.title}",
+    ))
+    db.commit()
+    return RedirectResponse(request.headers.get("referer") or "/ops", status_code=302)
+
+
+@app.post("/issues/{issue_id}/update")
+def update_issue_ticket(
+    issue_id: int,
+    request: Request,
+    assigned_to_member_id: str = Form(""),
+    vendor_id: str = Form(""),
+    status: str = Form("open"),
+    resolution_notes: str = Form(""),
+    next_path: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    issue = db.query(IssueTicket).filter_by(id=issue_id, tenant_id=tenant_id).first()
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    issue.assigned_to_member_id = int(assigned_to_member_id) if assigned_to_member_id.strip().isdigit() else None
+    issue.vendor_id = int(vendor_id) if vendor_id.strip().isdigit() else None
+    issue.status = status.strip() or issue.status
+    issue.resolution_notes = resolution_notes.strip() or issue.resolution_notes
+    if issue.status == "resolved" and not issue.resolved_at:
+        issue.resolved_at = datetime.now(timezone.utc)
+    elif issue.status != "resolved":
+        issue.resolved_at = None
+    _record_timeline_event(
+        db,
+        tenant_id,
+        issue.reservation,
+        "issue_updated",
+        f"Issue updated: {issue.title}",
+        issue=issue,
+        body=issue.resolution_notes or "",
+        payload_json={"status": issue.status, "vendor_id": issue.vendor_id, "assigned_to_member_id": issue.assigned_to_member_id},
+    )
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="issue_updated",
+        message=f"Issue updated: {issue.title}",
+    ))
+    db.commit()
+    target = next_path.strip() or request.headers.get("referer") or "/ops"
+    return RedirectResponse(target, status_code=302)
+
+
+@app.post("/issues/{issue_id}/resolve")
+def resolve_issue_ticket(
+    issue_id: int,
+    request: Request,
+    resolution_notes: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    issue = db.query(IssueTicket).filter_by(id=issue_id, tenant_id=tenant_id).first()
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    issue.status = "resolved"
+    issue.resolved_at = datetime.now(timezone.utc)
+    issue.resolution_notes = resolution_notes.strip() or issue.resolution_notes
+    _record_timeline_event(
+        db,
+        tenant_id,
+        issue.reservation,
+        "issue_resolved",
+        f"Issue resolved: {issue.title}",
+        issue=issue,
+        body=issue.resolution_notes or "",
+    )
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="issue_resolved",
+        message=f"Issue resolved: {issue.title}",
+    ))
+    db.commit()
+    return RedirectResponse(request.headers.get("referer") or "/vendors/workflow", status_code=302)
 
 
 # ---------------------------------------------------------------------------
@@ -2519,9 +4212,27 @@ def health(db: Session = Depends(get_db)):
     )
 
 
+def _require_metrics_auth(request: Request) -> None:
+    if _IS_DEV_ENV:
+        return
+    if os.getenv("METRICS_PUBLIC", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return
+    token = os.getenv("METRICS_TOKEN", "").strip()
+    if not token:
+        raise HTTPException(status_code=404, detail="Not found")
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        supplied = auth[7:].strip()
+    else:
+        supplied = request.headers.get("X-Metrics-Token", "").strip()
+    if not supplied or not secrets.compare_digest(supplied, token):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 @app.get("/metrics")
-def metrics(db: Session = Depends(get_db)):
+def metrics(request: Request, db: Session = Depends(get_db)):
     """Basic operational metrics — JSON format. Protect with your monitoring auth or firewall."""
+    _require_metrics_auth(request)
     import threading
     from web.redis_client import get_redis
 
@@ -2830,16 +4541,21 @@ def admin_reactivate(
     return RedirectResponse(f"/admin/tenants/{tid}?msg=reactivated", status_code=302)
 
 
-@app.get("/admin/tenants/{tid}/impersonate", response_class=HTMLResponse)
-def admin_impersonate(tid: str, request: Request, db: Session = Depends(get_db)):
-    _require_admin(request, db)
+@app.post("/admin/tenants/{tid}/impersonate", response_class=HTMLResponse)
+def admin_impersonate(
+    tid: str,
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    admin = _require_admin(request, db)
+    validate_csrf(request, csrf_token)
     t = db.query(Tenant).filter_by(id=tid).first()
     if not t:
         raise HTTPException(status_code=404, detail="Tenant not found")
     admin_token = request.cookies.get("session")
     new_token   = create_token(t.id, tenant_session_version(t))
-    is_secure   = (request.url.scheme == "https"
-                   or request.headers.get("X-Forwarded-Proto") == "https")
+    is_secure   = is_request_secure(request)
     cfg         = db.query(TenantConfig).filter_by(tenant_id=t.id).first()
     redirect_to = "/dashboard" if (cfg and cfg.onboarding_complete) else "/onboarding"
     resp = RedirectResponse(redirect_to, status_code=302)
@@ -2847,20 +4563,58 @@ def admin_impersonate(tid: str, request: Request, db: Session = Depends(get_db))
                     secure=is_secure, max_age=72 * 3600)
     resp.set_cookie("admin_session", admin_token, httponly=True, samesite="strict",
                     secure=is_secure, max_age=72 * 3600)
+    db.add(ActivityLog(
+        tenant_id=admin.id,
+        event_type="admin_impersonate",
+        message=f"Impersonated {t.email}",
+    ))
+    db.add(ActivityLog(
+        tenant_id=t.id,
+        event_type="admin_impersonated",
+        message=f"Admin {admin.email} impersonated this account",
+    ))
+    db.commit()
     return resp
 
 
-@app.get("/admin/unimpersonate", response_class=HTMLResponse)
-def admin_unimpersonate(request: Request):
+@app.post("/admin/unimpersonate", response_class=HTMLResponse)
+def admin_unimpersonate(
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
     admin_token = request.cookies.get("admin_session")
     if not admin_token:
         return RedirectResponse("/admin", status_code=302)
-    is_secure = (request.url.scheme == "https"
-                 or request.headers.get("X-Forwarded-Proto") == "https")
+    validate_csrf(request, csrf_token)
+    is_secure = is_request_secure(request)
     resp = RedirectResponse("/admin", status_code=302)
     resp.set_cookie("session",       admin_token, httponly=True, samesite="strict",
                     secure=is_secure, max_age=72 * 3600)
     resp.delete_cookie("admin_session")
+    admin_id = decode_token(admin_token)
+    if admin_id:
+        admin = db.query(Tenant).filter_by(id=admin_id).first()
+    else:
+        admin = None
+    try:
+        impersonated_id = get_current_tenant_id(request)
+    except HTTPException:
+        impersonated_id = None
+    if admin:
+        db.add(ActivityLog(
+            tenant_id=admin.id,
+            event_type="admin_unimpersonate",
+            message="Exited impersonation session",
+        ))
+    if impersonated_id:
+        db.add(ActivityLog(
+            tenant_id=impersonated_id,
+            event_type="admin_unimpersonated",
+            message=f"Admin {admin.email if admin else 'unknown'} ended impersonation",
+        ))
+    if admin or impersonated_id:
+        db.commit()
     return resp
 
 
@@ -3251,12 +5005,13 @@ def checkin_portal(token: str, request: Request, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @app.get("/metrics/prometheus")
-def metrics_prometheus(db: Session = Depends(get_db)):
+def metrics_prometheus(request: Request, db: Session = Depends(get_db)):
     """
     Prometheus text format metrics endpoint.
     Uses prometheus_client for proper exposition format.
     Protect this route with a firewall rule or IP allowlist in production.
     """
+    _require_metrics_auth(request)
     import threading
     from prometheus_client import CollectorRegistry, Gauge, Counter, generate_latest, CONTENT_TYPE_LATEST
 

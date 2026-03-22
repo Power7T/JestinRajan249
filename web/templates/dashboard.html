@@ -99,6 +99,281 @@
 </div>
 {% endif %}
 
+{% set ingest_mode = cfg.email_ingest_mode or 'imap' %}
+{% set has_forwarding = ingest_mode == 'forwarding' %}
+{% set has_ai = cfg.anthropic_api_key_enc %}
+
+<div id="workflow" class="card" style="padding:1.5rem;margin-bottom:1.5rem">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+    <div style="max-width:720px">
+      <h2 style="margin-bottom:0.35rem">Workflow command center</h2>
+      <p class="section-lead" style="margin-bottom:0">
+        Keep routine work out of the review queue. HostAI should activate the right stay context, route only exceptions to the host, and keep every conversation tied to a property and room.
+      </p>
+    </div>
+    <div class="chip-row" style="justify-content:flex-end">
+      <span class="chip {% if cfg.onboarding_complete %}good{% else %}warn{% endif %}">Onboarding {% if cfg.onboarding_complete %}ready{% else %}in progress{% endif %}</span>
+      <span class="chip {% if has_forwarding %}good{% else %}warn{% endif %}">Email {% if has_forwarding %}forwarding{% else %}IMAP fallback{% endif %}</span>
+      <span class="chip {% if cfg.ical_urls %}good{% else %}warn{% endif %}">Calendar {% if cfg.ical_urls %}connected{% else %}not linked{% endif %}</span>
+      <span class="chip {% if has_ai %}good{% else %}warn{% endif %}">AI context {% if has_ai %}loaded{% else %}missing key{% endif %}</span>
+      <span class="chip {% if status.email_running %}good{% else %}warn{% endif %}">Worker {% if status.email_running %}running{% else %}restart needed{% endif %}</span>
+    </div>
+  </div>
+
+  <div class="kpi-grid" style="margin-top:1rem">
+    <div class="kpi-card">
+      <div class="kpi-value">{{ drafts|length }}</div>
+      <div class="kpi-label">Drafts waiting</div>
+      <div class="kpi-note">Exceptions and high-priority replies stay here until approved.</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value">{{ upcoming_count }}</div>
+      <div class="kpi-label">Upcoming arrivals</div>
+      <div class="kpi-note">Arrival activation should be tied to booking + room context.</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value">{{ occupancy_pct }}%</div>
+      <div class="kpi-label">Occupancy this month</div>
+      <div class="kpi-note">Use this to prioritize host attention across properties.</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value">{{ "Live" if status.cal_running else "Idle" }}</div>
+      <div class="kpi-label">Timeline / calendar signal</div>
+      <div class="kpi-note">Arrival and checkout messages need current booking data.</div>
+    </div>
+  </div>
+
+  <div class="workflow-grid" style="margin-top:1rem">
+    <div class="workflow-card">
+      <h3>Automation rules</h3>
+      <p>Routine guest asks should be handled automatically. Low-confidence, refund, complaint, or maintenance messages should escalate.</p>
+      <div class="chip-row">
+        <span class="chip good">Auto-send routine</span>
+        <span class="chip warn">Review edge cases</span>
+        <span class="chip bad">Escalate issues</span>
+      </div>
+    </div>
+    <div class="workflow-card">
+      <h3>Arrival activation</h3>
+      <p>When a host maps guest phone and room number, the bot can answer with the right stay context, access instructions, and check-in timing.</p>
+      <div class="chip-row">
+        <span class="chip {% if sync_log %}good{% else %}warn{% endif %}">CSV fallback</span>
+        <span class="chip {% if cfg.ical_urls %}good{% else %}warn{% endif %}">Calendar synced</span>
+        <span class="chip good">Room mapped</span>
+      </div>
+    </div>
+    <div class="workflow-card">
+      <h3>Unified guest timeline</h3>
+      <p>Keep inbound email, WhatsApp, SMS, check-in events, approvals, and follow-ups on one timeline so the host sees the full stay.</p>
+      <div class="chip-row">
+        <span class="chip">Email</span>
+        <span class="chip">WhatsApp</span>
+        <span class="chip">SMS</span>
+        <span class="chip">Check-in</span>
+      </div>
+    </div>
+    <div class="workflow-card">
+      <h3>Exception queue</h3>
+      <p>The host should only see urgent or unresolved work: missing room mapping, failed sends, maintenance, refunds, complaints, and vendor delays.</p>
+      <div class="chip-row">
+        <span class="chip bad">Urgent</span>
+        <span class="chip warn">Needs triage</span>
+        <span class="chip good">Resolved</span>
+      </div>
+    </div>
+    <div class="workflow-card">
+      <h3>Maintenance and vendors</h3>
+      <p>Turn guest issues into vendor-ready tickets with property, room, ETA, and follow-up notes so cleaners and technicians can move fast.</p>
+      <div class="chip-row">
+        <span class="chip">Cleaner</span>
+        <span class="chip">Plumber</span>
+        <span class="chip">AC</span>
+        <span class="chip">Follow-up</span>
+      </div>
+    </div>
+    <div class="workflow-card">
+      <h3>Fallback booking intake</h3>
+      <p>Keep CSV for hosts without a PMS, support PMS sync when available, and leave room for manual booking entry as the final fallback.</p>
+      <div class="chip-row">
+        <span class="chip good">CSV</span>
+        <span class="chip good">PMS</span>
+        <span class="chip warn">Manual</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem">
+    <a class="btn btn-primary btn-sm" href="/settings">Configure workflow</a>
+    <a class="btn btn-outline btn-sm" href="/reservations">Map guest room numbers</a>
+    <a class="btn btn-outline btn-sm" href="/activity">Review events</a>
+  </div>
+</div>
+
+{% if activation_checklist %}
+<div class="card" style="margin-bottom:1rem">
+  <h2 style="margin-bottom:0.5rem">Activation checklist</h2>
+  {% for item in activation_checklist %}
+  <div class="checklist-item">
+    <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
+    <span>{{ item.label }}</span>
+    <span style="color:#6c757d;font-size:0.8rem">{{ item.detail }}</span>
+    {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if exception_queue %}
+<div class="card" style="margin-bottom:1rem">
+  <h2 style="margin-bottom:0.5rem">Exception queue</h2>
+  <div class="timeline">
+    {% for item in exception_queue %}
+    <div class="timeline-item">
+      <div class="timeline-meta">{{ item.kind|replace('_', ' ') }} · {{ item.severity }}</div>
+      <div class="timeline-title">{{ item.title }}</div>
+      <div class="timeline-text">{{ item.detail }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="workflow-grid" style="margin-bottom:1rem">
+  <div class="workflow-card">
+    <h3>Host KPIs</h3>
+    <div class="chip-row">
+      <span class="chip good">{{ kpis.ops.automation_ready_ratio }}% automation ready</span>
+      <span class="chip {% if kpis.reservations.context_completion_rate >= 60 %}good{% else %}warn{% endif %}">{{ kpis.reservations.context_completion_rate }}% stay context mapped</span>
+      <span class="chip {% if kpis.drafts.overdue_pending %}bad{% else %}good{% endif %}">{{ kpis.drafts.overdue_pending }} overdue drafts</span>
+      <span class="chip {% if open_issues|length %}warn{% else %}good{% endif %}">{{ open_issues|length }} open issues</span>
+    </div>
+    <p style="margin-top:0.75rem;color:#495057;font-size:0.84rem;line-height:1.7">
+      KPI workflow is now driven by live reservation context, review pressure, and unresolved operations instead of only the pending draft list.
+    </p>
+  </div>
+  <div class="workflow-card">
+    <h3>Automation coverage</h3>
+    {% if workflow_rules %}
+    <p style="margin-bottom:0.75rem">{{ workflow_rules|length }} automation rule{% if workflow_rules|length != 1 %}s{% endif %} configured.</p>
+    <div class="chip-row">
+      {% for rule in workflow_rules[:4] %}
+      <span class="chip {% if (rule.actions_json or {}).get('mode') == 'escalate' %}bad{% elif (rule.actions_json or {}).get('mode') == 'review' %}warn{% else %}good{% endif %}">
+        {{ rule.name }}
+      </span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:#6c757d;font-size:0.84rem">No automation rules yet. Add one for routine stay questions so the host only sees exceptions.</p>
+    {% endif %}
+  </div>
+  <div class="workflow-card">
+    <h3>Role coverage</h3>
+    {% if team_members %}
+    <p style="margin-bottom:0.75rem">{{ team_members|length }} team member{% if team_members|length != 1 %}s{% endif %} on the ops roster.</p>
+    <div class="chip-row">
+      {% for member in team_members[:5] %}
+      <span class="chip">{{ member.role|replace('_', ' ') }} · {{ member.display_name }}</span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:#6c757d;font-size:0.84rem">No team roles configured yet. Add front desk, maintenance, cleaner, and owner contacts in Settings.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if recent_timeline %}
+<div class="card" style="margin-bottom:1rem">
+  <h2 style="margin-bottom:0.5rem">Recent guest timeline</h2>
+  <div class="timeline">
+    {% for event in recent_timeline %}
+    <div class="timeline-item">
+      <div class="timeline-meta">
+        {{ event.created_at.strftime('%b %d %H:%M') if event.created_at else '' }}
+        {% if event.channel %} · {{ event.channel }}{% endif %}
+        {% if event.room %} · {{ event.room }}{% endif %}
+      </div>
+      <div class="timeline-title">{{ event.summary or event.message or 'Timeline event' }}</div>
+      <div class="timeline-text">{{ event.detail or event.status or 'Guest stay event recorded.' }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="kpi-grid" style="margin-bottom:1rem">
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.drafts.approval_rate }}%</div>
+    <div class="kpi-label">Approval rate</div>
+    <div class="kpi-note">Higher means routine work is getting through with less friction.</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.reservations.context_completion_rate }}%</div>
+    <div class="kpi-label">Stay context coverage</div>
+    <div class="kpi-note">Guest phone plus room or unit mapping across reservations.</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ active_arrivals }}</div>
+    <div class="kpi-label">Active arrivals</div>
+    <div class="kpi-note">Stays with bot activation in progress or live.</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ open_issues|length }}</div>
+    <div class="kpi-label">Open issues</div>
+    <div class="kpi-note">Maintenance, complaints, and unresolved guest problems.</div>
+  </div>
+</div>
+
+{% if recent_timeline %}
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-header">
+    <div class="card-title">Recent stay timeline</div>
+    <a class="btn btn-outline btn-sm" href="/activity#timeline">Open full timeline</a>
+  </div>
+  <div class="timeline">
+    {% for event in recent_timeline %}
+    <div class="timeline-item">
+      <div class="timeline-meta">
+        {{ event.created_at.strftime('%b %d %H:%M') if event.created_at else '' }}
+        {% if event.channel %} · {{ event.channel }}{% endif %}
+        {% if event.room %} · {{ event.room }}{% endif %}
+      </div>
+      <div class="timeline-title">{{ event.summary or event.message or 'Workflow event' }}</div>
+      <div class="timeline-text">{{ event.detail or event.message or '' }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if workflow_rules or team_members %}
+<div class="workflow-grid" style="margin-bottom:1rem">
+  <div class="workflow-card">
+    <h3>Automation rules live</h3>
+    <p>{{ workflow_rules|length }} rules are configured for this tenant. These should govern what auto-sends, what waits for review, and what escalates.</p>
+    <div class="chip-row">
+      {% for rule in workflow_rules[:4] %}
+      <span class="chip">{{ rule.name }}</span>
+      {% endfor %}
+      {% if not workflow_rules %}
+      <span class="chip warn">No rules yet</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="workflow-card">
+    <h3>Ops roles</h3>
+    <p>{{ team_members|length }} team roles are mapped. Use front desk, maintenance, cleaner, and owner queues so exceptions land in the right hands.</p>
+    <div class="chip-row">
+      {% for member in team_members[:4] %}
+      <span class="chip">{{ member.role|replace('_', ' ') }}</span>
+      {% endfor %}
+      {% if not team_members %}
+      <span class="chip warn">No team roles yet</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Setup checklist (only shown when onboarding not complete) -->
 {% if not cfg.onboarding_complete %}
 <div class="checklist-card">

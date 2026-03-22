@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Sign out</h1>
+<p style="color:#6c757d">Confirm you want to end your session.</p>
+<form method="post" action="/logout" style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button type="submit" class="btn btn-primary">Sign out</button>
+  <a href="/dashboard" class="btn btn-outline">Cancel</a>
+</form>
+{% endblock %}

@@ -137,6 +137,7 @@ services:
     environment:
       # Write path goes through PgBouncer → primary
       DATABASE_URL:            postgresql://hostai:${POSTGRES_PASSWORD}@pgbouncer:5432/hostai
+      DATABASE_DIRECT_URL:     postgresql://hostai:${POSTGRES_PASSWORD}@db:5432/hostai
       # Read path goes directly to replica when available (bypasses PgBouncer for selects)
       DATABASE_REPLICA_URL:    ${DATABASE_REPLICA_URL:-}
       REDIS_URL:               redis://redis:6379/0
@@ -144,6 +145,22 @@ services:
       FIELD_ENCRYPTION_KEY:    ${FIELD_ENCRYPTION_KEY:?FIELD_ENCRYPTION_KEY required}
       APP_BASE_URL:            ${APP_BASE_URL:-https://localhost}
       ENVIRONMENT:             ${ENVIRONMENT:-production}
+      TRUST_PROXY_HEADERS:     ${TRUST_PROXY_HEADERS:-1}
+      RUN_EMBEDDED_WORKERS:    "0"
+      AUTO_CREATE_TABLES:      "0"
+      AUTO_MIGRATE:            "0"
+      ADMIN_EMAILS:            ${ADMIN_EMAILS:-}
+      SESSION_HOURS:           ${SESSION_HOURS:-72}
+      META_APP_SECRET:         ${META_APP_SECRET:-}
+      INBOUND_EMAIL_DOMAIN:    ${INBOUND_EMAIL_DOMAIN:-inbound.hostai.local}
+      INBOUND_PARSE_WEBHOOK_SECRET: ${INBOUND_PARSE_WEBHOOK_SECRET:-}
+      METRICS_TOKEN:           ${METRICS_TOKEN:-}
+      METRICS_PUBLIC:          ${METRICS_PUBLIC:-}
+      INBOUND_PARSE_PROVIDER:  ${INBOUND_PARSE_PROVIDER:-}
+      MAILGUN_SIGNING_KEY:     ${MAILGUN_SIGNING_KEY:-}
+      POSTMARK_INBOUND_SECRET: ${POSTMARK_INBOUND_SECRET:-}
+      INBOUND_PARSE_MAX_AGE:   ${INBOUND_PARSE_MAX_AGE:-300}
+      INBOUND_PARSE_REQUIRE_REPLAY: ${INBOUND_PARSE_REQUIRE_REPLAY:-1}
       # SMTP (for email verification + password reset)
       SMTP_HOST:               ${SMTP_HOST:-}
       SMTP_PORT:               ${SMTP_PORT:-587}
@@ -173,6 +190,54 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    logging: *default-logging
+
+  # ── Background Workers (IMAP, scheduler, PMS sync) ──────────
+  worker:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL:            postgresql://hostai:${POSTGRES_PASSWORD}@pgbouncer:5432/hostai
+      DATABASE_DIRECT_URL:     postgresql://hostai:${POSTGRES_PASSWORD}@db:5432/hostai
+      DATABASE_REPLICA_URL:    ${DATABASE_REPLICA_URL:-}
+      REDIS_URL:               redis://redis:6379/0
+      SECRET_KEY:              ${SECRET_KEY:?SECRET_KEY required}
+      FIELD_ENCRYPTION_KEY:    ${FIELD_ENCRYPTION_KEY:?FIELD_ENCRYPTION_KEY required}
+      APP_BASE_URL:            ${APP_BASE_URL:-https://localhost}
+      ENVIRONMENT:             ${ENVIRONMENT:-production}
+      TRUST_PROXY_HEADERS:     ${TRUST_PROXY_HEADERS:-1}
+      RUN_EMBEDDED_WORKERS:    "1"
+      AUTO_CREATE_TABLES:      "0"
+      AUTO_MIGRATE:            "0"
+      ADMIN_EMAILS:            ${ADMIN_EMAILS:-}
+      SESSION_HOURS:           ${SESSION_HOURS:-72}
+      META_APP_SECRET:         ${META_APP_SECRET:-}
+      INBOUND_EMAIL_DOMAIN:    ${INBOUND_EMAIL_DOMAIN:-inbound.hostai.local}
+      INBOUND_PARSE_WEBHOOK_SECRET: ${INBOUND_PARSE_WEBHOOK_SECRET:-}
+      INBOUND_PARSE_PROVIDER:  ${INBOUND_PARSE_PROVIDER:-}
+      MAILGUN_SIGNING_KEY:     ${MAILGUN_SIGNING_KEY:-}
+      POSTMARK_INBOUND_SECRET: ${POSTMARK_INBOUND_SECRET:-}
+      INBOUND_PARSE_MAX_AGE:   ${INBOUND_PARSE_MAX_AGE:-300}
+      INBOUND_PARSE_REQUIRE_REPLAY: ${INBOUND_PARSE_REQUIRE_REPLAY:-1}
+      # SMTP (for verification + password reset)
+      SMTP_HOST:               ${SMTP_HOST:-}
+      SMTP_PORT:               ${SMTP_PORT:-587}
+      SMTP_USER:               ${SMTP_USER:-}
+      SMTP_PASS:               ${SMTP_PASS:-}
+      SMTP_FROM:               ${SMTP_FROM:-}
+      # Stripe (for webhook verification)
+      STRIPE_SECRET_KEY:       ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET:   ${STRIPE_WEBHOOK_SECRET:-}
+      # Monitoring
+      SENTRY_DSN:              ${SENTRY_DSN:-}
+    command: python -m web.worker_runner
     logging: *default-logging
 
   # ── Nginx (TLS termination + reverse proxy) ─────────────────

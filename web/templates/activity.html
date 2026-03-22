@@ -3,45 +3,201 @@
 
 {% block content %}
 <h1>Activity Log</h1>
+<p class="section-lead">
+  Unified guest timeline and exception stream. Routine work should stay automated; this screen is for review, escalation, and operational follow-up.
+</p>
 
 {% if not logs %}
 <div class="empty">
   <div class="empty-icon">📋</div>
   <p>No activity yet.</p>
+  <p style="font-size:0.82rem;margin-top:0.4rem">Guest messages, approvals, settings updates, and exceptions will appear here.</p>
 </div>
 {% else %}
-<div class="card" style="padding:0;overflow:hidden">
-<table>
-  <thead>
-    <tr><th>Time</th><th>Event</th><th>Detail</th></tr>
-  </thead>
-  <tbody>
-  {% for log in logs %}
-    <tr>
-      <td style="white-space:nowrap;color:#6c757d;font-size:0.8rem">
-        {{ log.created_at.strftime('%b %d %H:%M') if log.created_at else '' }}
-      </td>
-      <td>
-        {% set et = log.event_type %}
-        {% if 'approved' in et %}
-          <span class="badge badge-ok">approved</span>
-        {% elif 'skipped' in et %}
-          <span class="badge badge-email">skipped</span>
-        {% elif 'email' in et %}
-          <span class="badge badge-email">email</span>
-        {% elif 'calendar' in et %}
-          <span class="badge badge-calendar">calendar</span>
-        {% elif 'settings' in et %}
-          <span class="badge badge-routine">settings</span>
-        {% else %}
-          <span class="badge badge-email">{{ et }}</span>
-        {% endif %}
-      </td>
-      <td style="font-size:0.85rem">{{ log.message }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+{% set ns = namespace(email=0, calendar=0, approved=0, skipped=0, settings=0, errors=0) %}
+{% for log in logs %}
+  {% set et = log.event_type or '' %}
+  {% if 'email' in et %}{% set ns.email = ns.email + 1 %}{% endif %}
+  {% if 'calendar' in et %}{% set ns.calendar = ns.calendar + 1 %}{% endif %}
+  {% if 'approved' in et %}{% set ns.approved = ns.approved + 1 %}{% endif %}
+  {% if 'skipped' in et %}{% set ns.skipped = ns.skipped + 1 %}{% endif %}
+  {% if 'settings' in et %}{% set ns.settings = ns.settings + 1 %}{% endif %}
+  {% if 'error' in et or 'failed' in et or 'escalat' in et %}{% set ns.errors = ns.errors + 1 %}{% endif %}
+{% endfor %}
+
+<div class="kpi-grid" style="margin-bottom:1rem">
+  <div class="kpi-card">
+    <div class="kpi-value">{{ logs|length }}</div>
+    <div class="kpi-label">Events in stream</div>
+    <div class="kpi-note">Everything the system did, in one place.</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ ns.email }}</div>
+    <div class="kpi-label">Email events</div>
+    <div class="kpi-note">Inbound, processing, and forwarding updates.</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ ns.approved }}</div>
+    <div class="kpi-label">Approved drafts</div>
+    <div class="kpi-note">Host-approved or auto-sent replies.</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ ns.errors }}</div>
+    <div class="kpi-label">Exceptions</div>
+    <div class="kpi-note">Anything that needs a human to look once.</div>
+  </div>
+</div>
+
+<div class="workflow-grid" style="margin-bottom:1rem">
+  <div class="workflow-card">
+    <h3>Unified guest timeline</h3>
+    <p>Each stay should read like a single narrative: inbound message, context match, draft, approval, follow-up, and resolution.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>Exception-based ops</h3>
+    <p>Hosts should only inspect the outliers: missing booking context, failed sends, maintenance, refunds, and unresolved issues.</p>
+  </div>
+</div>
+
+<div id="timeline" class="card" style="padding:1.25rem">
+  <h2>Guest timeline</h2>
+  <div class="timeline">
+    {% for event in timeline_events or [] %}
+    {% set et = event.event_type or '' %}
+    <div class="timeline-item">
+      <div class="timeline-meta">{{ event.created_at.strftime('%b %d %H:%M') if event.created_at else '' }} · {{ et|replace('_', ' ') }}</div>
+      <div class="timeline-title">{{ event.message or event.summary }}</div>
+      <div class="timeline-text">{{ event.status or event.detail or 'Operational event recorded for the tenant.' }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div id="ops" class="card" style="padding:1.25rem;margin-top:1rem">
+  <h2>Exception-based ops</h2>
+  <div class="queue-grid">
+    <div class="queue-card critical">
+      <h3>Needs host attention</h3>
+      <p>Refund requests, complaints, safety concerns, and anything the bot cannot answer from the current stay context should land here.</p>
+      <div class="queue-meta">
+        <span class="chip bad">Urgent</span>
+        <span class="chip">Human review</span>
+      </div>
+      {% if exceptions %}
+      <div style="margin-top:0.75rem;font-size:0.8rem;color:#495057">
+        {{ exceptions[0].title }}
+      </div>
+      {% endif %}
+    </div>
+    <div class="queue-card warn">
+      <h3>Needs more context</h3>
+      <p>Missing room mapping, missing guest phone, or an incomplete reservation should be resolved before the bot answers confidently.</p>
+      <div class="queue-meta">
+        <span class="chip warn">Needs mapping</span>
+        <span class="chip">Arrival activation</span>
+      </div>
+      {% if exceptions|length > 1 %}
+      <div style="margin-top:0.75rem;font-size:0.8rem;color:#495057">
+        {{ exceptions[1].title }}
+      </div>
+      {% endif %}
+    </div>
+    <div class="queue-card good">
+      <h3>Ready to automate</h3>
+      <p>Routine questions, known arrival messages, and common amenity requests should be allowed to flow through without friction.</p>
+      <div class="queue-meta">
+        <span class="chip good">Automation</span>
+        <span class="chip">Low risk</span>
+      </div>
+      {% if exceptions|length > 2 %}
+      <div style="margin-top:0.75rem;font-size:0.8rem;color:#495057">
+        {{ exceptions[2].title }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if activations %}
+<div class="card" style="padding:1.25rem;margin-top:1rem">
+  <h2>Arrival activations</h2>
+  <div class="timeline">
+    {% for activation in activations %}
+    <div class="timeline-item">
+      <div class="timeline-meta">
+        {{ activation.status|replace('_', ' ') }}
+        {% if activation.unit_identifier %} · {{ activation.unit_identifier }}{% endif %}
+      </div>
+      <div class="timeline-title">{{ activation.guest_name or 'Guest activation' }}</div>
+      <div class="timeline-text">
+        {{ activation.property_name or 'Property pending' }}
+        {% if activation.guest_phone %} · {{ activation.guest_phone }}{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card" style="padding:1.25rem;margin-top:1rem">
+  <h2>Open issue workflow</h2>
+  {% if open_issues %}
+  <div class="timeline">
+    {% for issue in open_issues %}
+    <div class="timeline-item">
+      <div class="timeline-meta">
+        {{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}
+        {% if issue.unit_identifier %} · {{ issue.unit_identifier }}{% endif %}
+      </div>
+      <div class="timeline-title">{{ issue.title }}</div>
+      <div class="timeline-text">{{ issue.description or 'No issue description provided.' }}</div>
+      <form method="post" action="/issues/{{ issue.id }}/update" style="margin-top:0.75rem">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="hidden" name="next_path" value="/activity#ops">
+        <div class="form-row">
+          <div>
+            <label>Status</label>
+            <select name="status">
+              <option value="open" {% if issue.status == 'open' %}selected{% endif %}>Open</option>
+              <option value="triage" {% if issue.status == 'triage' %}selected{% endif %}>Triage</option>
+              <option value="assigned" {% if issue.status == 'assigned' %}selected{% endif %}>Assigned</option>
+              <option value="vendor_dispatched" {% if issue.status == 'vendor_dispatched' %}selected{% endif %}>Vendor dispatched</option>
+              <option value="resolved" {% if issue.status == 'resolved' %}selected{% endif %}>Resolved</option>
+            </select>
+          </div>
+          <div>
+            <label>Team member</label>
+            <select name="assigned_to_member_id">
+              <option value="">Unassigned</option>
+              {% for member in team_members or [] %}
+              <option value="{{ member.id }}" {% if issue.assigned_to_member_id == member.id %}selected{% endif %}>{{ member.display_name }} — {{ member.role|replace('_', ' ') }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label>Vendor</label>
+            <select name="vendor_id">
+              <option value="">No vendor</option>
+              {% for vendor in vendors or [] %}
+              <option value="{{ vendor.id }}" {% if issue.vendor_id == vendor.id %}selected{% endif %}>{{ vendor.name }} — {{ vendor.category }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>Resolution notes</label>
+            <input type="text" name="resolution_notes" value="{{ issue.resolution_notes or '' }}" placeholder="ETA or fix note">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-outline btn-sm">Update issue</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color:#6c757d;font-size:0.84rem">No unresolved operational issues right now.</p>
+  {% endif %}
 </div>
 {% endif %}
 {% endblock %}

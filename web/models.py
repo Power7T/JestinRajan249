@@ -21,6 +21,17 @@ PLAN_META_CLOUD = "meta_cloud"
 PLAN_SMS        = "sms"
 PLAN_PRO        = "pro"   # all three channels
 
+# Workflow helpers
+ROLE_OWNER       = "owner"
+ROLE_MANAGER     = "manager"
+ROLE_FRONT_DESK  = "front_desk"
+ROLE_MAINTENANCE = "maintenance"
+ROLE_CLEANER     = "cleaner"
+
+INTAKE_SOURCE_CSV    = "csv"
+INTAKE_SOURCE_PMS    = "pms"
+INTAKE_SOURCE_MANUAL = "manual"
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -54,8 +65,16 @@ class Tenant(Base):
 
     config:   Mapped[Optional["TenantConfig"]] = relationship("TenantConfig", back_populates="tenant", uselist=False)
     drafts:   Mapped[list["Draft"]]            = relationship("Draft", back_populates="tenant")
+    reservations: Mapped[list["Reservation"]]  = relationship("Reservation", back_populates="tenant")
     vendors:  Mapped[list["Vendor"]]           = relationship("Vendor", back_populates="tenant")
     logs:     Mapped[list["ActivityLog"]]      = relationship("ActivityLog", back_populates="tenant")
+    workflow_rules: Mapped[list["AutomationRule"]] = relationship("AutomationRule", back_populates="tenant")
+    team_members:   Mapped[list["TeamMember"]]     = relationship("TeamMember", back_populates="tenant")
+    timeline_events: Mapped[list["GuestTimelineEvent"]] = relationship("GuestTimelineEvent", back_populates="tenant")
+    arrival_activations: Mapped[list["ArrivalActivation"]] = relationship("ArrivalActivation", back_populates="tenant")
+    issue_tickets:  Mapped[list["IssueTicket"]]    = relationship("IssueTicket", back_populates="tenant")
+    kpi_snapshots:  Mapped[list["TenantKpiSnapshot"]] = relationship("TenantKpiSnapshot", back_populates="tenant")
+    intake_batches: Mapped[list["ReservationIntakeBatch"]] = relationship("ReservationIntakeBatch", back_populates="tenant")
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +116,9 @@ class TenantConfig(Base):
     smtp_port:         Mapped[int]           = mapped_column(Integer, default=587)
     email_address:     Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     email_password_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # encrypted
+    email_ingest_mode: Mapped[str]           = mapped_column(String(32), default="imap")
+    inbound_email_alias: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    last_inbound_email_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Claude API key (AES-encrypted)
     anthropic_api_key_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -171,8 +193,13 @@ class Draft(Base):
     created_at:   Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
     approved_at:  Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     scheduled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    reservation_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
+    automation_rule_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("automation_rules.id"), nullable=True, index=True)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="drafts")
+    reservation: Mapped[Optional["Reservation"]] = relationship("Reservation", back_populates="drafts")
+    timeline_events: Mapped[list["GuestTimelineEvent"]] = relationship("GuestTimelineEvent", back_populates="draft")
+    automation_rule: Mapped[Optional["AutomationRule"]] = relationship("AutomationRule", back_populates="drafts")
 
 
 # ---------------------------------------------------------------------------
@@ -258,15 +285,25 @@ class Reservation(Base):
     payout_usd:        Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     status:            Mapped[str]           = mapped_column(String(32), default="confirmed", index=True)  # confirmed / cancelled / pending
     imported_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+    last_guest_message_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    last_host_reply_at:    Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
     # Proactive message state flags (prevent re-sending)
     pre_arrival_sent:     Mapped[bool]          = mapped_column(Boolean, default=False)
     checkout_msg_sent:    Mapped[bool]          = mapped_column(Boolean, default=False)
     review_reminder_sent: Mapped[bool]          = mapped_column(Boolean, default=False)
     cleaner_brief_sent:   Mapped[bool]          = mapped_column(Boolean, default=False)
+    intake_batch_id:      Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservation_intake_batches.id"), nullable=True, index=True)
 
     # Guest-facing check-in portal token (random URL-safe string, unique per reservation)
     checkin_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True, unique=True)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="reservations")
+    intake_batch: Mapped[Optional["ReservationIntakeBatch"]] = relationship("ReservationIntakeBatch", back_populates="reservations")
+    drafts: Mapped[list["Draft"]] = relationship("Draft", back_populates="reservation")
+    timeline_events: Mapped[list["GuestTimelineEvent"]] = relationship("GuestTimelineEvent", back_populates="reservation")
+    activations: Mapped[list["ArrivalActivation"]] = relationship("ArrivalActivation", back_populates="reservation")
+    issue_tickets: Mapped[list["IssueTicket"]] = relationship("IssueTicket", back_populates="reservation")
 
 
 # ---------------------------------------------------------------------------
@@ -315,3 +352,229 @@ class ReservationSyncLog(Base):
     tenant_id:   Mapped[str]      = mapped_column(String(36), ForeignKey("tenants.id"), unique=True, index=True)
     last_synced: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     rows_imported: Mapped[int]    = mapped_column(Integer, default=0)
+
+
+# ---------------------------------------------------------------------------
+# ReservationIntakeBatch — tracks CSV / PMS / manual reservation ingestion
+# ---------------------------------------------------------------------------
+
+class ReservationIntakeBatch(Base):
+    __tablename__ = "reservation_intake_batches"
+
+    id:                Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:         Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    source_kind:       Mapped[str]           = mapped_column(String(16), default=INTAKE_SOURCE_CSV, index=True)
+    source_name:       Mapped[Optional[str]]  = mapped_column(String(128), nullable=True)
+    external_reference: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    status:            Mapped[str]           = mapped_column(String(32), default="queued", index=True)
+    rows_total:        Mapped[int]           = mapped_column(Integer, default=0)
+    rows_imported:     Mapped[int]           = mapped_column(Integer, default=0)
+    rows_failed:       Mapped[int]           = mapped_column(Integer, default=0)
+    notes:             Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    details_json:      Mapped[dict]          = mapped_column(JSON, default=dict)
+    pms_integration_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("pms_integrations.id"), nullable=True, index=True)
+    created_by_member_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("team_members.id"), nullable=True, index=True)
+    started_at:        Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+    completed_at:      Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at:        Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at:        Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="intake_batches")
+    pms_integration: Mapped[Optional["PMSIntegration"]] = relationship("PMSIntegration")
+    created_by_member: Mapped[Optional["TeamMember"]] = relationship("TeamMember", back_populates="created_batches")
+    reservations: Mapped[list["Reservation"]] = relationship("Reservation", back_populates="intake_batch")
+
+
+# ---------------------------------------------------------------------------
+# AutomationRule — host-specific automation logic and routing
+# ---------------------------------------------------------------------------
+
+class AutomationRule(Base):
+    __tablename__ = "automation_rules"
+
+    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    name:        Mapped[str]           = mapped_column(String(128))
+    description: Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
+    trigger_kind: Mapped[str]          = mapped_column(String(32), default="inbound_message", index=True)
+    scope_kind:  Mapped[str]           = mapped_column(String(32), default="tenant", index=True)
+    channel:     Mapped[str]           = mapped_column(String(32), default="any", index=True)
+    is_active:   Mapped[bool]          = mapped_column(Boolean, default=True, index=True)
+    priority:    Mapped[int]           = mapped_column(Integer, default=100, index=True)
+    confidence_threshold: Mapped[float] = mapped_column(Float, default=0.0)
+    conditions_json: Mapped[dict]       = mapped_column(JSON, default=dict)
+    actions_json:    Mapped[dict]       = mapped_column(JSON, default=dict)
+    last_triggered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at:      Mapped[datetime]   = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at:      Mapped[datetime]   = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="workflow_rules")
+    drafts: Mapped[list["Draft"]] = relationship("Draft", back_populates="automation_rule")
+    timeline_events: Mapped[list["GuestTimelineEvent"]] = relationship("GuestTimelineEvent", back_populates="automation_rule")
+
+
+# ---------------------------------------------------------------------------
+# TeamMember — staff/ops users per tenant
+# ---------------------------------------------------------------------------
+
+class TeamMember(Base):
+    __tablename__ = "team_members"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "email", name="uq_team_member_tenant_email"),
+    )
+
+    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    display_name: Mapped[str]          = mapped_column(String(128))
+    email:       Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    phone:       Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    role:        Mapped[str]           = mapped_column(String(32), default=ROLE_MANAGER, index=True)
+    is_active:   Mapped[bool]          = mapped_column(Boolean, default=True, index=True)
+    permissions_json: Mapped[dict]     = mapped_column(JSON, default=dict)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="team_members")
+    created_batches: Mapped[list["ReservationIntakeBatch"]] = relationship("ReservationIntakeBatch", back_populates="created_by_member")
+    assigned_issues: Mapped[list["IssueTicket"]] = relationship("IssueTicket", back_populates="assigned_to_member", foreign_keys="IssueTicket.assigned_to_member_id")
+    created_issues: Mapped[list["IssueTicket"]] = relationship("IssueTicket", back_populates="created_by_member", foreign_keys="IssueTicket.created_by_member_id")
+    created_timeline_events: Mapped[list["GuestTimelineEvent"]] = relationship("GuestTimelineEvent", back_populates="created_by_member")
+    created_activations: Mapped[list["ArrivalActivation"]] = relationship("ArrivalActivation", back_populates="created_by_member")
+
+
+# ---------------------------------------------------------------------------
+# GuestTimelineEvent — unified activity feed for a stay / guest
+# ---------------------------------------------------------------------------
+
+class GuestTimelineEvent(Base):
+    __tablename__ = "guest_timeline_events"
+
+    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    reservation_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
+    draft_id:    Mapped[Optional[str]]  = mapped_column(String(64), ForeignKey("drafts.id"), nullable=True, index=True)
+    issue_ticket_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("issue_tickets.id"), nullable=True, index=True)
+    automation_rule_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("automation_rules.id"), nullable=True, index=True)
+    intake_batch_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservation_intake_batches.id"), nullable=True, index=True)
+    created_by_member_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("team_members.id"), nullable=True, index=True)
+    guest_name:  Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    guest_phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    property_name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    unit_identifier: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    channel:     Mapped[str]           = mapped_column(String(32), default="system", index=True)
+    direction:   Mapped[str]           = mapped_column(String(16), default="internal", index=True)
+    event_type:  Mapped[str]           = mapped_column(String(64), index=True)
+    summary:     Mapped[str]           = mapped_column(String(255))
+    body:        Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    payload_json: Mapped[dict]         = mapped_column(JSON, default=dict)
+    created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="timeline_events")
+    reservation: Mapped[Optional["Reservation"]] = relationship("Reservation", back_populates="timeline_events")
+    draft: Mapped[Optional["Draft"]] = relationship("Draft", back_populates="timeline_events")
+    issue_ticket: Mapped[Optional["IssueTicket"]] = relationship("IssueTicket", back_populates="timeline_events")
+    automation_rule: Mapped[Optional["AutomationRule"]] = relationship("AutomationRule", back_populates="timeline_events")
+    intake_batch: Mapped[Optional["ReservationIntakeBatch"]] = relationship("ReservationIntakeBatch")
+    created_by_member: Mapped[Optional["TeamMember"]] = relationship("TeamMember", back_populates="created_timeline_events")
+
+
+# ---------------------------------------------------------------------------
+# ArrivalActivation — explicit check-in / bot activation records
+# ---------------------------------------------------------------------------
+
+class ArrivalActivation(Base):
+    __tablename__ = "arrival_activations"
+
+    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    reservation_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
+    timeline_event_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("guest_timeline_events.id"), nullable=True, index=True)
+    created_by_member_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("team_members.id"), nullable=True, index=True)
+    property_name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    unit_identifier: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    guest_name:  Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    guest_phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    activation_source: Mapped[str]     = mapped_column(String(32), default=INTAKE_SOURCE_MANUAL, index=True)
+    status:      Mapped[str]           = mapped_column(String(32), default="pending", index=True)
+    notes:       Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    activated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    deactivated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at:  Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    payload_json: Mapped[dict]         = mapped_column(JSON, default=dict)
+    created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="arrival_activations")
+    reservation: Mapped[Optional["Reservation"]] = relationship("Reservation", back_populates="activations")
+    timeline_event: Mapped[Optional["GuestTimelineEvent"]] = relationship("GuestTimelineEvent")
+    created_by_member: Mapped[Optional["TeamMember"]] = relationship("TeamMember", back_populates="created_activations")
+
+
+# ---------------------------------------------------------------------------
+# IssueTicket — exception / maintenance / ops tracking
+# ---------------------------------------------------------------------------
+
+class IssueTicket(Base):
+    __tablename__ = "issue_tickets"
+
+    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    reservation_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
+    created_by_member_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("team_members.id"), nullable=True, index=True)
+    assigned_to_member_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("team_members.id"), nullable=True, index=True)
+    vendor_id:   Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vendors.id"), nullable=True, index=True)
+    property_name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    unit_identifier: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    guest_name:  Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    guest_phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    category:    Mapped[str]           = mapped_column(String(32), default="general", index=True)
+    priority:    Mapped[str]           = mapped_column(String(16), default="medium", index=True)
+    status:      Mapped[str]           = mapped_column(String(32), default="open", index=True)
+    title:       Mapped[str]           = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    resolution_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    due_at:      Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    payload_json: Mapped[dict]         = mapped_column(JSON, default=dict)
+    created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    updated_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="issue_tickets")
+    reservation: Mapped[Optional["Reservation"]] = relationship("Reservation", back_populates="issue_tickets")
+    timeline_events: Mapped[list["GuestTimelineEvent"]] = relationship("GuestTimelineEvent", back_populates="issue_ticket")
+    created_by_member: Mapped[Optional["TeamMember"]] = relationship("TeamMember", back_populates="created_issues", foreign_keys=[created_by_member_id])
+    assigned_to_member: Mapped[Optional["TeamMember"]] = relationship("TeamMember", back_populates="assigned_issues", foreign_keys=[assigned_to_member_id])
+    vendor: Mapped[Optional["Vendor"]] = relationship("Vendor")
+
+
+# ---------------------------------------------------------------------------
+# TenantKpiSnapshot — periodic KPI summary for dashboards / admin views
+# ---------------------------------------------------------------------------
+
+class TenantKpiSnapshot(Base):
+    __tablename__ = "tenant_kpi_snapshots"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "property_name", "period_start", "period_end", name="uq_tenant_kpi_snapshot_window"),
+    )
+
+    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    property_name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True, index=True)
+    period_start: Mapped[datetime]     = mapped_column(DateTime(timezone=True), index=True)
+    period_end:   Mapped[datetime]     = mapped_column(DateTime(timezone=True), index=True)
+    messages_total: Mapped[int]        = mapped_column(Integer, default=0)
+    drafts_total:   Mapped[int]        = mapped_column(Integer, default=0)
+    auto_sent_total: Mapped[int]        = mapped_column(Integer, default=0)
+    approvals_total: Mapped[int]       = mapped_column(Integer, default=0)
+    escalations_total: Mapped[int]     = mapped_column(Integer, default=0)
+    open_issues_total: Mapped[int]     = mapped_column(Integer, default=0)
+    resolved_issues_total: Mapped[int] = mapped_column(Integer, default=0)
+    avg_response_seconds: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    automation_rate_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    edit_rate_pct:      Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    saved_hours:        Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    payload_json:       Mapped[dict]   = mapped_column(JSON, default=dict)
+    created_at:         Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="kpi_snapshots")

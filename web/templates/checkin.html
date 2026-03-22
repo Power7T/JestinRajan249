@@ -126,6 +126,33 @@
     {% endif %}
   </div>
 
+  <div class="workflow-grid" style="margin-bottom:1rem">
+    <div class="workflow-card">
+      <h3>How guests can use this portal</h3>
+      <p>Guests should see their room number, check-in and check-out timing, house rules, and any arrival instructions in one place.</p>
+    </div>
+    <div class="workflow-card">
+      <h3>What the bot can help with</h3>
+      <p>Wi-Fi, parking, towels, local recommendations, late checkout, and issue reporting should be easy to ask from the guest side.</p>
+    </div>
+    <div class="workflow-card">
+      <h3>What stays private</h3>
+      <p>Host-facing operations like automation rules, vendor dispatch, and exception handling stay out of the guest's view.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>💬 Ask HostAI About</h2>
+    <div class="info-row">
+      <span class="info-label">Typical questions</span>
+      <span class="info-value">Wi-Fi password, parking, breakfast timing, towels, extra blankets, early check-in, late checkout, local recommendations, and room-specific issues.</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">How replies work</span>
+      <span class="info-value">HostAI answers using your stay details, property rules, and {% if reservation.unit_identifier %}room {{ reservation.unit_identifier }}{% else %}the mapped room or unit{% endif %} so the reply stays specific to this booking.</span>
+    </div>
+  </div>
+
   <!-- Dates -->
   <div class="section">
     <h2>📅 Your Reservation</h2>

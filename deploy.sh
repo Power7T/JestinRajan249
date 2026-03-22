@@ -13,7 +13,7 @@
 #   4. Asks for domain name and sets it in nginx.conf
 #   5. Optionally obtains a Let's Encrypt SSL certificate
 #   6. Builds and starts all containers
-#   7. Runs DB migrations (automatic at startup)
+#   7. Runs DB migrations (alembic upgrade head)
 # ============================================================
 
 set -euo pipefail
@@ -126,7 +126,19 @@ $DC build --pull
 info "Starting services..."
 $DC up -d
 
-# ── 6. Wait for healthy ──────────────────────────────────────
+# ── 6. Run DB migrations ─────────────────────────────────────
+info "Waiting for database..."
+MAX_DB_WAIT=60; DB_WAITED=0
+until $DC exec -T db pg_isready -U hostai >/dev/null 2>&1; do
+  sleep 2; DB_WAITED=$((DB_WAITED + 2))
+  [ "$DB_WAITED" -ge "$MAX_DB_WAIT" ] && die "Database not ready after ${MAX_DB_WAIT}s"
+done
+ok "Database is ready"
+
+info "Running database migrations..."
+$DC exec -T web alembic upgrade head || die "Database migration failed"
+
+# ── 7. Wait for healthy ──────────────────────────────────────
 info "Waiting for app to be healthy..."
 MAX_WAIT=60; WAITED=0
 until $DC exec -T web curl -sf http://localhost:8000/health >/dev/null 2>&1; do
@@ -151,10 +163,11 @@ echo "  • Set SMTP_HOST + SMTP_USER + SMTP_PASS in .env (for verification emai
 echo "  • Point your Stripe webhook to: https://${DOMAIN}/billing/stripe-webhook"
 echo "  • (Optional) Set SENTRY_DSN in .env for error tracking"
 echo "  • (Optional) Proxy via Cloudflare for CDN + DDoS protection"
-echo "  • Restart after .env changes: ${DC} restart web"
+echo "  • Restart after .env changes: ${DC} restart web worker"
 echo ""
 echo "  Services running:"
 echo "  • web + nginx: app + reverse proxy"
+echo "  • worker:      background jobs (IMAP, scheduler, PMS sync)"
 echo "  • db:          PostgreSQL"
 echo "  • redis:       Rate limiting + message queue"
 echo "  • certbot-renew: Auto SSL renewal (every 12h)"

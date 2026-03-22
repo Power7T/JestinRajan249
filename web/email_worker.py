@@ -10,6 +10,7 @@ import time
 import email
 import smtplib
 import logging
+from email.message import EmailMessage
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone, timedelta
@@ -20,9 +21,10 @@ import imapclient
 from bs4 import BeautifulSoup
 
 from web.db import SessionLocal
-from web.models import Draft, ProcessedEmail, ActivityLog, Reservation
+from web.models import Draft, ProcessedEmail, ActivityLog, Reservation, AutomationRule, GuestTimelineEvent, IssueTicket
 from web.classifier import classify_message, detect_vendor_type, generate_draft, make_draft_id, needs_escalation, build_property_context
 from web.crypto import decrypt
+from web.workflow import automation_rule_decision, build_conversation_memory
 
 log = logging.getLogger(__name__)
 
@@ -106,6 +108,35 @@ def _parse_airbnb_email(msg) -> Optional[dict]:
     return {"guest_name": guest_name, "guest_message": guest_message, "reply_to": reply_to}
 
 
+def parse_structured_email(
+    subject: str,
+    from_header: str,
+    reply_to: str,
+    text_body: str,
+    html_body: str = "",
+) -> Optional[dict]:
+    """
+    Reuse the existing Airbnb parsing heuristics for webhook-delivered mail.
+    """
+    msg = EmailMessage()
+    msg["Subject"] = subject or ""
+    msg["From"] = from_header or ""
+    if reply_to:
+        msg["Reply-To"] = reply_to
+    plain = (text_body or "").strip()
+    html = (html_body or "").strip()
+    if plain:
+        msg.set_content(plain)
+        if html:
+            msg.add_alternative(html, subtype="html")
+    elif html:
+        msg.set_content(BeautifulSoup(html, "html.parser").get_text(separator="\n"))
+        msg.add_alternative(html, subtype="html")
+    else:
+        msg.set_content("")
+    return _parse_airbnb_email(msg)
+
+
 def _send_smtp_reply(cfg: EmailConfig, to: str, subject: str, body: str):
     subject = subject if subject.startswith("Re:") else f"Re: {subject}"
     mime = MIMEMultipart("alternative")
@@ -141,11 +172,55 @@ def _mark_seen(tenant_id: str, uids: set):
         db.close()
 
 
-def _save_draft(tenant_id: str, draft_id: str, parsed: dict, msg_type: str, vendor_type: Optional[str], draft_text: str):
+def _record_timeline_event(
+    tenant_id: str,
+    reservation: Optional[Reservation],
+    event_type: str,
+    summary: str,
+    *,
+    direction: str = "internal",
+    body: str = "",
+    draft_id: Optional[str] = None,
+    automation_rule_id: Optional[int] = None,
+):
+    db = SessionLocal()
+    try:
+        db.add(GuestTimelineEvent(
+            tenant_id=tenant_id,
+            reservation_id=reservation.id if reservation else None,
+            draft_id=draft_id,
+            automation_rule_id=automation_rule_id,
+            guest_name=reservation.guest_name if reservation else None,
+            guest_phone=reservation.guest_phone if reservation else None,
+            property_name=reservation.listing_name if reservation else None,
+            unit_identifier=reservation.unit_identifier if reservation else None,
+            channel="email",
+            direction=direction,
+            event_type=event_type,
+            summary=summary,
+            body=body or None,
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+
+def _save_draft(
+    tenant_id: str,
+    draft_id: str,
+    parsed: dict,
+    msg_type: str,
+    vendor_type: Optional[str],
+    draft_text: str,
+    reservation: Optional[Reservation] = None,
+    automation_rule_id: Optional[int] = None,
+):
     db = SessionLocal()
     try:
         draft = Draft(
             id=draft_id, tenant_id=tenant_id, source="email",
+            reservation_id=reservation.id if reservation else None,
+            automation_rule_id=automation_rule_id,
             guest_name=parsed["guest_name"], message=parsed["guest_message"],
             reply_to=parsed["reply_to"], msg_type=msg_type, vendor_type=vendor_type,
             draft=draft_text, status="pending", created_at=datetime.now(timezone.utc),
@@ -154,6 +229,17 @@ def _save_draft(tenant_id: str, draft_id: str, parsed: dict, msg_type: str, vend
         db.add(ActivityLog(tenant_id=tenant_id, event_type="email_received",
                            message=f"Email from {parsed['guest_name']} — {msg_type}"))
         db.commit()
+        if reservation:
+            _record_timeline_event(
+                tenant_id,
+                reservation,
+                "guest_message_received",
+                f"Email from {parsed['guest_name']}",
+                direction="inbound",
+                body=parsed["guest_message"],
+                draft_id=draft_id,
+                automation_rule_id=automation_rule_id,
+            )
     finally:
         db.close()
 
@@ -211,6 +297,45 @@ def _lookup_reservation(tenant_id: str, guest_name: str) -> Optional[str]:
     return None
 
 
+def _lookup_reservation_row(tenant_id: str, guest_name: str) -> Optional[Reservation]:
+    today = datetime.now(timezone.utc).date()
+    window_start = today - timedelta(days=7)
+    window_end = today + timedelta(days=90)
+    db = SessionLocal()
+    try:
+        name_parts = guest_name.lower().split()
+        rows = db.query(Reservation).filter(
+            Reservation.tenant_id == tenant_id,
+            Reservation.status == "confirmed",
+            Reservation.checkin >= window_start,
+            Reservation.checkin <= window_end,
+        ).all()
+        for res in rows:
+            db_name_lower = res.guest_name.lower()
+            if any(part in db_name_lower or db_name_lower in part for part in name_parts if len(part) > 2):
+                return res
+    finally:
+        db.close()
+    return None
+
+
+def _timeline_memory(tenant_id: str, reservation: Optional[Reservation]) -> str:
+    if not reservation:
+        return ""
+    db = SessionLocal()
+    try:
+        events = (
+            db.query(GuestTimelineEvent)
+            .filter_by(tenant_id=tenant_id, reservation_id=reservation.id)
+            .order_by(GuestTimelineEvent.created_at.desc())
+            .limit(8)
+            .all()
+        )
+        return build_conversation_memory(reversed(events), limit=8)
+    finally:
+        db.close()
+
+
 def _process_message(cfg: EmailConfig, parsed: dict, subject: str):
     guest_msg = parsed["guest_message"]
 
@@ -237,11 +362,15 @@ def _process_message(cfg: EmailConfig, parsed: dict, subject: str):
     vendor_type = detect_vendor_type(guest_msg) if msg_type == "complex" else None
 
     # Enrich property context with live reservation data if a match is found
+    reservation = _lookup_reservation_row(cfg.tenant_id, parsed["guest_name"])
     res_context = _lookup_reservation(cfg.tenant_id, parsed["guest_name"])
     full_context = cfg.property_context
     if res_context:
         full_context = (full_context + "\n\n<reservation>\n" + res_context + "\n</reservation>").strip()
         log.info("[%s] Reservation match found for %s", cfg.tenant_id, parsed["guest_name"])
+    memory_context = _timeline_memory(cfg.tenant_id, reservation)
+    if memory_context:
+        full_context = (full_context + "\n\n<recent_guest_history>\n" + memory_context + "\n</recent_guest_history>").strip()
 
     try:
         draft_text = generate_draft(
@@ -253,15 +382,69 @@ def _process_message(cfg: EmailConfig, parsed: dict, subject: str):
         return
 
     draft_id = make_draft_id("email")
-    _save_draft(cfg.tenant_id, draft_id, parsed, msg_type, vendor_type, draft_text)
+    automation_rule_id = None
+    if reservation:
+        db = SessionLocal()
+        try:
+            rules = (
+                db.query(AutomationRule)
+                .filter_by(tenant_id=cfg.tenant_id, is_active=True)
+                .order_by(AutomationRule.priority.asc(), AutomationRule.created_at.asc())
+                .all()
+            )
+            draft_view = {
+                "status": "pending",
+                "source": "email",
+                "channel": "email",
+                "msg_type": msg_type,
+                "message": parsed["guest_message"],
+                "draft": draft_text,
+                "listing_name": reservation.listing_name or "",
+                "property_name": reservation.listing_name or "",
+                "reply_to": parsed["reply_to"],
+                "confidence": 0.95 if msg_type == "routine" else 0.45,
+            }
+            for rule in rules:
+                decision = automation_rule_decision(
+                    {
+                        "enabled": rule.is_active,
+                        "status": "active" if rule.is_active else "disabled",
+                        "channels": [rule.channel] if rule.channel != "any" else [],
+                        "msg_types": (rule.conditions_json or {}).get("msg_types") or [],
+                        "min_confidence": rule.confidence_threshold,
+                        "properties": (rule.conditions_json or {}).get("properties") or [],
+                        "requires_approval": (rule.actions_json or {}).get("mode") == "review",
+                    },
+                    draft_view,
+                )
+                if decision["should_send"]:
+                    automation_rule_id = rule.id
+                    break
+        finally:
+            db.close()
 
-    if msg_type == "routine":
+    _save_draft(cfg.tenant_id, draft_id, parsed, msg_type, vendor_type, draft_text, reservation, automation_rule_id)
+
+    if msg_type == "routine" and cfg.smtp_host and cfg.email_address and cfg.email_password:
         try:
             _send_smtp_reply(cfg, parsed["reply_to"], subject, draft_text)
             _mark_draft_approved(cfg.tenant_id, draft_id, draft_text)
+            if reservation:
+                _record_timeline_event(
+                    cfg.tenant_id,
+                    reservation,
+                    "draft_approved",
+                    f"Routine email auto-sent to {parsed['guest_name']}",
+                    direction="outbound",
+                    body=draft_text,
+                    draft_id=draft_id,
+                    automation_rule_id=automation_rule_id,
+                )
             log.info("[%s] Routine reply auto-sent to %s", cfg.tenant_id, parsed["guest_name"])
         except Exception as exc:
             log.error("[%s] SMTP send failed: %s", cfg.tenant_id, exc)
+    elif msg_type == "routine":
+        log.info("[%s] Routine draft %s saved — SMTP not configured for auto-send", cfg.tenant_id, draft_id)
     else:
         log.info("[%s] Complex draft %s saved — awaiting host approval on dashboard", cfg.tenant_id, draft_id)
 
@@ -303,25 +486,42 @@ def run_for_tenant(cfg: EmailConfig, stop_flag: "threading.Event"):
     log.info("[%s] Email watcher stopped.", cfg.tenant_id)
 
 
-def make_config_from_db(tenant_id: str) -> Optional[EmailConfig]:
-    """Build EmailConfig from DB for a given tenant. Returns None if not configured."""
+def make_config_from_db(tenant_id: str, require_imap: bool = True) -> Optional[EmailConfig]:
+    """Build EmailConfig from DB for a given tenant."""
     db = SessionLocal()
     try:
         from web.models import TenantConfig
         cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
-        if not cfg or not cfg.email_address or not cfg.imap_host:
+        if not cfg:
             return None
+        if require_imap and (cfg.email_ingest_mode == "forwarding" or not cfg.email_address or not cfg.imap_host):
+            return None
+        api_key = decrypt(cfg.anthropic_api_key_enc or "")
+        if not api_key:
+            return None
+        smtp_host = cfg.smtp_host or (cfg.imap_host.replace("imap.", "smtp.") if cfg.imap_host else "")
         return EmailConfig(
             tenant_id=tenant_id,
-            imap_host=cfg.imap_host,
+            imap_host=cfg.imap_host or "",
             imap_port=cfg.imap_port,
-            smtp_host=cfg.smtp_host or cfg.imap_host.replace("imap.", "smtp."),
+            smtp_host=smtp_host,
             smtp_port=cfg.smtp_port,
-            email_address=cfg.email_address,
+            email_address=cfg.email_address or "",
             email_password=decrypt(cfg.email_password_enc or ""),
-            anthropic_api_key=decrypt(cfg.anthropic_api_key_enc or ""),
+            anthropic_api_key=api_key,
             property_context=build_property_context(cfg),
             escalation_email=cfg.escalation_email or cfg.email_address or "",
         )
     finally:
         db.close()
+
+
+def process_parsed_email(tenant_id: str, parsed: dict, subject: str) -> bool:
+    """
+    Process a normalized inbound email payload without requiring IMAP polling.
+    """
+    cfg = make_config_from_db(tenant_id, require_imap=False)
+    if not cfg:
+        return False
+    _process_message(cfg, parsed, subject)
+    return True
