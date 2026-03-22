@@ -56,6 +56,46 @@
   </div>
 </div>
 
+<div class="priority-models" style="margin-bottom:2rem;">
+  <h2 style="margin-top:0; margin-bottom:1rem; font-size:1.2rem; padding-bottom:0.5rem; border-bottom:1px solid var(--border);">Recommended Priority Models</h2>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1rem;">
+    
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; transition:all var(--t);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+        <span class="model-badge" style="background:var(--info-bg); color:var(--info); border-color:var(--info-border);">Primary</span>
+        <span style="font-size:0.75rem; font-weight:600; color:var(--text-3);">$3.00 / 1M in</span>
+      </div>
+      <div style="font-weight:700; color:var(--text-1); margin-bottom:0.25rem;">anthropic/claude-3.5-sonnet</div>
+      <div style="font-size:0.85rem; color:var(--text-2); line-height:1.4;">
+        <strong>Why:</strong> Excels at tone matching, empathy, and following strict property FAQs without hallucinating details. Perfect for guest replies. (Est. ~$0.003 - $0.006 per draft)
+      </div>
+    </div>
+
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; transition:all var(--t);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+        <span class="model-badge" style="background:var(--warn-bg); color:var(--warn); border-color:var(--warn-border);">Fallback</span>
+        <span style="font-size:0.75rem; font-weight:600; color:var(--text-3);">$0.40 / 1M in</span>
+      </div>
+      <div style="font-weight:700; color:var(--text-1); margin-bottom:0.25rem;">meta-llama/llama-3.1-70b-instruct</div>
+      <div style="font-size:0.85rem; color:var(--text-2); line-height:1.4;">
+        <strong>Why:</strong> Extremely fast and reliable. When primary APIs experience outages, Llama 3.1 70B handles 95% of inquiries smoothly. (Est. ~$0.001 per draft)
+      </div>
+    </div>
+
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; transition:all var(--t);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+        <span class="model-badge" style="background:var(--success-bg); color:var(--success); border-color:var(--success-border);">Sentiment</span>
+        <span style="font-size:0.75rem; font-weight:600; color:var(--text-3);">$0.15 / 1M in</span>
+      </div>
+      <div style="font-weight:700; color:var(--text-1); margin-bottom:0.25rem;">openai/gpt-4o-mini</div>
+      <div style="font-size:0.85rem; color:var(--text-2); line-height:1.4;">
+        <strong>Why:</strong> Lightning fast and cheap for structured JSON tasks. Perfect for orchestration like classifying or extracting sentiment. (Est. fractions of a penny)
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <div class="settings-form">
   <h2 style="margin-top:0; margin-bottom:1.5rem; font-size:1.2rem; border-bottom:1px solid var(--border); padding-bottom:0.75rem;">Global OpenRouter Settings</h2>
   <form method="POST" action="/admin/ai/save">
