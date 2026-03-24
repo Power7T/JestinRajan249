@@ -3099,6 +3099,17 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
     if not cfg:
         return
+
+    # Check guest whitelisting (GuestContact system)
+    from web.guest_contact_service import is_guest_whitelisted, get_guest_contact_for_phone
+    if not is_guest_whitelisted(tenant_id, reply_to, db):
+        guest_contact = get_guest_contact_for_phone(tenant_id, reply_to, db)
+        if not guest_contact:
+            log.warning(f"[{tenant_id}] Inbound from unregistered guest {reply_to} ({source}) — rejecting")
+            return  # Don't process unregistered guests
+        # Guest contact found but outside check-in window — allow but log
+        log.info(f"[{tenant_id}] Message from {guest_contact.guest_name} outside check-in window")
+
     try:
         from web.classifier import classify_message_with_confidence, detect_vendor_type, generate_draft, build_property_context
         reservation = _find_reservation_for_guest_context(
