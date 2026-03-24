@@ -43,37 +43,37 @@ services:
       - "5432"
     logging: *default-logging
 
-  # ── PgBouncer — connection pooler ────────────────────────────
+  # ── PgBouncer — connection pooler (DISABLED FOR LOCAL DEV) ────────────────────────────
   # Sits between the app and PostgreSQL; pools connections in transaction mode.
   # Lets you run many Uvicorn workers + background threads without exhausting
   # PostgreSQL's max_connections (default 100).
-  pgbouncer:
-    image: bitnami/pgbouncer:1
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      POSTGRESQL_HOST:              db
-      POSTGRESQL_PORT:              5432
-      POSTGRESQL_DATABASE:          hostai
-      POSTGRESQL_USERNAME:          hostai
-      POSTGRESQL_PASSWORD:          ${POSTGRES_PASSWORD}
-      PGBOUNCER_DATABASE:           hostai
-      PGBOUNCER_POOL_MODE:          transaction
-      PGBOUNCER_MAX_CLIENT_CONN:    200
-      PGBOUNCER_DEFAULT_POOL_SIZE:  20
-      PGBOUNCER_MIN_POOL_SIZE:      5
-      PGBOUNCER_RESERVE_POOL_SIZE:  5
-      PGBOUNCER_AUTH_TYPE:          scram-sha-256
-    expose:
-      - "5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U hostai"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    logging: *default-logging
+  # pgbouncer:
+  #   image: bitnami/pgbouncer:1
+  #   restart: unless-stopped
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   environment:
+  #     POSTGRESQL_HOST:              db
+  #     POSTGRESQL_PORT:              5432
+  #     POSTGRESQL_DATABASE:          hostai
+  #     POSTGRESQL_USERNAME:          hostai
+  #     POSTGRESQL_PASSWORD:          ${POSTGRES_PASSWORD}
+  #     PGBOUNCER_DATABASE:           hostai
+  #     PGBOUNCER_POOL_MODE:          transaction
+  #     PGBOUNCER_MAX_CLIENT_CONN:    200
+  #     PGBOUNCER_DEFAULT_POOL_SIZE:  20
+  #     PGBOUNCER_MIN_POOL_SIZE:      5
+  #     PGBOUNCER_RESERVE_POOL_SIZE:  5
+  #     PGBOUNCER_AUTH_TYPE:          scram-sha-256
+  #   expose:
+  #     - "5432"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U hostai"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   logging: *default-logging
 
   # ── PostgreSQL Replica (streaming standby) ───────────────────
   # Hot standby — receives WAL from primary, available for SELECT queries.
@@ -130,13 +130,13 @@ services:
       dockerfile: web/Dockerfile
     restart: unless-stopped
     depends_on:
-      pgbouncer:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      # Write path goes through PgBouncer → primary
-      DATABASE_URL:            postgresql://hostai:${POSTGRES_PASSWORD}@pgbouncer:5432/hostai
+      # Write path goes directly to database (pgbouncer disabled)
+      DATABASE_URL:            postgresql://hostai:${POSTGRES_PASSWORD}@db:5432/hostai
       DATABASE_DIRECT_URL:     postgresql://hostai:${POSTGRES_PASSWORD}@db:5432/hostai
       # Read path goes directly to replica when available (bypasses PgBouncer for selects)
       DATABASE_REPLICA_URL:    ${DATABASE_REPLICA_URL:-}
@@ -148,7 +148,7 @@ services:
       TRUST_PROXY_HEADERS:     ${TRUST_PROXY_HEADERS:-1}
       RUN_EMBEDDED_WORKERS:    "0"
       AUTO_CREATE_TABLES:      "0"
-      AUTO_MIGRATE:            "0"
+      AUTO_MIGRATE:            "1"
       ADMIN_EMAILS:            ${ADMIN_EMAILS:-}
       SESSION_HOURS:           ${SESSION_HOURS:-72}
       META_APP_SECRET:         ${META_APP_SECRET:-}
@@ -181,6 +181,8 @@ services:
     volumes:
       - ./SKILL.md:/app/SKILL.md:ro
       - ./airbnb-host/SKILL.md:/app/airbnb-host/SKILL.md:ro
+    ports:
+      - "8000:8000"
     expose:
       - "8000"
     healthcheck:
@@ -199,12 +201,12 @@ services:
       dockerfile: web/Dockerfile
     restart: unless-stopped
     depends_on:
-      pgbouncer:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL:            postgresql://hostai:${POSTGRES_PASSWORD}@pgbouncer:5432/hostai
+      DATABASE_URL:            postgresql://hostai:${POSTGRES_PASSWORD}@db:5432/hostai
       DATABASE_DIRECT_URL:     postgresql://hostai:${POSTGRES_PASSWORD}@db:5432/hostai
       DATABASE_REPLICA_URL:    ${DATABASE_REPLICA_URL:-}
       REDIS_URL:               redis://redis:6379/0
