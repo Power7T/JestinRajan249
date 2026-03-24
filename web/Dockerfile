@@ -14,13 +14,16 @@ RUN pip install --no-cache-dir -r /app/web/requirements.txt
 # Copy application
 COPY web/ /app/web/
 COPY airbnb-host/SKILL.md /app/airbnb-host/SKILL.md
+COPY alembic.ini /app/alembic.ini
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app
+ENV DATABASE_HOST=db
 
 EXPOSE 8000
 
-# 2 workers × (2 × CPU + 1) — good default for I/O-bound FastAPI
-# Use WORKERS env var to override (e.g. WORKERS=4 for a 2-core server)
-CMD ["sh", "-c", "uvicorn web.app:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS:-2} --loop uvloop --http h11 --timeout-keep-alive 30"]
+# Run entrypoint script which runs migrations then starts app
+ENTRYPOINT ["/app/entrypoint.sh"]
