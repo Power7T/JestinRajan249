@@ -11,8 +11,9 @@ WORKDIR /app
 COPY web/requirements.txt /app/web/requirements.txt
 RUN pip install --no-cache-dir -r /app/web/requirements.txt
 
-# Copy application
+# Copy application + migration config
 COPY web/ /app/web/
+COPY alembic.ini /app/alembic.ini
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
