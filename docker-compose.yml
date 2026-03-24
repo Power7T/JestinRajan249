@@ -302,12 +302,12 @@ services:
     volumes:
       - pgbackups:/backups
     entrypoint: >
-      /bin/sh -c "trap exit TERM;
+      /bin/sh -c "set -o pipefail; trap exit TERM;
       while :; do
         FNAME=/backups/hostai_$$(date +%Y%m%d_%H%M%S).sql.gz;
         pg_dump -h db -U hostai hostai | gzip > $$FNAME
           && echo \"Backup OK: $$FNAME\"
-          || echo \"Backup FAILED\";
+          || { echo \"Backup FAILED\"; rm -f $$FNAME; };
         find /backups -name '*.sql.gz' -mtime +7 -delete;
         sleep 24h & wait $${!};
       done"

@@ -385,8 +385,7 @@
 <div class="alert alert-success" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
   ✓ Check-in link generated:
   <code style="font-size:0.82rem;word-break:break-all">{{ request.url.scheme }}://{{ request.headers.get('host', '') }}/checkin/{{ request.query_params.get('checkin_link') }}</code>
-  <button onclick="navigator.clipboard.writeText('{{ request.url.scheme }}://{{ request.headers.get('host', '') }}/checkin/{{ request.query_params.get('checkin_link') }}');this.textContent='Copied!'"
-          class="btn btn-outline btn-sm">Copy link</button>
+  <button class="btn btn-outline btn-sm copy-link-btn" data-link="{{ request.url.scheme }}://{{ request.headers.get('host', '') }}/checkin/{{ request.query_params.get('checkin_link') }}">Copy link</button>
 </div>
 {% endif %}
 
@@ -525,4 +524,17 @@
 </div>
 {% endif %}
 
+{% block scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('copy-link-btn')) {
+        const link = e.target.getAttribute('data-link');
+        navigator.clipboard.writeText(link);
+        const oldText = e.target.textContent;
+        e.target.textContent = 'Copied!';
+        setTimeout(() => e.target.textContent = oldText, 1500);
+    }
+});
+</script>
+{% endblock %}
 {% endblock %}

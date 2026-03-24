@@ -58,7 +58,6 @@ class EmailConfig:
     smtp_port:    int
     email_address: str
     email_password: str   # already decrypted
-    anthropic_api_key: str  # already decrypted
     property_context: str = ""   # injected into Claude system prompt
     escalation_email: str = ""   # host email for human-handoff alerts
     pet_policy: str = ""
@@ -485,13 +484,22 @@ def _process_message(cfg: EmailConfig, parsed: dict, subject: str, db_override=N
         )
         _save_draft(cfg.tenant_id, draft_id, parsed, "complex", None, escalation_note)
         log.warning("[%s] Escalation triggered for guest %s", cfg.tenant_id, parsed["guest_name"])
-        # Send alert to host
+        # Send alert to host with retry queue
         if cfg.escalation_email:
-            try:
-                from web.mailer import send_escalation_alert
-                send_escalation_alert(cfg.escalation_email, parsed["guest_name"], guest_msg)
-            except Exception as exc:
-                log.error("[%s] Escalation alert email failed: %s", cfg.tenant_id, exc)
+            for attempt, backoff in enumerate((2, 5, 0), start=1):
+                try:
+                    from web.mailer import send_escalation_alert
+                    send_escalation_alert(cfg.escalation_email, parsed["guest_name"], guest_msg)
+                    log.info("[%s] Escalation alert sent to %s", cfg.tenant_id, cfg.escalation_email)
+                    break
+                except Exception as exc:
+                    if attempt == 3:
+                        log.error("[%s] Escalation alert email failed after 3 attempts: %s", cfg.tenant_id, exc)
+                    else:
+                        log.warning("[%s] Escalation alert email failed (attempt %d): %s. Retrying in %ds...", 
+                                    cfg.tenant_id, attempt, exc, backoff)
+                        import time
+                        time.sleep(backoff)
         return
 
     msg_type, confidence, matched_patterns = classify_message_with_confidence(guest_msg)
@@ -517,7 +525,7 @@ def _process_message(cfg: EmailConfig, parsed: dict, subject: str, db_override=N
     try:
         from web import classifier as classifier_mod
         draft_text = classifier_mod.generate_draft(
-            cfg.anthropic_api_key, parsed["guest_name"], guest_msg, msg_type,
+            parsed["guest_name"], guest_msg, msg_type,
             property_context=full_context,
         )
     except RuntimeError as exc:
@@ -711,9 +719,6 @@ def run_for_tenant(cfg: EmailConfig, stop_flag: "threading.Event"):
 def _email_config_from_record(cfg) -> Optional[EmailConfig]:
     if not cfg:
         return None
-    api_key = decrypt(cfg.anthropic_api_key_enc or "")
-    if not api_key:
-        return None
     smtp_host = cfg.smtp_host or (cfg.imap_host.replace("imap.", "smtp.") if cfg.imap_host else "")
     return EmailConfig(
         tenant_id=cfg.tenant_id,
@@ -723,7 +728,6 @@ def _email_config_from_record(cfg) -> Optional[EmailConfig]:
         smtp_port=cfg.smtp_port,
         email_address=cfg.email_address or "",
         email_password=decrypt(cfg.email_password_enc or ""),
-        anthropic_api_key=api_key,
         property_context=build_property_context(cfg),
         escalation_email=cfg.escalation_email or cfg.email_address or "",
         pet_policy=cfg.pet_policy or "",

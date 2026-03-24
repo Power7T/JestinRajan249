@@ -10,6 +10,7 @@ import time
 import logging
 import urllib.request
 from datetime import datetime, timezone, date as date_type
+from zoneinfo import ZoneInfo
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -37,8 +38,8 @@ class CalendarConfig:
     tenant_id:         str
     ical_urls:         list[str]
     property_names:    list[str]
-    anthropic_api_key: str   # already decrypted
     property_context:  str = ""   # injected into Claude system prompt
+    timezone:          str = "UTC"
     poll_minutes:      int = _POLL_MINUTES
 
 
@@ -120,7 +121,7 @@ def _save_draft(tenant_id: str, draft_id: str, guest_name: str, context: str, dr
 def _request_draft(cfg: CalendarConfig, skill: str, guest: str, context: str) -> Optional[tuple]:
     try:
         draft = generate_draft(
-            cfg.anthropic_api_key, guest, context, "complex", skill=skill,
+            guest, context, "complex", skill=skill,
             property_context=cfg.property_context,
         )
         return make_draft_id("calendar"), draft
@@ -153,7 +154,7 @@ def check_pre_arrival(cfg: CalendarConfig, booking: dict, label: str, now: datet
     if _state_fired(cfg.tenant_id, key):
         return
     checkin_dt = datetime(booking["checkin"].year, booking["checkin"].month,
-                          booking["checkin"].day, _DEFAULT_CHECKIN_HOUR, tzinfo=timezone.utc)
+                          booking["checkin"].day, _DEFAULT_CHECKIN_HOUR, tzinfo=ZoneInfo(cfg.timezone))
     hours_until = (checkin_dt - now).total_seconds() / 3600
     window_lo, window_hi = _PRE_ARRIVAL_DAYS * 24, (_PRE_ARRIVAL_DAYS + 1) * 24
     if window_lo < hours_until <= window_hi:
@@ -175,7 +176,7 @@ def check_checkin(cfg: CalendarConfig, booking: dict, label: str, now: datetime)
     if _state_fired(cfg.tenant_id, key):
         return
     checkin_dt = datetime(booking["checkin"].year, booking["checkin"].month,
-                          booking["checkin"].day, _DEFAULT_CHECKIN_HOUR, tzinfo=timezone.utc)
+                          booking["checkin"].day, _DEFAULT_CHECKIN_HOUR, tzinfo=ZoneInfo(cfg.timezone))
     hours_until = (checkin_dt - now).total_seconds() / 3600
     if 0 < hours_until <= _CHECKIN_NOTICE_HOURS:
         guest   = booking["guest_name"]
@@ -251,7 +252,7 @@ def run_for_tenant(cfg: CalendarConfig, stop_flag: "threading.Event"):
     log.info("[%s] Calendar watcher started — %d listing(s)", cfg.tenant_id, len(cfg.ical_urls))
 
     while not stop_flag.is_set():
-        now = datetime.now(timezone.utc)
+        now = datetime.now(ZoneInfo(cfg.timezone))
         try:
             for idx, url in enumerate(cfg.ical_urls):
                 label    = cfg.property_names[idx] if idx < len(cfg.property_names) else f"Property {idx + 1}"
@@ -289,8 +290,8 @@ def make_config_from_db(tenant_id: str) -> Optional[CalendarConfig]:
             tenant_id=tenant_id,
             ical_urls=urls,
             property_names=names,
-            anthropic_api_key=decrypt(cfg.anthropic_api_key_enc or ""),
             property_context=build_property_context(cfg),
+            timezone=getattr(cfg, "timezone", "UTC"),
         )
     finally:
         db.close()

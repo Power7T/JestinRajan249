@@ -1165,7 +1165,7 @@
         </p>
     </footer>
 
-    <script>
+    <script nonce="{{ request.state.csp_nonce }}">
         // FAQ Toggle
         document.querySelectorAll('.faq-item').forEach(item => {
             item.querySelector('.faq-question').addEventListener('click', () => {

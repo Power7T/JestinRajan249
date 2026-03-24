@@ -155,7 +155,7 @@
     <label>Your private HostAI forwarding address</label>
     <div class="copy-box">
       <input type="text" readonly value="{{ inbound_email_address }}" id="inbound-forward-address">
-      <button type="button" class="btn btn-outline copy-btn" onclick="copyField('inbound-forward-address')">Copy</button>
+      <button type="button" class="btn btn-outline copy-btn" data-target="inbound-forward-address">Copy</button>
     </div>
     <p class="help-text">
       Recommended: create an auto-forward rule for Airbnb guest emails to this address. HostAI will receive them through the inbound email webhook at <code>{{ inbound_webhook_url }}</code>.
@@ -232,13 +232,6 @@
     </div>
   </div>
 
-  <!-- ── Claude API ────────────────────────────────────────────────── -->
-  <div class="form-section">
-    <h2>Claude API Key</h2>
-    <label>Anthropic API key <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
-    <input type="password" name="anthropic_key" placeholder="sk-ant-...">
-    <p class="help-text">Get one at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></p>
-  </div>
 
   <!-- ── WhatsApp: Baileys ─────────────────────────────────────────── -->
   <div class="channel-section {% if not has_baileys %}locked{% endif %}">
@@ -322,7 +315,7 @@
     <label>Your webhook URL (paste this into Meta Developer Console)</label>
     <div class="copy-box">
       <input type="text" readonly value="{{ app_base_url }}/wa/webhook/{{ cfg.tenant_id }}" id="wa-webhook-url">
-      <button type="button" class="btn btn-outline copy-btn" onclick="copyField('wa-webhook-url')">Copy</button>
+      <button type="button" class="btn btn-outline copy-btn" data-target="wa-webhook-url">Copy</button>
     </div>
     <p class="help-text">
       Meta Developer Console → Your App → WhatsApp → Configuration → Webhook URL.
@@ -376,7 +369,7 @@
     <label>Your Twilio webhook URL (paste into Twilio Console)</label>
     <div class="copy-box">
       <input type="text" readonly value="{{ app_base_url }}/sms/webhook/{{ cfg.tenant_id }}" id="sms-webhook-url">
-      <button type="button" class="btn btn-outline copy-btn" onclick="copyField('sms-webhook-url')">Copy</button>
+      <button type="button" class="btn btn-outline copy-btn" data-target="sms-webhook-url">Copy</button>
     </div>
     <p class="help-text">
       Twilio Console → Phone Numbers → Active Numbers → your number → Messaging → Webhook URL (HTTP POST).
@@ -622,11 +615,11 @@
         <td style="color:#6c757d;font-size:0.8rem">{{ v.notes or '' }}</td>
         <td style="white-space:nowrap">
           <button type="button" class="btn btn-outline btn-sm"
-                  onclick="toggleVendorEdit({{ v.id }})">Edit</button>
+                  class="toggle-vendor-edit" data-id="{{ v.id }}">Edit</button>
           <form method="post" action="/vendors/{{ v.id }}/delete" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-            <button type="submit" class="btn btn-outline btn-sm"
-                    onclick="return confirm('Remove {{ v.name }}?')">Remove</button>
+            <button type="submit" class="btn btn-outline btn-sm confirm-submit"
+                    data-confirm="Remove {{ v.name }}?">Remove</button>
           </form>
         </td>
       </tr>
@@ -651,8 +644,8 @@
                      style="width:180px;margin-bottom:0">
             </div>
             <button type="submit" class="btn btn-primary btn-sm">Save</button>
-            <button type="button" class="btn btn-outline btn-sm"
-                    onclick="toggleVendorEdit({{ v.id }})">Cancel</button>
+            <button type="button" class="btn btn-outline btn-sm toggle-vendor-edit"
+                    data-id="{{ v.id }}">Cancel</button>
           </form>
         </td>
       </tr>
@@ -717,8 +710,8 @@
           {{ p.last_synced_at.strftime('%b %d, %H:%M UTC') if p.last_synced_at else 'Not yet synced' }}
         </td>
         <td>
-          <button type="button" class="btn btn-outline btn-sm"
-                  onclick="deletePMS({{ p.id }}, '{{ p.pms_type }}')">Remove</button>
+          <button type="button" class="btn btn-outline btn-sm delete-pms-btn"
+                  data-id="{{ p.id }}" data-type="{{ p.pms_type }}">Remove</button>
         </td>
       </tr>
     {% endfor %}
@@ -730,7 +723,7 @@
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
 
     <label>PMS System</label>
-    <select name="pms_type" id="pmsType" onchange="updatePMSFields()" style="margin-bottom:1rem">
+    <select name="pms_type" id="pmsType" style="margin-bottom:1rem">
       <option value="">— Select your PMS —</option>
       <option value="guesty">Guesty</option>
       <option value="hostaway">Hostaway</option>
@@ -790,44 +783,52 @@
     </div>
 
     <div style="display:flex;gap:0.75rem;margin-top:1rem;align-items:center">
-      <button type="button" class="btn btn-outline" onclick="testPMS()">Test connection</button>
+      <button type="button" class="btn btn-outline" id="test-pms-btn">Test connection</button>
       <button type="submit" class="btn btn-primary" id="pmsSaveBtn" disabled>Save PMS</button>
       <span id="pmsTestResult" style="font-size:0.875rem"></span>
     </div>
   </form>
 </div>
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 function copyField(id) {
   const el = document.getElementById(id);
   el.select();
   document.execCommand('copy');
-  event.target.textContent = 'Copied!';
-  setTimeout(() => event.target.textContent = 'Copy', 1500);
 }
 
 function updatePMSFields() {
   const type = document.getElementById('pmsType').value;
   document.querySelectorAll('.pms-fields').forEach(el => el.style.display = 'none');
-  if (type) document.getElementById('fields-' + type).style.display = 'block';
-  document.getElementById('pmsSaveBtn').disabled = !type;
-  document.getElementById('pmsTestResult').textContent = '';
+  if (type) {
+    const target = document.getElementById('fields-' + type);
+    if (target) target.style.display = 'block';
+  }
+  const saveBtn = document.getElementById('pmsSaveBtn');
+  if (saveBtn) saveBtn.disabled = !type;
+  const resultEl = document.getElementById('pmsTestResult');
+  if (resultEl) resultEl.textContent = '';
 }
 
 async function testPMS() {
   const form = document.getElementById('pmsForm');
   const data = new FormData(form);
   const resultEl = document.getElementById('pmsTestResult');
-  resultEl.textContent = 'Testing…';
+  if (resultEl) resultEl.textContent = 'Testing…';
   try {
     const resp = await fetch('/api/pms/test', { method: 'POST', body: data });
     const json = await resp.json();
-    resultEl.style.color = json.ok ? '#155724' : '#721c24';
-    resultEl.textContent = json.message;
-    if (json.ok) document.getElementById('pmsSaveBtn').disabled = false;
+    if (resultEl) {
+      resultEl.style.color = json.ok ? '#155724' : '#721c24';
+      resultEl.textContent = json.message;
+    }
+    const saveBtn = document.getElementById('pmsSaveBtn');
+    if (json.ok && saveBtn) saveBtn.disabled = false;
   } catch (e) {
-    resultEl.style.color = '#721c24';
-    resultEl.textContent = 'Network error — try again';
+    if (resultEl) {
+      resultEl.style.color = '#721c24';
+      resultEl.textContent = 'Network error — try again';
+    }
   }
 }
 
@@ -843,7 +844,54 @@ async function deletePMS(id, type) {
 
 function toggleVendorEdit(id) {
   const editRow = document.getElementById('vendor-edit-' + id);
-  editRow.style.display = editRow.style.display === 'none' ? 'table-row' : 'none';
+  if (editRow) editRow.style.display = editRow.style.display === 'none' ? 'table-row' : 'none';
+}
+
+// ── Event Listeners ──────────────────────────────────────────
+document.addEventListener('click', (e) => {
+    // Copy buttons
+    if (e.target.classList.contains('copy-btn')) {
+        const targetId = e.target.getAttribute('data-target');
+        copyField(targetId);
+        const oldText = e.target.textContent;
+        e.target.textContent = 'Copied!';
+        setTimeout(() => e.target.textContent = oldText, 1500);
+    }
+    
+    // Vendor edit
+    if (e.target.classList.contains('toggle-vendor-edit')) {
+        toggleVendorEdit(e.target.getAttribute('data-id'));
+    }
+    
+    // PMS delete
+    if (e.target.classList.contains('delete-pms-btn')) {
+        deletePMS(e.target.getAttribute('data-id'), e.target.getAttribute('data-type'));
+    }
+    
+    // Test PMS
+    if (e.target.id === 'test-pms-btn') {
+        testPMS();
+    }
+});
+
+// Confirmation handlers
+document.addEventListener('submit', (e) => {
+    if (e.target.classList.contains('confirm-submit')) {
+        const msg = e.target.getAttribute('data-confirm');
+        if (!confirm(msg)) e.preventDefault();
+    }
+    // Handle the Remove vendor button which might be a button inside a form
+    const submitBtn = e.submitter;
+    if (submitBtn && submitBtn.classList.contains('confirm-submit')) {
+        const msg = submitBtn.getAttribute('data-confirm');
+        if (!confirm(msg)) e.preventDefault();
+    }
+});
+
+// PMS type change
+const pmsTypeSelect = document.getElementById('pmsType');
+if (pmsTypeSelect) {
+    pmsTypeSelect.addEventListener('change', updatePMSFields);
 }
 </script>
 {% endblock %}

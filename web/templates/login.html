@@ -268,7 +268,7 @@
   </style>
 </head>
 <body>
-  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span id="theme-icon">☀️</span></button>
+  <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme"><span id="theme-icon">☀️</span></button>
 
   <div class="login-wrap">
     <div class="brand">
@@ -312,11 +312,12 @@
     <p class="note">By continuing, you agree to our terms of service.</p>
   </div>
 
-  <script>
+  <script nonce="{{ request.state.csp_nonce }}">
     const THEME_KEY = 'hostai-theme';
     function applyTheme(t) {
       document.documentElement.setAttribute('data-theme', t);
-      document.getElementById('theme-icon').textContent = t === 'dark' ? '☀️' : '🌙';
+      const icon = document.getElementById('theme-icon');
+      if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
       localStorage.setItem(THEME_KEY, t);
     }
     function toggleTheme() {
@@ -326,6 +327,9 @@
     (function() {
       const saved = localStorage.getItem(THEME_KEY);
       if (saved) applyTheme(saved);
+
+      const btn = document.getElementById('theme-toggle-btn');
+      if (btn) btn.addEventListener('click', toggleTheme);
     })();
   </script>
 </body>

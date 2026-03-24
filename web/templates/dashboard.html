@@ -98,7 +98,7 @@
     <div class="widget-label">Occupancy this month</div>
     <div class="widget-sub">Booked nights ÷ 30</div>
   </div>
-  <div class="analytics-widget" style="cursor:pointer" onclick="location.href='/reservations'">
+  <div class="analytics-widget" style="cursor:pointer" id="all-reservations-widget">
     <div class="widget-value" style="font-size:1.1rem;color:#e00b27">→</div>
     <div class="widget-label">All reservations</div>
     <div class="widget-sub">View & upload CSV</div>
@@ -108,7 +108,7 @@
 
 {% set ingest_mode = cfg.email_ingest_mode or 'imap' %}
 {% set has_forwarding = ingest_mode == 'forwarding' %}
-{% set has_ai = cfg.anthropic_api_key_enc %}
+{% set has_ai = true %}
 
 <div id="workflow" class="card" style="padding:1.5rem;margin-bottom:1.5rem">
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
@@ -435,13 +435,12 @@
   {% endif %}
   <span>Approval streak: <strong>{{ approval_streak }}</strong></span>
   <span style="color:#dee2e6">|</span>
-  <form method="post" action="/api/digest/send" style="display:inline">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <button type="submit" class="btn btn-outline btn-sm"
-            onclick="return confirm('Send this week\'s digest to your email?')">
-      📧 Send weekly digest
-    </button>
-  </form>
+    <form method="post" action="/api/digest/send" style="display:inline" class="confirm-submit" data-confirm="Send this week's digest to your email?">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn btn-outline btn-sm">
+        📧 Send weekly digest
+      </button>
+    </form>
 </div>
 {% endif %}
 
@@ -462,11 +461,6 @@
     <span class="check-icon {% if cfg.email_address %}done{% else %}todo{% endif %}">{% if cfg.email_address %}✓{% else %}○{% endif %}</span>
     <span>Email connected</span>
     {% if not cfg.email_address %}<a href="/onboarding?step=5" class="checklist-action btn btn-primary btn-sm">Connect →</a>{% endif %}
-  </div>
-  <div class="checklist-item">
-    <span class="check-icon {% if cfg.anthropic_api_key_enc %}done{% else %}todo{% endif %}">{% if cfg.anthropic_api_key_enc %}✓{% else %}○{% endif %}</span>
-    <span>Claude API key added</span>
-    {% if not cfg.anthropic_api_key_enc %}<a href="/onboarding?step=5" class="checklist-action btn btn-primary btn-sm">Add key →</a>{% endif %}
   </div>
   <div class="checklist-item" style="flex-wrap:wrap;gap:0.5rem">
     <span class="check-icon {% if cfg.ical_urls %}done{% else %}todo{% endif %}">{% if cfg.ical_urls %}✓{% else %}○{% endif %}</span>
@@ -513,7 +507,7 @@
   <div class="empty-icon">{% if cfg.onboarding_complete %}✅{% else %}⏳{% endif %}</div>
   <p>{% if cfg.onboarding_complete %}No pending drafts — all caught up!{% else %}No drafts yet — complete setup above to start{% endif %}</p>
   <p style="font-size:0.8rem;margin-top:0.4rem">New guest messages will appear here for your approval.</p>
-  {% if cfg.onboarding_complete and cfg.anthropic_api_key_enc %}
+  {% if cfg.onboarding_complete %}
   <details style="margin-top:1rem;text-align:left">
     <summary style="cursor:pointer;font-size:0.85rem;color:#0d6efd;font-weight:600">Simulate a guest message →</summary>
     <form method="post" action="/api/simulate" style="margin-top:0.75rem;display:flex;flex-direction:column;gap:0.5rem">
@@ -532,13 +526,11 @@
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem">
   <p style="font-size:0.85rem;color:#6c757d;margin:0">{{ drafts|length }} pending draft{% if drafts|length != 1 %}s{% endif %} waiting for review</p>
   <div style="display:flex;gap:0.5rem">
-    <form method="post" action="/drafts/bulk-approve"
-          onsubmit="return confirm('Approve and send all {{ drafts|length }} pending draft(s)?')">
+    <form method="post" action="/drafts/bulk-approve" class="confirm-submit" data-confirm="Approve and send all {{ drafts|length }} pending draft(s)?">
       <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <button type="submit" class="btn btn-success btn-sm">✓ Approve all</button>
     </form>
-    <form method="post" action="/drafts/bulk-skip"
-          onsubmit="return confirm('Skip all {{ drafts|length }} pending draft(s)?')">
+    <form method="post" action="/drafts/bulk-skip" class="confirm-submit" data-confirm="Skip all {{ drafts|length }} pending draft(s)?">
       <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <button type="submit" class="btn btn-outline btn-sm">✗ Skip all</button>
     </form>
@@ -558,7 +550,7 @@
       {% set conf_color = '#198754' if draft.confidence >= 0.7 else ('#fd7e14' if draft.confidence >= 0.45 else '#dc3545') %}
       <span title="AI confidence score" style="font-size:0.7rem;padding:2px 7px;border-radius:12px;background:{{ conf_color }};color:#fff;font-weight:600">{{ conf_pct }}% confident</span>
       {% if draft.context_sources %}
-      <button type="button" onclick="toggleWhy('{{ draft.id }}')"
+      <button type="button" class="toggle-why" data-id="{{ draft.id }}"
               style="font-size:0.7rem;padding:2px 7px;border:1px solid #ced4da;border-radius:12px;background:transparent;cursor:pointer;color:#6c757d">why?</button>
       {% endif %}
       {% endif %}
@@ -588,7 +580,7 @@
     {% if draft.guest_message_index and draft.guest_message_index > 1 %}
     <span class="chip warn">Thread msg {{ draft.guest_message_index }}
       {% if draft.thread_key %}
-      <button type="button" onclick="toggleThread('{{ draft.id }}')"
+      <button type="button" class="toggle-thread" data-id="{{ draft.id }}"
               style="background:none;border:none;color:#6c757d;cursor:pointer;font-size:0.7rem;padding:0 2px;margin-left:2px">▾</button>
       {% endif %}
     </span>
@@ -652,8 +644,7 @@
     </button>
 
     <!-- Schedule toggle -->
-    <button class="btn btn-outline btn-sm"
-            onclick="toggleSchedule('{{ draft.id }}')">
+    <button class="btn btn-outline btn-sm toggle-schedule" data-id="{{ draft.id }}">
       🕐 Schedule
     </button>
   </div>
@@ -732,46 +723,69 @@
 {% endif %}
 
 <!-- Auto-refresh pending count every 30s via HTMX -->
-<div hx-get="/api/drafts" hx-trigger="every 30s" hx-swap="none"
-     hx-on::after-request="if(JSON.parse(event.detail.xhr.responseText).length !== {{ drafts|length }}) location.reload()">
+<div hx-get="/api/drafts" hx-trigger="every 30s" hx-swap="none" id="drafts-refresh-poll" data-count="{{ drafts|length }}">
 </div>
 
 <!-- Post-onboarding first-visit tour (shown once via localStorage) -->
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
+// ── Navigation ──────────────────────────────────────────────
+const allResWidget = document.getElementById('all-reservations-widget');
+if (allResWidget) {
+    allResWidget.addEventListener('click', () => { location.href = '/reservations'; });
+}
+
+// ── Confirmation Handlers ─────────────────────────────────────
+document.querySelectorAll('.confirm-submit').forEach(form => {
+    form.addEventListener('submit', (e) => {
+        const msg = form.getAttribute('data-confirm');
+        if (!confirm(msg)) e.preventDefault();
+    });
+});
+
+// ── Toggle Functions ──────────────────────────────────────────
 function toggleSchedule(id) {
-  var el = document.getElementById('schedule-area-' + id);
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  const el = document.getElementById('schedule-area-' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 function toggleWhy(id) {
-  var el = document.getElementById('why-' + id);
+  const el = document.getElementById('why-' + id);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 function toggleThread(id) {
-  var el = document.getElementById('thread-' + id);
+  const el = document.getElementById('thread-' + id);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
-</script>
 
-{% if show_tour %}
-<div id="tour-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:12px;padding:2rem;max-width:440px;width:90%;text-align:center">
-    <div style="font-size:2.5rem;margin-bottom:0.75rem">🏠</div>
-    <h2 style="font-size:1.2rem;margin-bottom:0.75rem">Your HostAI is ready!</h2>
-    <p style="font-size:0.875rem;color:#495057;margin-bottom:1.5rem;line-height:1.7">
-      When a guest sends you a message, it appears here as a <strong>draft card</strong>.<br><br>
-      Click <strong>✓ Send this</strong> to approve and send the AI reply instantly.<br>
-      Click <strong>✎ Edit &amp; send</strong> to tweak it before sending.<br>
-      Click <strong>✗ Skip</strong> to dismiss without sending.
-    </p>
-    <button class="btn btn-primary" onclick="dismissTour()">Got it, let's go →</button>
-  </div>
-</div>
-<script>
+// Use delegation for dynamic toggle buttons
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const id = btn.getAttribute('data-id');
+    if (btn.classList.contains('toggle-why')) toggleWhy(id);
+    if (btn.classList.contains('toggle-thread')) toggleThread(id);
+    if (btn.classList.contains('toggle-schedule')) toggleSchedule(id);
+    if (btn.id === 'dismiss-tour-btn') dismissTour();
+});
+
+// ── HTMX Refresh Poll ─────────────────────────────────────────
+document.body.addEventListener('htmx:afterRequest', (e) => {
+    const poll = document.getElementById('drafts-refresh-poll');
+    if (poll && e.detail.elt === poll) {
+        const results = JSON.parse(e.detail.xhr.responseText);
+        const oldCount = parseInt(poll.getAttribute('data-count'));
+        if (results.length !== oldCount) location.reload();
+    }
+});
+
+// ── Tour Logic ──────────────────────────────────────────────
 function dismissTour() {
-  document.getElementById('tour-overlay').remove();
-  fetch('/onboarding/dismiss-tour', {method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({csrf_token:'{{ request.state.csrf_token }}'})});
+    const overlay = document.getElementById('tour-overlay');
+    if (overlay) overlay.remove();
+    fetch('/onboarding/dismiss-tour', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csrf_token: '{{ request.state.csrf_token }}' })
+    });
 }
 </script>
-{% endif %}
 {% endblock %}

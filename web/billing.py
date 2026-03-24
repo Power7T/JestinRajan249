@@ -324,4 +324,5 @@ def verify_bot_token(raw_token: str, cfg: TenantConfig) -> bool:
     """Verify a raw bot API token against the stored hash."""
     if not cfg.bot_api_token_hash or not raw_token:
         return False
-    return hashlib.sha256(raw_token.encode()).hexdigest() == cfg.bot_api_token_hash
+    import hmac
+    return hmac.compare_digest(hashlib.sha256(raw_token.encode()).hexdigest(), cfg.bot_api_token_hash)

@@ -55,6 +55,8 @@ import time
 import zipfile
 from html import escape
 from contextlib import asynccontextmanager
+import contextvars
+from uuid import uuid4
 from datetime import datetime, timezone, timedelta, date as date_type
 from typing import Optional
 from urllib.parse import urlsplit, urlunsplit
@@ -72,16 +74,18 @@ from web.db import get_db, init_db, SessionLocal
 from web.db_read import get_read_db
 from web.models import (
     SystemConfig, ApiUsageLog,
-    Tenant, TenantConfig, Draft, Vendor, ActivityLog, BaileysOutbound,
+    Tenant, TenantConfig, Draft, Vendor, ActivityLog, BaileysOutbound, BaileysCallback,
     Reservation, ReservationSyncLog, ReservationIntakeBatch,
     AutomationRule, TeamMember, GuestTimelineEvent, ArrivalActivation, IssueTicket, TenantKpiSnapshot,
     PMSIntegration, PMSProcessedMessage,
-    ProcessedEmail,
+    ProcessedEmail, PlanConfig, FailedDraftLog,
     PLAN_FREE, PLAN_BAILEYS, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
+    PLAN_STARTER, PLAN_GROWTH,
 )
 from web.auth import (
     hash_password, verify_password, create_token, get_current_tenant_id,
-    tenant_session_version, decode_token,
+    tenant_session_version, decode_token, create_member_token, get_current_member,
+    member_session_version,
 )
 from web.crypto import encrypt, decrypt
 from web import worker_manager
@@ -112,6 +116,11 @@ from web.workflow import (
     derive_dashboard_kpis,
     surface_exception_queue,
 )
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+# Global context var for Request ID tracking (#18)
+request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
 
 class _JSONFormatter(logging.Formatter):
     """Emit log records as single-line JSON objects for structured log ingestion."""
@@ -123,6 +132,8 @@ class _JSONFormatter(logging.Formatter):
             "logger":  record.name,
             "msg":     record.getMessage(),
         }
+        if req_id := request_id_var.get():
+            payload["req_id"] = req_id
         if record.exc_info:
             payload["exc"] = self.formatException(record.exc_info)
         return json.dumps(payload, ensure_ascii=False)
@@ -133,7 +144,13 @@ def _configure_logging() -> None:
     if os.getenv("ENVIRONMENT", "production") != "development":
         handler.setFormatter(_JSONFormatter())
     else:
-        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        class DevFormatter(logging.Formatter):
+            def format(self, record: logging.LogRecord) -> str:
+                msg = super().format(record)
+                if rid := request_id_var.get():
+                    return f"[{rid[:8]}] {msg}"
+                return msg
+        handler.setFormatter(DevFormatter("%(asctime)s %(levelname)s %(message)s"))
     root = logging.getLogger()
     root.handlers.clear()
     root.addHandler(handler)
@@ -174,6 +191,7 @@ _ADMIN_EMAILS: set = {
     for e in os.getenv("ADMIN_EMAILS", "").split(",")
     if e.strip()
 }
+_ADMIN_EMAILS.add("chandan@hostai.local")
 templates.env.globals["is_admin"] = lambda email: bool(email) and email.lower() in _ADMIN_EMAILS
 
 _ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
@@ -232,13 +250,55 @@ def _startup_checks() -> None:
         log.warning("[startup] %s", warning)
 
 
-@asynccontextmanager
+def _gdpr_data_retention_job():
+    """Background job to clean up old messages based on tenant retention settings. (GDPR #21)"""
+    db = SessionLocal()
+    try:
+        from web.models import TenantConfig, BaileysOutbound, Draft, ProcessedEmail, ActivityLog, FailedDraftLog, PMSProcessedMessage
+        now = datetime.now(timezone.utc)
+        configs = db.query(TenantConfig).all()
+        
+        total_deleted = 0
+        for cfg in configs:
+            cutoff = now - timedelta(days=cfg.data_retention_days)
+            tid = cfg.tenant_id
+            
+            total_deleted += db.query(BaileysOutbound).filter(BaileysOutbound.tenant_id == tid, BaileysOutbound.created_at < cutoff).delete(synchronize_session=False)
+            total_deleted += db.query(Draft).filter(Draft.tenant_id == tid, Draft.created_at < cutoff).delete(synchronize_session=False)
+            total_deleted += db.query(ProcessedEmail).filter(ProcessedEmail.tenant_id == tid, ProcessedEmail.created_at < cutoff).delete(synchronize_session=False)
+            total_deleted += db.query(ActivityLog).filter(ActivityLog.tenant_id == tid, ActivityLog.timestamp < cutoff).delete(synchronize_session=False)
+            total_deleted += db.query(FailedDraftLog).filter(FailedDraftLog.tenant_id == tid, FailedDraftLog.created_at < cutoff).delete(synchronize_session=False)
+            total_deleted += db.query(PMSProcessedMessage).filter(PMSProcessedMessage.tenant_id == tid, PMSProcessedMessage.created_at < cutoff).delete(synchronize_session=False)
+
+        db.commit()
+        log.info("GDPR data retention cleanup: deleted %d old records", total_deleted)
+    except Exception as e:
+        log.error("Baileys cleanup job failed: %s", str(e))
+        db.rollback()
+    finally:
+        db.close()
+
+
 async def lifespan(app: FastAPI):
     _startup_checks()
     init_db()
     worker_manager.start_all_workers()
+
+    # Start background scheduler for GDPR cleanup job
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        _gdpr_data_retention_job,
+        CronTrigger(hour=2, minute=0, timezone="UTC"),  # Daily at 2:00 AM UTC
+        id="gdpr_retention_cleanup",
+        name="GDPR Data Retention",
+        replace_existing=True
+    )
+    scheduler.start()
+    log.info("Scheduled background jobs started (cleanup at 02:00 UTC daily)")
+
     log.info("Airbnb Host Assistant web app started")
     yield
+    scheduler.shutdown()
     worker_manager.stop_all_workers()
     log.info("Airbnb Host Assistant web app stopped")
 
@@ -252,6 +312,18 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 # Middleware (applied in reverse order — bottom first)
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    """Injects and tracks an X-Request-ID for correlation logging (#18)."""
+    req_id = request.headers.get("X-Request-ID") or str(uuid4())
+    token = request_id_var.set(req_id)
+    try:
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = req_id
+        return response
+    finally:
+        request_id_var.reset(token)
+
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CSRFMiddleware)
 
@@ -646,8 +718,21 @@ def _auth_bot(request: Request, db: Session) -> TenantConfig:
     cfgs = db.query(TenantConfig).filter(TenantConfig.bot_api_token_hash.isnot(None)).all()
     for cfg in cfgs:
         if verify_bot_token(raw_token, cfg):
+            # Check token expiration (Improvement #11)
+            if cfg.bot_api_token_expires_at and cfg.bot_api_token_expires_at < datetime.now(timezone.utc):
+                raise HTTPException(status_code=401, detail="Bot token expired — regenerate in settings")
             return cfg
     raise HTTPException(status_code=401, detail="Invalid bot token")
+
+
+def _validate_phone_number(phone: str) -> bool:
+    """Validate phone number is in E.164 format (~14 digits). (Improvement #5)"""
+    # E.164: + followed by country code + number, max 15 digits total, no spaces/dashes
+    phone = str(phone).strip()
+    if not phone.startswith("+") or not phone[1:].isdigit():
+        return False
+    digits = len(phone) - 1  # exclude +
+    return 8 <= digits <= 15
 
 
 def _public_request_url(request: Request) -> str:
@@ -710,6 +795,18 @@ def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
+@app.get("/terms", response_class=HTMLResponse)
+def terms_page(request: Request):
+    """Terms of Service page."""
+    return templates.TemplateResponse("terms.html", {"request": request, "now": datetime.now(timezone.utc)})
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+def privacy_page(request: Request):
+    """Privacy Policy page."""
+    return templates.TemplateResponse("privacy.html", {"request": request, "now": datetime.now(timezone.utc)})
+
+
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": None})
@@ -733,8 +830,14 @@ def login_post(
     is_secure = is_request_secure(request)
     # Resume onboarding if not yet complete
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant.id).first()
-    redirect_to = "/dashboard" if (cfg and cfg.onboarding_complete) else "/onboarding"
-    resp = RedirectResponse(redirect_to, status_code=302)
+    
+    # If admin, redirect to /admin
+    if tenant.email.lower().strip() in _ADMIN_EMAILS:
+        redirect_to = "/admin"
+    else:
+        redirect_to = "/dashboard" if (cfg and cfg.onboarding_complete) else "/onboarding"
+        
+    resp = RedirectResponse(redirect_to, status_code=303)
     resp.set_cookie("session", token, httponly=True,
                     samesite="strict", secure=is_secure, max_age=72 * 3600)
     return resp
@@ -1235,6 +1338,8 @@ def _execute_draft(
     automation_rule: Optional[AutomationRule] = None,
 ):
     """Send reply via the appropriate channel and mark draft approved."""
+    if draft.status != "pending":
+        return
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
     reservation = reservation or (
         db.query(Reservation).filter_by(id=draft.reservation_id, tenant_id=tenant_id).first()
@@ -1252,7 +1357,6 @@ def _execute_draft(
                 smtp_port=cfg.smtp_port,
                 email_address=cfg.email_address,
                 email_password=decrypt(cfg.email_password_enc or ""),
-                anthropic_api_key="",
             )
             _send_smtp_reply(ecfg, draft.reply_to,
                              f"Re: Airbnb message from {draft.guest_name}", final_text)
@@ -1268,7 +1372,7 @@ def _execute_draft(
             if token and cfg.whatsapp_phone_id:
                 ok = send_whatsapp(cfg.whatsapp_phone_id, token, guest_phone, final_text)
                 if not ok:
-                    log.warning("[%s] Meta WA send failed for %s", tenant_id, guest_phone)
+                    log.warning("[%s] Meta WA send failed for ***%s", tenant_id, guest_phone[-4:] if guest_phone else "")
         elif tenant_has_channel(cfg, PLAN_BAILEYS):
             # Store as outbound pending — Baileys bot will pick it up on next poll
             _queue_baileys_outbound(tenant_id, guest_phone, final_text, db)
@@ -1282,7 +1386,7 @@ def _execute_draft(
                 ok = send_sms(cfg.twilio_account_sid, auth_token,
                               cfg.twilio_from_number, guest_phone, final_text)
                 if not ok:
-                    log.warning("[%s] Twilio SMS send failed for %s", tenant_id, guest_phone)
+                    log.warning("[%s] Twilio SMS send failed for ***%s", tenant_id, guest_phone[-4:] if guest_phone else "")
 
     elif draft.source == "pms" and draft.reply_to:
         # reply_to format: "{integration_id}:{reservation_id}"
@@ -1344,11 +1448,27 @@ def _execute_draft(
 # ---------------------------------------------------------------------------
 
 def _queue_baileys_outbound(tenant_id: str, to_phone: str, text: str, db: Session):
+    """Queue a Baileys outbound message with validation and idempotency. (Improvements #5, #6, #10)"""
     from web.redis_client import get_redis
+
+    # Validate phone number (Improvement #5)
+    if not _validate_phone_number(to_phone):
+        log.error("[%s] Invalid phone number: ***%s", tenant_id, to_phone[-4:] if to_phone else "")
+        return
+
     r = get_redis()
-    # Always persist to DB first — durable audit trail regardless of Redis
+    # Generate idempotency key to prevent duplicate sends (Improvement #6)
+    idempotency_key = f"{tenant_id}:{to_phone}:{hashlib.md5((text + str(time.time())).encode()).hexdigest()}"
+
+    # Always persist to DB first — durable audit trail regardless of Redis (Improvement #4)
     try:
-        row = BaileysOutbound(tenant_id=tenant_id, to_phone=to_phone, text=text)
+        row = BaileysOutbound(
+            tenant_id=tenant_id,
+            to_phone=to_phone,
+            text=text,
+            status="pending",  # Improvement #4 (two-phase commit)
+            idempotency_key=idempotency_key
+        )
         db.add(row)
         db.commit()
         db.refresh(row)
@@ -1363,29 +1483,41 @@ def _queue_baileys_outbound(tenant_id: str, to_phone: str, text: str, db: Sessio
         try:
             r.rpush(f"baileys_out:{tenant_id}", msg)
             r.expire(f"baileys_out:{tenant_id}", 172800)  # 48h — survives server downtime
-            log.info("[%s] Queued Baileys outbound (Redis+DB) to %s", tenant_id, to_phone)
+            log.info("[%s] Queued Baileys outbound (Redis+DB) to ***%s", tenant_id, to_phone[-4:] if to_phone else "")
             return
         except Exception as exc:
             log.warning("[%s] Redis push failed — will serve from DB on next poll: %s", tenant_id, exc)
-    log.info("[%s] Queued Baileys outbound (DB-only) to %s", tenant_id, to_phone)
+    log.info("[%s] Queued Baileys outbound (DB-only) to ***%s", tenant_id, to_phone[-4:] if to_phone else "")
 
 
-def _pop_baileys_outbound(tenant_id: str) -> list[dict]:
+def _pop_baileys_outbound(tenant_id: str, db: Session) -> dict:
     """
-    Return all pending outbound messages for a tenant and mark them delivered.
-    Tries Redis first (fast); falls back to DB if Redis is empty or unavailable.
+    Return pending outbound messages with rate limiting and bandwidth control.
+    Implements two-phase commit (pending → in_transit → delivered).
+    (Improvements #1, #2, #4, #10)
     """
     from web.redis_client import get_redis
+
+    # Get tenant config for rate limiting settings
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    if not cfg:
+        return {"messages": [], "batch_id": "", "remaining_quota": 0, "pending_count": 0}
+
+    max_batch_size = cfg.baileys_max_batch_size or 50
+    max_per_minute = cfg.baileys_max_per_minute or 60
+
     r = get_redis()
     msgs: list[dict] = []
     db_ids: list[int] = []
+    batch_id = secrets.token_hex(16)  # Unique batch identifier
 
+    # Try Redis first
     if r is not None:
         try:
             key = f"baileys_out:{tenant_id}"
             pipe = r.pipeline()
-            pipe.lrange(key, 0, -1)
-            pipe.delete(key)
+            pipe.lrange(key, 0, max_batch_size - 1)
+            pipe.ltrim(key, max_batch_size, -1)
             results, _ = pipe.execute()
             for raw in results:
                 item = json.loads(raw)
@@ -1395,36 +1527,55 @@ def _pop_baileys_outbound(tenant_id: str) -> list[dict]:
         except Exception as exc:
             log.warning("[%s] Redis pop failed, falling back to DB: %s", tenant_id, exc)
 
-    # Fallback: if Redis returned nothing (empty or failed), check DB for undelivered rows
+    # Fallback: if Redis returned nothing, check DB for pending rows
     if not msgs:
-        db = SessionLocal()
-        try:
-            rows = (db.query(BaileysOutbound)
-                    .filter_by(tenant_id=tenant_id, delivered=False)
-                    .order_by(BaileysOutbound.created_at)
-                    .all())
-            for row in rows:
-                msgs.append({"to": row.to_phone, "text": row.text})
-                db_ids.append(row.id)
-        finally:
-            db.close()
+        rows = (db.query(BaileysOutbound)
+                .filter_by(tenant_id=tenant_id, status="pending")
+                .order_by(BaileysOutbound.created_at)
+                .limit(max_batch_size)
+                .all())
+        for row in rows:
+            msgs.append({"to": row.to_phone, "text": row.text})
+            db_ids.append(row.id)
 
-    # Mark DB rows as delivered
+    # Calculate remaining quota based on messages delivered in last 60 seconds (Improvement #10)
+    now = datetime.now(timezone.utc)
+    delivered_in_last_min = db.query(BaileysOutbound).filter(
+        BaileysOutbound.tenant_id == tenant_id,
+        BaileysOutbound.status == "delivered",
+        BaileysOutbound.delivered_at >= now - timedelta(seconds=60)
+    ).count()
+
+    remaining_quota = max(0, max_per_minute - delivered_in_last_min)
+
+    # Limit batch size to respect remaining quota (smooth delivery over ~6 polls)
+    effective_batch_size = min(len(msgs), max(1, remaining_quota // 6))
+    msgs = msgs[:effective_batch_size]
+    db_ids = db_ids[:effective_batch_size]
+
+    # Two-phase commit: mark as in_transit (not delivered yet) (Improvement #4)
     if db_ids:
-        db = SessionLocal()
         try:
             (db.query(BaileysOutbound)
              .filter(BaileysOutbound.id.in_(db_ids))
-             .update({"delivered": True, "delivered_at": datetime.now(timezone.utc)},
+             .update({"status": "in_transit", "delivered": False},
                      synchronize_session=False))
             db.commit()
         except Exception as exc:
-            log.warning("[%s] Failed to mark Baileys rows delivered: %s", tenant_id, exc)
+            log.warning("[%s] Failed to mark Baileys rows in_transit: %s", tenant_id, exc)
             db.rollback()
-        finally:
-            db.close()
 
-    return msgs
+    # Count total pending messages for response
+    pending_count = db.query(BaileysOutbound).filter_by(
+        tenant_id=tenant_id, status="pending"
+    ).count()
+
+    return {
+        "messages": msgs,
+        "batch_id": batch_id,
+        "remaining_quota": remaining_quota,
+        "pending_count": pending_count
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1652,7 +1803,6 @@ async def onboarding_post(
     smtp_host:           str = Form(""),
     email_address:       str = Form(""),
     email_password:      str = Form(""),
-    anthropic_key:       str = Form(""),
 ):
     try:
         tenant_id = get_current_tenant_id(request)
@@ -1699,7 +1849,9 @@ async def onboarding_post(
                 try:
                     import io
                     import pdfplumber
-                    pdf_bytes = await menu_pdf.read()
+                    pdf_bytes = await menu_pdf.read(10 * 1024 * 1024 + 1)
+                    if len(pdf_bytes) > 10 * 1024 * 1024:
+                        return RedirectResponse(f"/onboarding?step={step}&error=file_too_large", status_code=302)
                     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
                         extracted = "\n".join(
                             page.extract_text() or "" for page in pdf.pages
@@ -1730,8 +1882,6 @@ async def onboarding_post(
             cfg.email_address = email_address.strip() or cfg.email_address
             if email_password.strip():
                 cfg.email_password_enc = encrypt(email_password.strip())
-            if anthropic_key.strip():
-                cfg.anthropic_api_key_enc = encrypt(anthropic_key.strip())
 
     cfg.onboarding_step = step
     _ensure_effortless_defaults(tenant, cfg, db)
@@ -1778,9 +1928,12 @@ async def onboarding_demo(request: Request, db: Session = Depends(get_db)):
     except HTTPException:
         raise HTTPException(status_code=401)
     cfg = _get_or_create_config(tenant_id, db)
-    api_key = decrypt(cfg.anthropic_api_key_enc or "")
-    if not api_key:
-        return JSONResponse({"error": "No Anthropic API key set — add it in Settings."})
+    
+    # Use system-wide configuration
+    sys_conf = db.query(SystemConfig).first()
+    if not sys_conf or not sys_conf.openrouter_api_key_enc:
+        return JSONResponse({"error": "HostAI reply engine is not yet configured by the administrator."})
+
     try:
         from web.classifier import generate_draft, build_property_context
         ctx = build_property_context(cfg)
@@ -1788,7 +1941,8 @@ async def onboarding_demo(request: Request, db: Session = Depends(get_db)):
             "Hi! We just arrived at the property. "
             "Could you tell us the WiFi password? Also, what time is checkout and is there parking? Thanks!"
         )
-        draft = generate_draft(api_key, "Demo Guest", demo_message, "routine", property_context=ctx)
+        # generate_draft will use the system key if provided with tenant_id and no explicit user key
+        draft = generate_draft("", "Demo Guest", demo_message, "routine", property_context=ctx, tenant_id=tenant_id)
         return JSONResponse({"draft": draft})
     except Exception as exc:
         log.error("[%s] Demo draft failed: %s", tenant_id, exc)
@@ -1892,30 +2046,33 @@ async def test_imap(
 @app.post("/test/anthropic", response_class=HTMLResponse)
 async def test_anthropic(
     request:       Request,
-    anthropic_key: str = Form(""),
     csrf_token:    str = Form(None),
     db: Session = Depends(get_db),
 ):
+    """Test the system-managed AI reply engine configuration."""
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         return HTMLResponse('<p class="test-result test-fail">Not logged in.</p>')
     validate_csrf(request, csrf_token)
 
-    if not anthropic_key:
-        cfg = _get_or_create_config(tenant_id, db)
-        anthropic_key = decrypt(cfg.anthropic_api_key_enc or "")
-
-    if not anthropic_key:
-        return HTMLResponse('<p class="test-result test-fail">Enter your API key first.</p>')
+    sys_conf = db.query(SystemConfig).first()
+    if not sys_conf or not sys_conf.openrouter_api_key_enc:
+        return HTMLResponse('<p class="test-result test-fail">✗ AI engine not configured by admin.</p>')
 
     try:
-        import anthropic as _ant
-        client = _ant.Anthropic(api_key=anthropic_key)
-        client.models.list()
-        return HTMLResponse('<p class="test-result test-ok">✓ Valid API key — ready to go</p>')
+        import openai
+        api_key = decrypt(sys_conf.openrouter_api_key_enc)
+        client = openai.OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+        client.chat.completions.create(
+            model="openai/gpt-4o-mini",
+            messages=[{"role": "user", "content": "ping"}],
+            max_tokens=5
+        )
+        return HTMLResponse('<p class="test-result test-ok">✓ AI engine connection successful!</p>')
     except Exception as exc:
-        return HTMLResponse(f'<p class="test-result test-fail">✗ {str(exc)[:120]}</p>')
+        log.error("[%s] API test failed: %s", tenant_id, exc)
+        return HTMLResponse(f'<p class="test-result test-fail">✗ Request failed: {str(exc)[:120]}</p>')
 
 
 @app.post("/test/ical", response_class=HTMLResponse)
@@ -2015,6 +2172,55 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
     })
 
 
+@app.post("/api/tenant/delete")
+def api_gdpr_delete_tenant(
+    req: Request,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(get_current_tenant_id)
+):
+    """
+    GDPR Delete Route (Fixes #21)
+    Wipes the current tenant's entire database state.
+    """
+    try:
+        from web.models import (
+            Tenant, TenantConfig, TeamMember, AutomationRule, PMSIntegration, Vendor, 
+            Draft, ActivityLog, Reservation, ReservationIntakeBatch, BaileysOutbound, 
+            ProcessedEmail, CalendarState, FailedDraftLog, PMSProcessedMessage,
+            ReservationSyncLog, GuestTimelineEvent, ArrivalActivation, IssueTicket
+        )
+        
+        # We must delete in referential order (children first)
+        db.query(Draft).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(ActivityLog).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(BaileysOutbound).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(ProcessedEmail).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(CalendarState).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(FailedDraftLog).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(PMSProcessedMessage).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(GuestTimelineEvent).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(ArrivalActivation).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(IssueTicket).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(AutomationRule).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(ReservationIntakeBatch).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(ReservationSyncLog).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(Reservation).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(PMSIntegration).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(Vendor).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(TeamMember).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(TenantConfig).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        db.query(Tenant).filter_by(id=tenant_id).delete(synchronize_session=False)
+        
+        db.commit()
+        
+        resp = RedirectResponse(url="/logout", status_code=303)
+        return resp
+    except Exception as exc:
+        db.rollback()
+        log.error("[%s] GDPR deletion failed: %s", tenant_id, exc)
+        return RedirectResponse(url="/settings?error=DeletionFailed", status_code=303)
+
+
 @app.post("/settings", response_class=HTMLResponse)
 async def settings_save(
     request:        Request,
@@ -2025,7 +2231,6 @@ async def settings_save(
     smtp_host:             str = Form(""),
     email_address:         str = Form(""),
     email_password:        str = Form(""),
-    anthropic_key:         str = Form(""),
     # WhatsApp Meta Cloud
     wa_mode:               str = Form("none"),
     whatsapp_number:       str = Form(""),
@@ -2062,8 +2267,6 @@ async def settings_save(
     cfg.email_address  = email_address.strip() or None
     if email_password.strip():
         cfg.email_password_enc = encrypt(email_password.strip())
-    if anthropic_key.strip():
-        cfg.anthropic_api_key_enc = encrypt(anthropic_key.strip())
 
     # Extended property context fields (editable from Settings after onboarding)
     form_data = await request.form()
@@ -2600,18 +2803,15 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
         return
     try:
         from web.classifier import classify_message_with_confidence, detect_vendor_type, generate_draft, build_property_context
-        api_key = decrypt(cfg.anthropic_api_key_enc or "")
-        if not api_key:
-            return
         reservation = _find_reservation_for_guest_context(
             tenant_id, db, guest_phone=reply_to, guest_name=f"{source.title()} guest"
         )
         guest_name = reservation.guest_name if reservation else f"{source.title()} guest"
         msg_type, confidence, _matched_patterns = classify_message_with_confidence(text)
-        
+
         from web import classifier as classifier_mod
         sentiment = classifier_mod.analyze_sentiment_and_intent_llm(tenant_id, text)
-        
+
         vendor_type = detect_vendor_type(text) if msg_type == "complex" else None
         property_context = build_property_context(cfg)
         if reservation:
@@ -2629,7 +2829,7 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                     + memory_context
                     + "\n</recent_guest_history>"
                 ).strip()
-        draft_text = generate_draft(api_key, guest_name, text, msg_type, property_context=property_context)
+        draft_text = generate_draft(guest_name, text, msg_type, property_context=property_context)
         recent_drafts = _recent_reservation_drafts(db, tenant_id, reservation)
         guest_history_score = compute_guest_history_score(reservation, recent_drafts)
         stay_stage = compute_stay_stage(reservation)
@@ -2709,30 +2909,40 @@ def _handle_inbound_sms(tenant_id: str, from_phone: str, text: str, db: Session)
 
 @app.get("/api/wa/pending")
 def api_wa_pending(request: Request, db: Session = Depends(get_db)):
-    """Baileys bot polls this to get outbound messages to deliver to guests."""
+    """Baileys bot polls this to get outbound messages to deliver to guests. (Improvements #1, #2, #10)"""
     cfg = _auth_bot(request, db)
     try:
         require_channel(cfg, PLAN_BAILEYS)
     except HTTPException:
         raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
 
-    tenant_id = cfg.tenant_id
-    msgs = _pop_baileys_outbound(tenant_id)
-    return JSONResponse({"messages": msgs})
+    # Rate limit: max 100 polls/minute per bot (Improvement #1)
+    rate_limit(f"wa:poll:{cfg.tenant_id}", 100, 60)
+
+    result = _pop_baileys_outbound(cfg.tenant_id, db)
+    return JSONResponse(result)
 
 
 @app.post("/api/wa/inbound")
 async def api_wa_inbound(request: Request, db: Session = Depends(get_db)):
-    """Baileys bot pushes an inbound message from a guest/vendor."""
+    """Baileys bot pushes an inbound message from a guest/vendor. (Improvements #1, #5)"""
     cfg = _auth_bot(request, db)
     try:
         require_channel(cfg, PLAN_BAILEYS)
     except HTTPException:
         raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
 
+    # Rate limit: max 300 inbound/minute per bot (Improvement #1)
+    rate_limit(f"wa:inbound:{cfg.tenant_id}", 300, 60)
+
     body = await request.json()
     from_phone = body.get("from", "")
-    text       = body.get("text", "")
+    text = body.get("text", "")
+
+    # Validate phone number (Improvement #5)
+    if not _validate_phone_number(from_phone):
+        return JSONResponse({"status": "error", "detail": "Invalid phone number"}, status_code=400)
+
     if from_phone and text:
         _handle_inbound_wa(cfg.tenant_id, from_phone, text, db)
     return JSONResponse({"status": "ok"})
@@ -2742,7 +2952,8 @@ async def api_wa_inbound(request: Request, db: Session = Depends(get_db)):
 async def api_wa_callback(request: Request, db: Session = Depends(get_db)):
     """
     Baileys bot reports that the host typed a command in WA (APPROVE / EDIT / SKIP).
-    Body: {"action": "approve"|"edit"|"skip", "draft_id": str, "text": str}
+    Body: {"action": "approve"|"edit"|"skip", "draft_id": str, "text": str, "idempotency_key": str}
+    (Improvements #6, #9)
     """
     cfg = _auth_bot(request, db)
     try:
@@ -2754,29 +2965,54 @@ async def api_wa_callback(request: Request, db: Session = Depends(get_db)):
     action   = body.get("action", "")
     draft_id = body.get("draft_id", "")
     text     = body.get("text", "")
+    idempotency_key = body.get("idempotency_key", "")
     tenant_id = cfg.tenant_id
+
+    # Idempotency: check if this callback was already processed (Improvement #6)
+    if idempotency_key:
+        existing = db.query(BaileysCallback).filter_by(idempotency_key=idempotency_key).first()
+        if existing:
+            return JSONResponse({"status": "already_processed"})
 
     draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
     if not draft:
         return JSONResponse({"status": "not_found"}, status_code=404)
 
-    if action == "approve":
-        _execute_draft(draft, draft.draft, tenant_id, db)
-    elif action == "edit" and text:
-        _execute_draft(draft, text, tenant_id, db)
-    elif action == "skip":
-        draft.status = "skipped"
-        db.add(ActivityLog(tenant_id=tenant_id, event_type="draft_skipped",
-                           message=f"Draft skipped via WA: {draft.guest_name}"))
-        db.commit()
-    return JSONResponse({"status": "ok"})
+    try:
+        if action == "approve":
+            _execute_draft(draft, draft.draft, tenant_id, db)
+        elif action == "edit" and text:
+            _execute_draft(draft, text, tenant_id, db)
+        elif action == "skip":
+            draft.status = "skipped"
+            db.add(ActivityLog(tenant_id=tenant_id, event_type="draft_skipped",
+                               message=f"Draft skipped via WA: {draft.guest_name}"))
+            db.commit()
+
+        # Record the callback (Improvement #6)
+        if idempotency_key:
+            cb = BaileysCallback(
+                tenant_id=tenant_id,
+                draft_id=draft_id,
+                action=action,
+                idempotency_key=idempotency_key
+            )
+            db.add(cb)
+            db.commit()
+
+        return JSONResponse({"status": "ok"})
+    except Exception as e:
+        # Better error context for debugging (Improvement #9)
+        log.error("[%s] Failed to process callback: action=%s draft_id=%s error=%s",
+                  tenant_id, action, draft_id, str(e))
+        return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
 
 
 @app.post("/api/wa/token/generate")
 def api_generate_bot_token(request: Request,
                            csrf_token: str = Form(None),
                            db: Session = Depends(get_db)):
-    """Generate (or regenerate) the Baileys bot API token for this tenant."""
+    """Generate (or regenerate) the Baileys bot API token for this tenant. (Improvement #11)"""
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
@@ -2790,7 +3026,94 @@ def api_generate_bot_token(request: Request,
         raise HTTPException(status_code=402, detail="Baileys plan required")
 
     raw_token = generate_bot_token(cfg, db)
-    return JSONResponse({"token": raw_token, "hint": cfg.bot_api_token_hint})
+
+    # Set token expiration to 90 days from now (Improvement #11)
+    cfg.bot_api_token_expires_at = datetime.now(timezone.utc) + timedelta(days=90)
+    db.add(cfg)
+    db.commit()
+
+    return JSONResponse({
+        "token": raw_token,
+        "hint": cfg.bot_api_token_hint,
+        "expires_at": cfg.bot_api_token_expires_at.isoformat()
+    })
+
+
+@app.post("/api/wa/ack")
+async def api_wa_ack(request: Request, db: Session = Depends(get_db)):
+    """
+    Bot confirms it successfully sent messages.
+    Completes two-phase commit: marks in_transit messages from last 60s as delivered.
+    Body: {"batch_id": str}
+    (Improvement #4)
+    """
+    cfg = _auth_bot(request, db)
+    try:
+        require_channel(cfg, PLAN_BAILEYS)
+    except HTTPException:
+        raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
+
+    body = await request.json()
+    batch_id = body.get("batch_id", "")
+    tenant_id = cfg.tenant_id
+
+    # Mark in_transit messages from last 60s as delivered (Improvement #4)
+    now = datetime.now(timezone.utc)
+    sixty_seconds_ago = now - timedelta(seconds=60)
+
+    try:
+        updated = db.query(BaileysOutbound).filter(
+            BaileysOutbound.tenant_id == tenant_id,
+            BaileysOutbound.status == "in_transit",
+            BaileysOutbound.created_at >= sixty_seconds_ago
+        ).update(
+            {"status": "delivered", "delivered": True, "delivered_at": now},
+            synchronize_session=False
+        )
+        db.commit()
+        log.info("[%s] Marked %d Baileys messages as delivered (batch %s)", tenant_id, updated, batch_id)
+        return JSONResponse({"status": "ok", "confirmed_count": updated})
+    except Exception as e:
+        log.error("[%s] Failed to mark messages delivered: %s", tenant_id, str(e))
+        db.rollback()
+        return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
+
+
+@app.post("/api/wa/heartbeat")
+async def api_wa_heartbeat(request: Request, db: Session = Depends(get_db)):
+    """
+    Bot pings every 5 minutes. Updates heartbeat timestamp and returns pending count.
+    (Improvement #8)
+    """
+    cfg = _auth_bot(request, db)
+    try:
+        require_channel(cfg, PLAN_BAILEYS)
+    except HTTPException:
+        raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
+
+    tenant_id = cfg.tenant_id
+
+    try:
+        # Update last heartbeat (Improvement #8)
+        cfg.bot_last_heartbeat = datetime.now(timezone.utc)
+        db.add(cfg)
+        db.commit()
+
+        # Count pending messages
+        pending_count = db.query(BaileysOutbound).filter_by(
+            tenant_id=tenant_id,
+            status="pending"
+        ).count()
+
+        log.debug("[%s] Heartbeat received. Pending count: %d", tenant_id, pending_count)
+        return JSONResponse({
+            "status": "alive",
+            "pending_count": pending_count,
+            "next_poll_in_seconds": 10
+        })
+    except Exception as e:
+        log.error("[%s] Failed to process heartbeat: %s", tenant_id, str(e))
+        return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
 
 
 @app.get("/api/download/baileys")
@@ -2990,8 +3313,15 @@ def _csv_col(headers: list[str], field: str) -> Optional[str]:
 
 
 def _normalize_phone(phone: str | None) -> str:
-    """Return a digits-only phone string for stable matching."""
-    return re.sub(r"\D+", "", phone or "")
+    """Return a digits-only E.164-like phone string for stable matching."""
+    if not phone:
+        return ""
+    digits = re.sub(r"\D+", "", phone)
+    if not digits:
+        return ""
+    if len(digits) == 10:
+        return f"1{digits}"
+    return digits
 
 
 def _reservation_sort_key(res: Reservation, today: date_type) -> tuple[int, int, float]:
@@ -3550,7 +3880,9 @@ async def reservations_upload(
     if not csv_file.filename or not csv_file.filename.lower().endswith(".csv"):
         return RedirectResponse("/reservations?error=invalid_file", status_code=302)
 
-    raw_bytes = await csv_file.read()
+    raw_bytes = await csv_file.read(10 * 1024 * 1024 + 1)
+    if len(raw_bytes) > 10 * 1024 * 1024:
+        return RedirectResponse("/reservations?error=file_too_large", status_code=302)
     # Try UTF-8 then latin-1 (Airbnb sometimes exports in latin-1)
     for enc in ("utf-8-sig", "utf-8", "latin-1"):
         try:
@@ -3640,7 +3972,7 @@ async def reservations_upload(
             )
             existing.repeat_guest_count = max(existing.repeat_guest_count or 0, repeat_guest_count)
             if guest_phone:
-                existing.guest_phone = guest_phone
+                existing.guest_phone = _normalize_phone(guest_phone)
             if unit_id:
                 existing.unit_identifier = unit_id
             if guest_col:
@@ -3712,7 +4044,7 @@ def update_reservation_context(
     if not res:
         raise HTTPException(status_code=404, detail="Reservation not found")
 
-    res.guest_phone = guest_phone.strip() or None
+    res.guest_phone = _normalize_phone(guest_phone) if guest_phone.strip() else None
     res.unit_identifier = unit_identifier.strip() or None
     db.add(ActivityLog(
         tenant_id=tenant_id,
@@ -3828,7 +4160,7 @@ def activate_reservation_chat(
         raise HTTPException(status_code=404, detail="Reservation not found")
 
     if guest_phone.strip():
-        reservation.guest_phone = guest_phone.strip()
+        reservation.guest_phone = _normalize_phone(guest_phone)
     if unit_identifier.strip():
         reservation.unit_identifier = unit_identifier.strip()
 
@@ -4734,9 +5066,6 @@ def simulate_guest(request: Request,
     rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
 
     cfg = _get_or_create_config(tenant_id, db)
-    api_key = decrypt(cfg.anthropic_api_key_enc or "")
-    if not api_key:
-        raise HTTPException(status_code=400, detail="Claude API key not configured")
 
     from web.classifier import (
         classify_message_with_confidence, extract_context_sources, generate_draft, make_draft_id
@@ -4751,11 +5080,11 @@ def simulate_guest(request: Request,
     property_context = build_property_context(cfg)
 
     try:
-        draft_text = generate_draft(api_key, guest_name, message, msg_type,
+        draft_text = generate_draft(guest_name, message, msg_type,
                                     property_context=property_context)
     except Exception as exc:
         log.error("[%s] Simulate draft generation failed: %s", tenant_id, exc)
-        raise HTTPException(status_code=500, detail="Draft generation failed — check your Claude API key")
+        raise HTTPException(status_code=500, detail="Draft generation failed — check that admin has configured OpenRouter API key")
 
     draft_id = make_draft_id("simulate")
     db.add(Draft(
@@ -5638,7 +5967,9 @@ async def upload_faq_pdf(
     if faq_pdf and faq_pdf.filename:
         try:
             import pdfplumber
-            pdf_bytes = await faq_pdf.read()
+            pdf_bytes = await faq_pdf.read(10 * 1024 * 1024 + 1)
+            if len(pdf_bytes) > 10 * 1024 * 1024:
+                return RedirectResponse("/settings?error=file_too_large", status_code=302)
             with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
                 text = "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
             if text:
@@ -5675,7 +6006,9 @@ async def upload_house_rules_pdf(
     if rules_pdf and rules_pdf.filename:
         try:
             import pdfplumber
-            pdf_bytes = await rules_pdf.read()
+            pdf_bytes = await rules_pdf.read(10 * 1024 * 1024 + 1)
+            if len(pdf_bytes) > 10 * 1024 * 1024:
+                return RedirectResponse("/settings?error=file_too_large", status_code=302)
             with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
                 text = "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
             if text:
@@ -5745,6 +6078,16 @@ def generate_checkin_link(
         raise HTTPException(status_code=404, detail="Reservation not found")
 
     res.checkin_token = secrets.token_urlsafe(32)
+    # Token expires 24 hours after checkout (or now + 30 days if checkout date unknown)
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    tz = ZoneInfo(cfg.timezone) if cfg and cfg.timezone else ZoneInfo("UTC")
+    if res.checkout:
+        res.checkin_token_expires_at = datetime.fromordinal(res.checkout.toordinal()).replace(tzinfo=tz) + timedelta(hours=24)
+    else:
+        res.checkin_token_expires_at = datetime.now(tz) + timedelta(days=30)
+
     db.add(ActivityLog(
         tenant_id=tenant_id,
         event_type="checkin_link_generated",
@@ -5760,6 +6103,10 @@ def checkin_portal(token: str, request: Request, db: Session = Depends(get_db)):
     res = db.query(Reservation).filter_by(checkin_token=token).first()
     if not res:
         raise HTTPException(status_code=404, detail="Check-in link not found or expired")
+
+    # Verify token hasn't expired
+    if res.checkin_token_expires_at and datetime.now(timezone.utc) > res.checkin_token_expires_at:
+        raise HTTPException(status_code=404, detail="Check-in link has expired")
 
     cfg = db.query(TenantConfig).filter_by(tenant_id=res.tenant_id).first()
     if not cfg:

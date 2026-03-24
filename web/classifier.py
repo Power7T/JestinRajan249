@@ -15,6 +15,7 @@ from typing import Optional
 import anthropic
 
 from web.workflow import build_structured_policy_context
+from web.crypto import decrypt
 
 log = logging.getLogger(__name__)
 
@@ -265,11 +266,17 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
             api_key=apiKey,
         )
         
+        # Strip basic PII shapes (phone numbers and emails)
+        import re
+        safe_text = text
+        safe_text = re.sub(r'\+?\d(?:[\d\-\s\(\)]{8,})\d', '[PHONE REDACTED]', safe_text)
+        safe_text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b', '[EMAIL REDACTED]', safe_text)
+
         prompt = (
             "Analyze the sentiment of the following guest message. "
             "Return ONLY valid JSON with exactly two keys: 'label' (string: 'positive', 'negative', or 'neutral') "
             "and 'score' (float between -1.0 for very negative and 1.0 for very positive). "
-            f"Message: {text}"
+            f"Message: {safe_text}"
         )
         
         resp = client.chat.completions.create(
@@ -310,10 +317,11 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
         db.close()
 
 
-def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, skill: str = None, property_context: str = "", tenant_id: str = None) -> str:
-    """Generate draft via OpenRouter if configured centrally, else default to Tenant's Anthropic Key."""
+def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional[str] = None, property_context: str = "", tenant_id: Optional[str] = None) -> str:
+    """Generate draft via OpenRouter configured centrally by administrator."""
     from web.db import SessionLocal
-    from web.models import SystemConfig, ApiUsageLog
+    from web.models import SystemConfig, ApiUsageLog, TenantConfig
+    from datetime import timedelta
     import openai
 
     skill_cmd  = _SKILL_CMD_MAP.get(skill) or ("/reply" if msg_type == "routine" else "/complaint")
@@ -325,26 +333,56 @@ def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, s
         system = system + "\n\n" + property_context
     system = system + "\n\n" + _MULTILINGUAL_RULE + "\n\n" + _GUEST_CONTEXT_RULE
 
+    safe_guest_name = "Guest" if guest_name else ""
+    
+    # Strip basic PII shapes (phone numbers and emails)
+    import re
+    safe_message = message
+    safe_message = re.sub(r'\+?\d(?:[\d\-\s\(\)]{8,})\d', '[PHONE REDACTED]', safe_message)
+    safe_message = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b', '[EMAIL REDACTED]', safe_message)
+
     user_content = (
         f"[Automated pipeline — use {skill_cmd} flow]\n\n"
-        f"<guest_name>{guest_name}</guest_name>\n\n"
-        f"<context>\n{message}\n</context>\n\n"
+        f"<guest_name>{safe_guest_name}</guest_name>\n\n"
+        f"<context>\n{safe_message}\n</context>\n\n"
         "Return ONLY the output text ready to send or use. No headings, no meta-commentary. Just the content."
     )
 
     with SessionLocal() as db:
         sys_conf = db.query(SystemConfig).first()
 
-        # If OpenRouter is globally configured inside the local DB -> use hot-swapping router
+        # Check free tier usage limits
+        if tenant_id:
+            cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+            if cfg and cfg.subscription_plan == "free":
+                now = datetime.now(timezone.utc)
+
+                # Reset daily counter if needed
+                if cfg.ai_calls_today_date is None or (now - cfg.ai_calls_today_date).days >= 1:
+                    cfg.ai_calls_today = 0
+                    cfg.ai_calls_today_date = now
+
+                # Reset monthly counter if needed
+                if cfg.ai_calls_monthly_date is None or (now.year, now.month) != (cfg.ai_calls_monthly_date.year, cfg.ai_calls_monthly_date.month):
+                    cfg.ai_calls_monthly = 0
+                    cfg.ai_calls_monthly_date = now
+
+                # Check limits: 10/day, 50/month for free tier
+                if cfg.ai_calls_today >= 10:
+                    raise RuntimeError("Free tier daily AI call limit (10) reached. Upgrade to unlock unlimited drafts.")
+                if cfg.ai_calls_monthly >= 50:
+                    raise RuntimeError("Free tier monthly AI call limit (50) reached. Upgrade to unlock unlimited drafts.")
+
+        # OpenRouter is globally configured by administrator
         if sys_conf and sys_conf.openrouter_api_key_enc:
             client = openai.OpenAI(
                 base_url="https://openrouter.ai/api/v1",
-                api_key=sys_conf.openrouter_api_key_enc
+                api_key=decrypt(sys_conf.openrouter_api_key_enc)
             )
 
             last_exc = None
             for attempt, delay in zip(range(1, _MAX_RETRIES + 1), _RETRY_DELAYS):
-                
+
                 # Phase 3: Smart Routing
                 if attempt == 1:
                     if msg_type == "routine":
@@ -356,7 +394,7 @@ def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, s
                 else:
                     # On failure, always fallback to the reliable cheap model
                     model_to_use = sys_conf.fallback_model or "meta-llama/llama-3.1-70b-instruct"
-                
+
                 try:
                     resp = client.chat.completions.create(
                         model=model_to_use,
@@ -370,6 +408,10 @@ def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, s
                     if not content:
                         raise ValueError(f"Empty content from {model_to_use}")
                     
+                    # Post-process: attempt to re-inject real name if 'Guest' was used
+                    if guest_name:
+                        content = content.replace("Guest", guest_name)
+
                     # Log usage
                     log_entry = ApiUsageLog(
                         tenant_id=tenant_id,
@@ -380,6 +422,15 @@ def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, s
                         feature="generate_draft"
                     )
                     db.add(log_entry)
+
+                    # Increment free tier usage counters
+                    if tenant_id:
+                        cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+                        if cfg and cfg.subscription_plan == "free":
+                            cfg.ai_calls_today += 1
+                            cfg.ai_calls_monthly += 1
+                            db.add(cfg)
+
                     db.commit()
 
                     return content.strip()
@@ -387,40 +438,11 @@ def generate_draft(api_key: str, guest_name: str, message: str, msg_type: str, s
                     last_exc = exc
                     log.warning("OpenRouter API attempt %d (model: %s) failed: %s — retrying in %ds", attempt, model_to_use, exc, delay)
                     time.sleep(delay)
-            
+
             raise RuntimeError(f"OpenRouter API failed after {_MAX_RETRIES} attempts: {last_exc}")
 
-        # Fallback to Tenant API Key (original behavior)
-        client = anthropic.Anthropic(api_key=api_key)
-        last_exc = None
-        for attempt, delay in zip(range(1, _MAX_RETRIES + 1), _RETRY_DELAYS):
-            try:
-                resp = client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=max_tokens,
-                    system=system,
-                    messages=[{"role": "user", "content": user_content}],
-                )
-                if not resp.content or not resp.content[0].text:
-                    raise ValueError("Empty response from Claude API")
-                
-                log_entry = ApiUsageLog(
-                    tenant_id=tenant_id,
-                    model="claude-3-5-sonnet-20241022",
-                    provider="anthropic",
-                    input_tokens=resp.usage.input_tokens if hasattr(resp, 'usage') else 0,
-                    output_tokens=resp.usage.output_tokens if hasattr(resp, 'usage') else 0,
-                    feature="generate_draft"
-                )
-                db.add(log_entry)
-                db.commit()
-
-                return resp.content[0].text.strip()
-            except Exception as exc:
-                last_exc = exc
-                log.warning("Claude API attempt %d failed: %s — retrying in %ds", attempt, exc, delay)
-                time.sleep(delay)
-        raise RuntimeError(f"Claude API failed after {_MAX_RETRIES} attempts: {last_exc}")
+        # Admin must configure OpenRouter key
+        raise RuntimeError("HostAI reply engine is not configured by the administrator.")
 
 
 def make_draft_id(source: str) -> str:

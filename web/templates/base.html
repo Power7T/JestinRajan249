@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12" nonce="{{ request.state.csp_nonce }}"></script>
   <style>
     /* ═══════════════════════════════════════════════════════════════
        DESIGN TOKENS
@@ -1102,7 +1102,7 @@
     {% endif %}
   </div>
   <div class="nav-end">
-    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" aria-label="Toggle theme">
+    <button class="theme-toggle" id="theme-toggle-btn" title="Toggle dark/light mode" aria-label="Toggle theme">
       <span id="theme-icon">☀️</span>
     </button>
     <form method="post" action="/logout" style="display:inline">
@@ -1137,12 +1137,13 @@
   {% block content %}{% endblock %}
 </div>
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 // ── Theme toggle ────────────────────────────────────────────
 const THEME_KEY = 'hostai-theme';
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
-  document.getElementById('theme-icon').textContent = t === 'dark' ? '☀️' : '🌙';
+  const icon = document.getElementById('theme-icon');
+  if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
   localStorage.setItem(THEME_KEY, t);
 }
 function toggleTheme() {
@@ -1153,6 +1154,10 @@ function toggleTheme() {
 (function() {
   const saved = localStorage.getItem(THEME_KEY);
   if (saved) applyTheme(saved);
+  
+  // Attach event listener instead of inline onclick (#10)
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.addEventListener('click', toggleTheme);
 })();
 </script>
 {% block scripts %}{% endblock %}

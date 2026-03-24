@@ -139,13 +139,20 @@ _windows: dict[str, list[float]] = defaultdict(list)
 _lock = Lock()
 
 
+_last_prune = 0.0
+
 def _rate_limit_redis(r, key: str, max_requests: int, window_seconds: int) -> None:
     """Redis-backed counter rate limit (fixed window per Redis key TTL)."""
     rkey = f"rl:{key}"
+    lua_script = """
+    local current = redis.call('INCR', KEYS[1])
+    if current == 1 then
+        redis.call('EXPIRE', KEYS[1], ARGV[1])
+    end
+    return current
+    """
     try:
-        current = r.incr(rkey)
-        if current == 1:
-            r.expire(rkey, window_seconds)
+        current = r.eval(lua_script, 1, rkey, window_seconds)
         if current > max_requests:
             raise HTTPException(
                 status_code=429,
@@ -160,12 +167,20 @@ def _rate_limit_redis(r, key: str, max_requests: int, window_seconds: int) -> No
 
 def _rate_limit_memory(key: str, max_requests: int, window_seconds: int) -> None:
     """In-process sliding window rate limiter (single-worker only)."""
+    global _last_prune
     now = time.monotonic()
     cutoff = now - window_seconds
     with _lock:
         hits = _windows[key]
         while hits and hits[0] < cutoff:
             hits.pop(0)
+            
+        if now - _last_prune > 60:
+            empty_keys = [k for k, v in list(_windows.items()) if not v or v[-1] < cutoff]
+            for k in empty_keys:
+                _windows.pop(k, None)
+            _last_prune = now
+
         if len(hits) >= max_requests:
             raise HTTPException(
                 status_code=429,
@@ -220,12 +235,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     # CSP header and each <script nonce="..."> tag.
     # 'unsafe-inline' in style-src is required by per-page <style> blocks in
     # templates and is lower-risk than script-src.
-    _CSP = (
+    _CSP_TEMPLATE = (
         "default-src 'self'; "
-        "script-src 'self' https://unpkg.com 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'nonce-{nonce}' https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "img-src 'self' data:; "
-        "font-src 'self'; "
+        "font-src 'self' https://fonts.gstatic.com; "
         "connect-src 'self'; "
         "object-src 'none'; "
         "base-uri 'self'; "
@@ -233,6 +248,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     )
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        nonce = secrets.token_urlsafe(16)
+        request.state.csp_nonce = nonce
+        
         response = await call_next(request)
         h = response.headers
         h["X-Content-Type-Options"]  = "nosniff"
@@ -240,7 +258,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         h["X-XSS-Protection"]         = "0"        # Deprecated; CSP handles this
         h["Referrer-Policy"]          = "strict-origin-when-cross-origin"
         h["Permissions-Policy"]       = "geolocation=(), microphone=(), camera=()"
-        h["Content-Security-Policy"]  = self._CSP
+        h["Content-Security-Policy"]  = self._CSP_TEMPLATE.replace("{nonce}", nonce)
         if is_request_secure(request):
             h["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         return response
+

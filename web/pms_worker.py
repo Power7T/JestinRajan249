@@ -55,7 +55,7 @@ def _load_config(tenant_id: str) -> Optional[dict]:
     try:
         from web.models import TenantConfig
         cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
-        if not cfg or not cfg.anthropic_api_key_enc:
+        if not cfg:
             return None
         integrations = db.query(PMSIntegration).filter_by(
             tenant_id=tenant_id, is_active=True
@@ -63,7 +63,6 @@ def _load_config(tenant_id: str) -> Optional[dict]:
         if not integrations:
             return None
         return {
-            "anthropic_api_key":   decrypt(cfg.anthropic_api_key_enc),
             "property_context":    build_property_context(cfg),
             "escalation_email":    cfg.escalation_email or cfg.email_address or "",
             # Policy fields passed through for conflict checks
@@ -365,7 +364,7 @@ def _process_message(tenant_id: str, cfg: dict, msg: PMSMessage,
         # ── 4. Generate draft ────────────────────────────────────────────
         try:
             draft_text = generate_draft(
-                cfg["anthropic_api_key"], msg.guest_name, guest_msg, msg_type,
+                msg.guest_name, guest_msg, msg_type,
                 property_context=full_ctx,
             )
         except RuntimeError as exc:

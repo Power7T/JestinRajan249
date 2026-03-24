@@ -142,7 +142,7 @@
     <div style="display:flex;gap:0.5rem">
       <input type="text" id="listing-url" placeholder="https://www.airbnb.com/rooms/12345678" style="margin:0;flex:1">
       <button type="button" class="btn btn-outline" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem"
-              onclick="importListing()">Import</button>
+              id="import-listing-btn">Import</button>
     </div>
     <p id="import-status" style="font-size:0.78rem;margin-top:4px;min-height:1.2em"></p>
   </div>
@@ -388,11 +388,11 @@
           <p>This gives HostAI stay timing so arrival, stay, and checkout messages use the right reservation context.</p>
         </div>
       </div>
-      <div class="step {% if cfg.anthropic_api_key_enc %}done{% else %}warn{% endif %}">
-        <div class="num">{% if cfg.anthropic_api_key_enc %}✓{% else %}3{% endif %}</div>
+      <div class="step done">
+        <div class="num">✓</div>
         <div class="body">
-          <h4>Add your Claude API key</h4>
-          <p>Without it the bot cannot draft replies. You can still finish setup now and add the key later from Settings.</p>
+          <h4>AI engine managed centrally</h4>
+          <p>The administrator manages the AI infrastructure (OpenRouter) for all hosts. Your property is ready to use HostAI.</p>
         </div>
       </div>
     </div>
@@ -441,7 +441,7 @@
       <label>Your private HostAI forwarding address</label>
       <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem">
         <input type="text" readonly value="{{ inbound_email_address }}" id="inbound-forward-address" style="font-family:monospace;background:#f8f9fa;margin-bottom:0">
-        <button type="button" class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('inbound-forward-address').value)">Copy</button>
+        <button type="button" class="btn btn-outline btn-sm copy-btn" data-target="inbound-forward-address">Copy</button>
       </div>
       <p class="help-text" style="margin-bottom:1rem">
         Create an auto-forward rule in Gmail or Outlook for Airbnb guest emails to this address. HostAI will ingest them through a webhook and create drafts without needing your inbox password.
@@ -514,11 +514,11 @@
             <p>Forward Airbnb emails to the private HostAI address above. This removes mailbox passwords from the setup path.</p>
           </div>
         </div>
-        <div class="step {% if cfg.anthropic_api_key_enc %}done{% else %}warn{% endif %}">
-          <div class="num">{% if cfg.anthropic_api_key_enc %}✓{% else %}4{% endif %}</div>
+        <div class="step done">
+          <div class="num">✓</div>
           <div class="body">
             <h4>AI reply engine ready</h4>
-            <p>Add the Claude key so the bot can generate replies using the host's property context and the guest's reservation data.</p>
+            <p>The HostAI reply engine is managed centrally by your administrator. No individual API key is required.</p>
           </div>
         </div>
       </div>
@@ -549,38 +549,10 @@
       </div>
     </div>
 
-    <!-- Anthropic API key -->
-    <div class="form-section">
-      <h2>Claude API key</h2>
-      <label>Anthropic API key <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
-      <input type="password" name="anthropic_key" id="anthropic-key" placeholder="sk-ant-...">
-      <details>
-        <summary>How to get a free Anthropic API key</summary>
-        <div class="accordion-body">
-          <ol>
-            <li>Go to <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></li>
-            <li>Sign up for a free account</li>
-            <li>Click <strong>API Keys</strong> in the left sidebar</li>
-            <li>Click <strong>Create Key</strong>, give it a name, copy the key</li>
-          </ol>
-          <p style="margin-top:0.5rem">New accounts get $5 free credits. Each message costs about $0.01.</p>
-        </div>
-      </details>
-      <!-- API key test -->
-      <div id="api-test-area"></div>
-      <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:1rem"
-              hx-post="/test/anthropic"
-              hx-include="[name='anthropic_key']"
-              hx-target="#api-test-area"
-              hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'>
-        Test API key
-      </button>
-    </div>
 
     <div class="step-nav">
       <a href="/onboarding?step=4" style="color:#6c757d;font-size:0.85rem">← Back</a>
       <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
-        <button type="submit" name="skip" value="1" class="btn btn-outline">Finish with recommended defaults</button>
         <button type="submit" class="btn btn-primary" style="font-size:1rem;padding:10px 28px">
           Finish setup →
         </button>
@@ -603,7 +575,7 @@
   </p>
 
   <button type="button" class="btn btn-primary" style="font-size:1rem;padding:10px 24px;margin-bottom:1rem"
-          onclick="runDemo()">
+          id="run-demo-btn">
     See how your AI responds →
   </button>
   <p style="font-size:0.8rem;color:#6c757d;margin-bottom:2rem">Generates a live demo reply using your actual property info.</p>
@@ -650,10 +622,12 @@
 </div>
 {% endif %}
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 // Airbnb listing auto-import
 function importListing() {
-  const url  = document.getElementById('listing-url').value.trim();
+  const urlEl = document.getElementById('listing-url');
+  if (!urlEl) return;
+  const url = urlEl.value.trim();
   const stat = document.getElementById('import-status');
   if (!url) { stat.textContent = 'Paste your Airbnb listing URL first.'; return; }
   stat.style.color = '#856404';
@@ -678,8 +652,8 @@ function importListing() {
   .catch(() => { stat.style.color='#721c24'; stat.textContent = '✗ Could not reach that URL. Please fill in manually.'; });
 }
 // Demo draft generation
-function runDemo() {
-  const btn = event.target;
+function runDemo(btn) {
+  if (!btn) return;
   btn.textContent = 'Generating…';
   btn.disabled = true;
   fetch('/onboarding/demo', {method:'POST', headers:{'Content-Type':'application/json'},
@@ -692,7 +666,7 @@ function runDemo() {
       document.getElementById('demo-draft-text').textContent = d.draft;
       document.getElementById('demo-result').style.display = 'block';
     } else {
-      document.getElementById('demo-draft-text').textContent = d.error || 'Could not generate — check your Anthropic API key in Settings.';
+      document.getElementById('demo-draft-text').textContent = d.error || 'Could not generate — please contact the administrator to verify the AI engine configuration.';
       document.getElementById('demo-result').style.display = 'block';
     }
   })
@@ -701,5 +675,25 @@ function runDemo() {
     btn.disabled = false;
   });
 }
+
+// ── Event Listeners ──────────────────────────────────────────
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'import-listing-btn') {
+        importListing();
+    }
+    if (e.target.id === 'run-demo-btn') {
+        runDemo(e.target);
+    }
+    if (e.target.classList.contains('copy-btn')) {
+        const targetId = e.target.getAttribute('data-target');
+        const el = document.getElementById(targetId);
+        if (el) {
+            navigator.clipboard.writeText(el.value);
+            const oldText = e.target.textContent;
+            e.target.textContent = 'Copied!';
+            setTimeout(() => e.target.textContent = oldText, 1500);
+        }
+    }
+});
 </script>
 {% endblock %}

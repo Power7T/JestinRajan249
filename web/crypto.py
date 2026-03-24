@@ -17,8 +17,21 @@ def _load_required_key() -> bytes:
     if key:
         return key.encode()
     if _ALLOW_INSECURE_DEFAULTS:
-        # Development/test convenience only; production must provide a stable key.
-        return Fernet.generate_key()
+        # Development/test convenience: persist the generated key so we don't lose encrypted DB data on restart
+        key_file = ".dev_fernet_key"
+        if os.path.exists(key_file):
+            import logging
+            logging.getLogger(__name__).warning("Using auto-generated Fernet key from %s. DO NOT do this in production.", key_file)
+            with open(key_file, "rb") as f:
+                return f.read().strip()
+        
+        new_key = Fernet.generate_key()
+        import logging
+        logging.getLogger(__name__).warning("No FIELD_ENCRYPTION_KEY found. Auto-generating one and saving to %s.", key_file)
+        with open(key_file, "wb") as f:
+            f.write(new_key)
+        return new_key
+        
     raise RuntimeError(
         "FIELD_ENCRYPTION_KEY is required in production. "
         "Set it to a base64-encoded 32-byte Fernet key."

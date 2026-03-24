@@ -571,7 +571,6 @@ def build_activation_checklist(
     faq = _text(config, "faq").strip()
     custom_instructions = _text(config, "custom_instructions").strip()
     email_ingest_mode = _text(config, "email_ingest_mode").strip().lower()
-    anthropic_key = _text(config, "anthropic_api_key_enc").strip()
     ical_urls = _text(config, "ical_urls").strip()
     escalation_email = _text(config, "escalation_email").strip()
     wa_mode = _text(config, "wa_mode").strip().lower()
@@ -616,13 +615,6 @@ def build_activation_checklist(
             "label": "Email forwarding ready",
             "complete": email_ingest_mode == "forwarding" and bool(inbound_email_address) and bool(inbound_webhook_url),
             "detail": "Inbound email webhook and forwarding alias are ready.",
-            "cta": "/settings",
-        },
-        {
-            "key": "claude",
-            "label": "Claude API key added",
-            "complete": bool(anthropic_key),
-            "detail": "Draft generation can run for guest replies.",
             "cta": "/settings",
         },
         {

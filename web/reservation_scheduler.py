@@ -33,7 +33,7 @@ _REVIEW_REMIND_DAYS   = 14
 _MAX_BACKOFF          = 3600
 
 
-def _run_scheduler(tenant_id: str, anthropic_api_key: str, property_context: str,
+def _run_scheduler(tenant_id: str, property_context: str,
                    stop_flag: threading.Event):
     """Main scheduler loop for one tenant."""
     fail_streak = 0
@@ -41,7 +41,7 @@ def _run_scheduler(tenant_id: str, anthropic_api_key: str, property_context: str
 
     while not stop_flag.is_set():
         try:
-            _process_tenant(tenant_id, anthropic_api_key, property_context)
+            _process_tenant(tenant_id, property_context)
             fail_streak = 0
         except Exception as exc:
             fail_streak += 1
@@ -55,13 +55,10 @@ def _run_scheduler(tenant_id: str, anthropic_api_key: str, property_context: str
     log.info("[%s] Reservation scheduler stopped", tenant_id)
 
 
-def _process_tenant(tenant_id: str, api_key: str, property_context: str):
+def _process_tenant(tenant_id: str, property_context: str):
     from web.db import SessionLocal
     from web.models import Reservation, Draft, ActivityLog
     from web.classifier import generate_draft, make_draft_id
-
-    if not api_key:
-        return
 
     db  = SessionLocal()
     now = datetime.now(timezone.utc)
@@ -239,23 +236,19 @@ def _maybe_review_reminder(r, today, api_key: str, property_context: str, db, te
 
 
 def make_config_from_db(tenant_id: str):
-    """Return (api_key, property_context) for the tenant, or None if not configured."""
+    """Return property_context for the tenant, or None if not ready."""
     from web.db import SessionLocal
     from web.models import TenantConfig, Reservation
-    from web.crypto import decrypt
     from web.classifier import build_property_context
     db = SessionLocal()
     try:
         cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
         if not cfg:
             return None
-        api_key = decrypt(cfg.anthropic_api_key_enc or "")
-        if not api_key:
-            return None
         # Only run if tenant has reservations imported
         has_reservations = db.query(Reservation).filter_by(tenant_id=tenant_id).first() is not None
         if not has_reservations:
             return None
-        return api_key, build_property_context(cfg)
+        return build_property_context(cfg)
     finally:
         db.close()
