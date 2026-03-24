@@ -262,8 +262,7 @@
 </style>
 
 <script nonce="{{ request.state.csp_nonce }}">
-  // Sample data — in production, this would come from the backend
-  const snapshots = {{ snapshots | tojson }} || [];
+  const snapshots = {{ snapshots_data | tojson }} || [];
 
   // Extract dates and values from snapshots
   const dates = snapshots.map(s => new Date(s.period_start).toLocaleDateString());

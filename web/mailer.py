@@ -248,6 +248,27 @@ def send_weekly_digest(to: str, stats: dict) -> bool:
     return _send(to, f"{APP_NAME} — Weekly digest for {property_name}", html)
 
 
+def send_team_invite(to: str, invite_url: str, inviter_name: str, property_name: str) -> bool:
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:0 auto;padding:2rem;color:#212529">
+      <h2 style="color:#e00b27;margin-bottom:1rem">🏠 {APP_NAME} — You've been invited</h2>
+      <p><strong>{inviter_name}</strong> has invited you to join their team on {APP_NAME} to help manage <strong>{property_name}</strong>.</p>
+      <p style="margin:2rem 0">
+        <a href="{invite_url}" style="background:#e00b27;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">
+          Accept Invite &amp; Create Password
+        </a>
+      </p>
+      <p style="color:#6c757d;font-size:0.85rem">
+        This invite link expires in 48 hours. If you were not expecting this invitation, you can safely ignore this email.
+      </p>
+      <p style="color:#adb5bd;font-size:0.75rem">
+        Or copy this URL: {invite_url}
+      </p>
+    </div>
+    """
+    return _send(to, f"{APP_NAME} — {inviter_name} invited you to join their team", html)
+
+
 def send_password_reset_email(to: str, token: str) -> bool:
     url = f"{APP_BASE_URL}/reset-password?token={token}"
     html = f"""

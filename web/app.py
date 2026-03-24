@@ -90,7 +90,7 @@ from web.auth import (
 from web.crypto import encrypt, decrypt
 from web import worker_manager
 from web import billing as billing_mod
-from web.mailer import send_verification_email, send_password_reset_email, send_welcome_email, send_weekly_digest, validate_smtp_config
+from web.mailer import send_verification_email, send_password_reset_email, send_welcome_email, send_weekly_digest, validate_smtp_config, send_team_invite
 from web.billing import (
     PLAN_INFO, ACTIVE_STATUSES, tenant_has_channel, require_channel,
     create_checkout_session, create_portal_session, handle_stripe_webhook,
@@ -1112,8 +1112,15 @@ def send_team_invite(member_id: int, request: Request,
     db.add(member)
     db.commit()
 
-    # Email would be sent here via mailer.send_team_invite()
-    # For now, just redirect with invite_sent message
+    # Send invite email
+    base_url = os.getenv("APP_BASE_URL", str(request.base_url).rstrip("/"))
+    invite_url = f"{base_url}/invite/{invite_token}"
+    tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    property_name = cfg.property_name if cfg else "your property"
+    inviter_name = tenant.email if tenant else "Your manager"
+    send_team_invite(member.email, invite_url, inviter_name, property_name)
+
     return RedirectResponse("/settings?msg=invite_sent&tab=team", status_code=302)
 
 
@@ -4779,12 +4786,30 @@ def analytics_page(request: Request,
     all_reservations = rdb.query(Reservation).filter_by(tenant_id=tenant_id).all()
     kpis = derive_dashboard_kpis(pending_drafts, all_reservations)
 
+    # Serialize ORM objects to plain dicts — Jinja2 tojson can't serialize SQLAlchemy models
+    snapshots_data = [
+        {
+            "period_start": s.period_start.isoformat(),
+            "period_end":   s.period_end.isoformat(),
+            "total_drafts": s.drafts_total,
+            "approval_rate": (s.approvals_total / s.drafts_total) if s.drafts_total else 0,
+            "approvals_total": s.approvals_total,
+            "escalations_total": s.escalations_total,
+            "avg_response_seconds": s.avg_response_seconds,
+            "automation_rate_pct": s.automation_rate_pct,
+            "messages_total": s.messages_total,
+            "saved_hours": s.saved_hours,
+        }
+        for s in snapshots
+    ]
+
     return templates.TemplateResponse("analytics.html", {
         "request": request,
         "tenant": tenant,
         "cfg": cfg,
         "kpis": kpis,
-        "snapshots": snapshots,
+        "snapshots": snapshots,          # kept for Jinja table rendering
+        "snapshots_data": snapshots_data, # JSON-safe for Chart.js
         "range_days": range_days,
     })
 
