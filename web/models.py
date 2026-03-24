@@ -14,12 +14,17 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from web.db import Base
 
-# Subscription plans
+# Subscription plans (old channel-based — kept for backward compat with Alembic)
 PLAN_FREE       = "free"
 PLAN_BAILEYS    = "baileys"
 PLAN_META_CLOUD = "meta_cloud"
 PLAN_SMS        = "sms"
 PLAN_PRO        = "pro"   # all three channels
+
+# New unit-based plans
+PLAN_STARTER = "starter"
+PLAN_GROWTH  = "growth"
+PLAN_PRO_UNIT = "pro"  # Note: conflicts with PLAN_PRO above; will use PLAN_PRO for backward compat
 
 # Workflow helpers
 ROLE_OWNER       = "owner"
@@ -53,6 +58,22 @@ class SystemConfig(Base):
     fallback_model: Mapped[str] = mapped_column(String(100), default="meta-llama/llama-3.1-70b-instruct")
     sentiment_model: Mapped[str] = mapped_column(String(100), default="openai/gpt-4o-mini")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+# ---------------------------------------------------------------------------
+# PlanConfig — subscription plan tiers (admin-editable)
+# ---------------------------------------------------------------------------
+class PlanConfig(Base):
+    __tablename__ = "plan_configs"
+
+    id:               Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    plan_key:         Mapped[str]      = mapped_column(String(32), unique=True, index=True)  # "starter" / "growth" / "pro"
+    display_name:     Mapped[str]      = mapped_column(String(128))  # "Starter" / "Growth" / "Pro"
+    base_fee_usd:     Mapped[float]    = mapped_column(Float)  # 20.0
+    per_unit_fee_usd: Mapped[float]    = mapped_column(Float)  # 10.0 / 9.0 / 8.0
+    min_units:        Mapped[int]      = mapped_column(Integer)  # 1 / 6 / 11
+    max_units:        Mapped[int]      = mapped_column(Integer)  # 5 / 10 / 50
+    is_active:        Mapped[bool]     = mapped_column(Boolean, default=True)
+    updated_at:       Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 # ---------------------------------------------------------------------------
 # Tenant — one row per registered host
@@ -103,6 +124,8 @@ class TenantConfig(Base):
     # Property info
     property_names: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # comma-separated
     ical_urls:      Mapped[Optional[str]] = mapped_column(Text, nullable=True)    # comma-separated
+    timezone:       Mapped[str]           = mapped_column(String(64), nullable=False, server_default="UTC")
+    data_retention_days: Mapped[int]      = mapped_column(Integer, nullable=False, server_default="30")
 
     # Onboarding — property details (filled during wizard)
     property_type:       Mapped[Optional[str]] = mapped_column(String(64), nullable=True)   # apartment/villa/bnb/hotel
@@ -159,16 +182,32 @@ class TenantConfig(Base):
     twilio_from_number:    Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     sms_notify_number:     Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
 
-    # Subscription (Stripe)
-    subscription_plan:       Mapped[str]           = mapped_column(String(32), default="free")
-    subscription_status:     Mapped[str]           = mapped_column(String(32), default="inactive")
+    # AI usage limits (for free tier enforcement)
+    ai_calls_today:      Mapped[int]      = mapped_column(Integer, default=0)
+    ai_calls_today_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)  # date counter was last reset
+    ai_calls_monthly:    Mapped[int]      = mapped_column(Integer, default=0)
+    ai_calls_monthly_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)  # month counter was last reset
+
+    # Subscription (Stripe) — unit-based billing
+    subscription_plan:       Mapped[str]           = mapped_column(String(32), default="starter")
+    subscription_status:     Mapped[str]           = mapped_column(String(32), default="requires_upgrade")
     subscription_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     stripe_customer_id:      Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     stripe_subscription_id:  Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    num_units:               Mapped[int]           = mapped_column(Integer, default=1)  # units this tenant manages
 
     # Baileys bot API token (hashed) — bot authenticates with this instead of user password
-    bot_api_token_hash: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
-    bot_api_token_hint: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)  # last 4 chars for display
+    bot_api_token_hash:     Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    bot_api_token_hint:     Mapped[Optional[str]] = mapped_column(String(8), nullable=True)  # last 8 chars for display
+    bot_api_token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    bot_last_heartbeat:     Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Baileys rate limiting and batch control
+    baileys_max_batch_size:  Mapped[int] = mapped_column(Integer, default=50)   # max messages per poll
+    baileys_max_per_minute:  Mapped[int] = mapped_column(Integer, default=60)   # WhatsApp rate limit
+
+    # Onboarding step 3: extra services (comma-separated, stored separately for re-population)
+    extra_services: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Internal token (auto-generated) for service-to-service auth
     internal_token: Mapped[str] = mapped_column(String(64), default=lambda: str(uuid.uuid4()))
@@ -187,11 +226,34 @@ class BaileysOutbound(Base):
 
     id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
     tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
-    to_phone:    Mapped[str]           = mapped_column(String(32))
+    to_phone:    Mapped[str]           = mapped_column(String(32), index=True)
     text:        Mapped[str]           = mapped_column(Text)
     created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
     delivered:   Mapped[bool]          = mapped_column(Boolean, default=False, index=True)
     delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Baileys improvements: status tracking, retry logic, idempotency
+    status:            Mapped[str] = mapped_column(String(32), default="pending", index=True)  # pending / in_transit / delivered / failed
+    error_reason:      Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    idempotency_key:   Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True, unique=True)
+    retry_count:       Mapped[int] = mapped_column(Integer, default=0)
+    last_retry_at:     Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# BaileysCallback — tracks processed Baileys callbacks (approve/edit/skip actions)
+# Prevents duplicate actions from retries with idempotency
+# ---------------------------------------------------------------------------
+
+class BaileysCallback(Base):
+    __tablename__ = "baileys_callbacks"
+
+    id:               Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:        Mapped[str]      = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    draft_id:         Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("drafts.id"), nullable=True)
+    action:           Mapped[str]      = mapped_column(String(32))  # approve / edit / skip
+    idempotency_key:  Mapped[str]      = mapped_column(String(128), index=True, unique=True)
+    processed_at:     Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +304,20 @@ class Draft(Base):
 
 
 # ---------------------------------------------------------------------------
+# FailedDraftLog — dead-letter table for automated drafts that failed to send
+# ---------------------------------------------------------------------------
+
+class FailedDraftLog(Base):
+    __tablename__ = "failed_draft_logs"
+
+    id:           Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:    Mapped[str]      = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    draft_id:     Mapped[str]      = mapped_column(String(64), index=True)
+    error_reason: Mapped[str]      = mapped_column(Text)
+    created_at:   Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ---------------------------------------------------------------------------
 # ProcessedEmail — tracks IMAP UIDs already handled per tenant
 # ---------------------------------------------------------------------------
 
@@ -260,6 +336,9 @@ class ProcessedEmail(Base):
 
 class CalendarState(Base):
     __tablename__ = "calendar_states"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "state_key", name="uq_calendar_state_tenant_key"),
+    )
 
     id:         Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
     tenant_id:  Mapped[str]      = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
@@ -368,6 +447,7 @@ class Reservation(Base):
 
     # Guest-facing check-in portal token (random URL-safe string, unique per reservation)
     checkin_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True, unique=True)
+    checkin_token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="reservations")
     intake_batch: Mapped[Optional["ReservationIntakeBatch"]] = relationship("ReservationIntakeBatch", back_populates="reservations")
@@ -504,6 +584,9 @@ class TeamMember(Base):
     property_scope: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     permissions_json: Mapped[dict]     = mapped_column(JSON, default=dict)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    password_hash: Mapped[Optional[str]]      = mapped_column(String(128), nullable=True)  # bcrypt; null until invite accepted
+    invite_token:  Mapped[Optional[str]]      = mapped_column(String(64), nullable=True, index=True)
+    invite_token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
     updated_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 

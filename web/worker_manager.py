@@ -162,14 +162,13 @@ def _start_tenant(tenant_id: str):
         entry["cal_stop"] = cal_stop
         entry["cal_cfg"]  = cal_cfg  # saved for watchdog restarts
 
-    # Reservation scheduler (only if API key + imported reservations exist)
+    # Reservation scheduler (only if tenant has imported reservations)
     res_cfg = reservation_scheduler.make_config_from_db(tenant_id)
     if res_cfg:
-        api_key, prop_ctx = res_cfg
         sched_stop = threading.Event()
         t_sched = threading.Thread(
             target=reservation_scheduler._run_scheduler,
-            args=(tenant_id, api_key, prop_ctx, sched_stop),
+            args=(tenant_id, res_cfg, sched_stop),
             name=f"sched-{tenant_id[:8]}",
             daemon=True,
         )
@@ -258,6 +257,11 @@ def _watchdog_loop():
         # auto-approve them (send via appropriate channel).
         _process_scheduled_drafts()
 
+        # ── Data retention cleanup ───────────────────────────────────
+        # Purge old data (activity logs, drafts, timeline events) based on
+        # tenant's retention policy. Runs once per hour.
+        _process_data_retention()
+
     log.info("Worker watchdog stopped")
 
 
@@ -277,6 +281,7 @@ def _process_scheduled_drafts():
                 Draft.scheduled_at.isnot(None),
                 Draft.scheduled_at <= now,
             )
+            .with_for_update(skip_locked=True)
             .all()
         )
         if not due_drafts:
@@ -299,8 +304,98 @@ def _process_scheduled_drafts():
                 log.error("[%s] Scheduled draft %s auto-send failed: %s",
                           draft.tenant_id, draft.id, exc)
                 db.rollback()
+                try:
+                    failed_draft = db.query(Draft).filter(Draft.id == draft.id).first()
+                    if failed_draft:
+                        failed_draft.status = "failed"
+                        from web.models import FailedDraftLog
+                        db.add(FailedDraftLog(
+                            tenant_id=failed_draft.tenant_id,
+                            draft_id=failed_draft.id,
+                            error_reason=str(exc)
+                        ))
+                    db.commit()
+                except Exception as inner:
+                    log.error("Failed to write to dead-letter log for draft %s: %s", draft.id, inner)
+                    db.rollback()
     except Exception as exc:
         log.warning("Scheduled draft processing error: %s", exc)
+    finally:
+        db.close()
+
+
+_last_retention_cleanup = 0.0  # Timestamp of last retention cleanup run
+
+
+def _process_data_retention():
+    """
+    Purge old data from all tenants based on their data_retention_days setting.
+    Runs once per hour (expensive operation).
+    """
+    global _last_retention_cleanup
+    from datetime import datetime, timezone, timedelta
+    import time
+
+    now_ts = time.time()
+    if now_ts - _last_retention_cleanup < 3600:  # Run max once per hour
+        return
+
+    _last_retention_cleanup = now_ts
+
+    from web.db import SessionLocal
+    from web.models import TenantConfig, ActivityLog, Draft, GuestTimelineEvent
+
+    db = SessionLocal()
+    try:
+        # Get all tenants with retention policies
+        tenant_configs = db.query(TenantConfig).all()
+        for cfg in tenant_configs:
+            if not cfg.data_retention_days or cfg.data_retention_days <= 0:
+                continue
+
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=cfg.data_retention_days)
+
+            # Delete old activity logs
+            deleted_logs = (
+                db.query(ActivityLog)
+                .filter(
+                    ActivityLog.tenant_id == cfg.tenant_id,
+                    ActivityLog.created_at < cutoff_date,
+                )
+                .delete()
+            )
+
+            # Delete old drafts (keep reservation link)
+            deleted_drafts = (
+                db.query(Draft)
+                .filter(
+                    Draft.tenant_id == cfg.tenant_id,
+                    Draft.created_at < cutoff_date,
+                )
+                .delete()
+            )
+
+            # Delete old timeline events
+            deleted_events = (
+                db.query(GuestTimelineEvent)
+                .filter(
+                    GuestTimelineEvent.tenant_id == cfg.tenant_id,
+                    GuestTimelineEvent.created_at < cutoff_date,
+                )
+                .delete()
+            )
+
+            if deleted_logs or deleted_drafts or deleted_events:
+                db.commit()
+                log.info(
+                    "[%s] Data retention cleanup: deleted %d logs, %d drafts, %d timeline events",
+                    cfg.tenant_id, deleted_logs, deleted_drafts, deleted_events,
+                )
+            else:
+                db.rollback()
+    except Exception as exc:
+        log.error("Data retention cleanup error: %s", exc)
+        db.rollback()
     finally:
         db.close()
 

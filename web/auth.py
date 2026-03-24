@@ -10,11 +10,12 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 from fastapi import Request, HTTPException
 
 from web.db import SessionLocal
-from web.models import Tenant
+from web.models import Tenant, TeamMember
 
 log = logging.getLogger(__name__)
 
@@ -60,9 +61,27 @@ def tenant_session_version(tenant: Tenant) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+def member_session_version(member: TeamMember) -> str:
+    """Version claim for team member token revocation."""
+    raw = f"{member.password_hash}:{int(bool(member.is_active))}"
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
 def create_token(tenant_id: str, version: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(hours=TOKEN_HOURS)
     return jwt.encode({"sub": tenant_id, "ver": version, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_member_token(member_id: int, tenant_id: str, role: str, version: str) -> str:
+    """Create JWT for team member login. Includes member_id in payload."""
+    expire = datetime.now(timezone.utc) + timedelta(hours=TOKEN_HOURS)
+    return jwt.encode({
+        "sub": tenant_id,
+        "mid": member_id,
+        "role": role,
+        "ver": version,
+        "exp": expire
+    }, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def _decode_token_payload(token: str) -> Optional[dict]:
@@ -111,3 +130,38 @@ def get_current_tenant_id(request: Request) -> str:
         if owns_session:
             db.close()
     return tenant_id
+
+
+def get_current_member(request: Request, db) -> tuple[str, int, str]:
+    """
+    Returns (tenant_id, member_id, role) for a team member token.
+    Raises 401 if token is invalid, missing member_id claim, or session is revoked.
+    """
+    token = request.cookies.get("session")
+    if not token:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    payload = _decode_token_payload(token)
+    if not payload or "mid" not in payload:  # Tenant token has no "mid" — not a member token
+        raise HTTPException(status_code=401, detail="Session expired")
+
+    tenant_id = payload.get("sub")
+    member_id = payload.get("mid")
+    role = payload.get("role", "manager")
+
+    if not tenant_id or not member_id:
+        raise HTTPException(status_code=401, detail="Session expired")
+
+    # Validate member exists, is active, and version matches
+    member = db.query(TeamMember).filter_by(id=member_id, tenant_id=tenant_id).first()
+    if not member or not member.is_active:
+        raise HTTPException(status_code=401, detail="Session expired")
+
+    if payload.get("ver") != member_session_version(member):
+        raise HTTPException(status_code=401, detail="Session expired")
+
+    return tenant_id, member_id, role
