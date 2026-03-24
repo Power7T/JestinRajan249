@@ -413,6 +413,9 @@ def _process_kpi_snapshots():
     """
     global _last_kpi_snapshot
     import time
+    from datetime import datetime, timezone
+    from web.db import SessionLocal
+    from web.models import TenantConfig, Draft, Reservation
 
     now_ts = time.time()
     if now_ts - _last_kpi_snapshot < 86400:  # 24h
@@ -420,14 +423,8 @@ def _process_kpi_snapshots():
 
     _last_kpi_snapshot = now_ts
 
-    from datetime import datetime, timezone
-    from web.db import SessionLocal
-    from web.models import TenantConfig
-
     db = SessionLocal()
     try:
-        from datetime import datetime, timezone
-        from web.models import Draft, Reservation
         from web.app import _upsert_tenant_kpi_snapshot, derive_dashboard_kpis
 
         now = datetime.now(timezone.utc)
