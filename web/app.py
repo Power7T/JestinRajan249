@@ -90,7 +90,7 @@ from web.auth import (
 from web.crypto import encrypt, decrypt
 from web import worker_manager
 from web import billing as billing_mod
-from web.mailer import send_verification_email, send_password_reset_email, send_welcome_email, send_weekly_digest
+from web.mailer import send_verification_email, send_password_reset_email, send_welcome_email, send_weekly_digest, validate_smtp_config
 from web.billing import (
     PLAN_INFO, ACTIVE_STATUSES, tenant_has_channel, require_channel,
     create_checkout_session, create_portal_session, handle_stripe_webhook,
@@ -282,6 +282,7 @@ def _gdpr_data_retention_job():
 async def lifespan(app: FastAPI):
     _startup_checks()
     init_db()
+    validate_smtp_config()  # Validate SMTP at startup — fail fast, not on first email send
     worker_manager.start_all_workers()
 
     # Start background scheduler for GDPR cleanup job

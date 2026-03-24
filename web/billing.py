@@ -229,23 +229,40 @@ def handle_stripe_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
         event = stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid Stripe signature")
+    except Exception as exc:
+        # Catch all other Stripe errors without leaking the API key in the traceback
+        log.error("Stripe webhook processing error: %s", type(exc).__name__)
+        raise HTTPException(status_code=400, detail="Webhook processing error")
 
     ev_type  = event["type"]
     event_id = event.get("id", "")
 
     # Idempotency: Stripe can redeliver the same event multiple times.
-    # Use Redis SET NX to deduplicate within a 48-hour window.
+    # PRIMARY: DB-backed dedup (survives Redis restart). SECONDARY: Redis for speed.
     if event_id:
-        from web.redis_client import get_redis
-        r = get_redis()
-        if r is not None:
-            try:
-                if not r.set(f"stripe:evt:{event_id}", "1", ex=172800, nx=True):
-                    log.info("Stripe duplicate event skipped (idempotent): %s %s", ev_type, event_id)
-                    return {"status": "ok", "duplicate": True}
-            except Exception as exc:
-                # Redis unavailable — process anyway (missing event > duplicate risk)
-                log.warning("Redis idempotency check failed, processing event anyway: %s", exc)
+        from web.models import SystemConfig
+        try:
+            dedup_key = f"stripe_evt_{event_id}"
+            existing = db.query(SystemConfig).filter_by(key=dedup_key).first()
+            if existing:
+                log.info("Stripe duplicate event skipped (DB dedup): %s %s", ev_type, event_id)
+                return {"status": "ok", "duplicate": True}
+            # Mark as processed in DB — this is atomic with the subscription update below
+            db.add(SystemConfig(key=dedup_key, value="1"))
+            # Don't commit yet — commit atomically with the subscription update below
+        except Exception as exc:
+            log.warning("DB idempotency check failed: %s — checking Redis fallback", exc)
+            db.rollback()
+            # Fallback to Redis
+            from web.redis_client import get_redis
+            r = get_redis()
+            if r is not None:
+                try:
+                    if not r.set(f"stripe:evt:{event_id}", "1", ex=172800, nx=True):
+                        log.info("Stripe duplicate event skipped (Redis dedup): %s %s", ev_type, event_id)
+                        return {"status": "ok", "duplicate": True}
+                except Exception as redis_exc:
+                    log.warning("Redis idempotency check also failed: %s — processing anyway", redis_exc)
 
     log.info("Stripe event: %s %s", ev_type, event_id)
 

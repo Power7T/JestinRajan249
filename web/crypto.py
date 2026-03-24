@@ -5,8 +5,11 @@ Set FIELD_ENCRYPTION_KEY env var to a base64-encoded 32-byte key.
 Generate one with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 """
 
+import logging
 import os
 from cryptography.fernet import Fernet
+
+log = logging.getLogger(__name__)
 
 _ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
 _ALLOW_INSECURE_DEFAULTS = _ENVIRONMENT in {"development", "dev", "test"}
@@ -48,10 +51,12 @@ def encrypt(plaintext: str) -> str:
 
 
 def decrypt(token: str) -> str:
-    """Decrypt a token back to plaintext. Returns '' on failure."""
+    """Decrypt a token back to plaintext. Returns '' on failure (logs error)."""
     if not token:
         return ""
     try:
         return _fernet.decrypt(token.encode()).decode()
-    except Exception:
+    except Exception as exc:
+        # Log so corrupted/rotated keys are caught — silent empty string causes config to vanish
+        log.error("Decryption failed (key rotation or data corruption?): %s", type(exc).__name__)
         return ""

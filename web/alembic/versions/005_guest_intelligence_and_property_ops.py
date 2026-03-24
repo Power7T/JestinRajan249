@@ -1,6 +1,6 @@
 """guest intelligence and property ops
 
-Revision ID: 005_guest_intelligence_and_property_ops
+Revision ID: 005_guest_intel_ops
 Revises: 004_draft_confidence
 Create Date: 2026-03-22
 """
@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "005_guest_intelligence_and_property_ops"
+revision = "005_guest_intel_ops"
 down_revision = "004_draft_confidence"
 branch_labels = None
 depends_on = None

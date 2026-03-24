@@ -35,12 +35,12 @@ def upgrade() -> None:
     op.create_index(op.f('ix_plan_configs_plan_key'), 'plan_configs', ['plan_key'], unique=True)
 
     # Add billing columns to tenant_configs
-    op.add_column('tenant_configs', sa.Column('num_units', sa.Integer(), server_default='1', nullable=False))
+    # Note: num_units was already added in migration 20260322_1500_add_num_units_and_messaging_channel
     op.add_column('tenant_configs', sa.Column('extra_services', sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
     op.drop_column('tenant_configs', 'extra_services')
-    op.drop_column('tenant_configs', 'num_units')
+    # num_units is managed by migration 20260322_1500, don't drop it
     op.drop_index(op.f('ix_plan_configs_plan_key'), table_name='plan_configs')
     op.drop_table('plan_configs')

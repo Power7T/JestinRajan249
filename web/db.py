@@ -41,10 +41,11 @@ else:
     engine = create_engine(
         DATABASE_URL,
         echo=False,
-        # Connection pool tuned for a typical 2-4 worker Uvicorn deployment
-        pool_size=10,           # keep 10 connections warm
-        max_overflow=20,        # allow up to 30 total under peak load
-        pool_timeout=30,        # give up after 30s waiting for a connection
+        # Connection pool — sized for 4 Uvicorn workers + background threads
+        # Each worker can hold ~5 connections; 4 workers = 20 base; threads add ~10 more
+        pool_size=20,           # keep 20 connections warm (was 10 — too low)
+        max_overflow=30,        # allow up to 50 total under peak load (was 20)
+        pool_timeout=10,        # fail fast: 10s wait then 503, not 30s hang (was 30)
         pool_recycle=1800,      # recycle connections every 30 min (avoids stale TCP)
         pool_pre_ping=True,     # verify connection alive before handing it out
     )

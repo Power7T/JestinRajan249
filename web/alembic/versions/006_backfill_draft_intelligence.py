@@ -1,7 +1,7 @@
 """Backfill draft intelligence fields for pre-005 rows
 
 Revision ID: 006_backfill_draft_intelligence
-Revises: 005_guest_intelligence_and_property_ops
+Revises: 005_guest_intel_ops
 Create Date: 2026-03-22
 
 Fills in:
@@ -21,7 +21,7 @@ import sqlalchemy as sa
 
 
 revision = "006_backfill_draft_intelligence"
-down_revision = "005_guest_intelligence_and_property_ops"
+down_revision = "005_guest_intel_ops"
 branch_labels = None
 depends_on = None
 

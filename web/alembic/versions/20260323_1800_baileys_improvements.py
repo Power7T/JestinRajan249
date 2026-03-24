@@ -45,8 +45,7 @@ def upgrade() -> None:
     op.create_index('ix_baileys_callbacks_tenant_id', 'baileys_callbacks', ['tenant_id'], unique=False)
     op.create_index('ix_baileys_callbacks_idempotency_key', 'baileys_callbacks', ['idempotency_key'], unique=True)
 
-    # Add columns to tenant_configs
-    op.add_column('tenant_configs', sa.Column('bot_api_token_hint', sa.String(8), nullable=True))
+    # Add columns to tenant_configs (bot_api_token_hint already exists in initial schema)
     op.add_column('tenant_configs', sa.Column('bot_api_token_expires_at', sa.DateTime(timezone=True), nullable=True))
     op.add_column('tenant_configs', sa.Column('bot_last_heartbeat', sa.DateTime(timezone=True), nullable=True))
     op.add_column('tenant_configs', sa.Column('baileys_max_batch_size', sa.Integer(), nullable=False, server_default='50'))
@@ -61,7 +60,7 @@ def downgrade() -> None:
     op.drop_column('tenant_configs', 'baileys_max_batch_size')
     op.drop_column('tenant_configs', 'bot_last_heartbeat')
     op.drop_column('tenant_configs', 'bot_api_token_expires_at')
-    op.drop_column('tenant_configs', 'bot_api_token_hint')
+    # bot_api_token_hint is in initial schema, don't drop it
 
     op.drop_index('ix_baileys_callbacks_idempotency_key', table_name='baileys_callbacks')
     op.drop_index('ix_baileys_callbacks_tenant_id', table_name='baileys_callbacks')

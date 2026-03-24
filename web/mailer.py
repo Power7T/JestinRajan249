@@ -38,6 +38,34 @@ APP_BASE_URL = _APP_BASE_URL_RAW
 APP_NAME     = "HostAI"
 
 
+def validate_smtp_config() -> bool:
+    """
+    Test SMTP credentials at startup. Logs a clear error if misconfigured.
+    Call this from app startup so you find out immediately, not on first email send.
+    Returns True if SMTP works, False if not configured or credentials fail.
+    """
+    if not SMTP_HOST or not SMTP_USER:
+        log.warning("SMTP not configured — email sending disabled (set SMTP_HOST, SMTP_USER, SMTP_PASS)")
+        return False
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+        log.info("SMTP connection verified: %s:%s as %s", SMTP_HOST, SMTP_PORT, SMTP_USER)
+        return True
+    except smtplib.SMTPAuthenticationError:
+        log.error(
+            "SMTP authentication FAILED for %s@%s — email will not work. "
+            "Check SMTP_PASS (use an app password if 2FA is enabled).",
+            SMTP_USER, SMTP_HOST,
+        )
+        return False
+    except Exception as exc:
+        log.warning("SMTP connection test failed (%s) — emails may not work: %s", SMTP_HOST, exc)
+        return False
+
+
 def _send(to: str, subject: str, html: str) -> bool:
     """Send an HTML email. Returns True on success, False on failure."""
     if not SMTP_HOST or not SMTP_USER:

@@ -266,6 +266,10 @@ def _watchdog_loop():
         # Compute and store KPI snapshots for all tenants (once per 24h).
         _process_kpi_snapshots()
 
+        # ── Expired token cleanup ────────────────────────────────────────
+        # Remove stale invite/reset tokens (once per 6h).
+        _process_expired_tokens()
+
     log.info("Worker watchdog stopped")
 
 
@@ -278,6 +282,9 @@ def _process_scheduled_drafts():
     db = SessionLocal()
     try:
         now = datetime.now(timezone.utc)
+        # SELECT FOR UPDATE SKIP LOCKED: only one worker processes each draft.
+        # We immediately mark status="sending" inside the same transaction so
+        # no other worker can claim the same draft even if this one is slow.
         due_drafts = (
             db.query(Draft)
             .filter(
@@ -291,10 +298,19 @@ def _process_scheduled_drafts():
         if not due_drafts:
             return
 
+        # Mark all as "sending" atomically before releasing the lock
+        draft_ids = [d.id for d in due_drafts]
+        for draft in due_drafts:
+            draft.status = "sending"
+        db.commit()  # Lock released here; other workers will skip these drafts
+
         # Import the send function from app (deferred to avoid circular import)
         from web.app import _execute_draft
 
-        for draft in due_drafts:
+        for draft_id in draft_ids:
+            draft = db.query(Draft).filter(Draft.id == draft_id).first()
+            if not draft or draft.status != "sending":
+                continue  # Already handled by another process
             try:
                 _execute_draft(draft, draft.draft, draft.tenant_id, db)
                 db.add(ActivityLog(
@@ -303,13 +319,13 @@ def _process_scheduled_drafts():
                     message=f"Scheduled draft auto-sent: {draft.guest_name}",
                 ))
                 db.commit()
-                log.info("[%s] Scheduled draft %s auto-sent", draft.tenant_id, draft.id)
+                log.info("[%s] Scheduled draft %s auto-sent", draft.tenant_id, draft_id)
             except Exception as exc:
                 log.error("[%s] Scheduled draft %s auto-send failed: %s",
-                          draft.tenant_id, draft.id, exc)
+                          draft.tenant_id, draft_id, exc)
                 db.rollback()
                 try:
-                    failed_draft = db.query(Draft).filter(Draft.id == draft.id).first()
+                    failed_draft = db.query(Draft).filter(Draft.id == draft_id).first()
                     if failed_draft:
                         failed_draft.status = "failed"
                         from web.models import FailedDraftLog
@@ -320,7 +336,7 @@ def _process_scheduled_drafts():
                         ))
                     db.commit()
                 except Exception as inner:
-                    log.error("Failed to write to dead-letter log for draft %s: %s", draft.id, inner)
+                    log.error("Failed to write to dead-letter log for draft %s: %s", draft_id, inner)
                     db.rollback()
     except Exception as exc:
         log.warning("Scheduled draft processing error: %s", exc)
@@ -406,10 +422,11 @@ def _process_data_retention():
 
 _last_kpi_snapshot = 0.0
 
+
 def _process_kpi_snapshots():
     """
     Compute and store KPI snapshots for all tenants (once per 24h).
-    Requires _upsert_tenant_kpi_snapshot to be available in web.app.
+    Uses batch queries to avoid N+1 problem (was: 2 queries per tenant).
     """
     global _last_kpi_snapshot
     import time
@@ -428,18 +445,111 @@ def _process_kpi_snapshots():
         from web.app import _upsert_tenant_kpi_snapshot, derive_dashboard_kpis
 
         now = datetime.now(timezone.utc)
-        for cfg in db.query(TenantConfig).all():
+        tenant_ids = [cfg.tenant_id for cfg in db.query(TenantConfig.tenant_id).all()]
+
+        if not tenant_ids:
+            return
+
+        # Batch fetch all pending drafts + reservations — avoids N+1 (was 2 queries per tenant)
+        from sqlalchemy import select
+        all_pending = (
+            db.query(Draft)
+            .filter(Draft.status == "pending", Draft.tenant_id.in_(tenant_ids))
+            .all()
+        )
+        all_reservations = (
+            db.query(Reservation)
+            .filter(Reservation.tenant_id.in_(tenant_ids))
+            .all()
+        )
+
+        # Group by tenant_id in Python — zero extra DB round trips
+        drafts_by_tenant: dict[str, list] = {tid: [] for tid in tenant_ids}
+        for d in all_pending:
+            drafts_by_tenant.setdefault(d.tenant_id, []).append(d)
+
+        res_by_tenant: dict[str, list] = {tid: [] for tid in tenant_ids}
+        for r in all_reservations:
+            res_by_tenant.setdefault(r.tenant_id, []).append(r)
+
+        for tenant_id in tenant_ids:
             try:
-                pending = db.query(Draft).filter_by(tenant_id=cfg.tenant_id, status="pending").all()
-                reservations = db.query(Reservation).filter_by(tenant_id=cfg.tenant_id).all()
-                kpis = derive_dashboard_kpis(pending, reservations, now=now)
-                open_issues = []  # skip issue tickets in scheduler snapshot
-                _upsert_tenant_kpi_snapshot(db, cfg.tenant_id, kpis, open_issues, now)
+                kpis = derive_dashboard_kpis(
+                    drafts_by_tenant.get(tenant_id, []),
+                    res_by_tenant.get(tenant_id, []),
+                    now=now,
+                )
+                _upsert_tenant_kpi_snapshot(db, tenant_id, kpis, [], now)
             except Exception as exc:
-                log.warning("[%s] KPI snapshot error: %s", cfg.tenant_id, exc)
+                log.warning("[%s] KPI snapshot error: %s", tenant_id, exc)
+
         db.commit()
     except Exception as exc:
         log.error("KPI snapshot processing error: %s", exc)
+        db.rollback()
+    finally:
+        db.close()
+
+
+_last_token_cleanup = 0.0
+
+
+def _process_expired_tokens():
+    """
+    Clean up expired invite tokens and password reset tokens (once per 6h).
+    Prevents accumulation of stale tokens that could be a security risk.
+    """
+    global _last_token_cleanup
+    import time
+    from datetime import datetime, timezone
+
+    now_ts = time.time()
+    if now_ts - _last_token_cleanup < 21600:  # 6h
+        return
+
+    _last_token_cleanup = now_ts
+
+    from web.db import SessionLocal
+    from web.models import TeamMember, Tenant
+
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+
+        # Clear expired team member invite tokens
+        expired_invites = (
+            db.query(TeamMember)
+            .filter(
+                TeamMember.invite_token.isnot(None),
+                TeamMember.invite_token_expires_at < now,
+            )
+            .all()
+        )
+        for member in expired_invites:
+            member.invite_token = None
+            member.invite_token_expires_at = None
+
+        # Clear expired password reset tokens
+        expired_resets = (
+            db.query(Tenant)
+            .filter(
+                Tenant.reset_token.isnot(None),
+                Tenant.reset_token_expires < now,
+            )
+            .all()
+        )
+        for tenant in expired_resets:
+            tenant.reset_token = None
+            tenant.reset_token_expires = None
+
+        if expired_invites or expired_resets:
+            db.commit()
+            log.info("Token cleanup: cleared %d invite tokens, %d reset tokens",
+                     len(expired_invites), len(expired_resets))
+        else:
+            db.rollback()
+    except Exception as exc:
+        log.warning("Token cleanup error: %s", exc)
         db.rollback()
     finally:
         db.close()
