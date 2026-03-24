@@ -3,8 +3,13 @@ set -e
 
 echo "=== Starting entrypoint.sh ==="
 echo "PORT=${PORT:-8000}"
-echo "DATABASE_URL=${DATABASE_URL:0:50}..."
+echo "DATABASE_URL set: ${DATABASE_URL:+yes}"
 echo "PYTHONPATH=/app"
+
+if [ -z "$DATABASE_URL" ]; then
+    echo "FATAL: DATABASE_URL environment variable not set"
+    exit 1
+fi
 
 echo ""
 echo "Step 1: Waiting for database..."
@@ -14,29 +19,27 @@ import time
 import os
 from urllib.parse import urlparse
 
-db_url = os.getenv('DATABASE_URL', '')
-if db_url:
-    try:
-        parsed = urlparse(db_url)
-        host = parsed.hostname or 'localhost'
-        print(f"[DB] Extracted host from DATABASE_URL: {host}")
-    except Exception as e:
-        print(f"[DB] Failed to parse DATABASE_URL: {e}")
-        host = 'localhost'
-else:
-    host = os.getenv('DATABASE_HOST', 'db')
-    print(f"[DB] Using DATABASE_HOST: {host}")
+db_url = os.getenv('DATABASE_URL')
+if not db_url:
+    print("[DB] ERROR: DATABASE_URL env var is empty or not set")
+    exit(1)
 
-port = 5432
+try:
+    parsed = urlparse(db_url)
+    host = parsed.hostname
+    port = parsed.port or 5432
+    print(f"[DB] Connecting to {host}:{port}...")
+except Exception as e:
+    print(f"[DB] ERROR: Failed to parse DATABASE_URL: {e}")
+    exit(1)
+
 max_retries = 30
-
-print(f"[DB] Connecting to {host}:{port}...")
 for i in range(max_retries):
     try:
         sock = socket.create_connection((host, port), timeout=2)
         sock.close()
         print(f"[DB] ✓ Connected successfully on attempt {i+1}")
-        break
+        exit(0)
     except Exception as e:
         if i < max_retries - 1:
             print(f"[DB] Attempt {i+1}/{max_retries} failed: {e}")
@@ -44,8 +47,6 @@ for i in range(max_retries):
         else:
             print(f"[DB] FATAL: Could not connect after {max_retries} attempts")
             exit(1)
-
-print("[DB] Database is ready!")
 EOF
 
 if [ $? -ne 0 ]; then
@@ -57,11 +58,11 @@ echo ""
 echo "Step 2: Running Alembic migrations..."
 cd /app || { echo "FATAL: Could not cd to /app"; exit 1; }
 
-if ! PYTHONPATH=/app alembic upgrade head 2>&1; then
-    echo "WARNING: Alembic migrations had non-zero exit, but continuing..."
+if PYTHONPATH=/app alembic upgrade head 2>&1; then
+    echo "[Migrations] ✓ Completed successfully"
+else
+    echo "[Migrations] ✗ Had non-zero exit (this may be expected if DB was being initialized)"
 fi
-
-echo "[Migrations] Done"
 
 echo ""
 echo "Step 3: Starting uvicorn..."
