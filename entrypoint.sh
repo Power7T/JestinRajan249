@@ -1,43 +1,60 @@
 #!/bin/bash
 set -e
 
+echo "=== HostAI Entrypoint Starting ==="
+echo "Environment: PORT=$PORT, DATABASE_URL=$(echo $DATABASE_URL | cut -c1-30)..."
+
+# Wait for database
 echo "Waiting for database to be ready..."
-python3 << 'EOF'
-import socket
-import time
+for i in {1..30}; do
+    if python3 -c "
 import os
 from urllib.parse import urlparse
+import psycopg2
 
-# Support both Railway (DATABASE_URL) and local (DATABASE_HOST) setups
 db_url = os.getenv('DATABASE_URL', '')
-if db_url:
-    # Railway Postgres: extract host from postgresql://user:pass@host:port/db
-    parsed = urlparse(db_url)
-    host = parsed.hostname or 'localhost'
-else:
-    host = os.getenv('DATABASE_HOST', 'db')
+if not db_url:
+    print('ERROR: DATABASE_URL not set')
+    exit(1)
 
-port = 5432
-max_retries = 30
-
-for i in range(max_retries):
-    try:
-        sock = socket.create_connection((host, port), timeout=1)
-        sock.close()
-        print(f"Database at {host}:5432 is ready!")
+try:
+    conn = psycopg2.connect(db_url, connect_timeout=2)
+    conn.close()
+    print('Database connection successful')
+    exit(0)
+except Exception as e:
+    print(f'DB not ready: {e}')
+    exit(1)
+" 2>/dev/null; then
+        echo "✓ Database is ready"
         break
-    except (socket.timeout, socket.error, OSError):
-        if i < max_retries - 1:
-            print(f"Waiting for DB at {host}... ({i+1}/{max_retries})")
-            time.sleep(1)
-        else:
-            print(f"Database at {host}:5432 did not become ready in time")
-            exit(1)
-EOF
+    else
+        if [ $i -lt 30 ]; then
+            echo "Waiting for database... attempt $i/30"
+            sleep 1
+        else
+            echo "✗ Database failed to become ready after 30 seconds"
+            exit 1
+        fi
+    fi
+done
 
+# Run migrations
 echo "Running Alembic migrations..."
 cd /app
-PYTHONPATH=/app alembic upgrade head || echo "Alembic migration failed (might be normal on first run)"
+if PYTHONPATH=/app alembic upgrade head; then
+    echo "✓ Migrations completed successfully"
+else
+    echo "✗ Migrations failed"
+    exit 1
+fi
 
-echo "Starting application..."
-exec uvicorn web.app:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS:-2} --loop uvloop --http h11 --timeout-keep-alive 30
+# Start application
+echo "Starting uvicorn on port ${PORT:-8000}..."
+exec uvicorn web.app:app \
+    --host 0.0.0.0 \
+    --port ${PORT:-8000} \
+    --workers 2 \
+    --loop uvloop \
+    --http h11 \
+    --timeout-keep-alive 30
