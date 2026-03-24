@@ -6662,6 +6662,46 @@ def metrics_prometheus(request: Request, db: Session = Depends(get_db)):
 # Guest Contacts — bot whitelisting for guests
 # ---------------------------------------------------------------------------
 
+@app.get("/guest-contacts", response_class=HTMLResponse)
+def guest_contacts_dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Dashboard for managing today's guest check-ins."""
+    from datetime import datetime, timezone, timedelta
+
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # Get today's guest contacts
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+
+    guest_contacts = (
+        db.query(GuestContact)
+        .filter(
+            GuestContact.tenant_id == tenant_id,
+            GuestContact.check_in >= today_start,
+            GuestContact.check_in < today_end,
+        )
+        .order_by(GuestContact.check_in.asc())
+        .all()
+    )
+
+    from jinja2 import Template
+    with open("web/templates/guest_contacts.html") as f:
+        template = Template(f.read())
+
+    html = template.render(
+        guest_contacts=guest_contacts,
+        today=today_start.date(),
+    )
+
+    return HTMLResponse(html)
+
+
 @app.post("/api/guest-contacts/add")
 async def add_guest_contact(
     request: Request,
