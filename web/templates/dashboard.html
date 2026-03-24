@@ -524,7 +524,14 @@
 {% else %}
 <!-- Bulk action bar -->
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem">
-  <p style="font-size:0.85rem;color:#6c757d;margin:0">{{ drafts|length }} pending draft{% if drafts|length != 1 %}s{% endif %} waiting for review</p>
+  <p style="font-size:0.85rem;color:#6c757d;margin:0">
+    {% if conversations is defined and conversations %}
+      {{ conversations|length }} conversation{% if conversations|length != 1 %}s{% endif %}
+      ({{ drafts|length }} draft{% if drafts|length != 1 %}s{% endif %}) waiting for review
+    {% else %}
+      {{ drafts|length }} pending draft{% if drafts|length != 1 %}s{% endif %} waiting for review
+    {% endif %}
+  </p>
   <div style="display:flex;gap:0.5rem">
     <form method="post" action="/drafts/bulk-approve" class="confirm-submit" data-confirm="Approve and send all {{ drafts|length }} pending draft(s)?">
       <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
@@ -722,9 +729,49 @@
 </div>
 {% endif %}
 
-<!-- Auto-refresh pending count every 30s via HTMX -->
-<div hx-get="/api/drafts" hx-trigger="every 30s" hx-swap="none" id="drafts-refresh-poll" data-count="{{ drafts|length }}">
-</div>
+<!-- Real-time notifications via SSE (falls back to HTMX polling on error) -->
+<div id="drafts-refresh-poll" data-count="{{ drafts|length }}"></div>
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+  // Request notification permission
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  function startPollingFallback() {
+    const poll = document.createElement('div');
+    poll.setAttribute('hx-get', '/api/drafts');
+    poll.setAttribute('hx-trigger', 'every 30s');
+    poll.setAttribute('hx-swap', 'none');
+    document.body.appendChild(poll);
+    if (typeof htmx !== 'undefined') htmx.process(poll);
+  }
+
+  try {
+    const sse = new EventSource('/api/sse/drafts');
+    sse.onmessage = function(e) {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === 'refresh' || data.draft_id) {
+          if (Notification.permission === 'granted' && data.guest_name) {
+            new Notification('New message — ' + data.guest_name, {
+              body: (data.source || '') + (data.msg_type ? ' • ' + data.msg_type : ''),
+              icon: '/static/icon.png',
+            });
+          }
+          location.reload();
+        }
+      } catch(_) {}
+    };
+    sse.onerror = function() {
+      sse.close();
+      startPollingFallback();
+    };
+  } catch(_) {
+    startPollingFallback();
+  }
+})();
+</script>
 
 <!-- Post-onboarding first-visit tour (shown once via localStorage) -->
 <script nonce="{{ request.state.csp_nonce }}">

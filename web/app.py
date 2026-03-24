@@ -1328,6 +1328,26 @@ def dashboard(request: Request,
             last = last.replace(tzinfo=timezone.utc)
         csv_stale = (datetime.now(timezone.utc) - last).total_seconds() > 43200
 
+    # Group pending drafts into conversations by thread_key
+    from collections import defaultdict
+    conv_map = defaultdict(lambda: {
+        "guest_name": "", "reply_to": "", "reservation": None,
+        "thread_key": None, "drafts": [], "last_at": None,
+    })
+    res_by_id = {r.id: r for r in filtered_reservations}
+    for d in sorted(pending, key=lambda x: x.created_at):
+        key = d.thread_key or f"solo:{d.id}"
+        c = conv_map[key]
+        c["guest_name"] = d.guest_name
+        c["reply_to"] = d.reply_to
+        c["thread_key"] = d.thread_key
+        c["last_at"] = d.created_at
+        if d.reservation_id and not c["reservation"]:
+            c["reservation"] = res_by_id.get(d.reservation_id)
+        c["drafts"].append(d)
+    conversations = sorted(conv_map.values(),
+                          key=lambda c: c["last_at"] or datetime.min, reverse=True)
+
     # Show one-time tour overlay after onboarding completion (cookie-based)
     show_tour = request.cookies.get("show_tour") == "1"
     response  = templates.TemplateResponse("dashboard.html", {
@@ -1335,6 +1355,7 @@ def dashboard(request: Request,
         "tenant":        tenant,
         "cfg":           cfg,
         "drafts":        pending,
+        "conversations": conversations,
         "recent_sent_drafts": recent_sent_drafts,
         "status":        status,
         "show_tour":     show_tour,
@@ -2046,6 +2067,8 @@ async def onboarding_post(
                 cfg.food_menu = (cfg.food_menu or "") + f"\n\nBreakfast: {breakfast_included.strip()}"
             if extra_services:
                 cfg.food_menu = (cfg.food_menu or "") + f"\n\nAdditional services: {', '.join(extra_services)}"
+            # Save extra_services to its own column for re-population on revisit
+            cfg.extra_services = ",".join(extra_services) if extra_services else ""
 
         elif step == 4:
             combined_faq = faq.strip()
@@ -2703,17 +2726,20 @@ def vendor_delete(vendor_id: int, request: Request,
 # ---------------------------------------------------------------------------
 
 @app.get("/pricing", response_class=HTMLResponse)
-def pricing_page(request: Request):
-    logged_in = False
+def pricing_page(request: Request, db: Session = Depends(get_db)):
+    tenant = None
+    cfg = None
     try:
-        get_current_tenant_id(request)
-        logged_in = True
+        tenant_id = get_current_tenant_id(request)
+        tenant = _get_tenant(tenant_id, db)
+        cfg = _get_or_create_config(tenant_id, db)
     except HTTPException:
         pass
     return templates.TemplateResponse("pricing.html", {
         "request":   request,
         "plan_info": PLAN_INFO,
-        "logged_in": logged_in,
+        "tenant":    tenant,
+        "cfg":       cfg,
     })
 
 
@@ -3132,6 +3158,19 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
         db.add(ActivityLog(tenant_id=tenant_id, event_type=f"{source}_received",
                            message=f"{source.upper()} from {reply_to}: {text[:80]}"))
         db.commit()
+        # Publish real-time notification for SSE subscribers
+        try:
+            from web.redis_client import get_redis as _get_redis
+            r = _get_redis()
+            if r:
+                r.publish(f"hostai:notify:{tenant_id}", json.dumps({
+                    "guest_name": draft.guest_name,
+                    "source": draft.source,
+                    "msg_type": draft.msg_type,
+                    "draft_id": draft.id,
+                }))
+        except Exception:
+            pass  # non-critical
         _apply_automation_if_matched(db, tenant_id, draft, reservation)
     except Exception as exc:
         log.error("[%s] %s inbound handler error: %s", tenant_id, source.upper(), exc)

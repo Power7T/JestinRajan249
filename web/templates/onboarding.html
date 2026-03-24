@@ -144,6 +144,10 @@
       <button type="button" class="btn btn-outline" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem"
               id="import-listing-btn">Import</button>
     </div>
+    <div id="import-spinner" style="display:none;font-size:0.8rem;color:#6c757d;margin-top:6px">
+      <span style="animation:spin 1s linear infinite;display:inline-block">⟳</span>
+      Fetching listing details...
+    </div>
     <p id="import-status" style="font-size:0.78rem;margin-top:4px;min-height:1.2em"></p>
   </div>
 
@@ -292,9 +296,10 @@
 
     <label>Other services available</label>
     <div class="amenity-grid">
+      {% set saved_services = (cfg.extra_services or '').split(',') if cfg.extra_services else [] %}
       {% for s in ["Airport transfer","Bike rental","Car rental","Laundry service","Room service","Concierge","Tours","Grocery delivery","Baby equipment"] %}
       <label class="amenity-item">
-        <input type="checkbox" name="extra_services" value="{{ s }}">
+        <input type="checkbox" name="extra_services" value="{{ s }}" {% if s in saved_services %}checked{% endif %}>
         {{ s }}
       </label>
       {% endfor %}
@@ -486,6 +491,19 @@
                   hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'>
             Test email connection
           </button>
+
+          <details style="margin-top:0.5rem">
+            <summary style="cursor:pointer;font-size:0.85rem;color:#6c757d">Having trouble? Connection troubleshooting tips →</summary>
+            <div class="accordion-body" style="margin-top:0.75rem">
+              <ul style="padding-left:1.25rem;font-size:0.85rem;line-height:1.8">
+                <li><strong>Gmail:</strong> Enable IMAP in Gmail Settings → See All Settings → Forwarding and POP/IMAP → IMAP Access → Enable IMAP</li>
+                <li><strong>2FA enabled:</strong> Use an App Password instead of your regular password (see instructions above)</li>
+                <li><strong>Outlook/Office 365:</strong> May require enabling IMAP in Outlook settings or using an App Password if legacy auth is disabled</li>
+                <li><strong>"Less secure app" error:</strong> Use an App Password — regular password login via IMAP may be blocked</li>
+                <li><strong>Connection timeout:</strong> Check that the IMAP host is correct (e.g., imap.gmail.com, outlook.office365.com)</li>
+              </ul>
+            </div>
+          </details>
         </div>
       </details>
     </div>
@@ -629,9 +647,11 @@ function importListing() {
   if (!urlEl) return;
   const url = urlEl.value.trim();
   const stat = document.getElementById('import-status');
+  const spinner = document.getElementById('import-spinner');
   if (!url) { stat.textContent = 'Paste your Airbnb listing URL first.'; return; }
   stat.style.color = '#856404';
-  stat.textContent = 'Importing…';
+  stat.textContent = '';
+  if (spinner) spinner.style.display = 'block';
   fetch('/onboarding/import-listing', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -639,6 +659,7 @@ function importListing() {
   })
   .then(r => r.json())
   .then(d => {
+    if (spinner) spinner.style.display = 'none';
     if (d.error) { stat.style.color='#721c24'; stat.textContent = '✗ ' + d.error; return; }
     stat.style.color = '#155724';
     stat.textContent = '✓ Imported! Fields pre-filled below — please review and adjust.';
@@ -649,7 +670,11 @@ function importListing() {
     if (d.check_out_time) document.getElementById('f-check-out').value = d.check_out_time;
     if (d.max_guests)     document.getElementById('f-max-guests').value = d.max_guests;
   })
-  .catch(() => { stat.style.color='#721c24'; stat.textContent = '✗ Could not reach that URL. Please fill in manually.'; });
+  .catch(() => {
+    if (spinner) spinner.style.display = 'none';
+    stat.style.color='#721c24';
+    stat.textContent = '✗ Could not reach that URL. Please fill in manually.';
+  });
 }
 // Demo draft generation
 function runDemo(btn) {
