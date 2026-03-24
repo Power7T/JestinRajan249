@@ -118,6 +118,8 @@ from web.workflow import (
 )
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from web.metrics_prom import REQUEST_COUNT, REQUEST_DURATION, normalize_path
+from web.flags import flags
 
 # Global context var for Request ID tracking (#18)
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
@@ -297,6 +299,7 @@ async def lifespan(app: FastAPI):
     scheduler.start()
     log.info("Scheduled background jobs started (cleanup at 02:00 UTC daily)")
 
+    flags.log_state()  # Log all feature flag values at startup
     log.info("Airbnb Host Assistant web app started")
     yield
     scheduler.shutdown()
@@ -313,6 +316,22 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 # Middleware (applied in reverse order — bottom first)
+@app.middleware("http")
+async def prometheus_middleware(request: Request, call_next):
+    """Records per-request latency + status counters for Prometheus scraping."""
+    path = normalize_path(request.url.path)
+    # Skip metrics/health endpoints from latency tracking to avoid noise
+    if path in {"/metrics", "/metrics/prometheus", "/health", "/ping"}:
+        return await call_next(request)
+    t0 = time.perf_counter()
+    response = await call_next(request)
+    duration = time.perf_counter() - t0
+    status = response.status_code
+    REQUEST_COUNT.labels(method=request.method, path=path, status=str(status)).inc()
+    REQUEST_DURATION.labels(method=request.method, path=path).observe(duration)
+    return response
+
+
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
     """Injects and tracks an X-Request-ID for correlation logging (#18)."""
@@ -6513,45 +6532,50 @@ def checkin_portal(token: str, request: Request, db: Session = Depends(get_db)):
 @app.get("/metrics/prometheus")
 def metrics_prometheus(request: Request, db: Session = Depends(get_db)):
     """
-    Prometheus text format metrics endpoint.
-    Uses prometheus_client for proper exposition format.
-    Protect this route with a firewall rule or IP allowlist in production.
+    Prometheus text format metrics endpoint — scrape with Grafana/Prometheus.
+    Exposes both time-series counters/histograms (from middleware) and
+    point-in-time gauges refreshed on each scrape.
+
+    Protect with METRICS_TOKEN env var or IP allowlist in production.
     """
     _require_metrics_auth(request)
     import threading
-    from prometheus_client import CollectorRegistry, Gauge, Counter, generate_latest, CONTENT_TYPE_LATEST
+    from prometheus_client import Gauge, generate_latest, CONTENT_TYPE_LATEST
 
-    registry = CollectorRegistry()
+    # Point-in-time gauges — refreshed each scrape.
+    # Use a module-level cache dict to avoid duplicate-metric errors across scrapes.
+    if not hasattr(metrics_prometheus, "_gauges"):
+        metrics_prometheus._gauges = {
+            "up":          Gauge("hostai_up",                    "Application is up"),
+            "db":          Gauge("hostai_db_up",                 "Database reachable"),
+            "redis":       Gauge("hostai_redis_up",              "Redis reachable"),
+            "tenants":     Gauge("hostai_tenants_total",         "Registered tenants"),
+            "pending":     Gauge("hostai_drafts_pending",        "Pending drafts"),
+            "approved":    Gauge("hostai_drafts_approved_today", "Drafts approved today"),
+            "reservations":Gauge("hostai_reservations_confirmed","Confirmed reservations"),
+            "workers":     Gauge("hostai_workers_active",        "Active worker threads"),
+            "threads":     Gauge("hostai_threads_total",         "OS thread count"),
+            "watchdog":    Gauge("hostai_watchdog_up",           "Watchdog thread alive"),
+        }
 
-    # Define metrics
-    g_up          = Gauge("hostai_up",                     "Application is up (1) or down (0)", registry=registry)
-    g_db          = Gauge("hostai_db_up",                  "Database is reachable (1) or not (0)", registry=registry)
-    g_redis       = Gauge("hostai_redis_up",               "Redis is reachable (1) or not (0)", registry=registry)
-    g_tenants     = Gauge("hostai_tenants_total",          "Total number of registered tenants", registry=registry)
-    g_pending     = Gauge("hostai_drafts_pending",         "Current number of pending drafts", registry=registry)
-    c_approved    = Gauge("hostai_drafts_approved_today",  "Drafts approved today", registry=registry)
-    g_reservations = Gauge("hostai_reservations_confirmed","Confirmed reservations in the system", registry=registry)
-    g_workers     = Gauge("hostai_workers_active",         "Number of active email worker threads", registry=registry)
-    g_threads     = Gauge("hostai_threads_total",          "OS-level active thread count", registry=registry)
-    g_watchdog    = Gauge("hostai_watchdog_up",            "Worker watchdog thread is alive (1) or not (0)", registry=registry)
-
-    g_up.set(1)
+    g = metrics_prometheus._gauges
+    g["up"].set(1)
 
     try:
-        g_tenants.set(db.query(Tenant).count())
-        g_pending.set(db.query(Draft).filter_by(status="pending").count())
-        c_approved.set(db.query(Draft).filter(
+        g["tenants"].set(db.query(Tenant).count())
+        g["pending"].set(db.query(Draft).filter_by(status="pending").count())
+        g["approved"].set(db.query(Draft).filter(
             Draft.status == "approved",
             Draft.approved_at >= datetime.now(timezone.utc).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ),
         ).count())
-        g_reservations.set(db.query(Reservation).filter_by(status="confirmed").count())
-        g_db.set(1)
+        g["reservations"].set(db.query(Reservation).filter_by(status="confirmed").count())
+        g["db"].set(1)
     except Exception:
-        g_db.set(0)
+        g["db"].set(0)
 
-    g_workers.set(sum(
+    g["workers"].set(sum(
         1 for tid in list(worker_manager._workers.keys())
         if worker_manager.worker_status(tid)["email_running"]
     ))
@@ -6565,15 +6589,19 @@ def metrics_prometheus(request: Request, db: Session = Depends(get_db)):
             redis_val = 1
         except Exception:
             pass
-    g_redis.set(redis_val)
-
-    g_threads.set(threading.active_count())
-    g_watchdog.set(int(
+    g["redis"].set(redis_val)
+    g["threads"].set(threading.active_count())
+    g["watchdog"].set(int(
         worker_manager._watchdog_thread is not None
         and worker_manager._watchdog_thread.is_alive()
     ))
 
-    output = generate_latest(registry)
+    # generate_latest() uses the default registry which includes:
+    #   - all gauges above
+    #   - hostai_http_requests_total (Counter from prometheus_middleware)
+    #   - hostai_http_request_duration_seconds (Histogram from prometheus_middleware)
+    #   - hostai_messages_sent_total, hostai_drafts_actioned_total, etc.
+    output = generate_latest()
     return StreamingResponse(
         iter([output]),
         media_type=CONTENT_TYPE_LATEST,

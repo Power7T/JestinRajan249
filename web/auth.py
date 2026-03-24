@@ -129,6 +129,15 @@ def get_current_tenant_id(request: Request) -> str:
     finally:
         if owns_session:
             db.close()
+
+    # Enrich Sentry scope with tenant context so errors are tagged by tenant
+    try:
+        import sentry_sdk
+        sentry_sdk.set_user({"id": tenant_id})
+        sentry_sdk.set_tag("tenant_id", tenant_id)
+    except Exception:
+        pass
+
     return tenant_id
 
 
