@@ -321,7 +321,7 @@
       </div>
       {% endif %}
 
-      <div class="tab-content {% if show_team_tab %}active{% endif %}" id="tenant-tab">
+      <div class="{% if show_team_tab %}tab-content active{% endif %}" id="tenant-tab">
         <p class="section-title">Sign in</p>
 
         <form method="post" action="/login">
