@@ -5374,10 +5374,15 @@ def ping():
 
 @app.get("/health")
 def health(db: Session = Depends(get_db)):
+    """Full health check: DB + Redis. Used by load balancers for liveness.
+    Returns 503 if DB is down, 200 otherwise (Redis optional).
+    Does NOT run during startup — only after app is fully initialized.
+    """
     try:
         db.execute(__import__("sqlalchemy").text("SELECT 1"))
         db_ok = True
-    except Exception:
+    except Exception as e:
+        log.warning("Health check: DB query failed: %s", e)
         db_ok = False
 
     from web.redis_client import get_redis
@@ -5387,8 +5392,8 @@ def health(db: Session = Depends(get_db)):
         try:
             r.ping()
             redis_ok = True
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("Health check: Redis ping failed: %s", e)
 
     status = "ok" if db_ok else "degraded"
     return JSONResponse(
@@ -5396,6 +5401,15 @@ def health(db: Session = Depends(get_db)):
          "redis": "ok" if redis_ok else ("disabled" if r is None else "error")},
         status_code=200 if db_ok else 503,
     )
+
+
+@app.get("/startup")
+def startup_check():
+    """Lightweight startup probe — just check the app is running.
+    Used during container startup before DB is necessarily ready.
+    Returns 200 immediately if the app has loaded.
+    """
+    return JSONResponse({"status": "starting"}, status_code=200)
 
 
 def _require_metrics_auth(request: Request) -> None:
