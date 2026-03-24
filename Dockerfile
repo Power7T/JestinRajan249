@@ -11,9 +11,11 @@ WORKDIR /app
 COPY web/requirements.txt /app/web/requirements.txt
 RUN pip install --no-cache-dir -r /app/web/requirements.txt
 
-# Copy application + migration config
+# Copy application + migration config + entrypoint
 COPY web/ /app/web/
 COPY alembic.ini /app/alembic.ini
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -21,4 +23,4 @@ ENV PYTHONPATH=/app
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn web.app:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS:-2} --loop uvloop --http h11 --timeout-keep-alive 30"]
+CMD ["/app/entrypoint.sh"]

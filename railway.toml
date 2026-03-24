@@ -3,9 +3,9 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Run DB migrations then start the app.
+# Use entrypoint.sh which waits for DB, runs migrations, then starts app.
 # Railway injects DATABASE_URL and REDIS_URL automatically from linked services.
-startCommand = "alembic upgrade head && uvicorn web.app:app --host 0.0.0.0 --port $PORT --workers 2 --loop uvloop --http h11 --timeout-keep-alive 30"
+startCommand = "sh /app/entrypoint.sh"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
