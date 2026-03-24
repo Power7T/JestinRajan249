@@ -72,7 +72,7 @@ def init_db():
         Vendor, ActivityLog, BaileysOutbound, Reservation, ReservationSyncLog,
         ReservationIntakeBatch, AutomationRule, TeamMember, GuestTimelineEvent,
         ArrivalActivation, IssueTicket, TenantKpiSnapshot,
-        PMSIntegration, PMSProcessedMessage,
+        PMSIntegration, PMSProcessedMessage, PlanConfig,
     )
     if _AUTO_CREATE_TABLES:
         Base.metadata.create_all(bind=engine)
@@ -179,3 +179,24 @@ def db_migrate():
             except Exception as exc:
                 conn.rollback()
                 log.warning("Failed to add missing column %s.%s on %s: %s", table, col, dialect, exc)
+
+    # Seed default PlanConfig rows
+    db = SessionLocal()
+    try:
+        from web.models import PlanConfig
+        plans = [
+            {"plan_key": "starter", "display_name": "Starter", "base_fee_usd": 20.0, "per_unit_fee_usd": 10.0, "min_units": 1, "max_units": 5},
+            {"plan_key": "growth", "display_name": "Growth", "base_fee_usd": 20.0, "per_unit_fee_usd": 9.0, "min_units": 6, "max_units": 10},
+            {"plan_key": "pro", "display_name": "Pro", "base_fee_usd": 20.0, "per_unit_fee_usd": 8.0, "min_units": 11, "max_units": 50},
+        ]
+        for plan_data in plans:
+            existing = db.query(PlanConfig).filter_by(plan_key=plan_data["plan_key"]).first()
+            if not existing:
+                db.add(PlanConfig(**plan_data))
+                log.info("Seeded plan: %s", plan_data["plan_key"])
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        log.warning("Failed to seed PlanConfig: %s", exc)
+    finally:
+        db.close()

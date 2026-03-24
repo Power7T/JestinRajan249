@@ -26,7 +26,7 @@ import stripe
 from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
-from web.models import TenantConfig, PLAN_FREE, PLAN_BAILEYS, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO
+from web.models import TenantConfig, PlanConfig, PLAN_FREE, PLAN_BAILEYS, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO
 
 log = logging.getLogger(__name__)
 
@@ -150,29 +150,60 @@ def require_channel(cfg: TenantConfig, channel: str) -> None:
 # Stripe checkout
 # ---------------------------------------------------------------------------
 
-def create_checkout_session(tenant_id: str, plan: str, success_url: str, cancel_url: str,
-                            customer_id: str | None = None) -> str:
-    """Create a Stripe Checkout Session and return the redirect URL."""
-    price_id = PRICE_IDS.get(plan, "")
-    if not price_id:
-        raise HTTPException(status_code=400, detail=f"No Stripe price configured for plan '{plan}'")
-
-    params: dict = {
-        "mode":               "subscription",
-        "line_items":         [{"price": price_id, "quantity": 1}],
-        "success_url":        success_url,
-        "cancel_url":         cancel_url,
-        "client_reference_id": tenant_id,
-        "metadata":           {"tenant_id": tenant_id, "plan": plan},
-        "subscription_data":  {"metadata": {"tenant_id": tenant_id, "plan": plan}},
-    }
-    if customer_id:
-        params["customer"] = customer_id
+def create_checkout_session(tenant_id: str, plan_key: str, num_units: int = 1,
+                            success_url: str = "", cancel_url: str = "",
+                            customer_id: str | None = None, db: Session | None = None) -> str:
+    """Create a Stripe Checkout Session with dynamic pricing based on units."""
+    if not db:
+        from web.db import SessionLocal
+        db = SessionLocal()
+        owns_db = True
     else:
-        params["customer_creation"] = "always"
+        owns_db = False
 
-    session = stripe.checkout.Session.create(**params)
-    return session.url
+    try:
+        from web.models import PlanConfig
+
+        plan = db.query(PlanConfig).filter_by(plan_key=plan_key, is_active=True).first()
+        if not plan:
+            raise HTTPException(status_code=400, detail=f"Plan '{plan_key}' not found or inactive")
+
+        if not (plan.min_units <= num_units <= plan.max_units):
+            raise HTTPException(status_code=400,
+                detail=f"Plan '{plan.display_name}' requires {plan.min_units}-{plan.max_units} units")
+
+        # Calculate total price in cents
+        total_cents = int((plan.base_fee_usd + plan.per_unit_fee_usd * num_units) * 100)
+
+        params: dict = {
+            "mode":               "subscription",
+            "line_items": [{
+                "price_data": {
+                    "currency": "usd",
+                    "unit_amount": total_cents,
+                    "product_data": {
+                        "name": f"HostAI {plan.display_name} ({num_units} unit{'s' if num_units > 1 else ''})"
+                    },
+                    "recurring": {"interval": "month"},
+                },
+                "quantity": 1,
+            }],
+            "success_url":        success_url,
+            "cancel_url":         cancel_url,
+            "client_reference_id": tenant_id,
+            "metadata":           {"tenant_id": tenant_id, "plan": plan_key, "num_units": num_units},
+            "subscription_data":  {"metadata": {"tenant_id": tenant_id, "plan": plan_key, "num_units": num_units}},
+        }
+        if customer_id:
+            params["customer"] = customer_id
+        else:
+            params["customer_creation"] = "always"
+
+        session = stripe.checkout.Session.create(**params)
+        return session.url
+    finally:
+        if owns_db:
+            db.close()
 
 
 def create_portal_session(customer_id: str, return_url: str) -> str:

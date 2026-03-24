@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign in — HostAI</title>
+  <title>Set Your Password — HostAI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -53,7 +53,6 @@
       overflow-x: hidden;
     }
 
-    /* Ambient glow background */
     body::before {
       content: '';
       position: fixed;
@@ -70,7 +69,7 @@
       z-index: 0;
     }
 
-    .login-wrap {
+    .invite-wrap {
       width: 100%;
       max-width: 420px;
       position: relative;
@@ -185,13 +184,6 @@
     }
     .btn-primary:hover { box-shadow: 0 6px 24px var(--accent-glow); }
 
-    .btn-secondary {
-      background: var(--bg-2);
-      color: var(--text-2);
-      border: 1px solid var(--border-2);
-    }
-    .btn-secondary:hover { background: var(--bg); color: var(--text-1); }
-
     .alert {
       padding: 0.65rem 0.9rem;
       border-radius: var(--radius-sm);
@@ -202,41 +194,15 @@
       border: 1px solid var(--danger-border);
     }
 
-    .success-alert {
+    .info {
       padding: 0.65rem 0.9rem;
       border-radius: var(--radius-sm);
       font-size: 0.8rem;
       margin-bottom: 1rem;
-      background: var(--success-bg);
-      color: var(--success);
-      border: 1px solid var(--success-border);
+      background: rgba(124, 111, 255, 0.1);
+      color: var(--accent-2);
+      border: 1px solid rgba(124, 111, 255, 0.25);
     }
-
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin: 1.4rem 0;
-      color: var(--text-3);
-      font-size: 0.75rem;
-    }
-    .divider::before, .divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
-
-    .forgot-link {
-      display: block;
-      text-align: right;
-      font-size: 0.76rem;
-      color: var(--text-3);
-      margin-top: -0.6rem;
-      margin-bottom: 1rem;
-      transition: color var(--t);
-    }
-    .forgot-link:hover { color: var(--accent-2); }
 
     .note {
       font-size: 0.75rem;
@@ -265,106 +231,36 @@
       transition: all var(--t);
     }
     .theme-toggle:hover { background: var(--bg-2); }
-
-    .tabs {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 0;
-    }
-    .tab-btn {
-      padding: 0.6rem 0;
-      margin-bottom: -1px;
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: var(--text-3);
-      cursor: pointer;
-      transition: all var(--t);
-      flex: 1;
-      text-align: center;
-    }
-    .tab-btn:hover { color: var(--text-2); }
-    .tab-btn.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-    }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
   </style>
 </head>
 <body>
   <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme"><span id="theme-icon">☀️</span></button>
 
-  <div class="login-wrap">
+  <div class="invite-wrap">
     <div class="brand">
       <div class="brand-icon">🏠</div>
       <h1>HostAI</h1>
-      <p>AI-powered guest communication for Airbnb hosts.<br>Fast setup — no inbox password required.</p>
+      <p>Welcome to your team account!</p>
     </div>
 
     <div class="card">
-      {% if error %}
-      <div class="alert">{{ error }}</div>
-      {% endif %}
-      {% if success %}
-      <div class="success-alert">{{ success }}</div>
-      {% endif %}
-
-      {% if show_team_tab %}
-      <div class="tabs">
-        <button type="button" class="tab-btn active" data-tab="tenant">Account Owner</button>
-        <button type="button" class="tab-btn" data-tab="team">Team Member</button>
+      <div class="info">
+        <strong>{{ member_name }}</strong> — set your password to get started
       </div>
-      {% endif %}
 
-      <div class="tab-content {% if show_team_tab %}active{% endif %}" id="tenant-tab">
-        <p class="section-title">Sign in</p>
+      <p class="section-title">Create Your Password</p>
 
-        <form method="post" action="/login">
+      <form method="post" action="/invite/{{ token }}">
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <label>Email address</label>
-        <input type="email" name="email" id="login-email" placeholder="you@example.com" required autocomplete="email">
         <label>Password</label>
-        <input type="password" name="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
-        <a href="/forgot-password" class="forgot-link">Forgot password?</a>
-        <button type="submit" class="btn btn-primary">Sign in →</button>
+        <input type="password" name="password" placeholder="••••••••" required autocomplete="new-password" minlength="8">
+        <label>Confirm Password</label>
+        <input type="password" name="password_confirm" placeholder="••••••••" required autocomplete="new-password" minlength="8">
+        <button type="submit" class="btn btn-primary">Set Password & Sign In →</button>
       </form>
-
-        <div class="divider">or create a new account</div>
-
-        <form method="post" action="/signup">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-          <label>Email address</label>
-          <input type="email" name="email" id="signup-email" placeholder="New account email" required autocomplete="email">
-          <label>Password <span style="font-weight:400;opacity:0.6">(8+ characters)</span></label>
-          <input type="password" name="password" id="signup-password" placeholder="Choose a strong password" required autocomplete="new-password">
-          <button type="submit" class="btn btn-secondary">Create account</button>
-        </form>
-      </div>
-
-      {% if show_team_tab %}
-      <div class="tab-content" id="team-tab">
-        <p class="section-title">Team Member Login</p>
-
-        <form method="post" action="/team/login">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-          <label>Email address</label>
-          <input type="email" name="email" id="team-email" placeholder="your@email.com" required autocomplete="email">
-          <label>Password</label>
-          <input type="password" name="password" id="team-password" placeholder="••••••••" required autocomplete="current-password">
-          <button type="submit" class="btn btn-primary">Sign in →</button>
-        </form>
-
-        <p class="note" style="margin-top: 1rem;">Don't have an account yet? Ask your property manager for an invite link.</p>
-      </div>
-      {% endif %}
     </div>
 
-    <p class="note">By continuing, you agree to our terms of service.</p>
+    <p class="note">Your password must be at least 8 characters.</p>
   </div>
 
   <script nonce="{{ request.state.csp_nonce }}">
@@ -386,17 +282,6 @@
       const btn = document.getElementById('theme-toggle-btn');
       if (btn) btn.addEventListener('click', toggleTheme);
     })();
-
-    // Tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const tab = this.getAttribute('data-tab');
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById(tab + '-tab').classList.add('active');
-        this.classList.add('active');
-      });
-    });
   </script>
 </body>
 </html>

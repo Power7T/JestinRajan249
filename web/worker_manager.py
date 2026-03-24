@@ -262,6 +262,10 @@ def _watchdog_loop():
         # tenant's retention policy. Runs once per hour.
         _process_data_retention()
 
+        # ── KPI Snapshot computation ─────────────────────────────────────
+        # Compute and store KPI snapshots for all tenants (once per 24h).
+        _process_kpi_snapshots()
+
     log.info("Worker watchdog stopped")
 
 
@@ -395,6 +399,43 @@ def _process_data_retention():
                 db.rollback()
     except Exception as exc:
         log.error("Data retention cleanup error: %s", exc)
+        db.rollback()
+    finally:
+        db.close()
+
+
+_last_kpi_snapshot = 0.0
+
+def _process_kpi_snapshots():
+    """
+    Compute and store KPI snapshots for all tenants (once per 24h).
+    Requires _upsert_tenant_kpi_snapshot to be available in web.app.
+    """
+    global _last_kpi_snapshot
+    import time
+
+    now_ts = time.time()
+    if now_ts - _last_kpi_snapshot < 86400:  # 24h
+        return
+
+    _last_kpi_snapshot = now_ts
+
+    from datetime import datetime, timezone
+    from web.db import SessionLocal
+    from web.models import TenantConfig
+
+    db = SessionLocal()
+    try:
+        for cfg in db.query(TenantConfig).all():
+            try:
+                # Import here to avoid circular dependency
+                from web.app import _upsert_tenant_kpi_snapshot
+                _upsert_tenant_kpi_snapshot(cfg.tenant_id, db)
+            except Exception as exc:
+                log.warning("[%s] KPI snapshot error: %s", cfg.tenant_id, exc)
+        db.commit()
+    except Exception as exc:
+        log.error("KPI snapshot processing error: %s", exc)
         db.rollback()
     finally:
         db.close()

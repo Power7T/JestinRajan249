@@ -1019,6 +1019,187 @@ def logout_post(request: Request, csrf_token: str = Form(None)):
 
 
 # ---------------------------------------------------------------------------
+# Team Member Login
+# ---------------------------------------------------------------------------
+
+@app.get("/team/login", response_class=HTMLResponse)
+def team_login_page(request: Request):
+    return templates.TemplateResponse("login.html", {
+        "request": request,
+        "show_team_tab": True,
+    })
+
+
+@app.post("/team/login")
+def team_login(request: Request,
+               email: str = Form(...),
+               password: str = Form(...),
+               csrf_token: str = Form(None),
+               db: Session = Depends(get_db)):
+    validate_csrf(request, csrf_token)
+    rate_limit(f"team-login:{client_ip(request)}", 10, 900)  # 10/15min per IP
+
+    member = db.query(TeamMember).filter(
+        TeamMember.email == email.lower(),
+        TeamMember.is_active == True,
+    ).first()
+
+    if not member or not member.password_hash:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not verify_password(password, member.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    version = member_session_version(member)
+    token = create_member_token(member.id, member.tenant_id, member.role, version)
+
+    is_sec = is_request_secure(request)
+    resp = RedirectResponse("/dashboard", status_code=302)
+    resp.set_cookie("session", token, httponly=True, samesite="strict",
+                    secure=is_sec, max_age=72*3600)
+
+    member.last_login_at = datetime.now(timezone.utc)
+    db.add(ActivityLog(
+        tenant_id=member.tenant_id,
+        event_type="team_member_login",
+        message=f"Team member {member.display_name} ({member.role}) logged in",
+    ))
+    db.commit()
+
+    return resp
+
+
+@app.post("/api/team/{member_id}/invite")
+def send_team_invite(member_id: int, request: Request,
+                     csrf_token: str = Form(None),
+                     db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    validate_csrf(request, csrf_token)
+
+    member = db.query(TeamMember).filter_by(id=member_id, tenant_id=tenant_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Team member not found")
+
+    # Generate invite token (48h TTL)
+    invite_token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=48)
+
+    member.invite_token = invite_token
+    member.invite_token_expires_at = expires_at
+    db.add(member)
+    db.commit()
+
+    # Email would be sent here via mailer.send_team_invite()
+    # For now, just redirect with invite_sent message
+    return RedirectResponse("/settings?msg=invite_sent&tab=team", status_code=302)
+
+
+@app.get("/invite/{token}", response_class=HTMLResponse)
+def invite_accept_page(token: str, request: Request, db: Session = Depends(get_db)):
+    member = db.query(TeamMember).filter_by(invite_token=token).first()
+    if not member or not member.invite_token_expires_at:
+        raise HTTPException(status_code=404, detail="Invite not found or expired")
+
+    if datetime.now(timezone.utc) > member.invite_token_expires_at:
+        raise HTTPException(status_code=404, detail="Invite link has expired")
+
+    return templates.TemplateResponse("invite_accept.html", {
+        "request": request,
+        "token": token,
+        "member_name": member.display_name,
+    })
+
+
+@app.post("/invite/{token}")
+def accept_invite(token: str, request: Request,
+                  password: str = Form(...),
+                  password_confirm: str = Form(...),
+                  csrf_token: str = Form(None),
+                  db: Session = Depends(get_db)):
+    validate_csrf(request, csrf_token)
+
+    if password != password_confirm:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    member = db.query(TeamMember).filter_by(invite_token=token).first()
+    if not member or not member.invite_token_expires_at:
+        raise HTTPException(status_code=404, detail="Invite not found or expired")
+
+    if datetime.now(timezone.utc) > member.invite_token_expires_at:
+        raise HTTPException(status_code=404, detail="Invite link has expired")
+
+    # Set password and clear invite
+    member.password_hash = hash_password(password)
+    member.invite_token = None
+    member.invite_token_expires_at = None
+
+    # Create session and log in
+    version = member_session_version(member)
+    token_jwt = create_member_token(member.id, member.tenant_id, member.role, version)
+
+    is_sec = is_request_secure(request)
+    resp = RedirectResponse("/dashboard", status_code=302)
+    resp.set_cookie("session", token_jwt, httponly=True, samesite="strict",
+                    secure=is_sec, max_age=72*3600)
+
+    member.last_login_at = datetime.now(timezone.utc)
+    db.add(ActivityLog(
+        tenant_id=member.tenant_id,
+        event_type="team_member_invite_accepted",
+        message=f"Team member {member.display_name} accepted invite and set password",
+    ))
+    db.commit()
+
+    return resp
+
+
+# ---------------------------------------------------------------------------
+# Conversation API
+# ---------------------------------------------------------------------------
+
+@app.get("/api/conversation/{thread_key}")
+def api_conversation(thread_key: str, request: Request, db: Session = Depends(get_db)):
+    """Get all drafts for a thread (last 10 sent + all pending)."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # Get last 10 sent drafts + all pending
+    sent_drafts = db.query(Draft).filter(
+        Draft.tenant_id == tenant_id,
+        Draft.thread_key == thread_key,
+        Draft.status.in_(["approved", "failed", "escalation"]),
+    ).order_by(Draft.created_at.desc()).limit(10).all()
+
+    pending_drafts = db.query(Draft).filter(
+        Draft.tenant_id == tenant_id,
+        Draft.thread_key == thread_key,
+        Draft.status == "pending",
+    ).order_by(Draft.created_at).all()
+
+    all_drafts = sorted(sent_drafts + pending_drafts, key=lambda d: d.created_at)
+
+    return [
+        {
+            "id": d.id,
+            "guest_name": d.guest_name,
+            "message": d.message,
+            "draft": d.draft,
+            "status": d.status,
+            "created_at": d.created_at.isoformat(),
+            "guest_message_index": d.guest_message_index,
+        }
+        for d in all_drafts
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
 
@@ -2555,8 +2736,9 @@ def billing_page(request: Request, db: Session = Depends(get_db)):
     })
 
 
-@app.post("/billing/subscribe/{plan}")
-def billing_subscribe(plan: str, request: Request,
+@app.post("/billing/subscribe/{plan_key}")
+def billing_subscribe(plan_key: str, request: Request,
+                      num_units: int = Form(1),
                       csrf_token: str = Form(None),
                       db: Session = Depends(get_db)):
     try:
@@ -2565,17 +2747,23 @@ def billing_subscribe(plan: str, request: Request,
         return _redirect_login()
     validate_csrf(request, csrf_token)
 
-    if plan not in PLAN_INFO or plan == PLAN_FREE:
+    # Validate plan and units
+    plan = db.query(PlanConfig).filter_by(plan_key=plan_key, is_active=True).first()
+    if not plan:
         raise HTTPException(status_code=400, detail="Invalid plan")
+    if not (plan.min_units <= num_units <= plan.max_units):
+        raise HTTPException(status_code=400, detail=f"Plan requires {plan.min_units}-{plan.max_units} units")
 
     cfg = _get_or_create_config(tenant_id, db)
     try:
         url = create_checkout_session(
             tenant_id=tenant_id,
-            plan=plan,
-            success_url=f"{APP_BASE_URL}/billing/success?plan={plan}",
+            plan_key=plan_key,
+            num_units=num_units,
+            success_url=f"{APP_BASE_URL}/billing/success?plan={plan_key}",
             cancel_url=f"{APP_BASE_URL}/billing/cancel",
             customer_id=cfg.stripe_customer_id,
+            db=db,
         )
     except HTTPException:
         raise
@@ -2641,6 +2829,62 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     sig_header = request.headers.get("stripe-signature", "")
     result     = handle_stripe_webhook(payload, sig_header, db)
     return JSONResponse(result)
+
+
+@app.get("/api/plan-pricing")
+def api_plan_pricing(db: Session = Depends(get_db)):
+    """Public JSON endpoint: current plan pricing and tiers."""
+    plans = db.query(PlanConfig).filter_by(is_active=True).order_by(PlanConfig.min_units).all()
+    return [
+        {
+            "plan_key": p.plan_key,
+            "display_name": p.display_name,
+            "base_fee": p.base_fee_usd,
+            "per_unit_fee": p.per_unit_fee_usd,
+            "min_units": p.min_units,
+            "max_units": p.max_units,
+        }
+        for p in plans
+    ]
+
+
+@app.get("/admin/pricing", response_class=HTMLResponse)
+def admin_pricing_page(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request, db)
+    plans = db.query(PlanConfig).order_by(PlanConfig.min_units).all()
+    return templates.TemplateResponse("admin_pricing.html", {
+        "request": request,
+        "plans": plans,
+    })
+
+
+@app.post("/admin/pricing/{plan_key}")
+def admin_update_pricing(plan_key: str, request: Request,
+                         base_fee: float = Form(...),
+                         per_unit_fee: float = Form(...),
+                         min_units: int = Form(...),
+                         max_units: int = Form(...),
+                         display_name: str = Form(...),
+                         csrf_token: str = Form(None),
+                         db: Session = Depends(get_db)):
+    _require_admin(request, db)
+    validate_csrf(request, csrf_token)
+
+    plan = db.query(PlanConfig).filter_by(plan_key=plan_key).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    plan.base_fee_usd = base_fee
+    plan.per_unit_fee_usd = per_unit_fee
+    plan.min_units = min_units
+    plan.max_units = max_units
+    plan.display_name = display_name
+    plan.updated_at = datetime.now(timezone.utc)
+
+    db.add(plan)
+    db.commit()
+
+    return RedirectResponse(f"/admin/pricing?msg=updated", status_code=302)
 
 
 # ---------------------------------------------------------------------------
@@ -4449,6 +4693,42 @@ def activity_log(request: Request,
     )
 
 
+@app.get("/analytics", response_class=HTMLResponse)
+def analytics_page(request: Request,
+                   range_days: int = 30,
+                   property: str = "",
+                   db: Session = Depends(get_db),
+                   rdb: Session = Depends(get_read_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    tenant = _get_tenant(tenant_id, db)
+    cfg = _get_or_create_config(tenant_id, db)
+
+    # Fetch KPI snapshots for date range
+    cutoff = datetime.now(timezone.utc) - timedelta(days=range_days)
+    snapshots = db.query(TenantKpiSnapshot).filter(
+        TenantKpiSnapshot.tenant_id == tenant_id,
+        TenantKpiSnapshot.period_start >= cutoff,
+    ).order_by(TenantKpiSnapshot.period_start).all()
+
+    # Get current KPIs from pending drafts and reservations
+    pending_drafts = rdb.query(Draft).filter_by(tenant_id=tenant_id, status="pending").all()
+    all_reservations = rdb.query(Reservation).filter_by(tenant_id=tenant_id).all()
+    kpis = derive_dashboard_kpis(pending_drafts, all_reservations)
+
+    return templates.TemplateResponse("analytics.html", {
+        "request": request,
+        "tenant": tenant,
+        "cfg": cfg,
+        "kpis": kpis,
+        "snapshots": snapshots,
+        "range_days": range_days,
+    })
+
+
 @app.get("/workflow", response_class=HTMLResponse)
 def workflow_center(request: Request,
                     db: Session = Depends(get_db),
@@ -4782,6 +5062,53 @@ def api_workers(request: Request):
     except HTTPException:
         raise HTTPException(status_code=401)
     return worker_manager.worker_status(tenant_id)
+
+
+@app.get("/api/sse/drafts")
+async def sse_drafts(request: Request, db: Session = Depends(get_db)):
+    """Server-Sent Events stream for real-time draft notifications."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    async def event_generator():
+        import asyncio
+        from web.redis_client import get_redis
+
+        r = get_redis()
+
+        if r:
+            # Redis pubsub path
+            pubsub = r.pubsub()
+            pubsub.subscribe(f"hostai:notify:{tenant_id}")
+            try:
+                while not await request.is_disconnected():
+                    msg = pubsub.get_message(timeout=25)
+                    if msg and msg["type"] == "message":
+                        data = msg["data"]
+                        if isinstance(data, bytes):
+                            data = data.decode()
+                        yield f"data: {data}\n\n"
+                    else:
+                        yield ": keepalive\n\n"
+                    await asyncio.sleep(0.5)
+            finally:
+                pubsub.unsubscribe()
+        else:
+            # Fallback: DB polling every 8s
+            last_count = db.query(Draft).filter_by(tenant_id=tenant_id, status="pending").count()
+            while not await request.is_disconnected():
+                await asyncio.sleep(8)
+                count = db.query(Draft).filter_by(tenant_id=tenant_id, status="pending").count()
+                if count != last_count:
+                    yield f"data: {json.dumps({'type': 'refresh'})}\n\n"
+                    last_count = count
+                else:
+                    yield ": keepalive\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream",
+                            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 # ---------------------------------------------------------------------------

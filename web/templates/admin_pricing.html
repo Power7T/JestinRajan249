@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Pricing — HostAI{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+  <div class="page-header">
+    <h1>Pricing Configuration</h1>
+    <p>Manage plan pricing and unit tiers</p>
+  </div>
+
+  {% if request.query_params.get('msg') == 'updated' %}
+  <div class="alert alert-success">✓ Plan pricing updated successfully</div>
+  {% endif %}
+
+  <div class="pricing-table">
+    {% for plan in plans %}
+    <div class="pricing-card">
+      <form method="post" action="/admin/pricing/{{ plan.plan_key }}">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+        <div class="form-group">
+          <label>Plan Name</label>
+          <input type="text" name="display_name" value="{{ plan.display_name }}" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Base Fee (USD)</label>
+            <input type="number" name="base_fee" value="{{ plan.base_fee_usd }}" step="0.01" min="0" required>
+          </div>
+          <div class="form-group">
+            <label>Per-Unit Fee (USD)</label>
+            <input type="number" name="per_unit_fee" value="{{ plan.per_unit_fee_usd }}" step="0.01" min="0" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Min Units</label>
+            <input type="number" name="min_units" value="{{ plan.min_units }}" min="1" required>
+          </div>
+          <div class="form-group">
+            <label>Max Units</label>
+            <input type="number" name="max_units" value="{{ plan.max_units }}" min="1" required>
+          </div>
+        </div>
+
+        <div class="plan-example">
+          <strong>Example Pricing:</strong>
+          <p>Min units: ${{ plan.base_fee_usd + (plan.per_unit_fee_usd * plan.min_units) | round(2) }}/mo ({{ plan.min_units }} unit)</p>
+          <p>Max units: ${{ plan.base_fee_usd + (plan.per_unit_fee_usd * plan.max_units) | round(2) }}/mo ({{ plan.max_units }} units)</p>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+  .admin-page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+  .page-header { margin-bottom: 2rem; }
+  .page-header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+  .page-header p { color: #999; }
+
+  .alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+  }
+  .alert-success {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+  }
+
+  .pricing-table {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .pricing-card {
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e0e0e0);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .form-group {
+    margin-bottom: 1.2rem;
+  }
+  .form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+  .form-group input {
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid var(--border, #e0e0e0);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+  }
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--accent, #7c6fff);
+    box-shadow: 0 0 0 3px rgba(124, 111, 255, 0.1);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .plan-example {
+    background: var(--bg-2, #f5f5f5);
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 1.2rem 0;
+    font-size: 0.85rem;
+  }
+  .plan-example strong {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  .plan-example p {
+    margin: 0.3rem 0;
+    color: var(--text-2, #666);
+  }
+
+  .btn {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 150ms ease;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent, #7c6fff), #6b5fff);
+    color: white;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(124, 111, 255, 0.3);
+  }
+</style>
+{% endblock %}
