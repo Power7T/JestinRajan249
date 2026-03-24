@@ -1335,7 +1335,8 @@ def dashboard(request: Request,
         "thread_key": None, "drafts": [], "last_at": None,
     })
     res_by_id = {r.id: r for r in filtered_reservations}
-    for d in sorted(pending, key=lambda x: x.created_at):
+    _dt_min = datetime.min.replace(tzinfo=timezone.utc)
+    for d in sorted(pending, key=lambda x: x.created_at or _dt_min):
         key = d.thread_key or f"solo:{d.id}"
         c = conv_map[key]
         c["guest_name"] = d.guest_name
@@ -1346,7 +1347,7 @@ def dashboard(request: Request,
             c["reservation"] = res_by_id.get(d.reservation_id)
         c["drafts"].append(d)
     conversations = sorted(conv_map.values(),
-                          key=lambda c: c["last_at"] or datetime.min, reverse=True)
+                          key=lambda c: c["last_at"] or _dt_min, reverse=True)
 
     # Show one-time tour overlay after onboarding completion (cookie-based)
     show_tour = request.cookies.get("show_tour") == "1"

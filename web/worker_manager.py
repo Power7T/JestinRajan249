@@ -426,11 +426,18 @@ def _process_kpi_snapshots():
 
     db = SessionLocal()
     try:
+        from datetime import datetime, timezone
+        from web.models import Draft, Reservation
+        from web.app import _upsert_tenant_kpi_snapshot, derive_dashboard_kpis
+
+        now = datetime.now(timezone.utc)
         for cfg in db.query(TenantConfig).all():
             try:
-                # Import here to avoid circular dependency
-                from web.app import _upsert_tenant_kpi_snapshot
-                _upsert_tenant_kpi_snapshot(cfg.tenant_id, db)
+                pending = db.query(Draft).filter_by(tenant_id=cfg.tenant_id, status="pending").all()
+                reservations = db.query(Reservation).filter_by(tenant_id=cfg.tenant_id).all()
+                kpis = derive_dashboard_kpis(pending, reservations, now=now)
+                open_issues = []  # skip issue tickets in scheduler snapshot
+                _upsert_tenant_kpi_snapshot(db, cfg.tenant_id, kpis, open_issues, now)
             except Exception as exc:
                 log.warning("[%s] KPI snapshot error: %s", cfg.tenant_id, exc)
         db.commit()
