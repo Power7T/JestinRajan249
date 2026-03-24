@@ -75,7 +75,7 @@ from web.db_read import get_read_db
 from web.models import (
     SystemConfig, ApiUsageLog,
     Tenant, TenantConfig, Draft, Vendor, ActivityLog, BaileysOutbound, BaileysCallback,
-    Reservation, ReservationSyncLog, ReservationIntakeBatch,
+    Reservation, ReservationSyncLog, ReservationIntakeBatch, GuestContact,
     AutomationRule, TeamMember, GuestTimelineEvent, ArrivalActivation, IssueTicket, TenantKpiSnapshot,
     PMSIntegration, PMSProcessedMessage,
     ProcessedEmail, PlanConfig, FailedDraftLog,
@@ -6645,6 +6645,111 @@ def metrics_prometheus(request: Request, db: Session = Depends(get_db)):
         iter([output]),
         media_type=CONTENT_TYPE_LATEST,
     )
+
+
+# ---------------------------------------------------------------------------
+# Guest Contacts — bot whitelisting for guests
+# ---------------------------------------------------------------------------
+
+@app.post("/api/guest-contacts/add")
+async def add_guest_contact(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Create a guest contact and send welcome messages."""
+    from web.guest_contact_service import create_guest_contact
+    from datetime import datetime, timezone
+
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    data = await request.json()
+
+    guest_name = data.get("guest_name", "").strip()
+    guest_phone = data.get("guest_phone", "").strip()
+    property_name = data.get("property_name", "").strip()
+    room_identifier = data.get("room_identifier", "").strip()
+    check_in_str = data.get("check_in")  # ISO format
+    check_out_str = data.get("check_out")  # ISO format
+
+    if not guest_name or not guest_phone or not check_in_str or not check_out_str:
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    try:
+        check_in = datetime.fromisoformat(check_in_str.replace("Z", "+00:00"))
+        check_out = datetime.fromisoformat(check_out_str.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid datetime format")
+
+    try:
+        guest_contact = await create_guest_contact(
+            tenant_id=tenant_id,
+            guest_name=guest_name,
+            guest_phone=guest_phone,
+            check_in=check_in,
+            check_out=check_out,
+            property_name=property_name,
+            room_identifier=room_identifier,
+            db=db,
+        )
+
+        return {
+            "status": "ok",
+            "message": f"Welcome sent to {guest_name}",
+            "guest_contact_id": guest_contact.id,
+        }
+
+    except Exception as e:
+        log.error(f"[{tenant_id}] Error creating guest contact: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create guest contact")
+
+
+@app.get("/api/guest-contacts/today")
+def get_todays_guest_contacts(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Get guest contacts checking in today."""
+    from datetime import datetime, timezone, timedelta
+
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+
+    guest_contacts = (
+        db.query(GuestContact)
+        .filter(
+            GuestContact.tenant_id == tenant_id,
+            GuestContact.check_in >= today_start,
+            GuestContact.check_in < today_end,
+        )
+        .all()
+    )
+
+    return {
+        "status": "ok",
+        "guest_contacts": [
+            {
+                "id": gc.id,
+                "guest_name": gc.guest_name,
+                "guest_phone": gc.guest_phone,
+                "property_name": gc.property_name,
+                "room_identifier": gc.room_identifier,
+                "check_in": gc.check_in.isoformat(),
+                "check_out": gc.check_out.isoformat(),
+                "status": gc.status,
+                "welcome_status": gc.welcome_status,
+                "welcome_sent_at": gc.welcome_sent_at.isoformat() if gc.welcome_sent_at else None,
+            }
+            for gc in guest_contacts
+        ],
+    }
 
 
 # ---------------------------------------------------------------------------

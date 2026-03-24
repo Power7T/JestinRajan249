@@ -109,6 +109,7 @@ class Tenant(Base):
     issue_tickets:  Mapped[list["IssueTicket"]]    = relationship("IssueTicket", back_populates="tenant")
     kpi_snapshots:  Mapped[list["TenantKpiSnapshot"]] = relationship("TenantKpiSnapshot", back_populates="tenant")
     intake_batches: Mapped[list["ReservationIntakeBatch"]] = relationship("ReservationIntakeBatch", back_populates="tenant")
+    guest_contacts: Mapped[list["GuestContact"]]  = relationship("GuestContact", back_populates="tenant")
 
 
 # ---------------------------------------------------------------------------
@@ -455,6 +456,53 @@ class Reservation(Base):
     timeline_events: Mapped[list["GuestTimelineEvent"]] = relationship("GuestTimelineEvent", back_populates="reservation")
     activations: Mapped[list["ArrivalActivation"]] = relationship("ArrivalActivation", back_populates="reservation")
     issue_tickets: Mapped[list["IssueTicket"]] = relationship("IssueTicket", back_populates="reservation")
+    guest_contacts: Mapped[list["GuestContact"]] = relationship("GuestContact", back_populates="reservation")
+
+
+# ---------------------------------------------------------------------------
+# GuestContact — guest contact info added by host (for bot whitelisting)
+# ---------------------------------------------------------------------------
+
+class GuestContact(Base):
+    __tablename__ = "guest_contacts"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "guest_phone", "check_in", name="uq_guest_contact"),
+    )
+
+    id:                Mapped[str]           = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id:         Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    reservation_id:    Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
+
+    # Guest info
+    guest_name:        Mapped[str]           = mapped_column(String(128))
+    guest_phone:       Mapped[str]           = mapped_column(String(32), index=True)  # Whitelisted number
+
+    # Property/Room details
+    property_name:     Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    room_identifier:   Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
+    # Check-in/out (from iCal or manually entered)
+    check_in:          Mapped[datetime]      = mapped_column(DateTime(timezone=True), index=True)
+    check_out:         Mapped[datetime]      = mapped_column(DateTime(timezone=True), index=True)
+
+    # Status tracking
+    status:            Mapped[str]           = mapped_column(String(32), default="pending", index=True)  # pending, active, completed, cancelled
+
+    # Welcome message tracking
+    welcome_sent_at:   Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    welcome_sent_to_host: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    welcome_status:    Mapped[str]           = mapped_column(String(32), default="pending")  # pending, sent, failed, retry
+
+    # Retry tracking
+    welcome_retry_count: Mapped[int]         = mapped_column(Integer, default=0)
+    last_retry_at:     Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Timestamps
+    created_at:        Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at:        Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    reservation: Mapped[Optional["Reservation"]] = relationship("Reservation", back_populates="guest_contacts")
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="guest_contacts")
 
 
 # ---------------------------------------------------------------------------
