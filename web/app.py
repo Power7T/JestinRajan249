@@ -3462,7 +3462,7 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                     + memory_context
                     + "\n</recent_guest_history>"
                 ).strip()
-        draft_text = generate_draft(guest_name, text, msg_type, property_context=property_context)
+        draft_text = generate_draft(guest_name, text, msg_type, property_context=property_context, tenant_id=tenant_id)
         recent_drafts = _recent_reservation_drafts(db, tenant_id, reservation)
         guest_history_score = compute_guest_history_score(reservation, recent_drafts)
         stay_stage = compute_stay_stage(reservation)
@@ -5938,7 +5938,7 @@ def simulate_guest(request: Request,
 
     try:
         draft_text = generate_draft(guest_name, message, msg_type,
-                                    property_context=property_context)
+                                    property_context=property_context, tenant_id=tenant_id)
     except Exception as exc:
         log.error("[%s] Simulate draft generation failed: %s", tenant_id, exc)
         raise HTTPException(status_code=500, detail="Draft generation failed — check that admin has configured OpenRouter API key")
