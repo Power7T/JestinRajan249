@@ -25,13 +25,13 @@
     </div>
 
     <div class="kpi-card">
-      <div class="kpi-value">{{ '%.0f'|format((kpis['drafts']['approval_rate'] | default(0)) * 100) }}%</div>
+      <div class="kpi-value">{{ '%.0f'|format(kpis['drafts']['approval_rate'] | default(0)) }}%</div>
       <div class="kpi-label">Approval Rate</div>
       <div class="kpi-subtext">of pending drafts approved</div>
     </div>
 
     <div class="kpi-card">
-      <div class="kpi-value">{{ '%.0f'|format((kpis['drafts']['avg_response_seconds'] | default(0)) / 60) }}m</div>
+      <div class="kpi-value">{{ '%.0f'|format(((kpis['drafts']['avg_response_seconds'] or 0) / 60)) }}m</div>
       <div class="kpi-label">Avg Response</div>
       <div class="kpi-subtext">time to approve</div>
     </div>
@@ -133,8 +133,8 @@
       <div class="snapshot-row">
         <div>{{ snap.period_start.strftime('%b %d, %Y') }}</div>
         <div>{{ snap.total_drafts }}</div>
-        <div>{{ '%.0f'|format((snap.approval_rate | default(0)) * 100) }}%</div>
-        <div>{{ '%.0f'|format((snap.avg_response_seconds | default(0)) / 60) }}m</div>
+        <div>{{ '%.0f'|format(snap.approval_rate | default(0)) }}%</div>
+        <div>{{ '%.0f'|format(((snap.avg_response_seconds or 0) / 60)) }}m</div>
       </div>
       {% endfor %}
     </div>
