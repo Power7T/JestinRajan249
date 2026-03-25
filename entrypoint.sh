@@ -61,7 +61,9 @@ cd /app || { echo "FATAL: Could not cd to /app"; exit 1; }
 if PYTHONPATH=/app alembic upgrade head 2>&1; then
     echo "[Migrations] ✓ Completed successfully"
 else
-    echo "[Migrations] ✗ Had non-zero exit (this may be expected if DB was being initialized)"
+    echo "[Migrations] ✗ FAILED - Database schema is out of date"
+    echo "FATAL: Migrations failed. Check logs above."
+    exit 1
 fi
 
 echo ""
