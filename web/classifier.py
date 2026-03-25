@@ -243,29 +243,29 @@ def detect_vendor_type(text: str) -> Optional[str]:
 import json
 
 def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
-    """Uses the OpenRouter sentiment model to do JSON structured sentiment analysis."""
+    """Uses the OpenRouter sentiment model to do JSON structured sentiment analysis.
+    Retries with fallback model before falling back to regex-based analysis."""
     from web.workflow import analyze_guest_sentiment as fallback_analyze
+    from web.crypto import decrypt
     from web.db import SessionLocal
     from web.models import SystemConfig, ApiUsageLog
     import openai
-    
+
     if not text.strip():
         return {"label": "neutral", "score": 0.0}
-        
+
     db = SessionLocal()
     try:
         sys_conf = db.query(SystemConfig).first()
         if not sys_conf or not sys_conf.openrouter_api_key_enc or sys_conf.openrouter_api_key_enc == "********":
             return fallback_analyze(text)
-            
-        apiKey = sys_conf.openrouter_api_key_enc
-        model = sys_conf.sentiment_model or "openai/gpt-4o-mini"
-        
+
+        # Decrypt the API key (was previously using raw encrypted value!)
         client = openai.OpenAI(
             base_url="https://openrouter.ai/api/v1",
-            api_key=apiKey,
+            api_key=decrypt(sys_conf.openrouter_api_key_enc),
         )
-        
+
         # Strip basic PII shapes (phone numbers and emails)
         import re
         safe_text = text
@@ -278,40 +278,55 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
             "and 'score' (float between -1.0 for very negative and 1.0 for very positive). "
             f"Message: {safe_text}"
         )
-        
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.0
-        )
-        
-        usage = resp.usage
-        if usage:
-            cost = 0.0
-            if "gpt-4o-mini" in model:
-                cost = (usage.prompt_tokens / 1000000 * 0.15) + (usage.completion_tokens / 1000000 * 0.60)
-            log_entry = ApiUsageLog(
-                tenant_id=tenant_id,
-                feature="sentiment_analysis",
-                model=model,
-                provider="openrouter",
-                input_tokens=usage.prompt_tokens,
-                output_tokens=usage.completion_tokens,
-                cost_usd=cost
-            )
-            db.add(log_entry)
-            db.commit()
-            
-        content = resp.choices[0].message.content
-        result = json.loads(content)
-        
-        label = result.get("label", "neutral")
-        score = float(result.get("score", 0.0))
-        return {"label": label, "score": score}
-        
+
+        # Try sentiment_model first, then fallback_model, before falling back to regex
+        models_to_try = [
+            sys_conf.sentiment_model or "openai/gpt-4o-mini",
+            sys_conf.fallback_model or "meta-llama/llama-3.1-70b-instruct",
+        ]
+
+        last_exc = None
+        for model in models_to_try:
+            try:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"},
+                    temperature=0.0
+                )
+
+                usage = resp.usage
+                if usage:
+                    cost = 0.0
+                    if "gpt-4o-mini" in model:
+                        cost = (usage.prompt_tokens / 1000000 * 0.15) + (usage.completion_tokens / 1000000 * 0.60)
+                    log_entry = ApiUsageLog(
+                        tenant_id=tenant_id,
+                        feature="sentiment_analysis",
+                        model=model,
+                        provider="openrouter",
+                        input_tokens=usage.prompt_tokens,
+                        output_tokens=usage.completion_tokens,
+                        cost_usd=cost
+                    )
+                    db.add(log_entry)
+                    db.commit()
+
+                content = resp.choices[0].message.content
+                result = json.loads(content)
+
+                label = result.get("label", "neutral")
+                score = float(result.get("score", 0.0))
+                return {"label": label, "score": score}
+            except Exception as exc:
+                last_exc = exc
+                log.warning(f"Sentiment model {model} failed: {exc}. Trying next...")
+
+        # All LLM models failed, fall back to regex-based analysis
+        log.warning(f"All LLM sentiment models failed. Falling back to regex-based analysis. Last error: {last_exc}")
+        return fallback_analyze(text)
     except Exception as exc:
-        log.warning(f"LLM Sentiment fallback to regex due to error: {exc}")
+        log.warning(f"Sentiment analysis error (using regex fallback): {exc}")
         return fallback_analyze(text)
     finally:
         db.close()

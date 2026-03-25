@@ -119,7 +119,7 @@ from web.workflow import (
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from web.metrics_prom import REQUEST_COUNT, REQUEST_DURATION, normalize_path
-from web.flags import flags
+from web.flags import flags, require_flag
 
 # Global context var for Request ID tracking (#18)
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
@@ -1043,7 +1043,7 @@ def logout_post(request: Request, csrf_token: str = Form(None)):
 # ---------------------------------------------------------------------------
 
 @app.get("/team/login", response_class=HTMLResponse)
-def team_login_page(request: Request):
+def team_login_page(request: Request, _=Depends(require_flag("TEAM_MEMBERS"))):
     return templates.TemplateResponse("login.html", {
         "request": request,
         "show_team_tab": True,
@@ -1055,7 +1055,8 @@ def team_login(request: Request,
                email: str = Form(...),
                password: str = Form(...),
                csrf_token: str = Form(None),
-               db: Session = Depends(get_db)):
+               db: Session = Depends(get_db),
+               _=Depends(require_flag("TEAM_MEMBERS"))):
     validate_csrf(request, csrf_token)
     rate_limit(f"team-login:{client_ip(request)}", 10, 900)  # 10/15min per IP
 
@@ -1092,7 +1093,8 @@ def team_login(request: Request,
 @app.post("/api/team/{member_id}/invite")
 def send_team_invite(member_id: int, request: Request,
                      csrf_token: str = Form(None),
-                     db: Session = Depends(get_db)):
+                     db: Session = Depends(get_db),
+                     _=Depends(require_flag("TEAM_MEMBERS"))):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
@@ -1190,7 +1192,7 @@ def accept_invite(token: str, request: Request,
 # ---------------------------------------------------------------------------
 
 @app.get("/api/conversation/{thread_key}")
-def api_conversation(thread_key: str, request: Request, db: Session = Depends(get_db)):
+def api_conversation(thread_key: str, request: Request, db: Session = Depends(get_db), _=Depends(require_flag("CONVERSATION_VIEW"))):
     """Get all messages for a thread (both inbound and outbound, including auto-sent)."""
     try:
         tenant_id = get_current_tenant_id(request)
@@ -2993,6 +2995,7 @@ def team_member_add(
     property_scope: str = Form(""),
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
+    _=Depends(require_flag("TEAM_MEMBERS")),
 ):
     try:
         tenant_id = get_current_tenant_id(request)
@@ -3024,6 +3027,7 @@ def team_member_delete(
     request: Request,
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
+    _=Depends(require_flag("TEAM_MEMBERS")),
 ):
     try:
         tenant_id = get_current_tenant_id(request)
@@ -5967,7 +5971,8 @@ def add_team_member(request: Request,
                     phone:        str = Form(""),
                     role:         str = Form("manager"),
                     csrf_token:   str = Form(None),
-                    db: Session = Depends(get_db)):
+                    db: Session = Depends(get_db),
+                    _=Depends(require_flag("TEAM_MEMBERS"))):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
@@ -7192,6 +7197,7 @@ def metrics_prometheus(request: Request, db: Session = Depends(get_db)):
 def conversations_page(
     request: Request,
     db: Session = Depends(get_db),
+    _=Depends(require_flag("CONVERSATION_VIEW")),
 ):
     """Display guest conversation threads."""
     try:
