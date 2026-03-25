@@ -6521,19 +6521,24 @@ def admin_system(request: Request, db: Session = Depends(get_db)):
 @app.get("/admin/ai", response_class=HTMLResponse)
 def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
     _require_admin(request, db)
-    
+
     sys_conf = db.query(SystemConfig).first()
     if not sys_conf:
         sys_conf = SystemConfig()
         db.add(sys_conf)
         db.commit()
         db.refresh(sys_conf)
-        
-    usage_logs = db.query(ApiUsageLog).order_by(ApiUsageLog.created_at.desc()).limit(100).all()
-    
-    # Calculate costs loosely
-    total_cost = sum(log.cost_usd for log in db.query(ApiUsageLog).all())
-    
+
+    usage_logs = []
+    total_cost = 0.0
+
+    try:
+        usage_logs = db.query(ApiUsageLog).order_by(ApiUsageLog.created_at.desc()).limit(100).all()
+        total_cost = sum(log.cost_usd for log in db.query(ApiUsageLog).all())
+    except Exception:
+        # api_usage_logs table may not exist yet if migrations haven't fully run
+        pass
+
     return templates.TemplateResponse("admin_ai.html", {
         "request": request,
         "sys_conf": sys_conf,
@@ -6554,11 +6559,16 @@ def admin_host_profitability(request: Request, db: Session = Depends(get_db)):
     configs = db.query(TenantConfig, Tenant).join(Tenant).all()
 
     # Get API costs per tenant (last 30 days)
-    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-    costs_30d = db.query(ApiUsageLog.tenant_id, func.sum(ApiUsageLog.cost_usd).label("total_cost"))\
-        .filter(ApiUsageLog.created_at >= cutoff)\
-        .group_by(ApiUsageLog.tenant_id).all()
-    cost_dict = {t_id: float(cost or 0) for t_id, cost in costs_30d}
+    cost_dict = {}
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        costs_30d = db.query(ApiUsageLog.tenant_id, func.sum(ApiUsageLog.cost_usd).label("total_cost"))\
+            .filter(ApiUsageLog.created_at >= cutoff)\
+            .group_by(ApiUsageLog.tenant_id).all()
+        cost_dict = {t_id: float(cost or 0) for t_id, cost in costs_30d}
+    except Exception:
+        # api_usage_logs table may not exist yet if migrations haven't fully run
+        pass
 
     # Get message counts per tenant (last 30 days)
     msg_counts = db.query(Draft.tenant_id, func.count(Draft.id).label("msg_count"))\
@@ -6636,22 +6646,27 @@ def admin_host_profitability(request: Request, db: Session = Depends(get_db)):
 def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
     """Phase 2: Internal Profitability Analysis."""
     _require_admin(request, db)
-    
+
     configs = db.query(TenantConfig).all()
-    
+
     # Assume static ARR/MRR for standard plans
     plan_revenue = {"free": 0, "pro": 29, "growth": 79, "enterprise": 1000}
-    
+
     metrics = {
         "free": {"users": 0, "revenue": 0.0, "cost": 0.0},
         "pro": {"users": 0, "revenue": 0.0, "cost": 0.0},
         "growth": {"users": 0, "revenue": 0.0, "cost": 0.0},
         "enterprise": {"users": 0, "revenue": 0.0, "cost": 0.0},
     }
-    
+
     from sqlalchemy.sql import func
-    costs = db.query(ApiUsageLog.tenant_id, func.sum(ApiUsageLog.cost_usd).label("total_cost")).group_by(ApiUsageLog.tenant_id).all()
-    cost_dict = {t_id: float(cost or 0) for t_id, cost in costs}
+    cost_dict = {}
+    try:
+        costs = db.query(ApiUsageLog.tenant_id, func.sum(ApiUsageLog.cost_usd).label("total_cost")).group_by(ApiUsageLog.tenant_id).all()
+        cost_dict = {t_id: float(cost or 0) for t_id, cost in costs}
+    except Exception:
+        # api_usage_logs table may not exist yet if migrations haven't fully run
+        pass
     
     for c in configs:
         plan = c.subscription_plan.lower()
@@ -6688,25 +6703,24 @@ def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
 def admin_api_health(request: Request, db: Session = Depends(get_db)):
     """Phase 4: API Health & Performance Monitoring."""
     _require_admin(request, db)
-    
+
     # Calculate average cost per draft for "Cost Trends"
-    total_count = db.query(ApiUsageLog).count()
-    total_cost = db.query(func.sum(ApiUsageLog.cost_usd)).scalar() or 0.0
-    avg_cost = (total_cost / total_count) if total_count > 0 else 0.0
-    
-    # Predicted monthly loosely
-    predicted_monthly = (total_cost * 1.5)  # just a simple mock scalar for the display
-    
+    avg_cost = 0.0
+    predicted_monthly = 0.0
+
+    try:
+        total_count = db.query(ApiUsageLog).count()
+        total_cost = db.query(func.sum(ApiUsageLog.cost_usd)).scalar() or 0.0
+        avg_cost = (total_cost / total_count) if total_count > 0 else 0.0
+        predicted_monthly = (total_cost * 1.5)  # just a simple mock scalar for the display
+    except Exception:
+        # api_usage_logs table may not exist yet if migrations haven't fully run
+        pass
+
     return templates.TemplateResponse("admin_api.html", {
         "request": request,
         "avg_cost": avg_cost,
         "predicted_monthly": predicted_monthly,
-    })
-    return templates.TemplateResponse("admin_ai.html", {
-        "request": request,
-        "sys_conf": sys_conf,
-        "logs": usage_logs,
-        "total_cost": total_cost,
     })
 
 @app.post("/admin/ai/save", response_class=HTMLResponse)
