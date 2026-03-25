@@ -7228,15 +7228,10 @@ def conversations_page(
     # Convert to list and sort by last activity
     conv_list = sorted(conversations.values(), key=lambda x: x["last_at"], reverse=True)
 
-    from jinja2 import Template
-    with open("web/templates/conversations.html") as f:
-        template = Template(f.read())
-
-    html = template.render(
-        conversations=conv_list,
-    )
-
-    return HTMLResponse(html)
+    return templates.TemplateResponse("conversations.html", {
+        "request": request,
+        "conversations": conv_list,
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -7271,16 +7266,11 @@ def guest_contacts_dashboard(
         .all()
     )
 
-    from jinja2 import Template
-    with open("web/templates/guest_contacts.html") as f:
-        template = Template(f.read())
-
-    html = template.render(
-        guest_contacts=guest_contacts,
-        today=today_start.date(),
-    )
-
-    return HTMLResponse(html)
+    return templates.TemplateResponse("guest_contacts.html", {
+        "request": request,
+        "guest_contacts": guest_contacts,
+        "today": today_start.date(),
+    })
 
 
 @app.post("/api/guest-contacts/add")
