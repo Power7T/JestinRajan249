@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Host Profitability — Admin{% endblock %}
+
+{% block head %}
+<style>
+  .admin-nav { display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+  .admin-nav a { padding:6px 14px; border-radius:var(--radius-sm); font-size:0.85rem; font-weight:600; background:var(--bg-2); border:1px solid var(--border); color:var(--text-2); transition:all var(--t); }
+  .admin-nav a.active, .admin-nav a:hover { background:var(--bg-3); color:var(--text-1); border-color:var(--border-2); text-decoration:none; }
+
+  .summary-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:2rem; }
+  .summary-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; }
+  .summary-value { font-size:2rem; font-weight:800; color:var(--accent); margin-bottom:0.25rem; }
+  .summary-label { font-size:0.85rem; color:var(--text-3); text-transform:uppercase; letter-spacing:0.05em; }
+
+  .hosts-table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .hosts-table th { background:var(--bg-2); padding:1rem; text-align:left; font-weight:600; color:var(--text-2); font-size:0.9rem; border-bottom:1px solid var(--border); }
+  .hosts-table td { padding:1rem; border-bottom:1px solid var(--border); font-size:0.9rem; }
+  .hosts-table tr:last-child td { border-bottom:none; }
+  .hosts-table tr:hover { background:var(--bg-2); }
+
+  .email-cell { font-family:monospace; font-size:0.85rem; color:var(--text-2); }
+  .plan-badge { display:inline-block; padding:3px 10px; border-radius:4px; font-size:0.8rem; font-weight:600; }
+  .plan-starter { background:var(--info-bg); color:var(--info); }
+  .plan-growth { background:var(--accent-bg); color:var(--accent); }
+  .plan-pro { background:var(--success-bg); color:var(--success); }
+
+  .profit-pos { color:var(--success); font-weight:700; }
+  .profit-neg { color:var(--danger); font-weight:700; }
+  .margin-good { color:var(--success); }
+  .margin-warn { color:var(--warn); }
+  .margin-bad { color:var(--danger); }
+
+  .metric-num { font-family:monospace; text-align:right; }
+
+  .footer-row { background:var(--bg-2); font-weight:700; border-top:2px solid var(--border); }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Host Profitability Analytics</h1>
+
+<div class="admin-nav">
+  <a href="/admin">Overview</a>
+  <a href="/admin/system">System Health</a>
+  <a href="/admin/ai">AI Engine</a>
+  <a href="/admin/costs">Overall Costs</a>
+  <a href="/admin/host-profitability" class="active">Host Profitability</a>
+</div>
+
+<!-- Summary Cards -->
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="summary-value">${{ "%.0f"|format(total_revenue) }}</div>
+    <div class="summary-label">Total Monthly Revenue</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-value">${{ "%.0f"|format(total_cost) }}</div>
+    <div class="summary-label">Total Monthly Costs</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-value {% if total_profit > 0 %}profit-pos{% else %}profit-neg{% endif %}">
+      ${{ "%.0f"|format(total_profit) }}
+    </div>
+    <div class="summary-label">Net Monthly Profit</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-value" style="color:{% if total_margin_pct >= 70 %}var(--success){% elif total_margin_pct >= 50 %}var(--warn){% else %}var(--danger){% endif %}">
+      {{ "%.1f"|format(total_margin_pct) }}%
+    </div>
+    <div class="summary-label">Profit Margin</div>
+  </div>
+</div>
+
+<!-- Per-Host Table -->
+<div style="overflow-x:auto;">
+  <table class="hosts-table">
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Plan</th>
+        <th style="text-align:center;">Properties</th>
+        <th style="text-align:right;">Monthly Revenue</th>
+        <th style="text-align:right;">API Costs</th>
+        <th style="text-align:right;">Infra Costs</th>
+        <th style="text-align:right;">Total Cost</th>
+        <th style="text-align:right;">Profit</th>
+        <th style="text-align:right;">Margin %</th>
+        <th style="text-align:center;">Messages (30d)</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for host in hosts %}
+      <tr>
+        <td class="email-cell">{{ host.email }}</td>
+        <td>
+          <span class="plan-badge plan-{{ host.plan.lower() }}">{{ host.plan }}</span>
+        </td>
+        <td style="text-align:center;">{{ host.units }}</td>
+        <td class="metric-num">${{ "%.2f"|format(host.revenue) }}</td>
+        <td class="metric-num" style="color:var(--warn);">${{ "%.2f"|format(host.api_cost) }}</td>
+        <td class="metric-num">${{ "%.2f"|format(host.infra_cost) }}</td>
+        <td class="metric-num" style="color:var(--text-2);">${{ "%.2f"|format(host.total_cost) }}</td>
+        <td class="metric-num {% if host.profit > 0 %}profit-pos{% else %}profit-neg{% endif %}">
+          ${{ "%.2f"|format(host.profit) }}
+        </td>
+        <td class="metric-num {% if host.margin_pct >= 70 %}margin-good{% elif host.margin_pct >= 50 %}margin-warn{% else %}margin-bad{% endif %}">
+          {{ "%.1f"|format(host.margin_pct) }}%
+        </td>
+        <td style="text-align:center;">{{ host.messages_30d }}</td>
+        <td>{{ host.status }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="footer-row">
+        <td colspan="3">TOTAL</td>
+        <td class="metric-num">${{ "%.0f"|format(total_revenue) }}</td>
+        <td class="metric-num"></td>
+        <td class="metric-num"></td>
+        <td class="metric-num">${{ "%.0f"|format(total_cost) }}</td>
+        <td class="metric-num {% if total_profit > 0 %}profit-pos{% else %}profit-neg{% endif %}">
+          ${{ "%.0f"|format(total_profit) }}
+        </td>
+        <td class="metric-num" style="color:var(--accent);">{{ "%.1f"|format(total_margin_pct) }}%</td>
+        <td colspan="2"></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div style="margin-top:2rem; padding:1rem; background:var(--info-bg); border:1px solid var(--info-border); border-radius:var(--radius); color:var(--text-2);">
+  <strong>💡 Notes:</strong>
+  <ul style="margin:0.5rem 0 0 1.5rem; padding:0;">
+    <li>Revenue based on new unit-based pricing (Starter $20+$10/unit, Growth $30+$9/unit, Pro $50+$8/unit)</li>
+    <li>API Costs from last 30 days of actual usage</li>
+    <li>Infra Costs fixed at $3/property/month (hosting + operations)</li>
+    <li>Messages count all inbound messages in last 30 days</li>
+    <li>Data refreshes every 5 minutes</li>
+  </ul>
+</div>
+
+{% endblock %}

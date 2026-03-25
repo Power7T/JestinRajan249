@@ -6542,6 +6542,96 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
     })
 
 
+@app.get("/admin/host-profitability", response_class=HTMLResponse)
+def admin_host_profitability(request: Request, db: Session = Depends(get_db)):
+    """Per-host profitability breakdown — see revenue, costs, and profit for each tenant."""
+    _require_admin(request, db)
+
+    from sqlalchemy.sql import func
+    from datetime import timedelta
+
+    # Get all tenants with their subscription info
+    configs = db.query(TenantConfig, Tenant).join(Tenant).all()
+
+    # Get API costs per tenant (last 30 days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    costs_30d = db.query(ApiUsageLog.tenant_id, func.sum(ApiUsageLog.cost_usd).label("total_cost"))\
+        .filter(ApiUsageLog.created_at >= cutoff)\
+        .group_by(ApiUsageLog.tenant_id).all()
+    cost_dict = {t_id: float(cost or 0) for t_id, cost in costs_30d}
+
+    # Get message counts per tenant (last 30 days)
+    msg_counts = db.query(Draft.tenant_id, func.count(Draft.id).label("msg_count"))\
+        .filter(Draft.created_at >= cutoff)\
+        .group_by(Draft.tenant_id).all()
+    msg_dict = {t_id: int(count or 0) for t_id, count in msg_counts}
+
+    # Build per-host metrics
+    hosts = []
+    for cfg, tenant in configs:
+        plan_key = cfg.subscription_plan.lower()
+
+        # Revenue calculation based on new unit-based pricing
+        if plan_key == "starter":
+            base_revenue = 20.0
+            per_unit_revenue = 10.0
+        elif plan_key == "growth":
+            base_revenue = 30.0
+            per_unit_revenue = 9.0
+        elif plan_key == "pro":
+            base_revenue = 50.0
+            per_unit_revenue = 8.0
+        else:
+            base_revenue = 0.0
+            per_unit_revenue = 0.0
+
+        num_units = cfg.num_units or 1
+        monthly_revenue = base_revenue + (per_unit_revenue * num_units)
+
+        # Costs
+        api_cost = cost_dict.get(cfg.tenant_id, 0.0)
+        msg_count = msg_dict.get(cfg.tenant_id, 0)
+        infra_cost = 3.0  # $2 hosting + $1 ops per property per month
+        total_cost = api_cost + (infra_cost * num_units)
+
+        # Profit
+        profit = monthly_revenue - total_cost
+        margin_pct = (profit / monthly_revenue * 100) if monthly_revenue > 0 else 0
+
+        hosts.append({
+            "tenant_id": cfg.tenant_id,
+            "email": tenant.email if tenant else "Unknown",
+            "plan": plan_key.title(),
+            "units": num_units,
+            "revenue": monthly_revenue,
+            "api_cost": api_cost,
+            "infra_cost": infra_cost * num_units,
+            "total_cost": total_cost,
+            "profit": profit,
+            "margin_pct": margin_pct,
+            "messages_30d": msg_count,
+            "status": "✅ Profitable" if profit > 0 else "⚠️ Loss",
+        })
+
+    # Sort by profit (highest first)
+    hosts.sort(key=lambda x: x["profit"], reverse=True)
+
+    # Totals
+    total_revenue = sum(h["revenue"] for h in hosts)
+    total_cost = sum(h["total_cost"] for h in hosts)
+    total_profit = total_revenue - total_cost
+    total_margin_pct = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
+
+    return templates.TemplateResponse("admin_host_profitability.html", {
+        "request": request,
+        "hosts": hosts,
+        "total_revenue": total_revenue,
+        "total_cost": total_cost,
+        "total_profit": total_profit,
+        "total_margin_pct": total_margin_pct,
+    })
+
+
 @app.get("/admin/costs", response_class=HTMLResponse)
 def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
     """Phase 2: Internal Profitability Analysis."""
