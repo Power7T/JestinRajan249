@@ -17,8 +17,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create system_config table if it doesn't exist
-    # Then add routine_model column
+    # Create system_config and api_usage_logs tables if they don't exist
     conn = op.get_bind()
     inspector = sa.inspect(conn)
 
@@ -46,6 +45,24 @@ def upgrade() -> None:
                 server_default='google/gemini-2.5-flash'
             ))
 
+    # Create api_usage_logs table if it doesn't exist
+    if 'api_usage_logs' not in inspector.get_table_names():
+        op.create_table(
+            'api_usage_logs',
+            sa.Column('id', sa.Integer(), nullable=False, autoincrement=True),
+            sa.Column('tenant_id', sa.String(length=36), nullable=True),
+            sa.Column('model', sa.String(length=100), nullable=False),
+            sa.Column('provider', sa.String(length=50), nullable=False),
+            sa.Column('input_tokens', sa.Integer(), nullable=False, server_default='0'),
+            sa.Column('output_tokens', sa.Integer(), nullable=False, server_default='0'),
+            sa.Column('cost_usd', sa.Float(), nullable=False, server_default='0.0'),
+            sa.Column('feature', sa.String(length=50), nullable=False),
+            sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+            sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
+            sa.PrimaryKeyConstraint('id'),
+            sa.Index('ix_api_usage_logs_tenant_id', 'tenant_id')
+        )
+
 
 def downgrade() -> None:
     conn = op.get_bind()
@@ -55,3 +72,7 @@ def downgrade() -> None:
     if 'system_config' in inspector.get_table_names():
         if 'routine_model' in [col['name'] for col in inspector.get_columns('system_config')]:
             op.drop_column('system_config', 'routine_model')
+
+    # Drop api_usage_logs table if it exists
+    if 'api_usage_logs' in inspector.get_table_names():
+        op.drop_table('api_usage_logs')
