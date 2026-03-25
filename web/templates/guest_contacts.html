@@ -145,7 +145,11 @@
   {% if guest_contacts %}
   <div class="checkins-grid">
     {% for gc in guest_contacts %}
-    <div class="checkin-card {% if gc.welcome_status == 'sent' %}contacted{% else %}pending{% endif %}">
+    <div class="checkin-card {% if gc.welcome_status == 'sent' %}contacted{% else %}pending{% endif %}"
+         data-gc-id="{{ gc.id }}"
+         data-check-in="{{ gc.check_in.isoformat() }}"
+         data-check-out="{{ gc.check_out.isoformat() }}"
+         data-property="{{ gc.property_name or '' }}">
       <div class="checkin-guest-name">{{ gc.guest_name }}</div>
       <div class="checkin-room">
         {% if gc.property_name %}{{ gc.property_name }}{% if gc.room_identifier %} • Room {{ gc.room_identifier }}{% endif %}{% else %}Room {{ gc.room_identifier or 'TBD' }}{% endif %}
@@ -164,7 +168,7 @@
       {% endif %}
 
       <!-- Guest phone -->
-      <div style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem;word-break:break-all;">
+      <div style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem;word-break:break-all;" data-phone>
         {{ gc.guest_phone }}
       </div>
 
@@ -249,6 +253,58 @@
   </div>
 </div>
 
+<!-- Edit Guest Contact Modal -->
+<div class="modal-backdrop" id="editContactModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Edit Guest Contact</h3>
+      <button class="modal-close" onclick="closeEditContactModal()">×</button>
+    </div>
+
+    <form id="editContactForm" onsubmit="submitEditContact(event)">
+      <div class="modal-body">
+        <input type="hidden" id="editGcId" name="gc_id">
+
+        <div class="form-group">
+          <label for="editGuestName">Guest Name *</label>
+          <input type="text" id="editGuestName" name="guest_name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="editGuestPhone">WhatsApp/Phone Number *</label>
+          <input type="tel" id="editGuestPhone" name="guest_phone" required>
+          <div class="help-text">Include country code (e.g., +1 for USA)</div>
+        </div>
+
+        <div class="form-group">
+          <label for="editPropertyName">Property Name</label>
+          <input type="text" id="editPropertyName" name="property_name">
+        </div>
+
+        <div class="form-group">
+          <label for="editRoomId">Room / Unit</label>
+          <input type="text" id="editRoomId" name="room_identifier">
+        </div>
+
+        <div class="form-group">
+          <label for="editCheckIn">Check-in Time *</label>
+          <input type="datetime-local" id="editCheckIn" name="check_in" required>
+        </div>
+
+        <div class="form-group">
+          <label for="editCheckOut">Check-out Date *</label>
+          <input type="date" id="editCheckOut" name="check_out" required>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeEditContactModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 function openAddContactModal() {
   document.getElementById('addContactModal').classList.add('active');
@@ -305,21 +361,102 @@ async function submitAddContact(event) {
   }
 }
 
-function resendWelcome(gcId, guestName) {
+async function resendWelcome(gcId, guestName) {
   if (confirm(`Resend welcome message to ${guestName}?`)) {
-    // TODO: Implement resend endpoint
-    alert('Resend feature coming soon');
+    try {
+      const response = await fetch(`/api/guest-contacts/${gcId}/resend`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        alert('Error: ' + (error.detail || 'Failed to resend'));
+        return;
+      }
+      const result = await response.json();
+      alert('✓ Message resent to ' + guestName);
+      location.reload();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
   }
 }
 
 function editGuestContact(gcId) {
-  // TODO: Implement edit functionality
-  alert('Edit feature coming soon');
+  // Find the card and extract current data
+  const card = document.querySelector(`[data-gc-id="${gcId}"]`);
+  if (!card) return;
+
+  const guestName = card.querySelector('.checkin-guest-name')?.textContent || '';
+  const guestPhone = card.querySelector('[data-phone]')?.textContent || '';
+  const roomId = card.querySelector('[data-room]')?.textContent || '';
+  const checkIn = card.getAttribute('data-check-in') || '';
+  const checkOut = card.getAttribute('data-check-out') || '';
+  const propertyName = card.getAttribute('data-property') || '';
+
+  // Pre-fill modal
+  document.getElementById('editGuestName').value = guestName;
+  document.getElementById('editGuestPhone').value = guestPhone;
+  document.getElementById('editPropertyName').value = propertyName;
+  document.getElementById('editRoomId').value = roomId;
+  document.getElementById('editCheckIn').value = checkIn;
+  document.getElementById('editCheckOut').value = checkOut;
+  document.getElementById('editGcId').value = gcId;
+
+  // Show modal
+  document.getElementById('editContactModal').classList.add('active');
+}
+
+function closeEditContactModal() {
+  document.getElementById('editContactModal').classList.remove('active');
+  document.getElementById('editContactForm').reset();
+}
+
+async function submitEditContact(event) {
+  event.preventDefault();
+
+  const gcId = document.getElementById('editGcId').value;
+  const btn = document.querySelector('#editContactForm button[type="submit"]');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+  try {
+    const response = await fetch(`/api/guest-contacts/${gcId}/edit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        guest_name: document.getElementById('editGuestName').value,
+        guest_phone: document.getElementById('editGuestPhone').value,
+        property_name: document.getElementById('editPropertyName').value,
+        room_identifier: document.getElementById('editRoomId').value,
+        check_in: new Date(document.getElementById('editCheckIn').value).toISOString(),
+        check_out: new Date(document.getElementById('editCheckOut').value).toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      alert('Error: ' + (error.detail || 'Failed to update guest'));
+      return;
+    }
+
+    alert('✓ Guest updated');
+    closeEditContactModal();
+    location.reload();
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Save Changes';
+  }
 }
 
 // Close modal on backdrop click
 document.getElementById('addContactModal').addEventListener('click', (e) => {
   if (e.target.id === 'addContactModal') closeAddContactModal();
+});
+
+document.getElementById('editContactModal').addEventListener('click', (e) => {
+  if (e.target.id === 'editContactModal') closeEditContactModal();
 });
 </script>
 {% endblock %}

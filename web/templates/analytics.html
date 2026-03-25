@@ -43,6 +43,56 @@
     </div>
   </div>
 
+  <!-- Guest Contact Stats -->
+  <div class="kpi-cards" style="margin-top: 2rem;">
+    <h3 style="grid-column: 1 / -1; margin: 0 0 1rem 0; font-size: 1rem;">Guest Check-ins</h3>
+    <div class="kpi-card">
+      <div class="kpi-value">{{ guest_contact_stats.total_guests | default(0) }}</div>
+      <div class="kpi-label">Total Guests</div>
+      <div class="kpi-subtext">added for check-in</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-value">{{ guest_contact_stats.sent_pct | default(0) }}%</div>
+      <div class="kpi-label">Welcome Sent</div>
+      <div class="kpi-subtext">{{ guest_contact_stats.welcome_sent | default(0) }} guests</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-value">{{ guest_contact_stats.welcome_pending | default(0) }}</div>
+      <div class="kpi-label">Pending</div>
+      <div class="kpi-subtext">not yet sent</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-value">{{ guest_contact_stats.welcome_failed | default(0) }}</div>
+      <div class="kpi-label">Failed</div>
+      <div class="kpi-subtext">delivery errors</div>
+    </div>
+  </div>
+
+  <!-- Auto-Send Stats -->
+  <div class="kpi-cards" style="margin-top: 2rem;">
+    <h3 style="grid-column: 1 / -1; margin: 0 0 1rem 0; font-size: 1rem;">🤖 Message Automation</h3>
+    <div class="kpi-card">
+      <div class="kpi-value">{{ auto_send_stats.auto_send_pct | default(0) }}%</div>
+      <div class="kpi-label">Auto-Sent</div>
+      <div class="kpi-subtext">{{ auto_send_stats.auto_sent | default(0) }} of {{ auto_send_stats.total | default(0) }}</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-value">{{ auto_send_stats.pending | default(0) }}</div>
+      <div class="kpi-label">Pending Review</div>
+      <div class="kpi-subtext">need your decision</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-value">{{ auto_send_stats.total | default(0) }}</div>
+      <div class="kpi-label">Total Messages</div>
+      <div class="kpi-subtext">in this period</div>
+    </div>
+  </div>
+
   <!-- Charts Section -->
   <script src="https://unpkg.com/chart.js@4/dist/chart.umd.min.js"></script>
 

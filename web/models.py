@@ -183,6 +183,10 @@ class TenantConfig(Base):
     twilio_from_number:    Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     sms_notify_number:     Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
 
+    # Host notifications on guest messages
+    notify_host_on_guest_msg: Mapped[bool]           = mapped_column(Boolean, default=False)
+    host_notify_phone:        Mapped[Optional[str]]  = mapped_column(String(32), nullable=True)  # optional separate phone for notifications
+
     # AI usage limits (for free tier enforcement)
     ai_calls_today:      Mapped[int]      = mapped_column(Integer, default=0)
     ai_calls_today_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)  # date counter was last reset
@@ -209,6 +213,9 @@ class TenantConfig(Base):
 
     # Onboarding step 3: extra services (comma-separated, stored separately for re-population)
     extra_services: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Guest welcome message template for custom welcome text
+    guest_welcome_template: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Internal token (auto-generated) for service-to-service auth
     internal_token: Mapped[str] = mapped_column(String(64), default=lambda: str(uuid.uuid4()))

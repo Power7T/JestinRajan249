@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block title %}Guest Messages — HostAI{% endblock %}
+
+{% block head %}
+<style>
+  .conversations-container {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 1.5rem;
+    height: calc(100vh - 150px);
+  }
+
+  .conversations-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .conversation-item {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: all var(--t);
+    border-left: 4px solid transparent;
+  }
+
+  .conversation-item:hover {
+    background: var(--bg-2);
+  }
+
+  .conversation-item.active {
+    background: var(--accent-bg);
+    border-left-color: var(--accent);
+  }
+
+  .conversation-guest-name {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: var(--text-1);
+  }
+
+  .conversation-phone {
+    font-size: 0.8rem;
+    color: var(--text-3);
+    margin-bottom: 0.5rem;
+    font-family: monospace;
+  }
+
+  .conversation-meta {
+    font-size: 0.75rem;
+    color: var(--text-3);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .conversation-detail {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .conversation-detail.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-3);
+  }
+
+  .message-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .message {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .message.inbound {
+    flex-direction: row;
+  }
+
+  .message.outbound {
+    flex-direction: row-reverse;
+  }
+
+  .message-bubble {
+    max-width: 70%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    word-wrap: break-word;
+  }
+
+  .message.inbound .message-bubble {
+    background: var(--bg-2);
+    color: var(--text-1);
+    border: 1px solid var(--border);
+  }
+
+  .message.outbound .message-bubble {
+    background: var(--accent);
+    color: white;
+  }
+
+  .message-time {
+    font-size: 0.7rem;
+    color: var(--text-3);
+    align-self: flex-end;
+    margin-top: 0.25rem;
+  }
+
+  .message-meta {
+    font-size: 0.7rem;
+    color: var(--text-3);
+    margin-top: 0.25rem;
+  }
+
+  .detail-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+
+  .detail-header p {
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+    color: var(--text-3);
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-3);
+  }
+
+  .empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+  }
+
+  @media (max-width: 1024px) {
+    .conversations-container {
+      grid-template-columns: 1fr;
+    }
+
+    .conversations-list {
+      max-height: 300px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+  <h1>Guest Messages</h1>
+  <p style="color: var(--text-3); margin-top: 0.5rem;">View conversation history with guests</p>
+</div>
+
+<div class="conversations-container">
+  <!-- Conversations List -->
+  <div class="conversations-list">
+    {% if conversations %}
+      {% for conv in conversations %}
+      <div class="conversation-item {% if loop.first %}active{% endif %}"
+           onclick="selectConversation(this, '{{ conv.thread_key }}', '{{ conv.guest_name }}', '{{ conv.guest_phone }}')">
+        <div class="conversation-guest-name">{{ conv.guest_name }}</div>
+        <div class="conversation-phone">{{ conv.guest_phone }}</div>
+        <div class="conversation-meta">
+          <span>{{ conv.message_count }} messages</span>
+          <span>{{ conv.last_at.strftime('%b %d') }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div style="padding: 2rem; text-align: center; color: var(--text-3);">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">📭</div>
+      <div style="font-weight: 600;">No conversations yet</div>
+      <div style="font-size: 0.85rem; margin-top: 0.5rem;">Guest messages will appear here</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Conversation Detail -->
+  <div class="conversation-detail {% if not conversations %}empty{% endif %}" id="detailPanel">
+    {% if conversations %}
+    <div class="detail-header">
+      <h2 id="detailGuestName">{{ conversations[0].guest_name }}</h2>
+      <p id="detailGuestPhone">{{ conversations[0].guest_phone }}</p>
+    </div>
+    <div class="message-thread" id="messageThread"></div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">💬</div>
+      <div>Select a conversation to view messages</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+async function selectConversation(element, threadKey, guestName, guestPhone) {
+  // Update UI
+  document.querySelectorAll('.conversation-item').forEach(el => el.classList.remove('active'));
+  element.classList.add('active');
+
+  // Update header
+  document.getElementById('detailGuestName').textContent = guestName;
+  document.getElementById('detailGuestPhone').textContent = guestPhone;
+
+  // Fetch messages
+  try {
+    const response = await fetch(`/api/conversation/${threadKey}`);
+    if (!response.ok) {
+      document.getElementById('messageThread').innerHTML = '<div class="empty-state">Error loading messages</div>';
+      return;
+    }
+
+    const data = await response.json();
+    const messages = data.messages || [];
+
+    if (messages.length === 0) {
+      document.getElementById('messageThread').innerHTML = '<div class="empty-state">No messages in this conversation</div>';
+      return;
+    }
+
+    // Render messages
+    const thread = messages.map(msg => {
+      const direction = msg.direction === 'outbound' ? 'outbound' : 'inbound';
+      const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const channel = msg.channel ? `<span class="message-meta">${msg.channel.toUpperCase()}</span>` : '';
+
+      const badge = msg.badge ? `<span style="font-size:0.65rem;margin-top:0.25rem;display:block">${msg.badge}</span>` : '';
+      return `
+        <div class="message ${direction}">
+          <div class="message-bubble">${escapeHtml(msg.body)}</div>
+          <div>
+            <div class="message-time">${time}</div>
+            ${channel}
+            ${badge}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    document.getElementById('messageThread').innerHTML = thread;
+    // Scroll to bottom
+    document.getElementById('messageThread').parentElement.scrollTop = document.getElementById('messageThread').parentElement.scrollHeight;
+  } catch (err) {
+    document.getElementById('messageThread').innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+  }
+}
+
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Load first conversation on page load
+document.addEventListener('DOMContentLoaded', () => {
+  const firstConv = document.querySelector('.conversation-item');
+  if (firstConv) {
+    firstConv.click();
+  }
+});
+</script>
+{% endblock %}

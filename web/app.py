@@ -1191,39 +1191,47 @@ def accept_invite(token: str, request: Request,
 
 @app.get("/api/conversation/{thread_key}")
 def api_conversation(thread_key: str, request: Request, db: Session = Depends(get_db)):
-    """Get all drafts for a thread (last 10 sent + all pending)."""
+    """Get all messages for a thread (both inbound and outbound, including auto-sent)."""
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    # Get last 10 sent drafts + all pending
-    sent_drafts = db.query(Draft).filter(
+    # Get all drafts for this thread
+    all_drafts = db.query(Draft).filter(
         Draft.tenant_id == tenant_id,
         Draft.thread_key == thread_key,
-        Draft.status.in_(["approved", "failed", "escalation"]),
-    ).order_by(Draft.created_at.desc()).limit(10).all()
-
-    pending_drafts = db.query(Draft).filter(
-        Draft.tenant_id == tenant_id,
-        Draft.thread_key == thread_key,
-        Draft.status == "pending",
     ).order_by(Draft.created_at).all()
 
-    all_drafts = sorted(sent_drafts + pending_drafts, key=lambda d: d.created_at)
-
-    return [
-        {
-            "id": d.id,
-            "guest_name": d.guest_name,
-            "message": d.message,
-            "draft": d.draft,
+    messages = []
+    for d in all_drafts:
+        # Inbound message (guest message)
+        messages.append({
+            "id": f"{d.id}-inbound",
+            "direction": "inbound",
+            "body": d.message,
+            "channel": d.source,
+            "timestamp": d.created_at.isoformat(),
             "status": d.status,
-            "created_at": d.created_at.isoformat(),
-            "guest_message_index": d.guest_message_index,
-        }
-        for d in all_drafts
-    ]
+        })
+
+        # Outbound message (host reply) - if approved, auto_sent, or escalation
+        if d.status in ["approved", "auto_sent", "failed", "escalation"] and d.final_text:
+            auto_sent_badge = "🤖 Auto" if d.status == "auto_sent" else ""
+            messages.append({
+                "id": f"{d.id}-outbound",
+                "direction": "outbound",
+                "body": d.final_text,
+                "channel": d.source,
+                "timestamp": d.created_at.isoformat(),
+                "status": d.status,
+                "badge": auto_sent_badge,
+            })
+
+    return {
+        "thread_key": thread_key,
+        "messages": messages,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1806,6 +1814,317 @@ def _pop_baileys_outbound(tenant_id: str, db: Session) -> dict:
         "remaining_quota": remaining_quota,
         "pending_count": pending_count
     }
+
+
+def _normalize_phone(phone: str) -> str:
+    """Normalize phone number for comparison (remove spaces, dashes, etc.)."""
+    return ''.join(c for c in phone if c.isdigit())
+
+
+def _handle_host_command(tenant_id: str, command: str, db: Session):
+    """Process management commands from the host via WhatsApp."""
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    if not cfg:
+        return
+
+    cmd_lower = command.lower().strip()
+    parts = cmd_lower.split()
+
+    if not parts:
+        return
+
+    action = parts[0]
+
+    # Normalize action to full command (support aliases)
+    action_map = {
+        "p": "pending",
+        "a": "approve",
+        "s": "skip",
+        "sh": "show",
+        "ed": "edit",
+        "h": "help",
+        "?": "help",
+    }
+    if action in action_map:
+        action = action_map[action]
+
+    # Command: pending / list — show pending drafts (exclude auto-sent)
+    if action in ["pending", "list"]:
+        pending_drafts = db.query(Draft).filter(
+            Draft.tenant_id == tenant_id,
+            Draft.status == "pending"
+        ).order_by(Draft.created_at.desc()).limit(5).all()
+
+        auto_sent_count = db.query(Draft).filter(
+            Draft.tenant_id == tenant_id,
+            Draft.status == "auto_sent",
+            Draft.created_at >= datetime.now(timezone.utc) - timedelta(hours=24)
+        ).count()
+
+        if not pending_drafts:
+            response = f"✓ All caught up!\n\n{auto_sent_count} auto-sent today\n\nType 'h' for help"
+        else:
+            lines = [f"📋 {len(pending_drafts)} pending (need you):\n"]
+            for i, d in enumerate(pending_drafts, 1):
+                msg_preview = d.message[:30].replace('\n', ' ')
+                confidence_icon = "✓" if d.confidence >= 0.9 else "⚠️" if d.confidence >= 0.7 else "❓"
+                lines.append(f"{i}. {confidence_icon} {d.guest_name}: {msg_preview}")
+            lines.append(f"\n{auto_sent_count} auto-sent today")
+            lines.append("\nQuick: a 1  s 1  sh 1  ed 1: text")
+            lines.append("Help: h")
+            response = "\n".join(lines)
+
+        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, response, db)
+        log.info(f"[{tenant_id}] Host list command processed")
+
+    # Command: approve <index_or_id> — approve a draft by index (1, 2, 3) or full ID
+    elif action == "approve" and len(parts) > 1:
+        identifier = parts[1]
+
+        # Try to parse as index number (1, 2, 3)
+        draft = None
+        try:
+            index = int(identifier)
+            pending_drafts = db.query(Draft).filter(
+                Draft.tenant_id == tenant_id,
+                Draft.status == "pending"
+            ).order_by(Draft.created_at.desc()).all()
+
+            if 1 <= index <= len(pending_drafts):
+                draft = pending_drafts[index - 1]
+        except ValueError:
+            # Not a number, try as draft ID
+            draft = db.query(Draft).filter_by(id=identifier, tenant_id=tenant_id).first()
+
+        if not draft:
+            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
+            return
+
+        if draft.status != "pending":
+            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Already {draft.status}: {draft.guest_name}", db)
+            return
+
+        # Approve and send the draft
+        draft.status = "approved"
+        draft.final_text = draft.draft
+        draft.updated_at = datetime.now(timezone.utc)
+
+        # Queue the response to guest
+        _queue_baileys_outbound(tenant_id, draft.reply_to, draft.final_text, db)
+
+        # Log timeline event
+        from web.models import Reservation
+        reservation = db.query(Reservation).filter_by(id=draft.reservation_id).first() if draft.reservation_id else None
+        _record_timeline_event(
+            db,
+            tenant_id,
+            reservation,
+            "draft_approved",
+            f"Host approved response to {draft.guest_name}",
+            channel="whatsapp_command",
+            direction="outbound",
+            body=draft.final_text,
+            draft=draft,
+        )
+
+        db.add(ActivityLog(
+            tenant_id=tenant_id,
+            event_type="draft_approved",
+            message=f"Host approved: {draft.guest_name} - {draft.final_text[:60]}"
+        ))
+        db.commit()
+
+        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"✓ Sent to {draft.guest_name}", db)
+        log.info(f"[{tenant_id}] Host approved: {draft.guest_name}")
+
+    # Command: skip <index_or_id> — skip a draft by index (1, 2, 3) or full ID
+    elif action == "skip" and len(parts) > 1:
+        identifier = parts[1]
+
+        # Try to parse as index number (1, 2, 3)
+        draft = None
+        try:
+            index = int(identifier)
+            pending_drafts = db.query(Draft).filter(
+                Draft.tenant_id == tenant_id,
+                Draft.status == "pending"
+            ).order_by(Draft.created_at.desc()).all()
+
+            if 1 <= index <= len(pending_drafts):
+                draft = pending_drafts[index - 1]
+        except ValueError:
+            # Not a number, try as draft ID
+            draft = db.query(Draft).filter_by(id=identifier, tenant_id=tenant_id).first()
+
+        if not draft:
+            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
+            return
+
+        draft.status = "skipped"
+        draft.updated_at = datetime.now(timezone.utc)
+
+        db.add(ActivityLog(
+            tenant_id=tenant_id,
+            event_type="draft_skipped",
+            message=f"Host skipped: {draft.guest_name}"
+        ))
+        db.commit()
+
+        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"✓ Skipped {draft.guest_name}'s message", db)
+        log.info(f"[{tenant_id}] Host skipped: {draft.guest_name}")
+
+    # Command: show <index> — preview draft before approving
+    elif action == "show" and len(parts) > 1:
+        identifier = parts[1]
+
+        # Try to parse as index or ID
+        draft = None
+        try:
+            index = int(identifier)
+            pending_drafts = db.query(Draft).filter(
+                Draft.tenant_id == tenant_id,
+                Draft.status == "pending"
+            ).order_by(Draft.created_at.desc()).all()
+
+            if 1 <= index <= len(pending_drafts):
+                draft = pending_drafts[index - 1]
+        except ValueError:
+            draft = db.query(Draft).filter_by(id=identifier, tenant_id=tenant_id).first()
+
+        if not draft:
+            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
+            return
+
+        # Show the draft
+        preview = f"""📋 Draft for {draft.guest_name}:
+
+"{draft.draft}"
+
+Status: {draft.status}
+Confidence: {draft.confidence:.0%}
+
+Reply: approve {identifier} or skip {identifier}"""
+        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, preview, db)
+        log.info(f"[{tenant_id}] Host viewed draft preview")
+
+    # Command: edit <index> <new_text> — edit draft before sending
+    elif action == "edit" and len(parts) > 2:
+        identifier = parts[1]
+        # Reconstruct the new text (everything after "edit <id>")
+        new_text = " ".join(parts[2:])
+
+        # Try to parse as index or ID
+        draft = None
+        try:
+            index = int(identifier)
+            pending_drafts = db.query(Draft).filter(
+                Draft.tenant_id == tenant_id,
+                Draft.status == "pending"
+            ).order_by(Draft.created_at.desc()).all()
+
+            if 1 <= index <= len(pending_drafts):
+                draft = pending_drafts[index - 1]
+        except ValueError:
+            draft = db.query(Draft).filter_by(id=identifier, tenant_id=tenant_id).first()
+
+        if not draft:
+            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
+            return
+
+        if draft.status != "pending":
+            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Can't edit {draft.status} draft", db)
+            return
+
+        # Update the draft
+        draft.draft = new_text
+        draft.updated_at = datetime.now(timezone.utc)
+        db.commit()
+
+        response = f"""✏️ Draft updated:
+
+"{new_text}"
+
+Reply: approve {identifier} to send"""
+        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, response, db)
+        log.info(f"[{tenant_id}] Host edited draft")
+
+    # Command: help / ? — show available commands
+    elif action in ["help"]:
+        help_text = """🤖 HostAI Manager
+
+⚡ Quick Commands:
+p — pending list
+a 1 — approve draft #1
+s 1 — skip draft #1
+sh 1 — show draft #1
+ed 1: new text — edit draft #1
+h — this help
+stats — show today's stats
+
+Example:
+p
+(sees pending drafts)
+a 1
+(approves first one)"""
+        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, help_text, db)
+
+    else:
+        # Unknown command
+        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, "❓ Unknown command. Type 'h' or 'help'", db)
+
+
+def _send_host_notification(tenant_id: str, notify_phone: str, text: str, guest_name: str, guest_message: str, channel: str, db: Session):
+    """Send multi-channel notification to the host when a guest messages the bot."""
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    if not cfg:
+        return
+
+    try:
+        # WhatsApp notification (to host's own number)
+        if cfg.wa_mode == "baileys" and cfg.whatsapp_number:
+            _queue_baileys_outbound(tenant_id, notify_phone, text, db)
+            log.info(f"[{tenant_id}] Host notification queued via Baileys WhatsApp")
+        elif cfg.wa_mode == "meta_cloud":
+            from web.meta_sender import send_whatsapp
+            from web.crypto import decrypt
+
+            phone_id = cfg.whatsapp_phone_id
+            token = decrypt(cfg.whatsapp_token_enc) if cfg.whatsapp_token_enc else None
+
+            if phone_id and token:
+                if send_whatsapp(phone_id, token, notify_phone, text):
+                    log.info(f"[{tenant_id}] Host notification sent via Meta Cloud API")
+                else:
+                    log.warning(f"[{tenant_id}] Host notification failed via Meta")
+
+        # Email notification (if configured)
+        try:
+            tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+            if tenant and tenant.email:
+                from web.mailer import send_guest_message_alert
+                send_guest_message_alert(tenant.email, guest_name, guest_message[:500], channel)
+                log.info(f"[{tenant_id}] Host notification sent via email")
+        except Exception as e:
+            log.warning(f"[{tenant_id}] Failed to send email notification: {e}")
+
+        # SMS notification (if configured)
+        if cfg.sms_notify_number and cfg.sms_mode == "twilio":
+            try:
+                from web.sms_sender import send_sms
+                sms_text = f"📩 {guest_name}: {guest_message[:80]}..."
+                send_sms(
+                    cfg.twilio_account_sid,
+                    cfg.twilio_auth_token_enc,
+                    cfg.twilio_from_number,
+                    cfg.sms_notify_number,
+                    sms_text,
+                )
+                log.info(f"[{tenant_id}] Host notification sent via SMS")
+            except Exception as e:
+                log.warning(f"[{tenant_id}] Failed to send SMS notification: {e}")
+
+    except Exception as e:
+        log.error(f"[{tenant_id}] Error sending host notification: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -3100,6 +3419,11 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
     if not cfg:
         return
 
+    # Check if message is from the HOST themselves (host management via WhatsApp)
+    if source == "whatsapp" and cfg.whatsapp_number and _normalize_phone(reply_to) == _normalize_phone(cfg.whatsapp_number):
+        _handle_host_command(tenant_id, text.strip(), db)
+        return
+
     # Check guest whitelisting (GuestContact system)
     from web.guest_contact_service import is_guest_whitelisted, get_guest_contact_for_phone
     if not is_guest_whitelisted(tenant_id, reply_to, db):
@@ -3197,20 +3521,79 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
         db.add(ActivityLog(tenant_id=tenant_id, event_type=f"{source}_received",
                            message=f"{source.upper()} from {reply_to}: {text[:80]}"))
         db.commit()
-        # Publish real-time notification for SSE subscribers
-        try:
-            from web.redis_client import get_redis as _get_redis
-            r = _get_redis()
-            if r:
-                r.publish(f"hostai:notify:{tenant_id}", json.dumps({
-                    "guest_name": draft.guest_name,
-                    "source": draft.source,
-                    "msg_type": draft.msg_type,
-                    "draft_id": draft.id,
-                }))
-        except Exception:
-            pass  # non-critical
+
+        # Check if message should be auto-sent (routine + high confidence + no issues)
+        should_auto_send = (
+            draft.msg_type == "routine"
+            and draft.confidence >= 0.9
+            and draft.guest_sentiment != "negative"
+            and not policy_conflicts
+            and guest_history_score >= 0.4
+        )
+
+        if should_auto_send:
+            # Auto-send the message directly to guest
+            draft.status = "auto_sent"
+            draft.final_text = draft.draft
+            draft.updated_at = datetime.now(timezone.utc)
+
+            # Queue message to guest
+            _queue_baileys_outbound(tenant_id, reply_to, draft.final_text, db)
+
+            # Log auto-send
+            db.add(ActivityLog(
+                tenant_id=tenant_id,
+                event_type="draft_auto_sent",
+                message=f"Auto-sent to {guest_name}: {draft.draft[:80]}"
+            ))
+            db.commit()
+
+            log.info(f"[{tenant_id}] Auto-sent routine message to {guest_name} (confidence: {draft.confidence:.0%})")
+
+            # Record outbound event
+            _record_timeline_event(
+                db,
+                tenant_id,
+                reservation,
+                "guest_message_sent",
+                f"Auto-response to {guest_name}",
+                channel=source,
+                direction="outbound",
+                body=draft.final_text,
+                draft=draft,
+                payload_json={"auto_sent": True, "confidence": draft.confidence},
+            )
+            db.commit()
+        else:
+            # Keep as pending for host review
+            draft.status = "pending"
+            db.commit()
+
+            # Publish real-time notification for SSE subscribers (only for pending)
+            try:
+                from web.redis_client import get_redis as _get_redis
+                r = _get_redis()
+                if r:
+                    r.publish(f"hostai:notify:{tenant_id}", json.dumps({
+                        "guest_name": draft.guest_name,
+                        "source": draft.source,
+                        "msg_type": draft.msg_type,
+                        "draft_id": draft.id,
+                    }))
+            except Exception:
+                pass  # non-critical
+
+            # Send host notification if enabled (only for pending)
+            if cfg.notify_host_on_guest_msg:
+                notify_phone = cfg.host_notify_phone or cfg.whatsapp_number
+                if notify_phone:
+                    notify_text = f"📩 New guest message from {guest_name}:\n\n\"{text}\"\n\n— Reply in your HostAI dashboard"
+                    _send_host_notification(tenant_id, notify_phone, notify_text, guest_name, text, source, db)
+
+            log.info(f"[{tenant_id}] Pending review: {guest_name} ({draft.msg_type}, confidence: {draft.confidence:.0%})")
+
         _apply_automation_if_matched(db, tenant_id, draft, reservation)
+
     except Exception as exc:
         log.error("[%s] %s inbound handler error: %s", tenant_id, source.upper(), exc)
 
@@ -4814,6 +5197,41 @@ def analytics_page(request: Request,
         for s in snapshots
     ]
 
+    # Guest contact statistics
+    all_guest_contacts = rdb.query(GuestContact).filter_by(tenant_id=tenant_id).all()
+    guest_contact_stats = {
+        "total_guests": len(all_guest_contacts),
+        "welcome_sent": len([gc for gc in all_guest_contacts if gc.welcome_status == "sent"]),
+        "welcome_pending": len([gc for gc in all_guest_contacts if gc.welcome_status == "pending"]),
+        "welcome_failed": len([gc for gc in all_guest_contacts if gc.welcome_status == "failed"]),
+        "sent_pct": round((len([gc for gc in all_guest_contacts if gc.welcome_status == "sent"]) / len(all_guest_contacts) * 100) if all_guest_contacts else 0, 1),
+    }
+
+    # Auto-send statistics (last 30 days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=range_days)
+    auto_sent_count = rdb.query(Draft).filter(
+        Draft.tenant_id == tenant_id,
+        Draft.status == "auto_sent",
+        Draft.created_at >= cutoff,
+    ).count()
+    pending_count = rdb.query(Draft).filter(
+        Draft.tenant_id == tenant_id,
+        Draft.status == "pending",
+        Draft.created_at >= cutoff,
+    ).count()
+    total_incoming = auto_sent_count + pending_count + rdb.query(Draft).filter(
+        Draft.tenant_id == tenant_id,
+        Draft.status.in_(["approved", "skipped", "failed"]),
+        Draft.created_at >= cutoff,
+    ).count()
+
+    auto_send_stats = {
+        "auto_sent": auto_sent_count,
+        "pending": pending_count,
+        "total": total_incoming,
+        "auto_send_pct": round((auto_sent_count / total_incoming * 100) if total_incoming > 0 else 0, 1),
+    }
+
     return templates.TemplateResponse("analytics.html", {
         "request": request,
         "tenant": tenant,
@@ -4822,6 +5240,8 @@ def analytics_page(request: Request,
         "snapshots": snapshots,          # kept for Jinja table rendering
         "snapshots_data": snapshots_data, # JSON-safe for Chart.js
         "range_days": range_days,
+        "guest_contact_stats": guest_contact_stats,
+        "auto_send_stats": auto_send_stats,
     })
 
 
@@ -6659,6 +7079,61 @@ def metrics_prometheus(request: Request, db: Session = Depends(get_db)):
 
 
 # ---------------------------------------------------------------------------
+# Conversations — view guest message threads
+# ---------------------------------------------------------------------------
+
+@app.get("/conversations", response_class=HTMLResponse)
+def conversations_page(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Display guest conversation threads."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    from datetime import datetime, timezone
+
+    # Get unique conversations grouped by thread_key
+    # We'll get the most recent draft for each conversation
+    all_drafts = (
+        db.query(Draft)
+        .filter(Draft.tenant_id == tenant_id, Draft.source.in_(["whatsapp", "sms", "email"]))
+        .order_by(Draft.created_at.desc())
+        .all()
+    )
+
+    # Group by thread_key and guest phone
+    conversations = {}
+    for draft in all_drafts:
+        key = (draft.thread_key, draft.reply_to, draft.guest_name)
+        if key not in conversations:
+            conversations[key] = {
+                "thread_key": draft.thread_key,
+                "guest_phone": draft.reply_to,
+                "guest_name": draft.guest_name,
+                "message_count": 0,
+                "last_at": draft.created_at,
+            }
+        conversations[key]["message_count"] += 1
+        conversations[key]["last_at"] = max(conversations[key]["last_at"], draft.created_at)
+
+    # Convert to list and sort by last activity
+    conv_list = sorted(conversations.values(), key=lambda x: x["last_at"], reverse=True)
+
+    from jinja2 import Template
+    with open("web/templates/conversations.html") as f:
+        template = Template(f.read())
+
+    html = template.render(
+        conversations=conv_list,
+    )
+
+    return HTMLResponse(html)
+
+
+# ---------------------------------------------------------------------------
 # Guest Contacts — bot whitelisting for guests
 # ---------------------------------------------------------------------------
 
@@ -6800,6 +7275,101 @@ def get_todays_guest_contacts(
             }
             for gc in guest_contacts
         ],
+    }
+
+
+@app.post("/api/guest-contacts/{gc_id}/resend")
+async def resend_guest_welcome(
+    gc_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Resend welcome message to a guest."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    guest_contact = (
+        db.query(GuestContact)
+        .filter(GuestContact.id == gc_id, GuestContact.tenant_id == tenant_id)
+        .first()
+    )
+    if not guest_contact:
+        raise HTTPException(status_code=404, detail="Guest contact not found")
+
+    try:
+        from web.guest_contact_service import send_welcome_messages
+        await send_welcome_messages(tenant_id, guest_contact, db)
+        return {
+            "status": "ok",
+            "message": f"Welcome resent to {guest_contact.guest_name}",
+        }
+    except Exception as e:
+        log.error(f"[{tenant_id}] Error resending welcome: {e}")
+        raise HTTPException(status_code=500, detail="Failed to resend welcome message")
+
+
+@app.post("/api/guest-contacts/{gc_id}/edit")
+async def edit_guest_contact(
+    gc_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Edit a guest contact."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    guest_contact = (
+        db.query(GuestContact)
+        .filter(GuestContact.id == gc_id, GuestContact.tenant_id == tenant_id)
+        .first()
+    )
+    if not guest_contact:
+        raise HTTPException(status_code=404, detail="Guest contact not found")
+
+    data = await request.json()
+
+    # Update fields
+    guest_contact.guest_name = data.get("guest_name", guest_contact.guest_name).strip()
+    guest_contact.guest_phone = data.get("guest_phone", guest_contact.guest_phone).strip()
+    guest_contact.property_name = data.get("property_name", guest_contact.property_name or "").strip()
+    guest_contact.room_identifier = data.get("room_identifier", guest_contact.room_identifier or "").strip()
+
+    # Update check-in/out if provided
+    if "check_in" in data:
+        try:
+            from datetime import datetime
+            check_in_str = data.get("check_in")
+            guest_contact.check_in = datetime.fromisoformat(check_in_str.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail="Invalid check_in datetime format")
+
+    if "check_out" in data:
+        try:
+            from datetime import datetime
+            check_out_str = data.get("check_out")
+            guest_contact.check_out = datetime.fromisoformat(check_out_str.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail="Invalid check_out datetime format")
+
+    db.commit()
+
+    return {
+        "status": "ok",
+        "message": f"Guest {guest_contact.guest_name} updated",
+        "guest_contact": {
+            "id": guest_contact.id,
+            "guest_name": guest_contact.guest_name,
+            "guest_phone": guest_contact.guest_phone,
+            "property_name": guest_contact.property_name,
+            "room_identifier": guest_contact.room_identifier,
+            "check_in": guest_contact.check_in.isoformat(),
+            "check_out": guest_contact.check_out.isoformat(),
+            "welcome_status": guest_contact.welcome_status,
+        },
     }
 
 

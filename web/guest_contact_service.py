@@ -128,6 +128,20 @@ async def send_welcome_messages(
 def _build_guest_welcome_message(guest_contact: GuestContact, cfg: TenantConfig) -> str:
     """Build welcome message for guest."""
 
+    # Use custom template if available
+    if cfg.guest_welcome_template:
+        try:
+            message = cfg.guest_welcome_template.format(
+                guest_name=guest_contact.guest_name,
+                property_name=guest_contact.property_name or cfg.property_names or 'our property',
+                room=guest_contact.room_identifier or 'your room',
+            )
+            return message
+        except KeyError:
+            # If template has invalid placeholders, fall back to default
+            pass
+
+    # Default welcome message
     property_info = f" at {guest_contact.property_name}" if guest_contact.property_name else ""
     room_info = f" (Room {guest_contact.room_identifier})" if guest_contact.room_identifier else ""
 

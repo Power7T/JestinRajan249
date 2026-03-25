@@ -138,7 +138,19 @@
     <textarea name="faq" placeholder="Q: Wi-Fi password? A: See the welcome card.">{{ cfg.faq or '' }}</textarea>
     <label>Custom instructions for HostAI</label>
     <textarea name="custom_instructions" placeholder="Always mention the unit number when giving directions.">{{ cfg.custom_instructions or '' }}</textarea>
+  </div>
 
+  <!-- ── Guest Messaging ────────────────────────────────────────────────────── -->
+  <div class="form-section">
+    <h2>Guest messaging</h2>
+    <label>Custom welcome message for guest check-ins</label>
+    <textarea name="guest_welcome_template" placeholder="Hi {guest_name}! Welcome to {property_name}. Your room is {room}. Check-in is now available. Let me know if you need anything!">{{ cfg.guest_welcome_template or '' }}</textarea>
+    <p class="help-text">Leave blank for default message. Use variables: {guest_name}, {property_name}, {room}</p>
+  </div>
+
+  <!-- ── Calendar ────────────────────────────────────────────────────── -->
+  <div class="form-section">
+    <h2>Calendar & imports</h2>
     <label>Airbnb iCal URL(s)</label>
     <textarea name="ical_urls" placeholder="https://www.airbnb.com/calendar/ical/...ics&#10;One per line or comma-separated">{{ cfg.ical_urls or '' }}</textarea>
     <p class="help-text">Airbnb → Calendar → Availability settings → Export Calendar → copy .ics link</p>
@@ -269,6 +281,31 @@
       <label>Your WhatsApp phone number (the one you'll scan with)</label>
       <input type="text" name="whatsapp_number" value="{{ cfg.whatsapp_number or '' }}" placeholder="+1 555 000 0000">
       <p class="help-text">Must match the phone number you scan the QR code with.</p>
+    </div>
+
+    <div style="margin-top:1rem;padding:1rem;background:var(--bg-2);border-radius:var(--radius-sm)">
+      <p style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem">📲 Host notifications & management</p>
+      <label><input type="checkbox" name="notify_host_on_guest_msg" value="1" {% if cfg.notify_host_on_guest_msg %}checked{% endif %}> Notify me when a guest sends a message</label>
+      <p class="help-text" style="margin-top:0.5rem">When enabled, you'll receive notifications via:</p>
+      <ul class="help-text" style="margin:0.5rem 0;padding-left:1.25rem">
+        <li>📱 <strong>WhatsApp</strong> — message to your WhatsApp number below</li>
+        <li>📧 <strong>Email</strong> — to your registered email</li>
+        <li>📞 <strong>SMS</strong> — if Twilio is configured</li>
+      </ul>
+      <label style="margin-top:1rem">Optional separate notification phone</label>
+      <input type="text" name="host_notify_phone" value="{{ cfg.host_notify_phone or '' }}" placeholder="+1 555 000 0000">
+      <p class="help-text">Leave blank to use your WhatsApp number above</p>
+
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+        <p style="font-size:0.85rem;font-weight:600;margin-bottom:0.5rem">💬 Manage via WhatsApp</p>
+        <p class="help-text">Send messages to your bot from your own WhatsApp number to:</p>
+        <ul class="help-text" style="margin:0.5rem 0;padding-left:1.25rem;font-family:monospace;font-size:0.8rem">
+          <li><strong>pending</strong> — list pending drafts</li>
+          <li><strong>approve abc123</strong> — approve & send a draft</li>
+          <li><strong>skip abc123</strong> — skip a draft</li>
+          <li><strong>help</strong> — show all commands</li>
+        </ul>
+      </div>
     </div>
 
     {% if cfg.bot_api_token_hint %}

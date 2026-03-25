@@ -166,6 +166,29 @@ def send_escalation_alert(to: str, guest_name: str, guest_message: str) -> bool:
     return _send(to, f"{APP_NAME} — Urgent: {guest_name} needs immediate attention", html)
 
 
+def send_guest_message_alert(to: str, guest_name: str, guest_message: str, channel: str = "WhatsApp") -> bool:
+    """Send email alert when a guest sends a new message to the bot."""
+    url = f"{APP_BASE_URL}/conversations"
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:0 auto;padding:2rem;color:#212529">
+      <h2 style="color:#0d6efd;margin-bottom:1rem">📩 New guest message via {channel}</h2>
+      <p><strong>From:</strong> {guest_name}</p>
+      <div style="background:#e7f3ff;border:1px solid #b0d4ff;border-radius:6px;padding:1rem;margin:1.5rem 0">
+        <p style="margin:0;white-space:pre-wrap;font-size:0.9rem">{guest_message[:500]}{"..." if len(guest_message) > 500 else ""}</p>
+      </div>
+      <p style="margin:1.5rem 0">
+        <a href="{url}" style="background:#0d6efd;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">
+          View Conversation →
+        </a>
+      </p>
+      <p style="color:#6c757d;font-size:0.85rem">
+        You can also reply via WhatsApp on your phone by sending messages to the bot.
+      </p>
+    </div>
+    """
+    return _send(to, f"{APP_NAME} — New message from {guest_name}", html)
+
+
 def send_weekly_digest(to: str, stats: dict) -> bool:
     """
     Send a weekly performance digest email.
