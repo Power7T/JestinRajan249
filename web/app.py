@@ -6624,6 +6624,7 @@ def admin_ai_save(
     request: Request,
     openrouter_api_key_enc: str = Form(""),
     primary_model: str = Form(...),
+    routine_model: str = Form("google/gemini-2.5-flash"),
     fallback_model: str = Form(...),
     sentiment_model: str = Form("openai/gpt-4o-mini"),
     db: Session = Depends(get_db)
@@ -6633,14 +6634,15 @@ def admin_ai_save(
     if not sys_conf:
         sys_conf = SystemConfig()
         db.add(sys_conf)
-        
+
     if openrouter_api_key_enc.strip() and openrouter_api_key_enc != "********":
         sys_conf.openrouter_api_key_enc = openrouter_api_key_enc.strip()
     sys_conf.primary_model = primary_model.strip()
+    sys_conf.routine_model = routine_model.strip()
     sys_conf.fallback_model = fallback_model.strip()
     sys_conf.sentiment_model = sentiment_model.strip()
     db.commit()
-    
+
     return RedirectResponse("/admin/ai?msg=saved", status_code=302)
 
 

@@ -386,13 +386,13 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
                 # Phase 3: Smart Routing
                 if attempt == 1:
                     if msg_type == "routine":
-                        model_to_use = sys_conf.fallback_model or "meta-llama/llama-3.1-70b-instruct"
+                        model_to_use = sys_conf.routine_model or "google/gemini-2.5-flash"
                     elif msg_type == "escalation":
                         model_to_use = "anthropic/claude-3-opus"  # Max intelligence for critical
                     else:
                         model_to_use = sys_conf.primary_model or "anthropic/claude-3.5-sonnet"
                 else:
-                    # On failure, always fallback to the reliable cheap model
+                    # On failure, fallback to Llama (reliable fallback)
                     model_to_use = sys_conf.fallback_model or "meta-llama/llama-3.1-70b-instruct"
 
                 try:

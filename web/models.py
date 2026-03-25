@@ -56,6 +56,7 @@ class SystemConfig(Base):
     openrouter_api_key_enc: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     primary_model: Mapped[str] = mapped_column(String(100), default="anthropic/claude-3.5-sonnet")
     fallback_model: Mapped[str] = mapped_column(String(100), default="meta-llama/llama-3.1-70b-instruct")
+    routine_model: Mapped[str] = mapped_column(String(100), default="google/gemini-2.5-flash")
     sentiment_model: Mapped[str] = mapped_column(String(100), default="openai/gpt-4o-mini")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
