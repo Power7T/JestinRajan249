@@ -19,25 +19,25 @@
   <!-- KPI Cards -->
   <div class="kpi-cards">
     <div class="kpi-card">
-      <div class="kpi-value">{{ kpis.drafts.total | default(0) }}</div>
+      <div class="kpi-value">{{ kpis['drafts']['total'] | default(0) }}</div>
       <div class="kpi-label">Total Drafts</div>
       <div class="kpi-subtext">in selected period</div>
     </div>
 
     <div class="kpi-card">
-      <div class="kpi-value">{{ '%.0f'|format((kpis.drafts.approval_rate | default(0)) * 100) }}%</div>
+      <div class="kpi-value">{{ '%.0f'|format((kpis['drafts']['approval_rate'] | default(0)) * 100) }}%</div>
       <div class="kpi-label">Approval Rate</div>
       <div class="kpi-subtext">of pending drafts approved</div>
     </div>
 
     <div class="kpi-card">
-      <div class="kpi-value">{{ '%.0f'|format((kpis.drafts.avg_response_seconds | default(0)) / 60) }}m</div>
+      <div class="kpi-value">{{ '%.0f'|format((kpis['drafts']['avg_response_seconds'] | default(0)) / 60) }}m</div>
       <div class="kpi-label">Avg Response</div>
       <div class="kpi-subtext">time to approve</div>
     </div>
 
     <div class="kpi-card">
-      <div class="kpi-value">{{ kpis.reservations.active_stays | default(0) }}</div>
+      <div class="kpi-value">{{ kpis['reservations']['active_stays'] | default(0) }}</div>
       <div class="kpi-label">Active Stays</div>
       <div class="kpi-subtext">in progress</div>
     </div>
