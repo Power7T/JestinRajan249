@@ -515,7 +515,7 @@
       <summary style="cursor:pointer;font-size:0.82rem;color:#0d6efd">Paste your Airbnb listing URL to auto-fill</summary>
       <form id="prefill-form" style="display:flex;gap:0.5rem;align-items:center;margin-top:0.4rem;flex-wrap:wrap">
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <input type="url" id="listing_url" name="listing_url" placeholder="https://www.airbnb.com/rooms/12345678"
+        <input type="text" id="listing_url" name="listing_url" placeholder="https://www.airbnb.com/rooms/12345678"
                style="font-size:0.82rem;padding:5px 10px;border:1px solid #ced4da;border-radius:6px;flex:1;min-width:200px">
         <button type="submit" id="extract-btn" class="btn btn-primary btn-sm">Extract iCal →</button>
         <span id="extract-status" style="font-size:0.82rem;color:#6c757d;margin-left:0.5rem"></span>
