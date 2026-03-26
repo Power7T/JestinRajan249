@@ -2675,17 +2675,30 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
             original_title = title  # Keep original for location extraction
 
             # Extract location from original title first
-            # Pattern: "Name - Category in City, State, Country"
-            if " in " in title:
-                location_part = title.split(" in ", 1)[-1].strip()  # Everything after " in "
-                if "," in location_part:
-                    location_commas = location_part.split(",")
-                    if len(location_commas) >= 3:
-                        city = location_commas[-3].strip()
-                        state = location_commas[-2].strip()
-                        country = location_commas[-1].strip()
-                        if all(2 <= len(x) < 50 for x in [city, state, country]):
-                            result["property_city"] = f"{city}, {state}, {country}"[:80]
+            # Look for the cleanest "City, State, Country" pattern
+            if "," in title:
+                # Find all comma-separated sequences
+                parts = title.split(",")
+
+                # Work backwards to find City, State, Country
+                # Skip parts with " - " or other separators
+                cleaned_parts = []
+                for part in reversed(parts):
+                    part = part.strip()
+                    # Skip if contains hyphen followed by text (likely category info)
+                    if " - " in part or "Rent" in part or "Apartment" in part or "Villa" in part:
+                        continue
+                    # Only keep simple location words
+                    if 2 <= len(part) < 30 and part.replace(" ", "").isalpha():
+                        cleaned_parts.insert(0, part)
+                    if len(cleaned_parts) == 3:
+                        break
+
+                if len(cleaned_parts) >= 3:
+                    city = cleaned_parts[-3]
+                    state = cleaned_parts[-2]
+                    country = cleaned_parts[-1]
+                    result["property_city"] = f"{city}, {state}, {country}"[:80]
 
             # Extract property name: take only the part before the first " - "
             if " - " in original_title:
