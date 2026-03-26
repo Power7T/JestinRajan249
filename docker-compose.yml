@@ -178,6 +178,7 @@ services:
       SENTRY_DSN:              ${SENTRY_DSN:-}
       WORKERS:                 ${WORKERS:-2}
       PORT:                    8000
+      FLAG_CONVERSATION_VIEW:  "true"
     volumes:
       - ./SKILL.md:/app/SKILL.md:ro
       - ./airbnb-host/SKILL.md:/app/airbnb-host/SKILL.md:ro
