@@ -980,7 +980,11 @@ def login_post(
 @app.post("/signup", response_class=HTMLResponse)
 def signup_post(
     request: Request,
+    first_name: str = Form(...),
+    last_name:  str = Form(...),
     email:      str = Form(...),
+    country:    str = Form(...),
+    phone:      str = Form(...),
     password:   str = Form(...),
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
@@ -996,7 +1000,11 @@ def signup_post(
                                           {"request": request, "error": "Password must be 8+ characters"})
     ver_token = secrets.token_urlsafe(32)
     tenant = Tenant(
+        first_name=first_name.strip(),
+        last_name=last_name.strip(),
         email=email,
+        country=country.strip(),
+        phone=phone.strip(),
         password_hash=hash_password(password),
         verification_token=_store_token(ver_token),
         verification_sent_at=datetime.now(timezone.utc),

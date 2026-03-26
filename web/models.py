@@ -89,6 +89,12 @@ class Tenant(Base):
     is_active:    Mapped[bool]     = mapped_column(Boolean, default=True)
     created_at:   Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
+    # User profile
+    first_name:   Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    last_name:    Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    phone:        Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    country:      Mapped[Optional[str]] = mapped_column(String(2), nullable=True)
+
     # Email verification
     email_verified:      Mapped[bool]           = mapped_column(Boolean, default=False)
     verification_token:  Mapped[Optional[str]]  = mapped_column(String(128), nullable=True, index=True)
