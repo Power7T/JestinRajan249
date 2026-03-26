@@ -2721,32 +2721,50 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
                     result["property_type"] = ptype.capitalize()
                     break
 
-        # Guests from structured data or text
-        for tag in soup.find_all(["span", "li", "div"]):
+        # Guests from structured data or text - more flexible search
+        guest_count_found = False
+        for tag in soup.find_all(["span", "li", "div", "p"]):
+            if guest_count_found:
+                break
             t = tag.get_text(strip=True)
             if not "{" in t and not "[" in t:  # Skip JSON-like strings
                 t_lower = t.lower()
-                if "guest" in t_lower and any(c.isdigit() for c in t):
-                    num = "".join(c for c in t if c.isdigit())[:2]
+                # Look for "X guests", "X guest", or standalone digit with guest context
+                guest_match = _re.search(r'(\d+)\s*guest', t_lower)
+                if guest_match:
+                    num = guest_match.group(1)
                     if num and int(num) <= 16:  # Reasonable guest count
                         result.setdefault("max_guests", num)
+                        guest_count_found = True
                         break
 
-        # Check-in / check-out from text (skip JSON)
+        # Check-in / check-out from text (more flexible - look for time patterns)
+        # First pass: look for explicit "check-in" or "check-out" with time
         for tag in soup.find_all(string=True):
             t_str = tag.strip()
-            if "{" in t_str or "[" in t_str:  # Skip JSON
+            if "{" in t_str or "[" in t_str or len(t_str) < 5:  # Skip JSON and very short text
                 continue
             t = t_str.lower()
-            # Look for time patterns like "3:00 PM" or "3 PM"
-            if "check-in" in t and _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I):
+            # Look for "check-in" or "check out" followed by time
+            if ("check-in" in t or "check in" in t) and _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I):
                 time_match = _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I)
                 if time_match:
                     result.setdefault("check_in_time", time_match.group(0))
-            if "check-out" in t and _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I):
+            if ("check-out" in t or "check out" in t) and _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I):
                 time_match = _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I)
                 if time_match:
                     result.setdefault("check_out_time", time_match.group(0))
+
+        # Fallback: if no check-in/out found, look for any time patterns near "check" text
+        if "check_in_time" not in result or "check_out_time" not in result:
+            # Get all text and look for check-in/out sections
+            page_text = soup.get_text()
+            for match in _re.finditer(r'check[- ]?in[:\s]*(\d{1,2}:\d{2}\s*(?:am|pm))', page_text, _re.I):
+                if "check_in_time" not in result:
+                    result["check_in_time"] = match.group(1).strip()
+            for match in _re.finditer(r'check[- ]?out[:\s]*(\d{1,2}:\d{2}\s*(?:am|pm))', page_text, _re.I):
+                if "check_out_time" not in result:
+                    result["check_out_time"] = match.group(1).strip()
 
         if not result:
             return JSONResponse({"error": "Could not extract listing details. Please fill in manually."})
