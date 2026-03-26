@@ -60,6 +60,9 @@ WA_NOTIFY_URL  = f"{WA_BOT_URL}/notify-host"
 INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
 
 STATE_FILE = pathlib.Path(__file__).parent / "calendar_state.json"
+HB_CAL_FILE = pathlib.Path(__file__).parent / "heartbeat_calendar.json"
+
+_poll_count = 0  # module-level counter for heartbeat
 
 # ---------------------------------------------------------------------------
 # State  —  tracks which events have already triggered notifications
@@ -87,6 +90,22 @@ def _save_state(state: dict):
     tmp = STATE_FILE.with_suffix(".tmp")
     tmp.write_text(json.dumps(state, indent=2))
     tmp.replace(STATE_FILE)
+
+
+def _write_heartbeat_cal(listings: int = 0):
+    """Atomically write heartbeat after each successful poll cycle."""
+    global _poll_count
+    _poll_count += 1
+    data = {
+        "ts":       time.time(),
+        "pid":      os.getpid(),
+        "polls":    _poll_count,
+        "listings": listings,
+        "status":   "ok",
+    }
+    tmp = HB_CAL_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data))
+    tmp.replace(HB_CAL_FILE)
 
 # ---------------------------------------------------------------------------
 # Auth header (shared secret with router + WhatsApp bot)
@@ -479,6 +498,8 @@ def run():
                     check_cleaner_brief(booking, label, state, now)
                     check_post_checkout(booking, label, state, now)
             fail_streak = 0
+            # Write heartbeat after successful poll
+            _write_heartbeat_cal(listings=len(ICAL_URLS))
         except Exception as exc:
             fail_streak += 1
             backoff = min(POLL_MINUTES * 60 * (2 ** (fail_streak - 1)), _MAX_BACKOFF)

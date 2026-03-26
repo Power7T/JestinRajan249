@@ -23,12 +23,15 @@ import json
 import pathlib
 import logging
 import time
+import urllib.request as _ur
 from datetime import datetime, timezone
+
+_PROCESS_START = time.time()
 from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
 import anthropic
 from filelock import FileLock
@@ -57,6 +60,14 @@ DRAFT_TTL_DAYS    = int(os.getenv("DRAFT_TTL_DAYS", "7"))
 
 PENDING_FILE      = pathlib.Path(__file__).parent / "pending_drafts.json"
 PENDING_LOCK      = FileLock(str(PENDING_FILE) + ".lock")
+
+# Health check config
+WA_BOT_PORT       = int(os.getenv("WA_BOT_PORT", "7772"))
+HEARTBEAT_DIR     = pathlib.Path(__file__).parent
+HB_EMAIL          = HEARTBEAT_DIR / "heartbeat_email.json"
+HB_CAL            = HEARTBEAT_DIR / "heartbeat_calendar.json"
+HB_STALE_EMAIL    = 90    # seconds — email polls every 30s, 3× tolerance
+HB_STALE_CAL      = 300   # seconds — calendar polls every 30min, generous tolerance
 
 _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -233,9 +244,177 @@ class ApproveRequest(BaseModel):
     edited_text: Optional[str] = None
 
 
+class ServiceStatus(BaseModel):
+    name: str
+    status: str          # "ok" | "stale" | "down" | "unknown"
+    detail: Optional[str] = None
+    last_ts: Optional[float] = None
+    polls: Optional[int] = None
+
+
+class StatusResponse(BaseModel):
+    router: dict
+    whatsapp: ServiceStatus
+    email: ServiceStatus
+    calendar: ServiceStatus
+    uptime_s: float
+    checked_at: str
+
+
+# ---------------------------------------------------------------------------
+# Health check helpers
+# ---------------------------------------------------------------------------
+
+def _read_heartbeat(path: pathlib.Path, stale_s: int) -> ServiceStatus:
+    """
+    Read a heartbeat JSON file. Returns status: ok, stale, or unknown.
+    """
+    name = path.stem.replace("heartbeat_", "")
+    if not path.exists():
+        return ServiceStatus(name=name, status="unknown",
+                             detail="heartbeat file not found")
+    try:
+        data = json.loads(path.read_text())
+        ts = float(data.get("ts", 0))
+        age = time.time() - ts
+        st = "ok" if age < stale_s else "stale"
+        return ServiceStatus(
+            name=name,
+            status=st,
+            detail=f"age={age:.0f}s pid={data.get('pid')}",
+            last_ts=ts,
+            polls=data.get("polls"),
+        )
+    except Exception as exc:
+        return ServiceStatus(name=name, status="unknown", detail=str(exc))
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "version": "1.1.0"}
+
+
+def _status_html(s: StatusResponse) -> HTMLResponse:
+    """Render status as a dark-theme HTML table."""
+    def row_color(st: str) -> str:
+        return {"ok": "#16a34a", "stale": "#d97706",
+                "down": "#dc2626", "unknown": "#6b7280"}.get(st, "#6b7280")
+
+    def svc_row(svc: ServiceStatus) -> str:
+        c = row_color(svc.status)
+        return (
+            f"<tr>"
+            f"<td style='padding:8px 12px;font-weight:600'>{svc.name}</td>"
+            f"<td style='padding:8px 12px'>"
+            f"  <span style='color:{c};font-weight:700'>{svc.status.upper()}</span>"
+            f"</td>"
+            f"<td style='padding:8px 12px;color:#6b7280;font-size:0.85em'>"
+            f"  {svc.detail or ''}"
+            f"</td>"
+            f"<td style='padding:8px 12px;color:#6b7280;font-size:0.85em'>"
+            f"  {('polls=' + str(svc.polls)) if svc.polls is not None else ''}"
+            f"</td>"
+            f"</tr>"
+        )
+
+    rows = (
+        svc_row(ServiceStatus(name="router", status="ok",
+                              detail=f"uptime {s.uptime_s:.0f}s"))
+        + svc_row(s.whatsapp)
+        + svc_row(s.email)
+        + svc_row(s.calendar)
+    )
+
+    html = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Airbnb Host Pipeline — Status</title>
+  <style>
+    *{{box-sizing:border-box;margin:0;padding:0}}
+    body{{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;
+          display:flex;justify-content:center;padding:2rem 1rem}}
+    .card{{background:#1e293b;border:1px solid #334155;border-radius:12px;
+           padding:1.5rem 2rem;max-width:700px;width:100%}}
+    h1{{font-size:1.1rem;font-weight:700;margin-bottom:0.25rem;color:#f1f5f9}}
+    .sub{{font-size:0.78rem;color:#64748b;margin-bottom:1.5rem}}
+    table{{width:100%;border-collapse:collapse}}
+    th{{text-align:left;padding:6px 12px;font-size:0.72rem;text-transform:uppercase;
+        letter-spacing:.06em;color:#64748b;border-bottom:1px solid #334155}}
+    tr:not(:last-child) td{{border-bottom:1px solid #1e293b}}
+    tr:hover td{{background:#273549}}
+    .footer{{margin-top:1.25rem;font-size:0.72rem;color:#475569;text-align:right}}
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Airbnb Host — Pipeline Status</h1>
+  <p class="sub">Checked at {s.checked_at} &nbsp;|&nbsp; Router uptime {s.uptime_s:.0f}s</p>
+  <table>
+    <thead><tr>
+      <th>Service</th><th>Status</th><th>Detail</th><th>Polls</th>
+    </tr></thead>
+    <tbody>{rows}</tbody>
+  </table>
+  <p class="footer">
+    <a href="/status" style="color:#60a5fa">JSON</a>
+    &nbsp;&middot;&nbsp;
+    <a href="/health" style="color:#60a5fa">Liveness</a>
+  </p>
+</div>
+</body></html>"""
+    return HTMLResponse(content=html)
+
+
+@app.get("/status")
+def status(fmt: Optional[str] = None):
+    """
+    Aggregate health of all four pipeline services.
+    ?fmt=html returns a minimal HTML table.
+    Default: JSON.
+    """
+    # 1. WhatsApp bot — probe its /health endpoint
+    wa_status: ServiceStatus
+    try:
+        with _ur.urlopen(
+            f"http://127.0.0.1:{WA_BOT_PORT}/health", timeout=2
+        ) as resp:
+            wa_data = json.loads(resp.read())
+        wa_status = ServiceStatus(
+            name="whatsapp",
+            status="ok" if wa_data.get("status") == "ok" else "down",
+            detail=(f"mode={wa_data.get('mode')} "
+                    f"connected={wa_data.get('connected')} "
+                    f"uptime={wa_data.get('uptime_s')}s"),
+        )
+    except Exception as exc:
+        wa_status = ServiceStatus(name="whatsapp", status="down",
+                                  detail=str(exc))
+
+    # 2. Email watcher — heartbeat file
+    email_st = _read_heartbeat(HB_EMAIL, HB_STALE_EMAIL)
+
+    # 3. Calendar watcher — heartbeat file (missing is ok if not configured)
+    cal_st = _read_heartbeat(HB_CAL, HB_STALE_CAL)
+    ical_url = os.getenv("AIRBNB_ICAL_URL") or os.getenv("AIRBNB_ICAL_URLS")
+    if cal_st.status == "unknown" and not ical_url:
+        cal_st = ServiceStatus(name="calendar", status="ok",
+                               detail="not configured (no AIRBNB_ICAL_URL)")
+
+    uptime = time.time() - _PROCESS_START
+    payload = StatusResponse(
+        router={"status": "ok", "version": "1.1.0"},
+        whatsapp=wa_status,
+        email=email_st,
+        calendar=cal_st,
+        uptime_s=round(uptime, 1),
+        checked_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+    if fmt == "html":
+        return _status_html(payload)
+    return payload
 
 
 @app.post("/classify", response_model=ClassifyResponse)

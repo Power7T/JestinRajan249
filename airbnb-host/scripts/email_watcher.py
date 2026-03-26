@@ -63,8 +63,10 @@ WA_NOTIFY_URL   = f"http://127.0.0.1:{os.getenv('WA_BOT_PORT', '7772')}/notify-h
 INTERNAL_TOKEN  = os.getenv("INTERNAL_TOKEN", "")
 
 SEEN_FILE       = pathlib.Path(__file__).parent / "seen_emails.json"
+HB_EMAIL_FILE   = pathlib.Path(__file__).parent / "heartbeat_email.json"
 
 _AIRBNB_SENDERS = ("noreply@airbnb.com", "@airbnb.com", "@messaging.airbnb.com")
+_poll_count     = 0  # module-level counter for heartbeat
 
 # Message length sanity bounds (characters)
 _MSG_MIN_LEN = 10
@@ -96,6 +98,22 @@ def _save_seen(seen: set):
     tmp = SEEN_FILE.with_suffix(".tmp")
     tmp.write_text(json.dumps(sorted(seen)))
     tmp.replace(SEEN_FILE)   # atomic
+
+
+def _write_heartbeat(last_email: str = ""):
+    """Atomically write heartbeat after each successful poll cycle."""
+    global _poll_count
+    _poll_count += 1
+    data = {
+        "ts":         time.time(),
+        "pid":        os.getpid(),
+        "polls":      _poll_count,
+        "last_email": last_email,
+        "status":     "ok",
+    }
+    tmp = HB_EMAIL_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data))
+    tmp.replace(HB_EMAIL_FILE)   # atomic on POSIX
 
 # ---------------------------------------------------------------------------
 # IMAP connection — with socket timeout to prevent hangs
@@ -306,6 +324,9 @@ def run():
                 _save_seen(seen)
             c.logout()
             fail_streak = 0   # reset on success
+            # Write heartbeat after successful poll
+            last_email = item["msg"].get("Subject", "") if messages else ""
+            _write_heartbeat(last_email=last_email)
         except KeyboardInterrupt:
             log.info("Email watcher stopped.")
             break

@@ -46,6 +46,8 @@ const INTERNAL_TOKEN  = process.env.INTERNAL_TOKEN || "";
 const MAX_BODY_BYTES  = 65536;
 const AIRBNB_LISTING  = (process.env.AIRBNB_LISTING_URL || "").trim();
 
+const _BOT_START_MS = Date.now();  // Track uptime for /health endpoint
+
 // SaaS bridge config (only used when WA_MODE=saas_bridge)
 const WEB_APP_URL     = (process.env.WEB_APP_URL || "").replace(/\/$/, "");
 const BOT_API_TOKEN   = (process.env.BOT_API_TOKEN || "").trim();
@@ -275,6 +277,7 @@ for (const [type, list] of Object.entries(VENDORS)) {
 // Auth persisted in .baileys_auth/ — no re-scan needed after first pairing.
 // ---------------------------------------------------------------------------
 let sock = null;
+let _waConnected = false;  // Track connection state for /health endpoint
 
 /** Send a text message via the active WhatsApp socket */
 async function sendMsg(jid, text) {
@@ -306,12 +309,14 @@ async function connectToWhatsApp() {
       qrcode.generate(qr, { small: true });
     }
     if (connection === "close") {
+      _waConnected = false;
       const code = lastDisconnect?.error?.output?.statusCode;
       const loggedOut = code === DisconnectReason.loggedOut;
       console.warn(`⚠️  Disconnected (code=${code}) — ${loggedOut ? "logged out, delete .baileys_auth to re-pair" : "reconnecting…"}`);
       if (!loggedOut) await connectToWhatsApp();
     }
     if (connection === "open") {
+      _waConnected = true;
       if (WA_MODE === "saas_bridge") {
         console.log(`✅  Bot ready | Host: ${HOST_NUMBER} | Mode: saas_bridge | App: ${WEB_APP_URL}\n`);
         // Start adaptive polling for outbound messages
@@ -1075,6 +1080,18 @@ function buildDraftNotice(draft_id, guestName, draft, source) {
 // HTTP server — calendar_watcher + email_watcher call these endpoints
 // ---------------------------------------------------------------------------
 const server = http.createServer((req, res) => {
+  // ── GET /health — liveness check (no auth) ─────────────────────────────
+  if (req.method === "GET" && req.url === "/health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      status: "ok",
+      mode: WA_MODE,
+      connected: _waConnected,
+      uptime_s: Math.floor((Date.now() - _BOT_START_MS) / 1000),
+    }));
+    return;
+  }
+
   if (req.method !== "POST") { res.writeHead(405); res.end(); return; }
 
   // Auth check
