@@ -281,13 +281,62 @@ def _gdpr_data_retention_job():
         db.close()
 
 
+def _baileys_retry_stale_job():
+    """Background job to retry stale in_transit Baileys messages. (Baileys fix #2)"""
+    from web.redis_client import get_redis
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+        stale_cutoff = now - timedelta(minutes=5)
+
+        # Find messages stuck in in_transit for >5 minutes
+        stale_msgs = db.query(BaileysOutbound).filter(
+            BaileysOutbound.status == "in_transit",
+            BaileysOutbound.created_at < stale_cutoff
+        ).all()
+
+        r = get_redis()
+        retried = 0
+        failed = 0
+
+        for row in stale_msgs:
+            if row.retry_count >= 3:
+                # Max retries exceeded — mark as failed
+                row.status = "failed"
+                row.delivered = False
+                row.error_reason = "Max retries exceeded — message stuck in transit"
+                failed += 1
+            else:
+                # Re-queue to pending and increment retry counter
+                row.status = "pending"
+                row.retry_count += 1
+                row.last_retry_at = now
+                # Re-push to Redis queue if available
+                if r:
+                    try:
+                        msg = json.dumps({"to": row.to_phone, "text": row.text, "db_id": row.id})
+                        r.rpush(f"baileys_out:{row.tenant_id}", msg)
+                        r.expire(f"baileys_out:{row.tenant_id}", 172800)
+                    except Exception as exc:
+                        log.warning("[%s] Failed to re-queue Baileys message %d: %s", row.tenant_id, row.id, exc)
+                retried += 1
+
+        db.commit()
+        log.info("Baileys stale message retry job: retried=%d, failed=%d", retried, failed)
+    except Exception as e:
+        log.error("Baileys retry job failed: %s", str(e))
+        db.rollback()
+    finally:
+        db.close()
+
+
 async def lifespan(app: FastAPI):
     _startup_checks()
     init_db()
     validate_smtp_config()  # Validate SMTP at startup — fail fast, not on first email send
     worker_manager.start_all_workers()
 
-    # Start background scheduler for GDPR cleanup job
+    # Start background scheduler for GDPR cleanup and Baileys retry jobs
     scheduler = BackgroundScheduler()
     scheduler.add_job(
         _gdpr_data_retention_job,
@@ -296,8 +345,15 @@ async def lifespan(app: FastAPI):
         name="GDPR Data Retention",
         replace_existing=True
     )
+    scheduler.add_job(
+        _baileys_retry_stale_job,
+        "interval", minutes=5,  # Every 5 minutes (Baileys fix #2)
+        id="baileys_retry_stale",
+        name="Baileys Stale Message Retry",
+        replace_existing=True
+    )
     scheduler.start()
-    log.info("Scheduled background jobs started (cleanup at 02:00 UTC daily)")
+    log.info("Scheduled background jobs started (cleanup at 02:00 UTC daily, Baileys retry every 5 min)")
 
     flags.log_state()  # Log all feature flag values at startup
     log.info("Airbnb Host Assistant web app started")
@@ -743,6 +799,16 @@ def _auth_bot(request: Request, db: Session) -> TenantConfig:
                 raise HTTPException(status_code=401, detail="Bot token expired — regenerate in settings")
             return cfg
     raise HTTPException(status_code=401, detail="Invalid bot token")
+
+
+def _bot_token_expiry_warning(cfg: TenantConfig) -> dict:
+    """Return expiry warning dict if token expires within 7 days. (Baileys fix #8)"""
+    if cfg.bot_api_token_expires_at:
+        days_left = (cfg.bot_api_token_expires_at - datetime.now(timezone.utc)).days
+        if 0 <= days_left <= 7:
+            return {"token_expires_in_days": days_left,
+                    "warning": f"Bot token expires in {days_left} day(s). Regenerate in Settings."}
+    return {}
 
 
 def _validate_phone_number(phone: str) -> bool:
@@ -1697,8 +1763,8 @@ def _queue_baileys_outbound(tenant_id: str, to_phone: str, text: str, db: Sessio
         return
 
     r = get_redis()
-    # Generate idempotency key to prevent duplicate sends (Improvement #6)
-    idempotency_key = f"{tenant_id}:{to_phone}:{hashlib.md5((text + str(time.time())).encode()).hexdigest()}"
+    # Generate idempotency key to prevent duplicate sends — guaranteed unique via uuid (Baileys fix #3)
+    idempotency_key = f"{tenant_id}:{to_phone}:{uuid4().hex}"
 
     # Always persist to DB first — durable audit trail regardless of Redis (Improvement #4)
     try:
@@ -3629,6 +3695,7 @@ def api_wa_pending(request: Request, db: Session = Depends(get_db)):
     rate_limit(f"wa:poll:{cfg.tenant_id}", 100, 60)
 
     result = _pop_baileys_outbound(cfg.tenant_id, db)
+    result.update(_bot_token_expiry_warning(cfg))  # Baileys fix #8: include token expiry warning
     return JSONResponse(result)
 
 
@@ -3654,6 +3721,7 @@ async def api_wa_inbound(request: Request, db: Session = Depends(get_db)):
 
     if from_phone and text:
         _handle_inbound_wa(cfg.tenant_id, from_phone, text, db)
+        log.info("[%s] Inbound WA message from ***%s received and queued for processing", cfg.tenant_id, from_phone[-4:] if from_phone else "")  # Baileys fix #9
     return JSONResponse({"status": "ok"})
 
 
@@ -3669,6 +3737,8 @@ async def api_wa_callback(request: Request, db: Session = Depends(get_db)):
         require_channel(cfg, PLAN_BAILEYS)
     except HTTPException:
         raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
+
+    rate_limit(f"wa:callback:{cfg.tenant_id}", 50, 60)  # Baileys fix #1: rate limit callback requests
 
     body     = await request.json()
     action   = body.get("action", "")
@@ -3709,7 +3779,10 @@ async def api_wa_callback(request: Request, db: Session = Depends(get_db)):
             db.add(cb)
             db.commit()
 
-        return JSONResponse({"status": "ok"})
+        log.info("[%s] WA callback processed: action=%s draft_id=%s", tenant_id, action, draft_id)  # Baileys fix #9
+        result = {"status": "ok"}
+        result.update(_bot_token_expiry_warning(cfg))  # Baileys fix #8: include token expiry warning
+        return JSONResponse(result)
     except Exception as e:
         # Better error context for debugging (Improvement #9)
         log.error("[%s] Failed to process callback: action=%s draft_id=%s error=%s",
@@ -3762,6 +3835,8 @@ async def api_wa_ack(request: Request, db: Session = Depends(get_db)):
     except HTTPException:
         raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
 
+    rate_limit(f"wa:ack:{cfg.tenant_id}", 100, 60)  # Baileys fix #1: rate limit ack requests
+
     body = await request.json()
     batch_id = body.get("batch_id", "")
     tenant_id = cfg.tenant_id
@@ -3800,6 +3875,8 @@ async def api_wa_heartbeat(request: Request, db: Session = Depends(get_db)):
     except HTTPException:
         raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
 
+    rate_limit(f"wa:heartbeat:{cfg.tenant_id}", 20, 60)  # Baileys fix #1: rate limit heartbeat requests
+
     tenant_id = cfg.tenant_id
 
     try:
@@ -3814,12 +3891,14 @@ async def api_wa_heartbeat(request: Request, db: Session = Depends(get_db)):
             status="pending"
         ).count()
 
-        log.debug("[%s] Heartbeat received. Pending count: %d", tenant_id, pending_count)
-        return JSONResponse({
+        log.info("[%s] Heartbeat received. Pending count: %d", tenant_id, pending_count)  # Baileys fix #9: log success
+        result = {
             "status": "alive",
             "pending_count": pending_count,
             "next_poll_in_seconds": 10
-        })
+        }
+        result.update(_bot_token_expiry_warning(cfg))  # Baileys fix #8: include token expiry warning
+        return JSONResponse(result)
     except Exception as e:
         log.error("[%s] Failed to process heartbeat: %s", tenant_id, str(e))
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
@@ -3867,14 +3946,16 @@ def api_download_baileys(request: Request, db: Session = Depends(get_db)):
         "engines": {"node": ">=22.0.0"},
     }, indent=2)
 
+    phone_comment = ("# Phone pre-filled from your settings" if cfg.whatsapp_number
+                     else "# IMPORTANT: Replace HOST_WHATSAPP_NUMBER with the WhatsApp number you will scan QR with")
     env_content = (
         f"# HostAI Baileys Bot — auto-generated for your account\n"
         f"WA_MODE=saas_bridge\n"
         f"WEB_APP_URL={APP_BASE_URL}\n"
         f"TENANT_ID={tenant_id}\n"
         f"BOT_API_TOKEN={raw_token}\n"
-        f"HOST_WHATSAPP_NUMBER=+1234567890\n"
-        f"# Replace HOST_WHATSAPP_NUMBER with the phone number you will scan QR with\n"
+        f"HOST_WHATSAPP_NUMBER={cfg.whatsapp_number or '+1234567890'}\n"
+        f"{phone_comment}\n"
     )
 
     setup_sh = (
@@ -6472,19 +6553,35 @@ def admin_system(request: Request, db: Session = Depends(get_db)):
     configs = {c.tenant_id: c for c in db.query(TenantConfig).all()}
 
     system_rows = []
+    now_utc = datetime.now(timezone.utc)
     for t in tenants:
         cfg          = configs.get(t.id)
         ws           = worker_manager.worker_status(t.id)
         email_conf   = bool(cfg and cfg.imap_host and cfg.email_address)
         cal_conf     = bool(cfg and cfg.ical_urls)
         any_dead     = (email_conf and not ws["email_running"]) or (cal_conf and not ws["cal_running"])
+
+        # Baileys fix #7: bot status tracking
+        bot_online = bool(cfg and cfg.bot_last_heartbeat and
+                         (now_utc - cfg.bot_last_heartbeat).total_seconds() < 600)
+        baileys_pending = db.query(BaileysOutbound).filter_by(
+            tenant_id=t.id, status="pending"
+        ).count() if (cfg and cfg.wa_mode == "baileys") else 0
+        bot_heartbeat_age_min = None
+        if cfg and cfg.bot_last_heartbeat:
+            bot_heartbeat_age_min = max(0, (now_utc - cfg.bot_last_heartbeat).total_seconds() // 60)
+
         system_rows.append({
-            "tenant":        t,
-            "cfg":           cfg,
-            "ws":            ws,
-            "email_conf":    email_conf,
-            "cal_conf":      cal_conf,
-            "any_dead":      any_dead,
+            "tenant":              t,
+            "cfg":                 cfg,
+            "ws":                  ws,
+            "email_conf":          email_conf,
+            "cal_conf":            cal_conf,
+            "any_dead":            any_dead,
+            "bot_online":          bot_online,
+            "baileys_pending":     baileys_pending,
+            "wa_mode":             cfg.wa_mode if cfg else None,
+            "bot_heartbeat_age_min": bot_heartbeat_age_min,
         })
 
     system_rows.sort(key=lambda r: (not r["any_dead"], r["tenant"].email))

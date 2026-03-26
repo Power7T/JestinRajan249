@@ -46,6 +46,46 @@ _MAX_BACKOFF   = 600  # 10 minutes max
 
 
 # ---------------------------------------------------------------------------
+# Baileys Integration (fix #6)
+# ---------------------------------------------------------------------------
+
+def _notify_host_via_baileys(tenant_id: str, cfg: dict, guest_name: str, db):
+    """Notify host via Baileys when a PMS guest message creates a non-auto-sent draft. (Baileys fix #6)"""
+    from web.models import BaileysOutbound
+    from web.redis_client import get_redis
+    from uuid import uuid4
+
+    # Only send if notifications enabled and using Baileys
+    if not (cfg.get("notify_host_on_guest_msg") and cfg.get("wa_mode") == "baileys" and cfg.get("whatsapp_number")):
+        return
+
+    notify_phone = cfg.get("host_notify_phone") or cfg.get("whatsapp_number")
+    text = f"📩 New guest message from {guest_name}. Draft ready in your HostAI dashboard."
+    ikey = f"{tenant_id}:{notify_phone}:{uuid4().hex}"
+
+    try:
+        row = BaileysOutbound(
+            tenant_id=tenant_id,
+            to_phone=notify_phone,
+            text=text,
+            status="pending",
+            idempotency_key=ikey
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+
+        r = get_redis()
+        if r:
+            r.rpush(f"baileys_out:{tenant_id}",
+                    json.dumps({"to": notify_phone, "text": text, "db_id": row.id}))
+            r.expire(f"baileys_out:{tenant_id}", 172800)
+        log.info("[%s] Host notified via Baileys for PMS message from %s", tenant_id, guest_name)
+    except Exception as exc:
+        log.warning("[%s] Failed to notify host via Baileys (PMS): %s", tenant_id, exc)
+
+
+# ---------------------------------------------------------------------------
 # Config loading
 # ---------------------------------------------------------------------------
 
@@ -366,6 +406,7 @@ def _process_message(tenant_id: str, cfg: dict, msg: PMSMessage,
             draft_text = generate_draft(
                 msg.guest_name, guest_msg, msg_type,
                 property_context=full_ctx,
+                tenant_id=tenant_id  # Fix: missing tenant_id (Baileys fix #6, part 1)
             )
         except RuntimeError as exc:
             log.error("[%s] PMS draft generation failed: %s", tenant_id, exc)
@@ -478,6 +519,10 @@ def _process_message(tenant_id: str, cfg: dict, msg: PMSMessage,
             )
         _mark_processed(db, tenant_id, integration_id, msg.message_id)
         db.commit()
+
+        # ── 9b. Notify host via Baileys if draft not auto-sent ───────────
+        if not auto_send_eligible and _tenant_cfg:
+            _notify_host_via_baileys(tenant_id, _tenant_cfg, msg.guest_name, draft_id, db)
 
         # ── 10. Update reservation counters + sentiment ──────────────────
         if reservation:

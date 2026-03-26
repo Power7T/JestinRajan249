@@ -106,6 +106,8 @@
           <th>Scheduler</th>
           <th>Plan</th>
           <th>Status</th>
+          <th>Bot</th>
+          <th>Queue</th>
           <th></th>
         </tr>
       </thead>
@@ -157,13 +159,31 @@
             {% else %}—{% endif %}
           </td>
 
+          <!-- Baileys fix #7: Bot status column -->
+          <td>
+            {% if row.wa_mode == "baileys" %}
+              <span class="dot {% if row.bot_online %}dot-green{% else %}dot-red{% endif %}"></span>
+              {{ "Online" if row.bot_online else "Offline" }}
+              {% if row.bot_heartbeat_age_min is not none %}
+                <div style="font-size:0.7rem;color:var(--text-3)">{{ row.bot_heartbeat_age_min }}m ago</div>
+              {% endif %}
+            {% else %}—{% endif %}
+          </td>
+
+          <!-- Baileys fix #7: Queue depth column -->
+          <td>
+            {% if row.wa_mode == "baileys" %}
+              <span style="font-weight:600">{{ row.baileys_pending }}</span> pending
+            {% else %}—{% endif %}
+          </td>
+
           <td>
             <a href="/admin/tenants/{{ row.tenant.id }}" class="btn btn-outline btn-sm">View</a>
           </td>
         </tr>
         {% endfor %}
         {% if not system_rows %}
-        <tr><td colspan="7" class="empty">No tenants yet.</td></tr>
+        <tr><td colspan="9" class="empty">No tenants yet.</td></tr>
         {% endif %}
       </tbody>
     </table>
