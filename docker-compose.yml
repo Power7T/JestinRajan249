@@ -218,7 +218,7 @@ services:
       TRUST_PROXY_HEADERS:     ${TRUST_PROXY_HEADERS:-1}
       RUN_EMBEDDED_WORKERS:    "1"
       AUTO_CREATE_TABLES:      "0"
-      AUTO_MIGRATE:            "0"
+      AUTO_MIGRATE:            "1"
       ADMIN_EMAILS:            ${ADMIN_EMAILS:-}
       SESSION_HOURS:           ${SESSION_HOURS:-72}
       META_APP_SECRET:         ${META_APP_SECRET:-}
