@@ -69,7 +69,6 @@ from fastapi.responses import (
 )
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.orm import Session
 
 from web.db import get_db, init_db, SessionLocal
@@ -455,20 +454,16 @@ app.add_middleware(CSRFMiddleware)
 # Global error handlers
 # ---------------------------------------------------------------------------
 
-@app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Handle all HTTP exceptions including 404"""
-    if exc.status_code == 404:
-        if request.url.path.startswith("/api/"):
-            return JSONResponse({"detail": "Not found"}, status_code=404)
-        return templates.TemplateResponse(
-            "error.html",
-            {"request": request, "code": 404, "title": "Page not found",
-             "message": "The page you're looking for doesn't exist."},
-            status_code=404,
-        )
-    # For other status codes, re-raise the exception
-    raise exc
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: HTTPException):
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+    return templates.TemplateResponse(
+        "error.html",
+        {"request": request, "code": 404, "title": "Page not found",
+         "message": "The page you're looking for doesn't exist."},
+        status_code=404,
+    )
 
 
 @app.exception_handler(403)
@@ -7731,9 +7726,11 @@ async def edit_guest_contact(
 # Catch-all 404 handler for unmapped routes
 # ---------------------------------------------------------------------------
 
-@app.get("/{path_name:path}", response_class=HTMLResponse)
-async def catch_all_404(request: Request, path_name: str):
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def catch_all_404(request: Request, path: str):
     """Catch-all handler for any unmatched routes (404 errors)"""
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "Not found"}, status_code=404)
     return templates.TemplateResponse(
         "error.html",
         {
