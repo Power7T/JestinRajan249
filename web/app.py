@@ -7731,17 +7731,23 @@ async def catch_all_404(request: Request, path: str):
     """Catch-all handler for any unmatched routes (404 errors)"""
     if request.url.path.startswith("/api/"):
         return JSONResponse({"detail": "Not found"}, status_code=404)
-    return templates.TemplateResponse(
-        "error.html",
-        {
-            "request": request,
-            "code": 404,
-            "title": "Page not found",
-            "message": "The page you're looking for doesn't exist.",
-            "debug_detail": None,
-        },
-        status_code=404,
-    )
+    try:
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "code": 404,
+                "title": "Page not found",
+                "message": "The page you're looking for doesn't exist."
+            },
+            status_code=404,
+        )
+    except Exception as e:
+        log.error(f"Error rendering 404 template: {e}")
+        return HTMLResponse(
+            "<html><body><h1>404 - Page not found</h1><p>The page you're looking for doesn't exist.</p></body></html>",
+            status_code=404
+        )
 
 
 # ---------------------------------------------------------------------------
