@@ -91,7 +91,7 @@ from web.auth import (
 from web.crypto import encrypt, decrypt
 from web import worker_manager
 from web import billing as billing_mod
-from web.mailer import send_verification_email, send_password_reset_email, send_welcome_email, send_weekly_digest, validate_smtp_config, send_team_invite
+from web.mailer import send_verification_email, send_password_reset_email, send_welcome_email, send_weekly_digest, validate_smtp_config, send_team_invite, send_admin_alert
 from web.billing import (
     PLAN_INFO, ACTIVE_STATUSES, tenant_has_channel, require_channel,
     create_checkout_session, create_portal_session, handle_stripe_webhook,
@@ -6094,7 +6094,6 @@ def simulate_guest(request: Request,
         log.error("[%s] Simulate draft generation failed: %s", tenant_id, exc)
         # Alert admin about missing OpenRouter config
         try:
-            from web.mailer import send_admin_alert
             send_admin_alert(
                 "OpenRouter API key not configured",
                 f"A host ({tenant_id}) attempted to generate a draft but the OpenRouter API key is not set. Configure it at /admin/ai."
