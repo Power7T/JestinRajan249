@@ -999,10 +999,10 @@ def signup_post(
     validate_csrf(request, csrf_token)
     email = email.lower().strip()
     if db.query(Tenant).filter_by(email=email).first():
-        return templates.TemplateResponse("login.html",
+        return templates.TemplateResponse("signup.html",
                                           {"request": request, "error": "Email already registered"})
     if len(password) < 8:
-        return templates.TemplateResponse("login.html",
+        return templates.TemplateResponse("signup.html",
                                           {"request": request, "error": "Password must be 8+ characters"})
     ver_token = secrets.token_urlsafe(32)
     tenant = Tenant(
