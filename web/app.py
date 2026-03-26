@@ -7723,6 +7723,26 @@ async def edit_guest_contact(
 
 
 # ---------------------------------------------------------------------------
+# Catch-all 404 handler for unmapped routes
+# ---------------------------------------------------------------------------
+
+@app.get("/{path_name:path}", response_class=HTMLResponse)
+async def catch_all_404(request: Request, path_name: str):
+    """Catch-all handler for any unmatched routes (404 errors)"""
+    return templates.TemplateResponse(
+        "error.html",
+        {
+            "request": request,
+            "code": 404,
+            "title": "Page not found",
+            "message": "The page you're looking for doesn't exist.",
+            "debug_detail": None,
+        },
+        status_code=404,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
