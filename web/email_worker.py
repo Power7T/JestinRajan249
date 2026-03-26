@@ -154,6 +154,8 @@ def parse_structured_email(
     return _parse_airbnb_email(msg)
 
 
+_SMTP_TIMEOUT = 15  # seconds — prevents hanging on unresponsive SMTP servers
+
 def _send_smtp_reply(cfg: EmailConfig, to: str, subject: str, body: str):
     subject = subject if subject.startswith("Re:") else f"Re: {subject}"
     mime = MIMEMultipart("alternative")
@@ -161,7 +163,7 @@ def _send_smtp_reply(cfg: EmailConfig, to: str, subject: str, body: str):
     mime["To"]      = to
     mime["Subject"] = subject
     mime.attach(MIMEText(body, "plain"))
-    with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port) as smtp:
+    with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=_SMTP_TIMEOUT) as smtp:
         smtp.ehlo()
         smtp.starttls()
         smtp.login(cfg.email_address, cfg.email_password)
@@ -529,7 +531,15 @@ def _process_message(cfg: EmailConfig, parsed: dict, subject: str, db_override=N
             property_context=full_context,
         )
     except RuntimeError as exc:
-        log.error("[%s] Draft generation failed: %s", cfg.tenant_id, exc)
+        log.error("[%s] Draft generation failed: %s — saving as escalation draft", cfg.tenant_id, exc)
+        fallback_id = make_draft_id("email")
+        fallback_text = (
+            f"[AI GENERATION FAILED — MANUAL REPLY REQUIRED]\n\n"
+            f"Guest: {parsed['guest_name']}\n"
+            f"Original message:\n{guest_msg}\n\n"
+            f"Error: {exc}"
+        )
+        _save_draft(cfg.tenant_id, fallback_id, parsed, "complex", None, fallback_text)
         return
 
     draft_id = make_draft_id("email")

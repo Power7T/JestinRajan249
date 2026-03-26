@@ -221,7 +221,6 @@ def _startup_checks() -> None:
     warnings: list[str] = []
 
     # Redis is required for cross-worker rate limiting and Stripe idempotency.
-    # With multiple workers and no Redis, rate limits are per-process only.
     workers = int(os.getenv("WORKERS", "2"))
     if workers > 1 and not os.getenv("REDIS_URL", ""):
         warnings.append(
@@ -230,15 +229,12 @@ def _startup_checks() -> None:
             "across workers."
         )
 
-    # STRIPE_SECRET_KEY must be set for any billing operation.
     if not os.getenv("STRIPE_SECRET_KEY", ""):
         warnings.append(
             "STRIPE_SECRET_KEY is not set. All billing and subscription endpoints "
             "will fail at runtime."
         )
 
-    # INTERNAL_TOKEN should be set when the Baileys WhatsApp bot is deployed
-    # alongside this server so the bot ↔ server channel is authenticated.
     if not os.getenv("INTERNAL_TOKEN", ""):
         warnings.append(
             "INTERNAL_TOKEN is not set. If you are running the Baileys WhatsApp bot "
@@ -249,36 +245,21 @@ def _startup_checks() -> None:
     for warning in warnings:
         log.warning("[startup] %s", warning)
 
-
-def _gdpr_data_retention_job():
-    """Background job to clean up old messages based on tenant retention settings. (GDPR #21)"""
-    db = SessionLocal()
-    try:
-        from web.models import TenantConfig, BaileysOutbound, Draft, ProcessedEmail, ActivityLog, FailedDraftLog, PMSProcessedMessage
-        now = datetime.now(timezone.utc)
-        configs = db.query(TenantConfig).all()
-        
-        total_deleted = 0
-        for cfg in configs:
-            cutoff = now - timedelta(days=cfg.data_retention_days)
-            tid = cfg.tenant_id
-            
-            total_deleted += db.query(BaileysOutbound).filter(BaileysOutbound.tenant_id == tid, BaileysOutbound.created_at < cutoff).delete(synchronize_session=False)
-            total_deleted += db.query(Draft).filter(Draft.tenant_id == tid, Draft.created_at < cutoff).delete(synchronize_session=False)
-            total_deleted += db.query(ProcessedEmail).filter(ProcessedEmail.tenant_id == tid, ProcessedEmail.created_at < cutoff).delete(synchronize_session=False)
-            total_deleted += db.query(ActivityLog).filter(ActivityLog.tenant_id == tid, ActivityLog.timestamp < cutoff).delete(synchronize_session=False)
-            total_deleted += db.query(FailedDraftLog).filter(FailedDraftLog.tenant_id == tid, FailedDraftLog.created_at < cutoff).delete(synchronize_session=False)
-            total_deleted += db.query(PMSProcessedMessage).filter(PMSProcessedMessage.tenant_id == tid, PMSProcessedMessage.created_at < cutoff).delete(synchronize_session=False)
-
-        db.commit()
-        log.info("GDPR data retention cleanup: deleted %d old records", total_deleted)
-    except Exception as e:
-        log.error("Baileys cleanup job failed: %s", str(e))
-        db.rollback()
-    finally:
-        db.close()
+    # Critical security checks — log at CRITICAL so they are never missed
+    from web.billing import WEBHOOK_SECRET
+    if not WEBHOOK_SECRET:
+        log.critical(
+            "STRIPE_WEBHOOK_SECRET is not set. Stripe webhooks will be rejected. "
+            "Set this before going live."
+        )
+    if not os.getenv("FIELD_ENCRYPTION_KEY"):
+        log.critical(
+            "FIELD_ENCRYPTION_KEY is not set. Sensitive fields (email passwords, API keys) "
+            "will not be encrypted. Set this before storing any credentials."
+        )
 
 
+@asynccontextmanager
 async def lifespan(app: FastAPI):
     _startup_checks()
     init_db()
@@ -5088,6 +5069,9 @@ def api_drafts(request: Request, db: Session = Depends(get_db)):
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         raise HTTPException(status_code=401)
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    if not cfg or cfg.subscription_status not in ACTIVE_STATUSES:
+        raise HTTPException(status_code=402, detail="Active subscription required")
     pending = db.query(Draft).filter_by(tenant_id=tenant_id, status="pending") \
                 .order_by(Draft.created_at.desc()).all()
     return [{"id": d.id, "guest_name": d.guest_name, "source": d.source,
@@ -5096,11 +5080,14 @@ def api_drafts(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/api/workers")
-def api_workers(request: Request):
+def api_workers(request: Request, db: Session = Depends(get_db)):
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         raise HTTPException(status_code=401)
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    if not cfg or cfg.subscription_status not in ACTIVE_STATUSES:
+        raise HTTPException(status_code=402, detail="Active subscription required")
     return worker_manager.worker_status(tenant_id)
 
 

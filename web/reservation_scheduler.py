@@ -120,7 +120,8 @@ def _maybe_pre_arrival(r, today, api_key: str, property_context: str, db, tenant
     if r.pre_arrival_sent:
         return
     days_until = (r.checkin - today).days
-    if days_until != _PRE_ARRIVAL_DAYS:
+    # Allow ±1 day window to tolerate UTC vs host-local timezone differences
+    if not (_PRE_ARRIVAL_DAYS - 1 <= days_until <= _PRE_ARRIVAL_DAYS + 1):
         return
 
     from web.classifier import generate_draft, make_draft_id

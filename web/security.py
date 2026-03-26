@@ -172,9 +172,10 @@ def _rate_limit_memory(key: str, max_requests: int, window_seconds: int) -> None
     cutoff = now - window_seconds
     with _lock:
         hits = _windows[key]
+        # Prune expired timestamps from this key's window
         while hits and hits[0] < cutoff:
             hits.pop(0)
-            
+
         if now - _last_prune > 60:
             empty_keys = [k for k, v in list(_windows.items()) if not v or v[-1] < cutoff]
             for k in empty_keys:
