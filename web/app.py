@@ -2674,8 +2674,8 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
                 city = match.group(1).strip()
                 state = match.group(2).strip()
                 country = match.group(3).strip()
-                # Ensure we got actual location components (not too long, meaningful names)
-                if all(5 < len(x) < 50 for x in [city, state, country]):
+                # Ensure we got actual location components (city/state >= 2 chars, not too long)
+                if all(2 <= len(x) < 50 for x in [city, state, country]):
                     result["property_city"] = f"{city}, {state}, {country}"[:80]
 
         # Fallback: Extract location from breadcrumb/meta if not found in property name
