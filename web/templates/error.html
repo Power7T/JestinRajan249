@@ -10,6 +10,12 @@
   <p style="max-width: 400px; margin: 0 auto 1.5rem; color: #6c757d; font-size: 0.9rem; line-height: 1.6">
     {{ message }}
   </p>
+  {% if is_admin(request.session.get("admin_email", "")) and debug_detail %}
+  <details style="margin:2rem auto 1.5rem;max-width:600px;font-size:0.8rem;color:var(--text-3);background:var(--bg-2);padding:1rem;border-radius:var(--radius);border:1px solid var(--border)">
+    <summary style="cursor:pointer;font-weight:600;color:var(--text-2)">Admin debug detail</summary>
+    <pre style="margin-top:0.5rem;overflow-x:auto;white-space:pre-wrap;font-size:0.75rem">{{ debug_detail }}</pre>
+  </details>
+  {% endif %}
   <a href="/dashboard" class="btn btn-primary">Go to dashboard</a>
   &nbsp;
   <a href="javascript:history.back()" class="btn btn-outline">Go back</a>

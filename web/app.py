@@ -52,6 +52,7 @@ import os
 import re
 import secrets
 import time
+import traceback
 import zipfile
 from html import escape
 from contextlib import asynccontextmanager
@@ -187,17 +188,19 @@ if _SENTRY_DSN:
 BASE_DIR  = os.path.dirname(__file__)
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
+_IS_DEV_ENV = _ENVIRONMENT in {"development", "dev", "test"}
+
 # Admin email allowlist — comma-separated in ADMIN_EMAILS env var
 _ADMIN_EMAILS: set = {
     e.strip().lower()
     for e in os.getenv("ADMIN_EMAILS", "").split(",")
     if e.strip()
 }
-_ADMIN_EMAILS.add("chandan@hostai.local")
+# Only add dev email in development mode (admin safeguard)
+if _IS_DEV_ENV:
+    _ADMIN_EMAILS.add("chandan@hostai.local")
 templates.env.globals["is_admin"] = lambda email: bool(email) and email.lower() in _ADMIN_EMAILS
-
-_ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
-_IS_DEV_ENV = _ENVIRONMENT in {"development", "dev", "test"}
 
 _APP_BASE_URL_RAW = os.getenv("APP_BASE_URL", "").strip().rstrip("/")
 if not _APP_BASE_URL_RAW or _APP_BASE_URL_RAW == "https://your-domain.com":
@@ -246,6 +249,20 @@ def _startup_checks() -> None:
             "INTERNAL_TOKEN is not set. If you are running the Baileys WhatsApp bot "
             "alongside this server, set INTERNAL_TOKEN to a shared secret so the "
             "bot-to-server channel is authenticated."
+        )
+
+    # Admin emails must be configured for production
+    if not os.getenv("ADMIN_EMAILS", "").strip():
+        warnings.append(
+            "ADMIN_EMAILS is not set. Admin panel will require hardcoded dev email. "
+            "Set ADMIN_EMAILS=you@yourdomain.com for production access."
+        )
+
+    # SMTP must be configured for all alerting features to work
+    if not os.getenv("SMTP_HOST", "").strip():
+        warnings.append(
+            "SMTP_HOST is not set. All host alerting emails (worker failure, subscription "
+            "expiry, integration failure) and admin alerts will be silently skipped."
         )
 
     for warning in warnings:
@@ -481,7 +498,8 @@ async def server_error_handler(request: Request, exc: Exception):
     return templates.TemplateResponse(
         "error.html",
         {"request": request, "code": 500, "title": "Server error",
-         "message": "Something went wrong on our end. Please try again in a moment."},
+         "message": "Something went wrong on our end. Please try again in a moment.",
+         "debug_detail": traceback.format_exc()},  # Admin-only via template conditional
         status_code=500,
     )
 
@@ -2581,7 +2599,7 @@ async def onboarding_demo(request: Request, db: Session = Depends(get_db)):
     # Use system-wide configuration
     sys_conf = db.query(SystemConfig).first()
     if not sys_conf or not sys_conf.openrouter_api_key_enc:
-        return JSONResponse({"error": "HostAI reply engine is not yet configured by the administrator."})
+        return JSONResponse({"error": "AI reply engine is not available right now. Please try again later."})
 
     try:
         from web.classifier import generate_draft, build_property_context
@@ -2595,7 +2613,7 @@ async def onboarding_demo(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"draft": draft})
     except Exception as exc:
         log.error("[%s] Demo draft failed: %s", tenant_id, exc)
-        return JSONResponse({"error": str(exc)})
+        return JSONResponse({"error": "Demo draft generation failed. Please try again."})
 
 
 @app.post("/onboarding/import-listing")
@@ -3340,12 +3358,18 @@ def admin_update_pricing(plan_key: str, request: Request,
                          display_name: str = Form(...),
                          csrf_token: str = Form(None),
                          db: Session = Depends(get_db)):
-    _require_admin(request, db)
+    admin = _require_admin(request, db)
     validate_csrf(request, csrf_token)
 
     plan = db.query(PlanConfig).filter_by(plan_key=plan_key).first()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
+
+    # Validation
+    if min_units > max_units:
+        raise HTTPException(status_code=400, detail="min_units cannot be greater than max_units")
+    if base_fee < 0 or per_unit_fee < 0:
+        raise HTTPException(status_code=400, detail="Fees cannot be negative")
 
     plan.base_fee_usd = base_fee
     plan.per_unit_fee_usd = per_unit_fee
@@ -3355,7 +3379,19 @@ def admin_update_pricing(plan_key: str, request: Request,
     plan.updated_at = datetime.now(timezone.utc)
 
     db.add(plan)
+
+    # Audit log
+    db.add(ActivityLog(
+        tenant_id=admin.id, event_type="admin_pricing_change",
+        message=f"Plan {plan_key} updated: base_fee={base_fee} per_unit={per_unit_fee} min={min_units} max={max_units} by {admin.email}"
+    ))
     db.commit()
+
+    # Admin alert
+    send_admin_alert(
+        f"Plan pricing changed: {plan_key}",
+        f"Admin: {admin.email}\nPlan: {plan_key}\nbase_fee={base_fee} per_unit={per_unit_fee} min_units={min_units} max_units={max_units}"
+    )
 
     return RedirectResponse(f"/admin/pricing?msg=updated", status_code=302)
 
@@ -3817,7 +3853,7 @@ async def api_wa_callback(request: Request, db: Session = Depends(get_db)):
         # Better error context for debugging (Improvement #9)
         log.error("[%s] Failed to process callback: action=%s draft_id=%s error=%s",
                   tenant_id, action, draft_id, str(e))
-        return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
+        return JSONResponse({"status": "error", "detail": "Internal error — check server logs"}, status_code=500)
 
 
 @app.post("/api/wa/token/generate")
@@ -3890,7 +3926,7 @@ async def api_wa_ack(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         log.error("[%s] Failed to mark messages delivered: %s", tenant_id, str(e))
         db.rollback()
-        return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
+        return JSONResponse({"status": "error", "detail": "Internal error — check server logs"}, status_code=500)
 
 
 @app.post("/api/wa/heartbeat")
@@ -3931,7 +3967,7 @@ async def api_wa_heartbeat(request: Request, db: Session = Depends(get_db)):
         return JSONResponse(result)
     except Exception as e:
         log.error("[%s] Failed to process heartbeat: %s", tenant_id, str(e))
-        return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
+        return JSONResponse({"status": "error", "detail": "Internal error — check server logs"}, status_code=500)
 
 
 @app.get("/api/download/baileys")
@@ -6056,7 +6092,16 @@ def simulate_guest(request: Request,
                                     property_context=property_context, tenant_id=tenant_id)
     except Exception as exc:
         log.error("[%s] Simulate draft generation failed: %s", tenant_id, exc)
-        raise HTTPException(status_code=500, detail="Draft generation failed — check that admin has configured OpenRouter API key")
+        # Alert admin about missing OpenRouter config
+        try:
+            from web.mailer import send_admin_alert
+            send_admin_alert(
+                "OpenRouter API key not configured",
+                f"A host ({tenant_id}) attempted to generate a draft but the OpenRouter API key is not set. Configure it at /admin/ai."
+            )
+        except Exception:
+            pass  # non-critical
+        raise HTTPException(status_code=503, detail="Draft generation is temporarily unavailable. Please try again later.")
 
     draft_id = make_draft_id("simulate")
     db.add(Draft(
@@ -6166,7 +6211,7 @@ def send_digest(request: Request, db: Session = Depends(get_db)):
     }
     ok = send_weekly_digest(tenant.email, stats)
     if not ok:
-        raise HTTPException(status_code=500, detail="Failed to send digest — check SMTP configuration")
+        raise HTTPException(status_code=500, detail="Digest email could not be sent. Please try again later.")
     return JSONResponse({"ok": True})
 
 
@@ -6441,7 +6486,7 @@ def admin_change_plan(
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
-    _require_admin(request, db)
+    admin = _require_admin(request, db)  # Capture admin identity (Admin safeguard)
     validate_csrf(request, csrf_token)
     t   = db.query(Tenant).filter_by(id=tid).first()
     cfg = db.query(TenantConfig).filter_by(tenant_id=tid).first()
@@ -6453,7 +6498,7 @@ def admin_change_plan(
     cfg.subscription_status = sub_status
     db.commit()
     db.add(ActivityLog(tenant_id=t.id, event_type="admin_plan_change",
-                       message=f"Plan set to {plan}/{sub_status} by admin"))
+                       message=f"Plan set to {plan}/{sub_status} by admin {admin.email}"))  # Include admin email
     db.commit()
     return RedirectResponse(f"/admin/tenants/{tid}?msg=plan_updated", status_code=302)
 
@@ -6464,7 +6509,7 @@ def admin_deactivate(
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
-    _require_admin(request, db)
+    admin = _require_admin(request, db)  # Capture admin identity (Admin safeguard)
     validate_csrf(request, csrf_token)
     t = db.query(Tenant).filter_by(id=tid).first()
     if not t:
@@ -6473,7 +6518,7 @@ def admin_deactivate(
     db.commit()
     worker_manager._stop_tenant(t.id)
     db.add(ActivityLog(tenant_id=t.id, event_type="admin_deactivated",
-                       message="Account deactivated by admin"))
+                       message=f"Account deactivated by admin {admin.email}"))  # Include admin email
     db.commit()
     return RedirectResponse(f"/admin/tenants/{tid}?msg=deactivated", status_code=302)
 
@@ -6484,7 +6529,7 @@ def admin_reactivate(
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
-    _require_admin(request, db)
+    admin = _require_admin(request, db)  # Capture admin identity (Admin safeguard)
     validate_csrf(request, csrf_token)
     t = db.query(Tenant).filter_by(id=tid).first()
     if not t:
@@ -6493,7 +6538,7 @@ def admin_reactivate(
     db.commit()
     worker_manager.restart_worker(t.id)
     db.add(ActivityLog(tenant_id=t.id, event_type="admin_reactivated",
-                       message="Account reactivated by admin"))
+                       message=f"Account reactivated by admin {admin.email}"))  # Include admin email
     db.commit()
     return RedirectResponse(f"/admin/tenants/{tid}?msg=reactivated", status_code=302)
 
@@ -6873,9 +6918,11 @@ def admin_ai_save(
     routine_model: str = Form("google/gemini-2.5-flash"),
     fallback_model: str = Form(...),
     sentiment_model: str = Form("openai/gpt-4o-mini"),
+    csrf_token: str = Form(None),
     db: Session = Depends(get_db)
 ):
-    _require_admin(request, db)
+    admin = _require_admin(request, db)
+    validate_csrf(request, csrf_token)  # Admin safeguard
     sys_conf = db.query(SystemConfig).first()
     if not sys_conf:
         sys_conf = SystemConfig()
@@ -6887,6 +6934,13 @@ def admin_ai_save(
     sys_conf.routine_model = routine_model.strip()
     sys_conf.fallback_model = fallback_model.strip()
     sys_conf.sentiment_model = sentiment_model.strip()
+    db.commit()
+
+    # Audit log + admin alert
+    db.add(ActivityLog(
+        tenant_id=admin.id, event_type="admin_ai_config_changed",
+        message=f"AI config updated: primary={primary_model} routine={routine_model} fallback={fallback_model} by {admin.email}"
+    ))
     db.commit()
 
     return RedirectResponse("/admin/ai?msg=saved", status_code=302)

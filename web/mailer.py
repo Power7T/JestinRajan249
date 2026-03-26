@@ -22,6 +22,7 @@ SMTP_PORT    = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER    = os.getenv("SMTP_USER", "")
 SMTP_PASS    = os.getenv("SMTP_PASS", "")
 SMTP_FROM    = os.getenv("SMTP_FROM", SMTP_USER) or "noreply@hostai.app"
+ADMIN_ALERT_EMAIL = os.getenv("ADMIN_ALERT_EMAIL", "")
 
 _ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
 _ALLOW_INSECURE_DEFAULTS = _ENVIRONMENT in {"development", "dev", "test"}
@@ -368,3 +369,20 @@ def send_subscription_expiry_alert(to: str, days_left: int, renew_url: str) -> b
     </div>
     """
     return _send(to, subject, html)
+
+
+def send_admin_alert(subject: str, body: str) -> bool:
+    """Send operational alert to admin. (Admin safeguard)"""
+    to = ADMIN_ALERT_EMAIL
+    if not to:
+        return False  # silently skip if not configured
+    html = f"""
+    <div style="font-family:sans-serif;max-width:600px">
+      <p style="background:#fff3cd;padding:1rem;border-radius:6px;border:1px solid #ffc107">
+        <b>[Admin Alert]</b> {subject}
+      </p>
+      <pre style="background:#f8f9fa;padding:1rem;border-radius:6px;font-size:0.85rem;white-space:pre-wrap">{body}</pre>
+      <p><a href="{APP_BASE_URL}/admin" style="color:#e00b27;font-weight:600;text-decoration:none">Open Admin Panel →</a></p>
+    </div>
+    """
+    return _send(to, f"[{APP_NAME} Admin] {subject}", html)
