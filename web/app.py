@@ -2654,10 +2654,22 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
 
         result: dict = {}
 
-        # Title → property name (simple: take before first " - ", remove trailing cities)
-        title_tag = soup.find("h1") or soup.find("title")
+        # Title → property name (try multiple sources)
+        title = None
+        # Try h1, title, meta og:title in order
+        title_tag = soup.find("h1")
         if title_tag:
             title = title_tag.get_text(strip=True)
+        else:
+            title_tag = soup.find("title")
+            if title_tag:
+                title = title_tag.get_text(strip=True)
+        if not title:
+            og_title = soup.find("meta", property="og:title")
+            if og_title and og_title.get("content"):
+                title = og_title.get("content")
+
+        if title:
             # Remove Airbnb suffix
             title = _re.sub(r"\s*[-|]\s*Airbnb\s*$", "", title)
 
