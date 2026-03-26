@@ -2654,27 +2654,52 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
 
         result: dict = {}
 
-        # Title → property name
+        # Title → property name (remove Airbnb suffix)
         title_tag = soup.find("h1") or soup.find("title")
         if title_tag:
-            result["property_names"] = title_tag.get_text(strip=True)[:120]
+            title = title_tag.get_text(strip=True)
+            # Remove common Airbnb suffixes
+            title = _re.sub(r"\s*-\s*Airbnb\s*$", "", title)
+            title = _re.sub(r"\s*\|\s*Airbnb\s*$", "", title)
+            result["property_names"] = title[:120]
 
-        # Guests / bedrooms / bathrooms from summary line
-        for tag in soup.find_all(["span", "li"], string=True):
-            t = tag.get_text(strip=True).lower()
-            if "guest" in t and any(c.isdigit() for c in t):
-                num = "".join(c for c in t if c.isdigit())[:2]
-                if num:
-                    result["max_guests"] = num
-                    break
+        # Extract location from breadcrumb or meta
+        location_patterns = ["in ", "near ", "at "]
+        for tag in soup.find_all(["span", "div", "p"]):
+            if tag.get("data-testid") or tag.get("class"):
+                text = tag.get_text(strip=True)
+                if text and len(text) < 100 and any(x in text.lower() for x in ["goa", "mumbai", "delhi", "bangalore", "hyderabad", ","]):
+                    # Looks like a location
+                    if "," in text and not "{" in text:
+                        result.setdefault("property_city", text[:80])
+                        break
 
-        # Check-in / check-out from meta or detail text
+        # Guests from structured data or text
+        for tag in soup.find_all(["span", "li", "div"]):
+            t = tag.get_text(strip=True)
+            if not "{" in t and not "[" in t:  # Skip JSON-like strings
+                t_lower = t.lower()
+                if "guest" in t_lower and any(c.isdigit() for c in t):
+                    num = "".join(c for c in t if c.isdigit())[:2]
+                    if num and int(num) <= 16:  # Reasonable guest count
+                        result.setdefault("max_guests", num)
+                        break
+
+        # Check-in / check-out from text (skip JSON)
         for tag in soup.find_all(string=True):
-            t = tag.strip().lower()
-            if "check-in" in t and (":" in t or "pm" in t or "am" in t):
-                result.setdefault("check_in_time", tag.strip()[:40])
-            if "check-out" in t and (":" in t or "pm" in t or "am" in t):
-                result.setdefault("check_out_time", tag.strip()[:40])
+            t_str = tag.strip()
+            if "{" in t_str or "[" in t_str:  # Skip JSON
+                continue
+            t = t_str.lower()
+            # Look for time patterns like "3:00 PM" or "3 PM"
+            if "check-in" in t and _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I):
+                time_match = _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I)
+                if time_match:
+                    result.setdefault("check_in_time", time_match.group(0))
+            if "check-out" in t and _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I):
+                time_match = _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I)
+                if time_match:
+                    result.setdefault("check_out_time", time_match.group(0))
 
         if not result:
             return JSONResponse({"error": "Could not extract listing details. Please fill in manually."})
