@@ -7745,7 +7745,16 @@ async def catch_all_404(request: Request, path: str):
     except Exception as e:
         log.error(f"Error rendering 404 template: {e}")
         return HTMLResponse(
-            "<html><body><h1>404 - Page not found</h1><p>The page you're looking for doesn't exist.</p></body></html>",
+            """<html><head><title>404 - Page Not Found</title></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f5f5f5;">
+<div style="text-align: center; max-width: 600px; padding: 2rem;">
+<h1 style="font-size: 3.5rem; font-weight: 800; color: #ddd; margin: 0 0 0.5rem;">404</h1>
+<h2 style="font-size: 1.4rem; margin-bottom: 0.75rem;">Page not found</h2>
+<p style="color: #666; margin: 0 0 1.5rem; line-height: 1.6;">The page you're looking for doesn't exist.</p>
+<a href="/dashboard" style="display: inline-block; padding: 0.6rem 1.25rem; background: #3B82F6; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; margin-right: 0.5rem;">Go to dashboard</a>
+<a href="javascript:history.back()" style="display: inline-block; padding: 0.6rem 1.25rem; background: transparent; color: #333; text-decoration: none; border-radius: 8px; font-weight: 600; border: 1px solid #ddd;">Go back</a>
+</div>
+</body></html>""",
             status_code=404
         )
 
