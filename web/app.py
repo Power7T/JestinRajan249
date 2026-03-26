@@ -2687,6 +2687,23 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
                                 result["property_city"] = text[:80]
                                 break
 
+        # Extract property type from title and page content
+        property_types = ["villa", "apartment", "house", "cottage", "bungalow", "studio", "condo", "townhouse", "flat", "chalet", "penthouse", "resort"]
+        if "property_names" in result:
+            prop_name_lower = result["property_names"].lower()
+            for ptype in property_types:
+                if ptype in prop_name_lower:
+                    result["property_type"] = ptype.capitalize()
+                    break
+
+        # Fallback: search page for property type keywords
+        if "property_type" not in result:
+            page_text = soup.get_text(strip=True).lower()
+            for ptype in property_types:
+                if ptype in page_text:
+                    result["property_type"] = ptype.capitalize()
+                    break
+
         # Guests from structured data or text
         for tag in soup.find_all(["span", "li", "div"]):
             t = tag.get_text(strip=True)
