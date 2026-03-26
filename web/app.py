@@ -2639,10 +2639,13 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401)
     body = await request.json()
     url  = (body.get("url") or "").strip()
-    if not url or "airbnb.com" not in url:
+    # Check for any Airbnb domain (airbnb.com, airbnb.co.in, airbnb.co.uk, etc.)
+    import re as _re
+    if not url or not _re.search(r"airbnb\.[a-z.]+", url.lower()):
         return JSONResponse({"error": "Please paste a valid Airbnb listing URL."})
     try:
-        url = ensure_public_url(url, allowed_hosts={"airbnb.com", "abnb.me"})
+        # Allow all Airbnb domains (airbnb.com, airbnb.co.in, airbnb.co.uk, etc.)
+        url = ensure_public_url(url)
         import requests as req_lib
         from bs4 import BeautifulSoup
         headers = {"User-Agent": "Mozilla/5.0 (compatible; HostAI/1.0)"}
