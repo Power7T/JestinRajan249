@@ -460,8 +460,10 @@
         <input type="password" name="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
         <a href="/forgot-password" class="forgot-link">Forgot password?</a>
         <button type="submit" class="btn btn-primary">Sign in →</button>
+        <button type="button" class="btn btn-secondary" style="margin-top:0.5rem" onclick="document.getElementById('signup-form').style.display=document.getElementById('signup-form').style.display==='none'?'block':'none'; this.textContent=document.getElementById('signup-form').style.display==='none'?'Create account':'Back to sign in'">Create account</button>
       </form>
 
+        <div id="signup-form" style="display:none;margin-top:1.5rem">
         <div class="divider">or create a new account</div>
 
         <form method="post" action="/signup">
@@ -518,6 +520,7 @@
 
           <button type="submit" class="btn btn-secondary">Create account</button>
         </form>
+        </div>
       </div>
 
       {% if show_team_tab %}
