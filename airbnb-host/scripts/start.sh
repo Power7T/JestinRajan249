@@ -84,22 +84,59 @@ pip install -r requirements.txt 2>&1 | grep -E "^(Collecting|Successfully|ERROR)
 info "Installing Node.js dependencies for WhatsApp bot..."
 (cd whatsapp && npm install --silent)
 
-# ── PID tracking ──────────────────────────────────────────
-PIDS=()
+# ── PID tracking + cleanup ────────────────────────────────
+ROUTER_PID=""; BOT_PID=""; CAL_PID=""; WATCHDOG_PID=""
 cleanup() {
   echo ""
   info "Shutting down all services..."
-  for pid in "${PIDS[@]}"; do
-    kill "$pid" 2>/dev/null || true
+  # Stop watchdog first so it doesn't try to restart dying services
+  [[ -n "$WATCHDOG_PID" ]] && kill "$WATCHDOG_PID" 2>/dev/null || true
+  for pid in "$ROUTER_PID" "$BOT_PID" "$CAL_PID"; do
+    [[ -n "$pid" ]] && kill "$pid" 2>/dev/null || true
   done
   exit 0
 }
 trap cleanup SIGINT SIGTERM
 
+# ── Watchdog — restarts crashed background services every 15s ──
+_watchdog() {
+  while true; do
+    sleep 15
+
+    # Router
+    if [[ -n "$ROUTER_PID" ]] && ! kill -0 "$ROUTER_PID" 2>/dev/null; then
+      warn "[watchdog] response_router died (PID $ROUTER_PID), restarting..."
+      python3 response_router.py &
+      ROUTER_PID=$!
+      info "[watchdog] response_router restarted as PID $ROUTER_PID"
+    fi
+
+    # WhatsApp bot
+    if [[ -n "$BOT_PID" ]] && ! kill -0 "$BOT_PID" 2>/dev/null; then
+      warn "[watchdog] whatsapp bot died (PID $BOT_PID), restarting..."
+      if [[ "$WA_MODE" == "business_api" ]]; then
+        (cd whatsapp && node webhook.js) &
+      else
+        (cd whatsapp && node bot.js) &
+      fi
+      BOT_PID=$!
+      info "[watchdog] whatsapp bot restarted as PID $BOT_PID"
+    fi
+
+    # Calendar watcher (only if it was originally started)
+    if [[ -n "$CAL_PID" ]] && ! kill -0 "$CAL_PID" 2>/dev/null; then
+      warn "[watchdog] calendar_watcher died (PID $CAL_PID), restarting..."
+      python3 calendar_watcher.py &
+      CAL_PID=$!
+      info "[watchdog] calendar_watcher restarted as PID $CAL_PID"
+    fi
+  done
+}
+
 # ── 1. Start response_router.py ───────────────────────────
 info "Starting response_router.py on port ${ROUTER_PORT}..."
 python3 response_router.py &
-PIDS+=($!)
+ROUTER_PID=$!
 
 # Health-check: poll /health until router responds (up to 15s)
 info "Waiting for router to be ready..."
@@ -126,13 +163,13 @@ if [[ "$WA_MODE" == "business_api" ]]; then
   info "Starting WhatsApp Business Cloud API webhook on port ${WA_BOT_PORT}..."
   info "(Meta will POST incoming messages to your public webhook URL)"
   (cd whatsapp && node webhook.js) &
-  PIDS+=($!)
+  BOT_PID=$!
 else
   # Default: companion mode via Baileys (personal/dedicated number, QR scan)
   info "Starting WhatsApp companion bot on port ${WA_BOT_PORT}..."
   info "(First run: scan the QR code printed below to link your phone)"
   (cd whatsapp && node bot.js) &
-  PIDS+=($!)
+  BOT_PID=$!
 fi
 
 # Give the HTTP server a moment to bind
@@ -142,14 +179,19 @@ sleep 2
 if [[ -n "${AIRBNB_ICAL_URL:-}${AIRBNB_ICAL_URLS:-}" ]]; then
   info "Starting calendar watcher (iCal → check-in + cleaner brief)..."
   python3 calendar_watcher.py &
-  PIDS+=($!)
+  CAL_PID=$!
   sleep 1
 else
   warn "AIRBNB_ICAL_URL not set — calendar watcher skipped."
   warn "Set it in .env to enable auto check-in + cleaner brief drafts."
 fi
 
-# ── 4. Start email_watcher.py (foreground — shows live log) ─
+# ── 4. Start watchdog ──────────────────────────────────────
+_watchdog &
+WATCHDOG_PID=$!
+info "Watchdog started (PID $WATCHDOG_PID), checking every 15s."
+
+# ── 5. Start email_watcher.py (foreground — shows live log) ─
 info "Starting email watcher (${EMAIL_ADDRESS})..."
 info "Press Ctrl+C to stop all services."
 echo ""
