@@ -2664,15 +2664,23 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
             result["property_names"] = title[:120]
 
         # Extract location from breadcrumb or meta
-        location_patterns = ["in ", "near ", "at "]
         for tag in soup.find_all(["span", "div", "p"]):
             if tag.get("data-testid") or tag.get("class"):
                 text = tag.get_text(strip=True)
-                if text and len(text) < 100 and any(x in text.lower() for x in ["goa", "mumbai", "delhi", "bangalore", "hyderabad", ","]):
-                    # Looks like a location
-                    if "," in text and not "{" in text:
-                        result.setdefault("property_city", text[:80])
-                        break
+                # Skip error messages and JavaScript warnings
+                if text and len(text) < 100 and "sorry" not in text.lower() and "javascript" not in text.lower():
+                    if any(x in text.lower() for x in ["goa", "mumbai", "delhi", "bangalore", "hyderabad", "pune", "kolkata", "chennai", "cochin"]):
+                        if "," in text and not "{" in text:
+                            result.setdefault("property_city", text[:80])
+                            break
+
+        # Fallback: extract location from property name if not found
+        if "property_city" not in result and "property_names" in result:
+            # Look for pattern like "City, State, Country" at end of property name
+            prop_name = result["property_names"]
+            match = _re.search(r'(?:in\s+)?([A-Za-z\s]+,\s*[A-Za-z\s]+,\s*[A-Za-z\s]+)\s*$', prop_name)
+            if match:
+                result["property_city"] = match.group(1).strip()[:80]
 
         # Guests from structured data or text
         for tag in soup.find_all(["span", "li", "div"]):
