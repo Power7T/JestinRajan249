@@ -31,10 +31,9 @@ except ImportError:
     pass
 
 LICENSE_KEY    = os.getenv("LICENSE_KEY", "").strip()
-LICENSE_SERVER = os.getenv(
-    "LICENSE_SERVER",
-    "https://license.yourdomain.com/verify",   # TODO: replace with your real endpoint
-)
+LICENSE_SERVER = os.getenv("LICENSE_SERVER", "https://license.yourdomain.com/verify")
+LICENSE_BUY_URL = os.getenv("LICENSE_BUY_URL", "https://yourdomain.com/buy")
+LICENSE_RENEW_URL = os.getenv("LICENSE_RENEW_URL", "https://yourdomain.com/renew")
 _CACHE_FILE    = Path(__file__).parent / ".license_cache"
 _GRACE_SECONDS = 24 * 3600   # 24 hours of offline grace
 
@@ -109,7 +108,7 @@ def main():
     if not LICENSE_KEY:
         print(
             f"{YELLOW}[license]{NC} ⚠️  Running in trial mode (no LICENSE_KEY set).\n"
-            f"{YELLOW}[license]{NC}    Get a license at: https://yourdomain.com/buy"
+            f"{YELLOW}[license]{NC}    Get a license at: {LICENSE_BUY_URL}"
         )
         return   # don't block startup
 
@@ -125,7 +124,7 @@ def main():
             print(f"{RED}✗ invalid{NC}")
             print(
                 f"{RED}[license]{NC} ❌  Invalid or expired license key.\n"
-                f"{RED}[license]{NC}    Renew at: https://yourdomain.com/buy"
+                f"{RED}[license]{NC}    Renew at: {LICENSE_RENEW_URL}"
             )
             sys.exit(1)
 
@@ -134,7 +133,7 @@ def main():
             print(f"{RED}✗ rejected{NC}")
             print(
                 f"{RED}[license]{NC} ❌  License rejected by server (key={LICENSE_KEY[:8]}...).\n"
-                f"{RED}[license]{NC}    Purchase or renew at: https://yourdomain.com/buy"
+                f"{RED}[license]{NC}    Purchase or renew at: {LICENSE_BUY_URL}"
             )
             sys.exit(1)
         # Other HTTP error — fall through to grace-cache check

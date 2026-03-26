@@ -6806,15 +6806,25 @@ def admin_api_health(request: Request, db: Session = Depends(get_db)):
     """Phase 4: API Health & Performance Monitoring."""
     _require_admin(request, db)
 
-    # Calculate average cost per draft for "Cost Trends"
+    # Calculate average cost per request and actual monthly cost
     avg_cost = 0.0
     predicted_monthly = 0.0
 
     try:
+        from datetime import timedelta
+        now_utc = datetime.now(timezone.utc)
+        thirty_days_ago = now_utc - timedelta(days=30)
+
+        # Count total API calls for average
         total_count = db.query(ApiUsageLog).count()
+        # Calculate actual cost from last 30 days
+        monthly_cost = db.query(func.sum(ApiUsageLog.cost_usd)).filter(
+            ApiUsageLog.created_at >= thirty_days_ago
+        ).scalar() or 0.0
+        # Calculate average cost per call (from all history)
         total_cost = db.query(func.sum(ApiUsageLog.cost_usd)).scalar() or 0.0
         avg_cost = (total_cost / total_count) if total_count > 0 else 0.0
-        predicted_monthly = (total_cost * 1.5)  # just a simple mock scalar for the display
+        predicted_monthly = monthly_cost  # actual 30-day cost, not projection
     except Exception:
         # api_usage_logs table may not exist yet if migrations haven't fully run
         pass
