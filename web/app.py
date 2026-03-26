@@ -2672,42 +2672,31 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
         if title:
             # Remove Airbnb suffix
             title = _re.sub(r"\s*[-|]\s*Airbnb\s*$", "", title)
+            original_title = title  # Keep original for location extraction
 
-            # Extract just the property name before the first " - "
-            if " - " in title:
-                prop_name = title.split(" - ")[0].strip()
+            # Extract location from original title first
+            # Pattern: "Name - Category in City, State, Country"
+            if " in " in title:
+                location_part = title.split(" in ", 1)[-1].strip()  # Everything after " in "
+                if "," in location_part:
+                    location_commas = location_part.split(",")
+                    if len(location_commas) >= 3:
+                        city = location_commas[-3].strip()
+                        state = location_commas[-2].strip()
+                        country = location_commas[-1].strip()
+                        if all(2 <= len(x) < 50 for x in [city, state, country]):
+                            result["property_city"] = f"{city}, {state}, {country}"[:80]
+
+            # Extract property name: take only the part before the first " - "
+            if " - " in original_title:
+                prop_name = original_title.split(" - ")[0].strip()
             else:
-                prop_name = title
+                prop_name = original_title
 
-            # Remove trailing city/location names
+            # Remove trailing city/location names from property name
             prop_name = _re.sub(r"\s+(?:Assagao|Assagaon|Goa|Mumbai|Delhi|Bangalore|Hyderabad|Pune|Cochin|Kolkata)\s*$", "", prop_name, flags=_re.I)
 
             result["property_names"] = prop_name[:120]
-
-        # Extract location from property name first (most reliable)
-        if "property_names" in result:
-            prop_name = result["property_names"]
-            # Look for pattern like "City, State, Country" at end (after last "in" or "at")
-            # First try to split by common separators
-            if " in " in prop_name:
-                # Get everything after the last " in "
-                parts = prop_name.split(" in ")
-                location_candidate = parts[-1].strip()
-            else:
-                # Otherwise get the last part after a hyphen or dash
-                parts = _re.split(r'\s*[-–—]\s*', prop_name)
-                location_candidate = parts[-1].strip() if len(parts) > 1 else prop_name
-
-            # Now parse "City, State, Country" from the candidate
-            if "," in location_candidate:
-                commas = location_candidate.split(",")
-                if len(commas) >= 3:
-                    city = commas[-3].strip()
-                    state = commas[-2].strip()
-                    country = commas[-1].strip()
-                    # Validate components
-                    if all(2 <= len(x) < 50 for x in [city, state, country]):
-                        result["property_city"] = f"{city}, {state}, {country}"[:80]
 
         # Fallback: Extract location from breadcrumb/meta if not found in property name
         if "property_city" not in result:
