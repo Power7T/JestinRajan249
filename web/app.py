@@ -2665,17 +2665,21 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
             # Remove location part that comes after common separators
             # Pattern: "Property Name - Property Type/Category in/near City, State, Country"
             # Keep only the property name before the separator
-            if " - " in title:
-                # Get the part before the first " - "
-                prop_name = title.split(" - ")[0].strip()
-            elif " in " in title:
-                # Get the part before " in "
-                prop_name = title.split(" in ")[0].strip()
-            elif " near " in title:
-                # Get the part before " near "
-                prop_name = title.split(" near ")[0].strip()
-            else:
-                prop_name = title
+            prop_name = title
+
+            # Priority 1: Remove everything after " - " (most common)
+            if " - " in prop_name:
+                prop_name = prop_name.split(" - ")[0].strip()
+
+            # Priority 2: Remove everything after " in " if still has location
+            if " in " in prop_name and any(city in prop_name.lower() for city in ["goa", "mumbai", "delhi", "bangalore", "hyderabad", "pune", "cochin", "bangalore"]):
+                prop_name = prop_name.split(" in ")[0].strip()
+
+            # Priority 3: Remove common location city names at the end
+            location_cities = ["goa", "mumbai", "delhi", "bangalore", "hyderabad", "pune", "cochin", "kolkata", "assagao", "assagaon"]
+            for city in location_cities:
+                # Remove city name followed by end of string or comma
+                prop_name = _re.sub(rf"\s+{city}\s*(?:,|$)", "", prop_name, flags=_re.I).strip()
 
             result["property_names"] = prop_name[:120]
 
