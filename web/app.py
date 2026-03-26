@@ -977,6 +977,12 @@ def login_post(
     return resp
 
 
+@app.get("/signup", response_class=HTMLResponse)
+def signup_get(request: Request):
+    """Display signup page."""
+    return templates.TemplateResponse("signup.html", {"request": request})
+
+
 @app.post("/signup", response_class=HTMLResponse)
 def signup_post(
     request: Request,
