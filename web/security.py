@@ -142,21 +142,29 @@ _lock = Lock()
 _last_prune = 0.0
 
 def _rate_limit_redis(r, key: str, max_requests: int, window_seconds: int) -> None:
-    """Redis-backed counter rate limit (fixed window per Redis key TTL)."""
+    """Redis-backed counter rate limit (fixed window per Redis key TTL). (Failure gap fix #2)"""
     rkey = f"rl:{key}"
     lua_script = """
     local current = redis.call('INCR', KEYS[1])
     if current == 1 then
         redis.call('EXPIRE', KEYS[1], ARGV[1])
     end
-    return current
+    local ttl = redis.call('TTL', KEYS[1])
+    return {current, ttl}
     """
     try:
-        current = r.eval(lua_script, 1, rkey, window_seconds)
+        result = r.eval(lua_script, 1, rkey, window_seconds)
+        current, ttl = int(result[0]), int(result[1])
         if current > max_requests:
+            retry_after = max(ttl, 1)
             raise HTTPException(
                 status_code=429,
-                detail="Too many requests — please wait and try again",
+                detail=f"Too many requests — retry after {retry_after}s",
+                headers={
+                    "Retry-After": str(retry_after),
+                    "X-RateLimit-Limit": str(max_requests),
+                    "X-RateLimit-Reset": str(int(time.time()) + retry_after),
+                }
             )
     except HTTPException:
         raise
@@ -166,7 +174,7 @@ def _rate_limit_redis(r, key: str, max_requests: int, window_seconds: int) -> No
 
 
 def _rate_limit_memory(key: str, max_requests: int, window_seconds: int) -> None:
-    """In-process sliding window rate limiter (single-worker only)."""
+    """In-process sliding window rate limiter (single-worker only). (Failure gap fix #2)"""
     global _last_prune
     now = time.monotonic()
     cutoff = now - window_seconds
@@ -174,7 +182,7 @@ def _rate_limit_memory(key: str, max_requests: int, window_seconds: int) -> None
         hits = _windows[key]
         while hits and hits[0] < cutoff:
             hits.pop(0)
-            
+
         if now - _last_prune > 60:
             empty_keys = [k for k, v in list(_windows.items()) if not v or v[-1] < cutoff]
             for k in empty_keys:
@@ -182,9 +190,15 @@ def _rate_limit_memory(key: str, max_requests: int, window_seconds: int) -> None
             _last_prune = now
 
         if len(hits) >= max_requests:
+            oldest = hits[0]
+            retry_after = max(int(oldest + window_seconds - now), 1)
             raise HTTPException(
                 status_code=429,
-                detail="Too many requests — please wait and try again",
+                detail=f"Too many requests — retry after {retry_after}s",
+                headers={
+                    "Retry-After": str(retry_after),
+                    "X-RateLimit-Limit": str(max_requests),
+                }
             )
         hits.append(now)
 

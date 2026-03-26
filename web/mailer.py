@@ -312,3 +312,59 @@ def send_password_reset_email(to: str, token: str) -> bool:
     </div>
     """
     return _send(to, f"{APP_NAME} — Reset your password", html)
+
+
+def send_worker_alert(to: str, tenant_email: str, dead_workers: list) -> bool:
+    """Alert host when background workers fail. (Failure gap fix #1)"""
+    names = ", ".join(dead_workers)
+    subject = f"[{APP_NAME}] Worker failure detected — {names}"
+    html = f"""
+    <div style="font-family:sans-serif;max-width:600px">
+      <p>One or more background workers stopped unexpectedly for <b>{tenant_email}</b>.</p>
+      <p><b>Dead workers:</b> {names}</p>
+      <p>{APP_NAME} automatically restarts failed workers. If this alert repeats, check your
+      integration credentials and contact support.</p>
+      <p>
+        <a href="{APP_BASE_URL}/admin/system" style="background:#e00b27;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">
+          View System Health
+        </a>
+      </p>
+    </div>
+    """
+    return _send(to, subject, html)
+
+
+def send_integration_alert(to: str, integration_type: str, fail_streak: int, error: str) -> bool:
+    """Alert host when an integration (PMS, email, WhatsApp) fails repeatedly. (Failure gap fix #4)"""
+    subject = f"[{APP_NAME}] Integration issue — {integration_type} sync failing"
+    error_snippet = error[:300] if error else "Unknown error"
+    html = f"""
+    <div style="font-family:sans-serif;max-width:600px">
+      <p>Your <b>{integration_type}</b> integration has failed <b>{fail_streak}</b> consecutive times.</p>
+      <p><b>Last error:</b> {error_snippet}</p>
+      <p>Guest messages may not be processed until this is resolved.</p>
+      <p>
+        <a href="{APP_BASE_URL}/settings" style="background:#e00b27;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">
+          Check Integration Settings
+        </a>
+      </p>
+    </div>
+    """
+    return _send(to, subject, html)
+
+
+def send_subscription_expiry_alert(to: str, days_left: int, renew_url: str) -> bool:
+    """Alert host when subscription is about to expire. (Failure gap fix #3)"""
+    subject = f"[{APP_NAME}] Your subscription expires in {days_left} day(s)"
+    html = f"""
+    <div style="font-family:sans-serif;max-width:600px">
+      <p>Your {APP_NAME} subscription expires in <b>{days_left} day(s)</b>.</p>
+      <p>After expiry, guest messages will no longer be processed and drafts will stop generating.</p>
+      <p>
+        <a href="{APP_BASE_URL}{renew_url}" style="background:#e00b27;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">
+          Renew your subscription
+        </a>
+      </p>
+    </div>
+    """
+    return _send(to, subject, html)

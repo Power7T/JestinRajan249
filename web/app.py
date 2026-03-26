@@ -305,6 +305,19 @@ def _baileys_retry_stale_job():
                 row.status = "failed"
                 row.delivered = False
                 row.error_reason = "Max retries exceeded — message stuck in transit"
+                # Alert host when message permanently fails (Failure gap fix #5)
+                try:
+                    _cfg = db.query(TenantConfig).filter_by(tenant_id=row.tenant_id).first()
+                    _t = db.query(Tenant).filter_by(id=row.tenant_id).first()
+                    if _cfg and _t:
+                        from web.mailer import send_integration_alert
+                        send_integration_alert(
+                            _cfg.escalation_email or _t.email,
+                            "WhatsApp (Baileys)", 3,
+                            f"Message to ...{(row.to_phone or '')[-4:]} could not be delivered after 3 retries"
+                        )
+                except Exception:
+                    pass  # non-critical — message already marked failed
                 failed += 1
             else:
                 # Re-queue to pending and increment retry counter
@@ -324,8 +337,11 @@ def _baileys_retry_stale_job():
         db.commit()
         log.info("Baileys stale message retry job: retried=%d, failed=%d", retried, failed)
     except Exception as e:
-        log.error("Baileys retry job failed: %s", str(e))
-        db.rollback()
+        log.error("Baileys retry job crashed [%s]: %s", type(e).__name__, str(e))
+        try:
+            db.rollback()
+        except Exception:
+            pass
     finally:
         db.close()
 
@@ -352,6 +368,20 @@ async def lifespan(app: FastAPI):
         name="Baileys Stale Message Retry",
         replace_existing=True
     )
+    # Add APScheduler event listeners for job failures (Failure gap fix #5)
+    from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED
+
+    def _scheduler_error_listener(event):
+        log.error("Scheduled job crashed: job_id=%s exception=%s",
+                  event.job_id, event.exception)
+
+    def _scheduler_missed_listener(event):
+        log.warning("Scheduled job missed: job_id=%s scheduled_run_time=%s",
+                    event.job_id, event.scheduled_run_time)
+
+    scheduler.add_listener(_scheduler_error_listener, EVENT_JOB_ERROR)
+    scheduler.add_listener(_scheduler_missed_listener, EVENT_JOB_MISSED)
+
     scheduler.start()
     log.info("Scheduled background jobs started (cleanup at 02:00 UTC daily, Baileys retry every 5 min)")
 

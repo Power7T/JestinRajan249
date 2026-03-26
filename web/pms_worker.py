@@ -633,6 +633,19 @@ def run_for_tenant(tenant_id: str, stop_flag: threading.Event):
             backoff = min(_POLL_INTERVAL * (2 ** (fail_streak - 1)), _MAX_BACKOFF)
             log.error("[%s] PMS worker error (streak=%d): %s — backoff %ds",
                       tenant_id, fail_streak, exc, backoff)
+            # Alert host after 3 consecutive failures (Failure gap fix #4)
+            if fail_streak == 3:
+                try:
+                    from web.mailer import send_integration_alert
+                    _cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+                    _tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+                    if _cfg and _tenant:
+                        send_integration_alert(
+                            _cfg.escalation_email or _tenant.email,
+                            "PMS", fail_streak, str(exc)
+                        )
+                except Exception as _ae:
+                    log.warning("[%s] PMS alert send failed: %s", tenant_id, _ae)
             stop_flag.wait(backoff)
             continue
         stop_flag.wait(_POLL_INTERVAL)

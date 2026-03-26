@@ -41,6 +41,10 @@ _leader_refresh_stop = threading.Event()
 _leader_refresh_thread: Optional[threading.Thread] = None
 _leader_lock_owned = False
 
+# Track last alert time per tenant to avoid alert spam (Failure gap fix #1)
+_worker_alert_sent: dict[str, float] = {}
+_sub_expiry_alerted: dict[str, int] = {}
+
 
 def _embedded_workers_enabled() -> bool:
     raw = os.getenv("RUN_EMBEDDED_WORKERS", "").strip().lower()
@@ -217,6 +221,33 @@ def _stop_tenant(tenant_id: str):
     log.info("[%s] Workers stopped", tenant_id)
 
 
+def _process_subscription_expiry_warnings():
+    """Send email alert 14, 7, 3, 1 days before subscription expires. (Failure gap fix #3)"""
+    try:
+        from datetime import datetime, timezone
+        from web.db import SessionLocal
+        from web.models import Tenant, TenantConfig
+        from web.mailer import send_subscription_expiry_alert
+
+        now = datetime.now(timezone.utc)
+        with SessionLocal() as db:
+            cfgs = db.query(TenantConfig).filter(
+                TenantConfig.subscription_expires_at.isnot(None)
+            ).all()
+            for cfg in cfgs:
+                days_left = (cfg.subscription_expires_at - now).days
+                if days_left in (14, 7, 3, 1):
+                    # Track that we've sent an alert for this tenant at this day-value
+                    alert_key = f"{cfg.tenant_id}:{days_left}"
+                    if alert_key not in _sub_expiry_alerted:
+                        _sub_expiry_alerted[alert_key] = 1
+                        t = db.query(Tenant).filter_by(id=cfg.tenant_id).first()
+                        if t:
+                            send_subscription_expiry_alert(t.email, days_left, "/billing")
+    except Exception as exc:
+        log.warning("Subscription expiry warning job failed: %s", exc)
+
+
 def _watchdog_loop():
     """
     Watchdog: every _WATCHDOG_INTERVAL seconds, scan all registered workers.
@@ -243,14 +274,30 @@ def _watchdog_loop():
             pms_dead   = pms_thread is not None and not pms_thread.is_alive()
 
             if email_dead or cal_dead or pms_dead:
+                dead = [w for w, d in [("email", email_dead), ("calendar", cal_dead), ("PMS", pms_dead)] if d]
                 log.warning(
-                    "[%s] Dead workers detected (email=%s cal=%s pms=%s) — restarting",
-                    tenant_id, email_dead, cal_dead, pms_dead,
+                    "[%s] Dead workers detected (%s) — restarting",
+                    tenant_id, dead,
                 )
                 try:
                     _start_tenant(tenant_id)
                 except Exception as exc:
                     log.error("[%s] Watchdog restart failed: %s", tenant_id, exc)
+                # Alert host — throttled to once per hour per tenant (Failure gap fix #1)
+                now_ts = time.time()
+                if now_ts - _worker_alert_sent.get(tenant_id, 0) > 3600:
+                    _worker_alert_sent[tenant_id] = now_ts
+                    try:
+                        from web.db import SessionLocal
+                        from web.models import Tenant, TenantConfig
+                        from web.mailer import send_worker_alert
+                        with SessionLocal() as _db:
+                            _t = _db.query(Tenant).filter_by(id=tenant_id).first()
+                            _cfg = _db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+                            if _t and _cfg:
+                                send_worker_alert(_cfg.escalation_email or _t.email, _t.email, dead)
+                    except Exception as _ex:
+                        log.warning("[%s] Could not send worker alert: %s", tenant_id, _ex)
 
         # ── Scheduled draft auto-send ────────────────────────────────
         # Check for pending drafts whose scheduled_at has passed and
@@ -269,6 +316,10 @@ def _watchdog_loop():
         # ── Expired token cleanup ────────────────────────────────────────
         # Remove stale invite/reset tokens (once per 6h).
         _process_expired_tokens()
+
+        # ── Subscription expiry warnings ──────────────────────────────────
+        # Alert hosts 14, 7, 3, 1 days before subscription expires.
+        _process_subscription_expiry_warnings()
 
     log.info("Worker watchdog stopped")
 

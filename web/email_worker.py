@@ -709,6 +709,23 @@ def run_for_tenant(cfg: EmailConfig, stop_flag: "threading.Event"):
             backoff = min(cfg.poll_interval * (2 ** (fail_streak - 1)), _MAX_BACKOFF)
             log.error("[%s] Email watcher error (streak=%d): %s — backoff %ds",
                       cfg.tenant_id, fail_streak, exc, backoff)
+            # Alert host after 3 consecutive failures (Failure gap fix #4)
+            if fail_streak == 3:
+                try:
+                    from web.mailer import send_integration_alert
+                    from web.db import SessionLocal
+                    from web.models import Tenant, TenantConfig
+                    _db = SessionLocal()
+                    _cfg = _db.query(TenantConfig).filter_by(tenant_id=cfg.tenant_id).first()
+                    _tenant = _db.query(Tenant).filter_by(id=cfg.tenant_id).first()
+                    if _cfg and _tenant:
+                        send_integration_alert(
+                            _cfg.escalation_email or _tenant.email,
+                            "Email", fail_streak, str(exc)
+                        )
+                    _db.close()
+                except Exception as _ae:
+                    log.warning("[%s] Email alert send failed: %s", cfg.tenant_id, _ae)
             stop_flag.wait(backoff)
             continue
         stop_flag.wait(cfg.poll_interval)
