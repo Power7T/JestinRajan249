@@ -2666,10 +2666,17 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
         # Extract location from property name first (most reliable)
         if "property_names" in result:
             prop_name = result["property_names"]
-            # Try to find pattern "City, State, Country" at end
-            match = _re.search(r'([A-Za-z\s]+,\s*[A-Za-z\s]+,\s*[A-Za-z\s\-\.]+)\s*$', prop_name)
-            if match:
-                result["property_city"] = match.group(1).strip()[:80]
+            # Find the last occurrence of "City, State, Country" pattern
+            # Look for the pattern before the last comma groups
+            matches = list(_re.finditer(r'([A-Za-z\-\.]+)\s*,\s*([A-Za-z\s]+)\s*,\s*([A-Za-z\-\.]+)\s*$', prop_name))
+            if matches:
+                match = matches[-1]  # Get the last match
+                city = match.group(1).strip()
+                state = match.group(2).strip()
+                country = match.group(3).strip()
+                # Ensure we got actual location components (not too long, meaningful names)
+                if all(5 < len(x) < 50 for x in [city, state, country]):
+                    result["property_city"] = f"{city}, {state}, {country}"[:80]
 
         # Fallback: Extract location from breadcrumb/meta if not found in property name
         if "property_city" not in result:
