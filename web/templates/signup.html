@@ -106,7 +106,7 @@
         /* ===== CONTAINER ===== */
         .auth-container {
             width: 100%;
-            max-width: 520px;
+            max-width: 440px; /* Slightly wider for double inputs */
             padding: 0 1.5rem;
             position: relative;
             z-index: 10;
@@ -116,30 +116,29 @@
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
-            padding: 3.5rem 4rem;
+            padding: 2.5rem;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(10px);
         }
 
         .auth-card h1 {
-            font-size: 2rem;
-            margin-bottom: 0.75rem;
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
             font-weight: 800;
             letter-spacing: -0.02em;
         }
 
         .auth-card .subtitle {
             color: var(--text-muted);
-            margin-bottom: 2.5rem;
-            font-size: 1rem;
-            line-height: 1.5;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
         }
 
         /* ===== FORM ===== */
         .form-row {
             display: flex;
-            gap: 1.25rem;
-            margin-bottom: 2rem;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
 
         .form-row > div {
@@ -147,16 +146,15 @@
         }
 
         .form-group {
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         label {
             display: block;
             font-weight: 600;
-            font-size: 0.95rem;
-            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
             color: var(--text-light);
-            letter-spacing: -0.01em;
         }
 
         input[type="text"],
@@ -165,15 +163,14 @@
         input[type="tel"],
         select {
             width: 100%;
-            padding: 0.95rem 1rem;
+            padding: 0.75rem;
             background: var(--surface-hover);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             color: var(--text-main);
             font-family: inherit;
-            font-size: 0.975rem;
+            font-size: 0.95rem;
             transition: all var(--t);
-            line-height: 1.5;
         }
 
         input[type="text"]:focus,
@@ -203,24 +200,23 @@
         /* ===== BUTTONS ===== */
         .btn {
             width: 100%;
-            padding: 1.1rem 1.5rem;
+            padding: 0.8rem;
             background: var(--accent);
             color: white;
             border: none;
             border-radius: var(--radius);
-            font-weight: 700;
-            font-size: 1rem;
+            font-weight: 600;
+            font-size: 0.95rem;
             cursor: pointer;
             transition: all var(--t);
             box-shadow: 0 4px 14px var(--accent-glow);
-            margin-top: 0.75rem;
-            letter-spacing: -0.01em;
+            margin-top: 0.5rem;
         }
 
         .btn:hover {
             background: #1E40AF;
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px var(--accent-glow);
+            box-shadow: 0 6px 20px var(--accent-glow);
         }
 
         .btn:disabled {
@@ -231,29 +227,23 @@
 
         /* ===== TERMS ===== */
         .terms {
-            margin-top: 1.5rem;
-            margin-bottom: 2rem;
-            font-size: 0.9rem;
+            margin-top: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
             display: flex;
             align-items: flex-start;
-            gap: 0.75rem;
-            line-height: 1.6;
+            gap: 0.5rem;
         }
 
         .terms input[type="checkbox"] {
-            margin-top: 0.4rem;
+            margin-top: 0.25rem;
             accent-color: var(--accent);
-            cursor: pointer;
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
         }
 
         .terms a {
             color: var(--accent);
             text-decoration: none;
-            font-weight: 500;
         }
 
         .terms a:hover {
@@ -262,14 +252,13 @@
 
         /* ===== ALERTS ===== */
         .alert {
-            padding: 1.1rem 1.25rem;
+            padding: 1rem;
             border-radius: var(--radius);
-            margin-bottom: 2rem;
-            font-size: 0.975rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
             display: flex;
             align-items: flex-start;
-            gap: 0.85rem;
-            line-height: 1.5;
+            gap: 0.75rem;
         }
 
         .alert-error {
@@ -280,12 +269,12 @@
 
         /* ===== FOOTER ===== */
         .auth-footer {
-            margin-top: 2.5rem;
-            padding-top: 2rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
             border-top: 1px solid var(--border);
             text-align: center;
             color: var(--text-muted);
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
 
         .auth-footer a {
@@ -301,11 +290,11 @@
         /* ===== RESPONSIVE ===== */
         @media (max-width: 640px) {
             nav { padding: 1rem 5%; }
-            .auth-container { max-width: 100%; padding: 0 1.25rem; }
-            .auth-card { padding: 2.75rem 2rem; }
-            .auth-card h1 { font-size: 1.65rem; }
-            .form-row { flex-direction: column; gap: 0; margin-bottom: 1.75rem; }
-            .form-row .form-group { margin-bottom: 1.75rem; }
+            .auth-container { max-width: 100%; }
+            .auth-card { padding: 2rem; }
+            .auth-card h1 { font-size: 1.5rem; }
+            .form-row { flex-direction: column; gap: 0; }
+            .form-row .form-group { margin-bottom: 1.5rem; }
         }
     </style>
 </head>
