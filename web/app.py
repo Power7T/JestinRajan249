@@ -2663,24 +2663,29 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
             title = _re.sub(r"\s*\|\s*Airbnb\s*$", "", title)
             result["property_names"] = title[:120]
 
-        # Extract location from breadcrumb or meta
-        for tag in soup.find_all(["span", "div", "p"]):
-            if tag.get("data-testid") or tag.get("class"):
-                text = tag.get_text(strip=True)
-                # Skip error messages and JavaScript warnings
-                if text and len(text) < 100 and "sorry" not in text.lower() and "javascript" not in text.lower():
-                    if any(x in text.lower() for x in ["goa", "mumbai", "delhi", "bangalore", "hyderabad", "pune", "kolkata", "chennai", "cochin"]):
-                        if "," in text and not "{" in text:
-                            result.setdefault("property_city", text[:80])
-                            break
-
-        # Fallback: extract location from property name if not found
-        if "property_city" not in result and "property_names" in result:
-            # Look for pattern like "City, State, Country" at end of property name
+        # Extract location from property name first (most reliable)
+        if "property_names" in result:
             prop_name = result["property_names"]
-            match = _re.search(r'(?:in\s+)?([A-Za-z\s]+,\s*[A-Za-z\s]+,\s*[A-Za-z\s]+)\s*$', prop_name)
+            # Try to find pattern "City, State, Country" at end
+            match = _re.search(r'([A-Za-z\s]+,\s*[A-Za-z\s]+,\s*[A-Za-z\s\-\.]+)\s*$', prop_name)
             if match:
                 result["property_city"] = match.group(1).strip()[:80]
+
+        # Fallback: Extract location from breadcrumb/meta if not found in property name
+        if "property_city" not in result:
+            for tag in soup.find_all(["span", "div", "p"]):
+                if tag.get("data-testid") or tag.get("class"):
+                    text = tag.get_text(strip=True)
+                    # Skip error messages, warnings, and short fragments
+                    if (text and 20 < len(text) < 100 and
+                        "sorry" not in text.lower() and
+                        "javascript" not in text.lower() and
+                        "don't" not in text.lower() and
+                        "{" not in text):
+                        if any(x in text.lower() for x in ["goa", "mumbai", "delhi", "bangalore", "hyderabad", "pune", "kolkata", "chennai", "cochin"]):
+                            if "," in text:
+                                result["property_city"] = text[:80]
+                                break
 
         # Guests from structured data or text
         for tag in soup.find_all(["span", "li", "div"]):
