@@ -2654,14 +2654,30 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
 
         result: dict = {}
 
-        # Title → property name (remove Airbnb suffix)
+        # Title → property name (remove Airbnb suffix and location)
         title_tag = soup.find("h1") or soup.find("title")
         if title_tag:
             title = title_tag.get_text(strip=True)
             # Remove common Airbnb suffixes
             title = _re.sub(r"\s*-\s*Airbnb\s*$", "", title)
             title = _re.sub(r"\s*\|\s*Airbnb\s*$", "", title)
-            result["property_names"] = title[:120]
+
+            # Remove location part that comes after common separators
+            # Pattern: "Property Name - Property Type/Category in/near City, State, Country"
+            # Keep only the property name before the separator
+            if " - " in title:
+                # Get the part before the first " - "
+                prop_name = title.split(" - ")[0].strip()
+            elif " in " in title:
+                # Get the part before " in "
+                prop_name = title.split(" in ")[0].strip()
+            elif " near " in title:
+                # Get the part before " near "
+                prop_name = title.split(" near ")[0].strip()
+            else:
+                prop_name = title
+
+            result["property_names"] = prop_name[:120]
 
         # Extract location from property name first (most reliable)
         if "property_names" in result:
@@ -2721,50 +2737,51 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
                     result["property_type"] = ptype.capitalize()
                     break
 
-        # Guests from structured data or text - more flexible search
-        guest_count_found = False
-        for tag in soup.find_all(["span", "li", "div", "p"]):
-            if guest_count_found:
-                break
-            t = tag.get_text(strip=True)
-            if not "{" in t and not "[" in t:  # Skip JSON-like strings
-                t_lower = t.lower()
-                # Look for "X guests", "X guest", or standalone digit with guest context
-                guest_match = _re.search(r'(\d+)\s*guest', t_lower)
+        # Guests from structured data or text - exhaustive search
+        if "max_guests" not in result:
+            # Search all text nodes for guest patterns
+            for tag in soup.find_all(string=True):
+                t_str = tag.strip()
+                if "{" in t_str or "[" in t_str:
+                    continue
+                # Look for "X guests", "X guest", "up to X guests", etc.
+                guest_match = _re.search(r'(\d+)\s*(?:guests?|person|people)', t_str.lower())
                 if guest_match:
                     num = guest_match.group(1)
-                    if num and int(num) <= 16:  # Reasonable guest count
-                        result.setdefault("max_guests", num)
-                        guest_count_found = True
-                        break
+                    try:
+                        if int(num) <= 16:
+                            result["max_guests"] = num
+                            break
+                    except ValueError:
+                        pass
 
-        # Check-in / check-out from text (more flexible - look for time patterns)
-        # First pass: look for explicit "check-in" or "check-out" with time
-        for tag in soup.find_all(string=True):
-            t_str = tag.strip()
-            if "{" in t_str or "[" in t_str or len(t_str) < 5:  # Skip JSON and very short text
-                continue
-            t = t_str.lower()
-            # Look for "check-in" or "check out" followed by time
-            if ("check-in" in t or "check in" in t) and _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I):
-                time_match = _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I)
-                if time_match:
-                    result.setdefault("check_in_time", time_match.group(0))
-            if ("check-out" in t or "check out" in t) and _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I):
-                time_match = _re.search(r"\d{1,2}:\d{2}\s*(am|pm)", t_str, _re.I)
-                if time_match:
-                    result.setdefault("check_out_time", time_match.group(0))
+        # Check-in / check-out - exhaustive regex-based search
+        page_text = soup.get_text()
 
-        # Fallback: if no check-in/out found, look for any time patterns near "check" text
-        if "check_in_time" not in result or "check_out_time" not in result:
-            # Get all text and look for check-in/out sections
-            page_text = soup.get_text()
-            for match in _re.finditer(r'check[- ]?in[:\s]*(\d{1,2}:\d{2}\s*(?:am|pm))', page_text, _re.I):
-                if "check_in_time" not in result:
+        # Search for check-in time patterns
+        if "check_in_time" not in result:
+            # Look for various formats: "Check-in 3:00 PM", "Check-in: 3:00 PM", etc.
+            patterns = [
+                r'check[- ]?in[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm))',
+                r'(?:check[- ]?in|arrival)[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm))',
+            ]
+            for pattern in patterns:
+                match = _re.search(pattern, page_text, _re.I)
+                if match:
                     result["check_in_time"] = match.group(1).strip()
-            for match in _re.finditer(r'check[- ]?out[:\s]*(\d{1,2}:\d{2}\s*(?:am|pm))', page_text, _re.I):
-                if "check_out_time" not in result:
+                    break
+
+        # Search for check-out time patterns
+        if "check_out_time" not in result:
+            patterns = [
+                r'check[- ]?out[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm))',
+                r'(?:check[- ]?out|departure)[:\s]+(\d{1,2}:\d{2}\s*(?:am|pm))',
+            ]
+            for pattern in patterns:
+                match = _re.search(pattern, page_text, _re.I)
+                if match:
                     result["check_out_time"] = match.group(1).strip()
+                    break
 
         if not result:
             return JSONResponse({"error": "Could not extract listing details. Please fill in manually."})
