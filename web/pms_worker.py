@@ -30,7 +30,6 @@ from web.classifier import (
 from web.crypto import decrypt
 from web.pms_base import make_adapter, PMSMessage
 from web.workflow import (
-    analyze_guest_sentiment,
     automation_rule_decision,
     build_conversation_memory,
     build_thread_key,
@@ -368,7 +367,18 @@ def _process_message(tenant_id: str, cfg: dict, msg: PMSMessage,
                 property_context=full_ctx,
             )
         except RuntimeError as exc:
-            log.error("[%s] PMS draft generation failed: %s", tenant_id, exc)
+            log.error("[%s] PMS draft generation failed: %s — saving escalation draft", tenant_id, exc)
+            fallback_id = make_draft_id("pms")
+            fallback_text = (
+                f"[AI GENERATION FAILED — MANUAL REPLY REQUIRED]\n\n"
+                f"Guest: {msg.guest_name}\n"
+                f"Original message:\n{guest_msg}\n\n"
+                f"Error: {exc}"
+            )
+            _save_draft(db, tenant_id, fallback_id, msg, "complex", None,
+                        fallback_text, integration_id)
+            _mark_processed(db, tenant_id, integration_id, msg.message_id)
+            db.commit()
             return
 
         # ── 5. Thread metadata ───────────────────────────────────────────
@@ -495,19 +505,16 @@ def _process_message(tenant_id: str, cfg: dict, msg: PMSMessage,
         if auto_send_eligible:
             ok = adapter.send_message(msg.reservation_id, draft_text)
             if ok:
-                draft = db.query(Draft).filter_by(id=draft_id).first()
-                if draft:
-                    draft.status      = "approved"
-                    draft.final_text  = draft_text
-                    draft.approved_at = datetime.now(timezone.utc)
-                    if reservation:
-                        live_res = db.query(Reservation).filter_by(
-                            id=reservation.id, tenant_id=tenant_id
-                        ).first()
-                        if live_res:
-                            live_res.last_host_reply_at = draft.approved_at
-                    db.commit()
+                approved_at = datetime.now(timezone.utc)
+                # Use UPDATE to avoid re-fetch race: mark the draft we just created as approved
+                db.query(Draft).filter_by(
+                    id=draft_id, tenant_id=tenant_id, status="pending"
+                ).update({"status": "approved", "final_text": draft_text,
+                          "approved_at": approved_at})
                 if reservation:
+                    db.query(Reservation).filter_by(
+                        id=reservation.id, tenant_id=tenant_id
+                    ).update({"last_host_reply_at": approved_at})
                     _record_timeline_event(
                         db, tenant_id, reservation,
                         "draft_approved",
@@ -517,7 +524,7 @@ def _process_message(tenant_id: str, cfg: dict, msg: PMSMessage,
                         draft_id=draft_id,
                         automation_rule_id=automation_rule_id,
                     )
-                    db.commit()
+                db.commit()
                 log.info("[%s] PMS routine reply auto-sent to %s", tenant_id, msg.guest_name)
             else:
                 log.error("[%s] PMS auto-send failed for %s — draft kept pending",
