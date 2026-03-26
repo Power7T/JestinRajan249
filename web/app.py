@@ -5731,6 +5731,49 @@ def api_workers(request: Request):
     return worker_manager.worker_status(tenant_id)
 
 
+@app.get("/api/service-status")
+def api_service_status(request: Request):
+    """Rich service status for dashboard widget."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    ws = worker_manager.worker_status(tenant_id)
+    now_ts = time.time()
+
+    def _ago(ts: float | None) -> str | None:
+        if ts is None:
+            return None
+        age = now_ts - ts
+        if age < 60:
+            return f"{int(age)}s ago"
+        if age < 3600:
+            return f"{int(age // 60)}m ago"
+        return f"{int(age // 3600)}h ago"
+
+    return JSONResponse({
+        "email": {
+            "running": ws.get("email_running", False),
+            "last_ts": None,
+            "last_ago": None,
+        },
+        "calendar": {
+            "running": ws.get("cal_running", False),
+            "configured": ws.get("cal_configured", False),
+            "last_ago": None,
+        },
+        "whatsapp": {
+            "running": False,
+            "connected": False,
+        },
+        "ai": {
+            "running": True,
+        },
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+
 @app.get("/api/sse/drafts")
 async def sse_drafts(request: Request, db: Session = Depends(get_db)):
     """Server-Sent Events stream for real-time draft notifications."""

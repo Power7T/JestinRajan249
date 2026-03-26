@@ -51,15 +51,59 @@
   {% endif %}
 </form>
 
-<!-- Worker status bar -->
+<!-- Worker status bar — enhanced 4-service view -->
 <div class="status-bar">
+  <!-- Email watcher -->
   <div class="status-item">
     <div class="dot {% if status.email_running %}dot-green{% else %}dot-red{% endif %}"></div>
-    <span>Email watcher {% if status.email_running %}running{% else %}stopped{% endif %}</span>
+    <span class="chip {% if status.email_running %}good{% else %}bad{% endif %}">
+      Email
+      {% if status.email_running %}
+        <span style="font-weight:400;opacity:.75">
+          {%- if status.email_last_ago %}· {{ status.email_last_ago }}{% endif -%}
+        </span>
+      {% else %}stopped{% endif %}
+    </span>
   </div>
+
+  <!-- Calendar watcher -->
   <div class="status-item">
-    <div class="dot {% if status.cal_running %}dot-green{% else %}dot-grey{% endif %}"></div>
-    <span>Calendar watcher {% if status.cal_running %}running{% else %}not configured{% endif %}</span>
+    <div class="dot {% if status.cal_running %}dot-green{% elif status.cal_configured %}dot-red{% else %}dot-grey{% endif %}"></div>
+    <span class="chip {% if status.cal_running %}good{% elif status.cal_configured %}bad{% else %}warn{% endif %}">
+      Calendar
+      {% if status.cal_running %}
+        <span style="font-weight:400;opacity:.75">
+          {%- if status.cal_last_ago %}· {{ status.cal_last_ago }}{% endif -%}
+        </span>
+      {% elif status.cal_configured %}stopped
+      {% else %}not configured{% endif %}
+    </span>
+  </div>
+
+  <!-- WhatsApp status -->
+  <div class="status-item">
+    <div class="dot {% if status.wa_connected %}dot-green{% elif status.wa_running %}dot-yellow{% else %}dot-red{% endif %}"></div>
+    <span class="chip {% if status.wa_connected %}good{% elif status.wa_running %}warn{% else %}bad{% endif %}">
+      WhatsApp
+      {% if status.wa_connected %}connected
+      {% elif status.wa_running %}disconnected
+      {% else %}down{% endif %}
+    </span>
+  </div>
+
+  <!-- AI router status -->
+  <div class="status-item">
+    <div class="dot {% if status.ai_running %}dot-green{% else %}dot-red{% endif %}"></div>
+    <span class="chip {% if status.ai_running %}good{% else %}bad{% endif %}">
+      AI Router{% if not status.ai_running %} down{% endif %}
+    </span>
+  </div>
+
+  <!-- Admin status link (right-aligned) -->
+  <div class="status-item" style="margin-left:auto">
+    <a href="/api/service-status" style="font-size:0.72rem;color:var(--text-3);
+       text-decoration:none;padding:2px 6px;border:1px solid var(--border);
+       border-radius:4px">status JSON</a>
   </div>
 </div>
 
