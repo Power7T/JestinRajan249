@@ -513,14 +513,65 @@
     <a href="/onboarding?step=5" class="checklist-action btn btn-outline btn-sm">Add iCal →</a>
     <details style="width:100%;margin-top:0.25rem">
       <summary style="cursor:pointer;font-size:0.82rem;color:#0d6efd">Paste your Airbnb listing URL to auto-fill</summary>
-      <form method="post" action="/api/prefill-listing"
-            style="display:flex;gap:0.5rem;align-items:center;margin-top:0.4rem;flex-wrap:wrap">
+      <form id="prefill-form" style="display:flex;gap:0.5rem;align-items:center;margin-top:0.4rem;flex-wrap:wrap">
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <input type="url" name="listing_url" placeholder="https://www.airbnb.com/rooms/12345678"
+        <input type="url" id="listing_url" name="listing_url" placeholder="https://www.airbnb.com/rooms/12345678"
                style="font-size:0.82rem;padding:5px 10px;border:1px solid #ced4da;border-radius:6px;flex:1;min-width:200px">
-        <button type="submit" class="btn btn-primary btn-sm">Extract iCal →</button>
+        <button type="submit" id="extract-btn" class="btn btn-primary btn-sm">Extract iCal →</button>
+        <span id="extract-status" style="font-size:0.82rem;color:#6c757d;margin-left:0.5rem"></span>
       </form>
     </details>
+    <script>
+    document.getElementById('prefill-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const listingUrl = document.getElementById('listing_url').value.trim();
+      const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+      const btn = document.getElementById('extract-btn');
+      const status = document.getElementById('extract-status');
+
+      if (!listingUrl) {
+        status.textContent = '❌ Please enter a URL';
+        status.style.color = '#dc3545';
+        return;
+      }
+
+      // Show loading state
+      btn.disabled = true;
+      btn.textContent = 'Extracting...';
+      status.textContent = '';
+
+      try {
+        const response = await fetch('/api/prefill-listing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            listing_url: listingUrl,
+            csrf_token: csrfToken
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          status.textContent = '✓ Calendar added! Reloading...';
+          status.style.color = '#28a745';
+          // Reload page after 1 second to show updated config
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          status.textContent = '❌ ' + (data.detail || 'Error extracting iCal');
+          status.style.color = '#dc3545';
+          btn.disabled = false;
+          btn.textContent = 'Extract iCal →';
+        }
+      } catch (error) {
+        status.textContent = '❌ Network error: ' + error.message;
+        status.style.color = '#dc3545';
+        btn.disabled = false;
+        btn.textContent = 'Extract iCal →';
+      }
+    });
+    </script>
     {% endif %}
   </div>
   <div class="checklist-item">
