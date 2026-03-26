@@ -511,8 +511,9 @@
     <span>Calendar connected</span>
     {% if not cfg.ical_urls %}
     <a href="/onboarding?step=5" class="checklist-action btn btn-outline btn-sm">Add iCal →</a>
+    {% endif %}
     <details style="width:100%;margin-top:0.25rem">
-      <summary style="cursor:pointer;font-size:0.82rem;color:#0d6efd">Paste your Airbnb listing URL to auto-fill</summary>
+      <summary style="cursor:pointer;font-size:0.82rem;color:#0d6efd">{% if cfg.ical_urls %}Update{% else %}Paste{% endif %} your Airbnb listing URL to auto-fill</summary>
       <form id="prefill-form" style="display:flex;gap:0.5rem;align-items:center;margin-top:0.4rem;flex-wrap:wrap">
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
         <input type="text" id="listing_url" name="listing_url" placeholder="https://www.airbnb.com/rooms/12345678"
@@ -572,7 +573,6 @@
       }
     });
     </script>
-    {% endif %}
   </div>
   <div class="checklist-item">
     <span class="check-icon todo">○</span>
