@@ -2666,17 +2666,27 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
         # Extract location from property name first (most reliable)
         if "property_names" in result:
             prop_name = result["property_names"]
-            # Find the last occurrence of "City, State, Country" pattern
-            # Look for the pattern before the last comma groups
-            matches = list(_re.finditer(r'([A-Za-z\-\.]+)\s*,\s*([A-Za-z\s]+)\s*,\s*([A-Za-z\-\.]+)\s*$', prop_name))
-            if matches:
-                match = matches[-1]  # Get the last match
-                city = match.group(1).strip()
-                state = match.group(2).strip()
-                country = match.group(3).strip()
-                # Ensure we got actual location components (city/state >= 2 chars, not too long)
-                if all(2 <= len(x) < 50 for x in [city, state, country]):
-                    result["property_city"] = f"{city}, {state}, {country}"[:80]
+            # Look for pattern like "City, State, Country" at end (after last "in" or "at")
+            # First try to split by common separators
+            if " in " in prop_name:
+                # Get everything after the last " in "
+                parts = prop_name.split(" in ")
+                location_candidate = parts[-1].strip()
+            else:
+                # Otherwise get the last part after a hyphen or dash
+                parts = _re.split(r'\s*[-–—]\s*', prop_name)
+                location_candidate = parts[-1].strip() if len(parts) > 1 else prop_name
+
+            # Now parse "City, State, Country" from the candidate
+            if "," in location_candidate:
+                commas = location_candidate.split(",")
+                if len(commas) >= 3:
+                    city = commas[-3].strip()
+                    state = commas[-2].strip()
+                    country = commas[-1].strip()
+                    # Validate components
+                    if all(2 <= len(x) < 50 for x in [city, state, country]):
+                        result["property_city"] = f"{city}, {state}, {country}"[:80]
 
         # Fallback: Extract location from breadcrumb/meta if not found in property name
         if "property_city" not in result:
