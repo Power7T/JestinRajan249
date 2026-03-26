@@ -6303,7 +6303,7 @@ def prefill_listing(request: Request,
 
     # Airbnb iCal export pattern: replace /rooms/ URL with /ical/LISTING_ID.ics
     import re as _re
-    airbnb_match = _re.search(r"airbnb\.com/rooms/(\d+)", listing_url)
+    airbnb_match = _re.search(r"airbnb\.[a-z.]+/rooms/(\d+)", listing_url)
     if airbnb_match:
         listing_id = airbnb_match.group(1)
         ical_url = f"https://www.airbnb.com/calendar/ical/{listing_id}.ics?currency=USD"
