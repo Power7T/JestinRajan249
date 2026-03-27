@@ -1,289 +1,241 @@
 {% extends "base.html" %}
-{% block title %}Guest Messages — HostAI{% endblock %}
+{% block title %}Conversations — HostAI{% endblock %}
 
 {% block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "primary-container": "#508ff8",
+          "on-primary-container": "#00285b",
+          "primary": "#acc7ff",
+          "secondary": "#b2c7f5",
+          "tertiary": "#ffb873",
+          "error": "#ffb4ab",
+          "surface": "#10131c",
+          "surface-container-low": "#181b24",
+          "surface-container": "#1c1f28",
+          "surface-container-high": "#262a33",
+          "surface-container-highest": "#31353e",
+          "surface-container-lowest": "#0b0e16",
+          "surface-bright": "#363942",
+          "on-surface": "#e0e2ee",
+          "on-surface-variant": "#c2c6d5",
+          "secondary-container": "#344970",
+          "secondary-fixed": "#d7e2ff",
+          "outline-variant": "#424753",
+        },
+        fontFamily: { "headline": ["Bricolage Grotesque","sans-serif"], "body": ["Figtree","Inter","sans-serif"] },
+        borderRadius: {"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},
+      },
+    },
+  }
+</script>
 <style>
-  /* ── Chat layout ── */
-  .chat-shell {
-    display: grid;
-    grid-template-columns: 300px 1fr;
-    gap: 0;
-    height: calc(100vh - var(--nav-h) - 6rem);
-    min-height: 500px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    background: var(--surface);
-  }
-
-  /* ── Sidebar ── */
-  .chat-sidebar {
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-2);
-  }
-  .chat-sidebar-header {
-    padding: 1rem 1.1rem 0.75rem;
-    border-bottom: 1px solid var(--border);
-    font-family: 'Bricolage Grotesque', sans-serif;
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-3);
-    flex-shrink: 0;
-  }
-
-  .conv-item {
-    padding: 0.85rem 1.1rem;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background var(--t);
-    border-left: 3px solid transparent;
-    position: relative;
-  }
-  .conv-item:hover { background: var(--bg-3); }
-  .conv-item.active {
-    background: rgba(245,166,35,0.08);
-    border-left-color: var(--accent);
-  }
-  .conv-item.active .conv-name { color: var(--accent-2); }
-
-  .conv-name {
-    font-weight: 700;
-    font-size: 0.86rem;
-    color: var(--text-1);
-    margin-bottom: 0.2rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .conv-phone {
-    font-size: 0.74rem;
-    color: var(--text-3);
-    font-family: 'JetBrains Mono', monospace;
-    margin-bottom: 0.35rem;
-  }
-  .conv-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 0.7rem;
-    color: var(--text-3);
-  }
-  .conv-count {
-    background: var(--bg-4);
-    border: 1px solid var(--border);
-    color: var(--text-3);
-    font-size: 0.62rem;
-    font-weight: 700;
-    padding: 1px 6px;
-    border-radius: 999px;
-  }
-
-  /* ── Detail panel ── */
-  .chat-detail {
-    display: flex;
-    flex-direction: column;
-    background: var(--bg);
-    overflow: hidden;
-  }
-  .chat-detail-header {
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    flex-shrink: 0;
-    background: var(--surface);
-  }
-  .chat-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), #FF6B8A);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Bricolage Grotesque', sans-serif;
-    font-weight: 800;
-    font-size: 0.85rem;
-    color: #060911;
-    flex-shrink: 0;
-  }
-  .chat-detail-header h2 {
-    font-size: 0.95rem;
-    margin-bottom: 0.1rem;
-  }
-  .chat-detail-header p {
-    font-size: 0.76rem;
-    color: var(--text-3);
-    font-family: 'JetBrains Mono', monospace;
-    margin: 0;
-  }
-
-  /* ── Message thread ── */
-  .msg-thread {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
-  }
-
-  .msg-row {
-    display: flex;
-    gap: 0.6rem;
-    align-items: flex-end;
-    max-width: 75%;
-  }
-  .msg-row.inbound  { align-self: flex-start; flex-direction: row; }
-  .msg-row.outbound { align-self: flex-end;   flex-direction: row-reverse; }
-
-  .msg-bubble {
-    padding: 0.65rem 0.95rem;
-    border-radius: 14px;
-    word-break: break-word;
-    font-size: 0.85rem;
-    line-height: 1.55;
-    max-width: 100%;
-  }
-  .msg-row.inbound  .msg-bubble {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text-1);
-    border-bottom-left-radius: 4px;
-  }
-  .msg-row.outbound .msg-bubble {
-    background: linear-gradient(135deg, var(--accent), #2B5FC8);
-    color: #EEF2FF;
-    font-weight: 500;
-    border-bottom-right-radius: 4px;
-    box-shadow: 0 2px 12px var(--accent-glow);
-  }
-
-  .msg-meta {
-    font-size: 0.66rem;
-    color: var(--text-3);
-    padding: 0 0.3rem;
-    white-space: nowrap;
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    align-items: flex-end;
-  }
-  .msg-row.inbound .msg-meta { align-items: flex-start; }
-
-  /* Day separator */
-  .day-sep {
-    text-align: center;
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: var(--text-3);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin: 0.5rem 0;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-  .day-sep::before, .day-sep::after {
-    content: ''; flex: 1; height: 1px; background: var(--border);
-  }
-
-  /* Empty / loading */
-  .chat-empty {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-3);
-    gap: 0.75rem;
-    padding: 2rem;
-    text-align: center;
-  }
-  .chat-empty-icon { font-size: 2.5rem; opacity: 0.4; }
-  .chat-empty h3 { font-size: 0.95rem; color: var(--text-2); }
-  .chat-empty p  { font-size: 0.82rem; max-width: 30ch; line-height: 1.6; }
-
-  @media (max-width: 780px) {
-    .chat-shell { grid-template-columns: 1fr; height: auto; }
-    .chat-sidebar { max-height: 280px; border-right: none; border-bottom: 1px solid var(--border); }
-  }
+  .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; }
+  .glass-panel { background: rgba(24,27,36,0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  .sapphire-glow { box-shadow: 0px 0px 15px rgba(80,143,248,0.15); }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  /* Override base container */
+  body > .container { max-width: none !important; padding: 0 !important; margin: 0 !important; animation: none !important; }
 </style>
 {% endblock %}
 
+{% block nav %}{% endblock %}
+
 {% block content %}
-<div class="page-header">
-  <div class="page-header-left">
-    <h1>Guest Messages</h1>
-    <p class="page-subtitle">View your full conversation history with guests</p>
-  </div>
-</div>
+<div class="flex h-screen overflow-hidden bg-[#10131c] text-[#e0e2ee] font-body dark">
 
-<div class="chat-shell">
-  <!-- Sidebar -->
-  <div class="chat-sidebar">
-    <div class="chat-sidebar-header">
-      Conversations
-      {% if conversations %}
-        <span class="conv-count" style="margin-left:0.5rem;vertical-align:middle">{{ conversations|length }}</span>
-      {% endif %}
+  {# ── SIDEBAR ── #}
+  <aside class="fixed left-0 top-0 h-full z-50 flex flex-col w-20 md:w-64 border-r border-[#424753]/15 bg-[#10131c] font-['Inter'] antialiased tracking-tight shadow-[0px_0px_32px_rgba(80,143,248,0.06)]">
+    <div class="p-6">
+      <div class="text-[#508ff8] font-['Bricolage_Grotesque'] text-2xl font-bold tracking-tighter">HostAI</div>
+      <div class="hidden md:block text-slate-500 text-xs mt-1 uppercase tracking-widest font-semibold">Premium Hosting</div>
     </div>
+    <nav class="flex-1 mt-4 space-y-1">
+      <a class="flex items-center gap-3 text-slate-400 px-6 py-4 hover:text-slate-200 hover:bg-[#181b24] transition-all rounded-lg" href="/dashboard">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="hidden md:block">Dashboard</span>
+      </a>
+      <a class="flex items-center gap-3 bg-[#508ff8]/10 text-[#508ff8] border-r-2 border-[#508ff8] px-6 py-4 transition-all duration-300" href="/conversations">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">forum</span>
+        <span class="hidden md:block font-bold">Conversations</span>
+      </a>
+      <a class="flex items-center gap-3 text-slate-400 px-6 py-4 hover:text-slate-200 hover:bg-[#181b24] transition-all" href="/reservations">
+        <span class="material-symbols-outlined">event_available</span>
+        <span class="hidden md:block">Reservations</span>
+      </a>
+      <a class="flex items-center gap-3 text-slate-400 px-6 py-4 hover:text-slate-200 hover:bg-[#181b24] transition-all" href="/activity">
+        <span class="material-symbols-outlined">notifications_active</span>
+        <span class="hidden md:block">Activity</span>
+      </a>
+      <a class="flex items-center gap-3 text-slate-400 px-6 py-4 hover:text-slate-200 hover:bg-[#181b24] transition-all" href="/analytics">
+        <span class="material-symbols-outlined">leaderboard</span>
+        <span class="hidden md:block">Analytics</span>
+      </a>
+      <a class="flex items-center gap-3 text-slate-400 px-6 py-4 hover:text-slate-200 hover:bg-[#181b24] transition-all" href="/workflow">
+        <span class="material-symbols-outlined">hub</span>
+        <span class="hidden md:block">Workflow</span>
+      </a>
+      <a class="flex items-center gap-3 text-slate-400 px-6 py-4 hover:text-slate-200 hover:bg-[#181b24] transition-all" href="/settings">
+        <span class="material-symbols-outlined">settings</span>
+        <span class="hidden md:block">Settings</span>
+      </a>
+    </nav>
+    <div class="p-6 mt-auto">
+      <form method="post" action="/logout">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <button type="submit" class="w-full flex items-center gap-3 text-slate-500 hover:text-[#F87171] transition-all text-sm">
+          <span class="material-symbols-outlined">logout</span>
+          <span class="hidden md:block">Sign out</span>
+        </button>
+      </form>
+    </div>
+  </aside>
 
-    {% if conversations %}
-      {% for conv in conversations %}
-      <div class="conv-item {% if loop.first %}active{% endif %}"
-           data-thread="{{ conv.thread_key }}"
-           data-name="{{ conv.guest_name }}"
-           data-phone="{{ conv.guest_phone }}"
-           onclick="selectConversation(this, '{{ conv.thread_key }}', '{{ conv.guest_name }}', '{{ conv.guest_phone }}')">
-        <div class="conv-name">{{ conv.guest_name }}</div>
-        <div class="conv-phone">{{ conv.guest_phone }}</div>
-        <div class="conv-footer">
-          <span>{{ conv.last_at.strftime('%b %d, %Y') }}</span>
-          <span class="conv-count">{{ conv.message_count }} msgs</span>
+  {# ── MAIN WRAPPER ── #}
+  <main class="flex-1 ml-20 md:ml-64 flex flex-col min-w-0 bg-[#10131c]">
+
+    {# Top App Bar #}
+    <header class="flex justify-between items-center px-8 h-16 sticky top-0 z-40 bg-[#10131c]/40 backdrop-blur-md font-['Bricolage_Grotesque'] font-semibold text-lg">
+      <div class="flex items-center gap-4">
+        <span class="text-[#508ff8] font-bold">Conversations</span>
+        <div class="h-4 w-px bg-[#424753]/30"></div>
+        <span class="text-slate-400 text-sm font-normal">AI-powered guest inbox</span>
+      </div>
+      <div class="flex items-center gap-6">
+        <div class="relative hidden lg:block">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
+          <input id="searchInput" class="bg-[#181b24] border-none rounded-full pl-10 pr-4 py-1.5 text-xs w-64 text-[#e0e2ee] placeholder:text-slate-500 focus:ring-1 focus:ring-[#508ff8] transition-all" placeholder="Search guests…" type="text" oninput="filterConversations(this.value)"/>
         </div>
       </div>
-      {% endfor %}
-    {% else %}
-    <div class="chat-empty" style="padding: 2.5rem 1.5rem;">
-      <div class="chat-empty-icon">📭</div>
-      <h3>No conversations yet</h3>
-      <p>Guest messages will appear here as they come in.</p>
-    </div>
-    {% endif %}
-  </div>
+    </header>
 
-  <!-- Detail Panel -->
-  <div class="chat-detail" id="detailPanel">
-    {% if conversations %}
-    <div class="chat-detail-header" id="detailHeader">
-      <div class="chat-avatar" id="detailAvatar">{{ conversations[0].guest_name[0] | upper }}</div>
-      <div>
-        <h2 id="detailGuestName">{{ conversations[0].guest_name }}</h2>
-        <p id="detailGuestPhone">{{ conversations[0].guest_phone }}</p>
-      </div>
+    {# Conversation Interface #}
+    <div class="flex flex-1 overflow-hidden">
+
+      {# Conversation List #}
+      <section class="w-80 flex flex-col border-r border-[#424753]/10 bg-[#0b0e16]/50 flex-shrink-0">
+        <div class="p-6 pb-2">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-['Bricolage_Grotesque'] text-xl font-bold tracking-tight">Messages</h2>
+            {% if conversations %}
+            <span class="text-[10px] font-bold text-[#508ff8] bg-[#508ff8]/10 px-2 py-1 rounded-full">{{ conversations|length }}</span>
+            {% endif %}
+          </div>
+          <div class="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
+            <button onclick="filterTab('all')" class="tab-btn px-3 py-1 bg-[#508ff8] text-[#00285b] text-[11px] font-bold rounded-full whitespace-nowrap" data-tab="all">All</button>
+            <button onclick="filterTab('pending')" class="tab-btn px-3 py-1 bg-[#262a33] text-slate-400 text-[11px] font-bold rounded-full border border-[#424753]/20 whitespace-nowrap" data-tab="pending">Pending</button>
+            <button onclick="filterTab('sent')" class="tab-btn px-3 py-1 bg-[#262a33] text-slate-400 text-[11px] font-bold rounded-full border border-[#424753]/20 whitespace-nowrap" data-tab="sent">Sent</button>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto space-y-px scrollbar-hide" id="convList">
+          {% if conversations %}
+            {% for conv in conversations %}
+            <div class="conv-item p-4 hover:bg-[#1c1f28] transition-colors cursor-pointer border-l-4 border-transparent"
+                 data-thread="{{ conv.thread_key }}"
+                 data-name="{{ conv.guest_name }}"
+                 data-phone="{{ conv.guest_phone }}"
+                 onclick="selectConversation(this, '{{ conv.thread_key }}', '{{ conv.guest_name }}', '{{ conv.guest_phone }}')">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#508ff8] to-[#344970] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                  {{ conv.guest_name[:2] | upper if conv.guest_name else "?" }}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex justify-between items-start">
+                    <h3 class="text-sm font-semibold truncate">{{ conv.guest_name }}</h3>
+                    <span class="text-[10px] text-slate-500 ml-2 flex-shrink-0">{{ conv.last_at.strftime('%b %d') if conv.last_at else "" }}</span>
+                  </div>
+                  <p class="text-xs text-slate-500 truncate mt-1">{{ conv.message_count }} messages • {{ conv.guest_phone }}</p>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div class="p-8 text-center text-slate-500">
+            <span class="material-symbols-outlined text-4xl opacity-30 block mb-3">forum</span>
+            <p class="text-sm">No conversations yet</p>
+            <p class="text-xs text-slate-600 mt-1">Guest messages will appear here</p>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+      {# Thread View #}
+      <section class="flex-1 flex flex-col min-w-0 relative" id="threadPanel">
+        {% if conversations %}
+        {# Thread Header #}
+        <div class="p-8 pb-6 bg-[#181b24]/30 backdrop-blur-sm border-b border-[#424753]/10" id="threadHeader">
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#508ff8] to-[#344970] flex items-center justify-center text-xl font-bold text-white sapphire-glow" id="detailAvatar">
+                {{ conversations[0].guest_name[:2] | upper if conversations[0].guest_name else "?" }}
+              </div>
+              <div>
+                <h1 class="text-2xl font-['Bricolage_Grotesque'] font-bold tracking-tight" id="detailGuestName">{{ conversations[0].guest_name }}</h1>
+                <p class="text-sm text-slate-400 mt-1 font-mono" id="detailGuestPhone">{{ conversations[0].guest_phone }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# Message Thread #}
+        <div class="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-hide" id="messageThread">
+          <div class="text-center text-slate-600 text-xs py-8">
+            <span class="material-symbols-outlined text-4xl opacity-30 block mb-3">chat_bubble</span>
+            Loading messages…
+          </div>
+        </div>
+
+        {# Bottom Input #}
+        <div class="p-6 bg-[#0b0e16]/80 backdrop-blur-xl border-t border-[#424753]/10">
+          <div class="relative">
+            <textarea id="replyInput" class="w-full bg-[#1c1f28]/40 border-b border-[#424753]/30 focus:border-[#508ff8] focus:ring-0 text-sm py-4 px-12 h-20 resize-none transition-all rounded-t-xl text-[#e0e2ee] placeholder:text-slate-600" placeholder="Type a note or reply…"></textarea>
+            <span class="material-symbols-outlined absolute left-4 top-4 text-slate-500">chat_bubble</span>
+          </div>
+          <div class="flex items-center gap-4 mt-3 px-2">
+            <div class="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase">
+              <span class="material-symbols-outlined text-[14px]">bolt</span>
+              Quick:
+            </div>
+            <button onclick="setReply('WiFi password')" class="text-[10px] px-3 py-1 bg-[#1c1f28] text-slate-400 rounded-full hover:bg-[#262a33] transition-colors">WiFi Details</button>
+            <button onclick="setReply('Check-in instructions')" class="text-[10px] px-3 py-1 bg-[#1c1f28] text-slate-400 rounded-full hover:bg-[#262a33] transition-colors">Check-in</button>
+            <button onclick="setReply('Checkout is at 11:00 AM')" class="text-[10px] px-3 py-1 bg-[#1c1f28] text-slate-400 rounded-full hover:bg-[#262a33] transition-colors">Checkout Time</button>
+            <button onclick="setReply('Parking instructions')" class="text-[10px] px-3 py-1 bg-[#1c1f28] text-slate-400 rounded-full hover:bg-[#262a33] transition-colors">Parking</button>
+          </div>
+        </div>
+
+        {% else %}
+        <div class="flex-1 flex flex-col items-center justify-center text-slate-500 gap-4">
+          <span class="material-symbols-outlined text-6xl opacity-20">forum</span>
+          <h3 class="text-lg font-['Bricolage_Grotesque'] font-bold text-[#c2c6d5]">No conversations yet</h3>
+          <p class="text-sm text-slate-600">Once guests send messages, you'll find them here.</p>
+        </div>
+        {% endif %}
+      </section>
     </div>
-    <div class="msg-thread" id="messageThread"></div>
-    {% else %}
-    <div class="chat-empty">
-      <div class="chat-empty-icon">💬</div>
-      <h3>No conversations yet</h3>
-      <p>Once guests send messages, you'll find them here.</p>
-    </div>
-    {% endif %}
+  </main>
+
+  {# Atmospheric glow #}
+  <div class="pointer-events-none fixed inset-0 z-0 opacity-10">
+    <div class="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#508ff8] rounded-full blur-[160px]"></div>
+    <div class="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#508ff8]/30 rounded-full blur-[180px]"></div>
   </div>
 </div>
 
 <script nonce="{{ request.state.csp_nonce }}">
 async function selectConversation(element, threadKey, guestName, guestPhone) {
-  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
-  element.classList.add('active');
+  document.querySelectorAll('.conv-item').forEach(el => {
+    el.classList.remove('bg-[#508ff8]/10', 'border-[#508ff8]');
+    el.classList.add('border-transparent');
+  });
+  element.classList.remove('border-transparent');
+  element.classList.add('bg-[#508ff8]/10', 'border-[#508ff8]');
 
   const nameEl = document.getElementById('detailGuestName');
   const phoneEl = document.getElementById('detailGuestPhone');
@@ -292,58 +244,87 @@ async function selectConversation(element, threadKey, guestName, guestPhone) {
 
   if (nameEl) nameEl.textContent = guestName;
   if (phoneEl) phoneEl.textContent = guestPhone;
-  if (avatarEl) avatarEl.textContent = guestName ? guestName[0].toUpperCase() : '?';
+  if (avatarEl) avatarEl.textContent = guestName ? guestName.substring(0, 2).toUpperCase() : '?';
 
   if (!threadEl) return;
-
-  threadEl.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon" style="animation: pulse 1s infinite">💬</div><p>Loading messages…</p></div>';
+  threadEl.innerHTML = `<div class="text-center text-slate-500 py-12">
+    <span class="material-symbols-outlined text-3xl opacity-40 block mb-3">hourglass_empty</span>
+    <p class="text-sm">Loading messages…</p>
+  </div>`;
 
   try {
     const response = await fetch(`/api/conversation/${threadKey}`);
-    if (!response.ok) {
-      threadEl.innerHTML = '<div class="chat-empty"><p>Error loading messages. Please try again.</p></div>';
-      return;
-    }
-
+    if (!response.ok) throw new Error('Failed to load');
     const data = await response.json();
     const messages = data.messages || [];
 
     if (messages.length === 0) {
-      threadEl.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon">📭</div><h3>No messages</h3><p>No messages found in this conversation.</p></div>';
+      threadEl.innerHTML = `<div class="text-center text-slate-600 py-12">
+        <span class="material-symbols-outlined text-4xl opacity-30 block mb-2">forum</span>
+        <p class="text-sm">No messages in this conversation.</p>
+      </div>`;
       return;
     }
 
     let lastDate = null;
     const html = messages.map(msg => {
-      const direction = msg.direction === 'outbound' ? 'outbound' : 'inbound';
+      const isOut = msg.direction === 'outbound';
       const msgDate = new Date(msg.timestamp);
       const time = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const dateStr = msgDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
       let sep = '';
       if (dateStr !== lastDate) {
-        sep = `<div class="day-sep">${dateStr}</div>`;
+        sep = `<div class="flex items-center gap-3 my-4">
+          <div class="flex-1 h-px bg-[#424753]/20"></div>
+          <span class="text-[10px] font-bold text-slate-600 uppercase tracking-wider">${dateStr}</span>
+          <div class="flex-1 h-px bg-[#424753]/20"></div>
+        </div>`;
         lastDate = dateStr;
       }
 
-      const channel = msg.channel ? `<span>${msg.channel.toUpperCase()}</span>` : '';
-      const badge = msg.badge ? `<span>${escapeHtml(msg.badge)}</span>` : '';
+      const bubble = isOut
+        ? `<div class="flex flex-col items-end max-w-[80%] ml-auto">
+            <div class="text-[10px] text-slate-600 mb-2">${time} · <span class="font-bold uppercase text-[#508ff8]">AI Response</span></div>
+            <div class="bg-[#508ff8]/5 rounded-2xl p-4 text-sm leading-relaxed text-[#acc7ff]/80 border border-[#508ff8]/10">${escapeHtml(msg.body)}</div>
+           </div>`
+        : `<div class="flex flex-col items-start max-w-[80%]">
+            <div class="text-[10px] font-bold uppercase text-slate-500 mb-2">${escapeHtml(guestName)} · ${time}</div>
+            <div class="bg-[#1c1f28] rounded-2xl p-4 text-sm leading-relaxed text-[#c2c6d5] border border-[#424753]/5">${escapeHtml(msg.body)}</div>
+           </div>`;
 
-      return `${sep}
-        <div class="msg-row ${direction}">
-          <div class="msg-bubble">${escapeHtml(msg.body)}</div>
-          <div class="msg-meta">
-            <span>${time}</span>
-            ${channel}${badge}
-          </div>
-        </div>`;
+      return sep + bubble;
     }).join('');
 
-    threadEl.innerHTML = html;
+    threadEl.innerHTML = `<div class="space-y-4">${html}</div>`;
     threadEl.scrollTop = threadEl.scrollHeight;
   } catch (err) {
-    threadEl.innerHTML = `<div class="chat-empty"><p>Error: ${escapeHtml(err.message)}</p></div>`;
+    threadEl.innerHTML = `<div class="text-center text-slate-600 py-8"><p class="text-sm">Error loading messages. Please try again.</p></div>`;
   }
+}
+
+function filterConversations(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('.conv-item').forEach(item => {
+    const name = item.dataset.name?.toLowerCase() || '';
+    const phone = item.dataset.phone?.toLowerCase() || '';
+    item.style.display = (name.includes(q) || phone.includes(q)) ? '' : 'none';
+  });
+}
+
+function filterTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const active = btn.dataset.tab === tab;
+    btn.className = active
+      ? 'tab-btn px-3 py-1 bg-[#508ff8] text-[#00285b] text-[11px] font-bold rounded-full whitespace-nowrap'
+      : 'tab-btn px-3 py-1 bg-[#262a33] text-slate-400 text-[11px] font-bold rounded-full border border-[#424753]/20 whitespace-nowrap';
+  });
+}
+
+function setReply(text) {
+  const input = document.getElementById('replyInput');
+  if (input) input.value = text + ' ';
+  input?.focus();
 }
 
 function escapeHtml(text) {
@@ -353,7 +334,12 @@ function escapeHtml(text) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const first = document.querySelector('.conv-item');
-  if (first) first.click();
+  if (first) {
+    first.classList.add('bg-[#508ff8]/10');
+    first.classList.remove('border-transparent');
+    first.classList.add('border-[#508ff8]');
+    first.click();
+  }
 });
 </script>
 {% endblock %}

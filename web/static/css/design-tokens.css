@@ -1,0 +1,184 @@
+/* 🌌 HostAI — Sapphire Velocity Redesign System
+   A premium dark-mode design system for AI-First hospitality. 
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200;12..96,400;12..96,600;12..96,800&family=Figtree:ital,wght@0,300;0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ── Deep Sapphire Foundation ── */
+  --bg:          #060911;      /* Deepest midnight */
+  --bg-2:        #0C1018;      /* Secondary surface */
+  --bg-3:        #131A24;      /* Tertiary surface */
+  --bg-4:        #1A2233;      /* Interactive base */
+  --surface:     #0D1220;      /* Glass main surface */
+  --surface-2:   #141C2C;      /* Glass secondary surface */
+
+  /* Sapphire & Violet Accents — High energy */
+  --accent:      #4F8EF7;      /* Electric Sapphire */
+  --accent-2:    #93BEFF;      /* Light sapphire */
+  --accent-glow: rgba(79,142,247,0.22);
+  --accent-soft: rgba(79,142,247,0.08);
+  --rose:        #9B7FE8;      /* Deep violet */
+  --rose-glow:   rgba(155,127,232,0.22);
+
+  /* Glass Borders — Atmospheric depth */
+  --border:      rgba(80,120,220,0.1);
+  --border-2:    rgba(80,120,220,0.18);
+  --border-glow: rgba(79,142,247,0.25);
+
+  /* Semantic - High precision */
+  --success:        #34D399;
+  --success-bg:     rgba(52,211,153,0.08);
+  --success-border: rgba(52,211,153,0.2);
+  --warn:           #FBBF24;
+  --warn-bg:        rgba(251,191,36,0.08);
+  --warn-border:    rgba(251,191,36,0.2);
+  --danger:         #F87171;
+  --danger-bg:      rgba(248,113,113,0.08);
+  --danger-border:  rgba(248,113,113,0.2);
+
+  /* Text — Cold moonlight whites */
+  --text-1:   #EEF2FF;         /* High emphasis */
+  --text-2:   #8898BB;         /* Medium emphasis */
+  --text-3:   #445070;         /* Low emphasis/Muted */
+  --text-inv: #060911;         /* Inverted text */
+
+  /* Layout & Depth */
+  --nav-h:      64px;
+  --radius-sm:  8px;
+  --radius:     12px;
+  --radius-lg:  18px;
+  --shadow:     0 8px 32px rgba(0,0,0,0.8);
+  --glow:       0 0 40px rgba(79,142,247,0.15);
+  --t:          180ms cubic-bezier(0.22, 1, 0.36, 1);
+  --t-slow:     350ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   GLOBAL STYLES
+   ───────────────────────────────────────────────────────────── */
+
+body {
+  font-family: 'Figtree', sans-serif;
+  background-color: var(--bg);
+  color: var(--text-2);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Atmospheric Sapphire Background Overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 140vw;
+  height: 80vh;
+  background: radial-gradient(ellipse at 50% 0%, 
+    rgba(79,142,247,0.08) 0%, 
+    rgba(155,127,232,0.04) 40%, 
+    transparent 80%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+h1, h2, .h-display {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  color: var(--text-1);
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+/* Glass-morphism Utility Classes */
+.glass {
+  background: rgba(13, 18, 32, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.card-glow {
+  position: relative;
+  overflow: hidden;
+  transition: all var(--t);
+}
+
+.card-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--border-glow), transparent 60%);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: destination-out;
+  pointer-events: none;
+  opacity: 0.5;
+  transition: opacity var(--t);
+}
+
+.card-glow:hover {
+  border-color: rgba(79, 142, 247, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.9), 0 0 0 0.5px var(--border-glow);
+}
+
+.card-glow:hover::after {
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   COMPONENTS
+   ───────────────────────────────────────────────────────────── */
+
+/* Brand Accent Button */
+.btn-sapphire {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 24px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, #2B5FC8 100%);
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all var(--t);
+  box-shadow: 0 4px 16px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15);
+  text-decoration: none;
+}
+
+.btn-sapphire:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15);
+  filter: brightness(1.1);
+  color: #fff;
+}
+
+/* High Fidelity Text/Draft Area */
+.draft-panel {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+  color: var(--text-2);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  transition: all var(--t);
+}
+
+.draft-panel:focus-within {
+  border-color: var(--accent);
+  background: var(--bg-3);
+  box-shadow: 0 0 24px var(--accent-soft);
+}
