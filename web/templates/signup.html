@@ -1,436 +1,158 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up - HostAI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #060911;
-            --surface: #0D1220;
-            --surface-hover: #1E1C2A;
-            --accent: #4F8EF7;
-            --accent-glow: rgba(245, 166, 35, 0.35);
-            --text-main: #F0EDF8;
-            --text-muted: #9B94B8;
-            --text-light: #DDD8F0;
-            --border: rgba(160, 140, 220, 0.11);
-            --radius: 8px;
-            --radius-lg: 18px;
-            --t: 0.2s ease;
-        }
+{%- extends "base.html" %}
+{%- block title %}Sign Up — HostAI{%- endblock %}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "on-primary": "#002e6b",
+        "inverse-on-surface": "#2f3037",
+        "surface-container": "#1e1f26",
+        "surface-tint": "#aec6ff",
+        "surface-variant": "#34343b",
+        "secondary-fixed": "#9cf0ff",
+        "inverse-surface": "#e3e1eb",
+        "on-secondary": "#00363d",
+        "on-primary-container": "#00275e",
+        "on-surface-variant": "#c3c6d4",
+        "surface-container-lowest": "#0d0e14",
+        "primary": "#aec6ff",
+        "surface-container-high": "#292930",
+        "secondary": "#bdf4ff",
+        "surface-dim": "#121319",
+        "primary-container": "#5d8ef1",
+        "outline-variant": "#424752",
+        "background": "#121319",
+        "surface-container-highest": "#34343b",
+        "surface-container-low": "#1a1b22",
+        "primary-fixed-dim": "#aec6ff",
+        "on-background": "#e3e1eb",
+        "surface": "#121319"
+      },
+      fontFamily: {
+        "headline": ["Plus Jakarta Sans"],
+        "body": ["Plus Jakarta Sans"],
+        "label": ["Plus Jakarta Sans"]
+      },
+      borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+    },
+  },
+}
+</script>
+<style>
+body {
+    background-color: #08090F;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+}
+.glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(174, 198, 255, 0.1);
+}
+.glow-orb {
+    filter: blur(120px);
+    opacity: 0.15;
+    z-index: 0;
+}
+</style>
+{%- endblock %}
 
-        body {
-            font-family: 'DM Sans', sans-serif;
-            background: linear-gradient(135deg, #060911 0%, #0D1220 100%);
-            color: var(--text-main);
-            line-height: 1.6;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow-x: hidden;
-            padding: 2rem 0; /* Add padding for smaller screens where the card gets tall */
-        }
+{%- block nav %}{%- endblock %}
 
-        /* ===== NAV ===== */
-        nav {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.5rem 5%;
-            z-index: 50;
-        }
-
-        .logo {
-            font-size: 1.25rem;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-decoration: none;
-            color: var(--text-main);
-        }
-
-        .logo-icon {
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, var(--accent), #2B5FC8);
-            border-radius: 4px;
-            box-shadow: 0 0 18px var(--accent-glow);
-        }
-
-        nav a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-weight: 600;
-            transition: color var(--t);
-        }
-
-        nav a:hover {
-            color: var(--text-main);
-        }
-
-        /* ===== GLOW EFFECTS ===== */
-        .glow {
-            position: absolute;
-            border-radius: 50%;
-            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-            filter: blur(50px);
-            z-index: 1;
-        }
-
-        .glow-1 {
-            width: 400px;
-            height: 400px;
-            top: -100px;
-            right: -100px;
-            opacity: 0.3;
-        }
-
-        .glow-2 {
-            width: 300px;
-            height: 300px;
-            bottom: -50px;
-            left: -100px;
-            opacity: 0.2;
-        }
-
-        /* ===== CONTAINER ===== */
-        .auth-container {
-            width: 100%;
-            max-width: 440px; /* Slightly wider for double inputs */
-            padding: 0 1.5rem;
-            position: relative;
-            z-index: 10;
-        }
-
-        .auth-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 2.5rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
-        }
-
-        .auth-card h1 {
-            font-family: 'Bricolage Grotesque', sans-serif;
-            font-size: 1.8rem;
-            margin-bottom: 0.5rem;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-        }
-
-        .auth-card .subtitle {
-            color: var(--text-muted);
-            margin-bottom: 2rem;
-            font-size: 0.95rem;
-        }
-
-        /* ===== FORM ===== */
-        .form-row {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .form-row > div {
-            flex: 1;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        label {
-            display: block;
-            font-weight: 600;
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-            color: var(--text-light);
-        }
-
-        input[type="text"],
-        input[type="email"],
-        input[type="password"],
-        input[type="tel"],
-        select {
-            width: 100%;
-            padding: 0.75rem;
-            background: var(--surface-hover);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            color: var(--text-main);
-            font-family: inherit;
-            font-size: 0.95rem;
-            transition: all var(--t);
-        }
-
-        input[type="text"]:focus,
-        input[type="email"]:focus,
-        input[type="password"]:focus,
-        input[type="tel"]:focus,
-        select:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-glow);
-            background: var(--surface);
-        }
-
-        input::placeholder {
-            color: var(--text-muted);
-        }
-
-        select {
-            cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394A3B8' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 0.75rem center;
-            padding-right: 2.5rem;
-        }
-
-        /* ===== BUTTONS ===== */
-        .btn {
-            width: 100%;
-            padding: 0.8rem;
-            background: linear-gradient(135deg, var(--accent), #2B5FC8);
-            color: #060911;
-            border: none;
-            border-radius: var(--radius);
-            font-family: 'DM Sans', sans-serif;
-            font-weight: 700;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all var(--t);
-            box-shadow: 0 4px 16px var(--accent-glow);
-            margin-top: 0.5rem;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 24px var(--accent-glow);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* ===== TERMS ===== */
-        .terms {
-            margin-top: 1rem;
-            margin-bottom: 1.5rem;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            display: flex;
-            align-items: flex-start;
-            gap: 0.5rem;
-        }
-
-        .terms input[type="checkbox"] {
-            margin-top: 0.25rem;
-            accent-color: var(--accent);
-        }
-
-        .terms a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-        .terms a:hover {
-            text-decoration: underline;
-        }
-
-        /* ===== ALERTS ===== */
-        .alert {
-            padding: 1rem;
-            border-radius: var(--radius);
-            margin-bottom: 1.5rem;
-            font-size: 0.95rem;
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-        }
-
-        .alert-error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: #FCA5A5;
-        }
-
-        /* ===== FOOTER ===== */
-        .auth-footer {
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--border);
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-
-        .auth-footer a {
-            color: var(--accent-2, #F5B944);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .auth-footer a:hover {
-            color: var(--accent);
-        }
-
-        /* ===== RESPONSIVE ===== */
-        @media (max-width: 640px) {
-            nav { padding: 1rem 5%; }
-            .auth-container { max-width: 100%; }
-            .auth-card { padding: 2rem; }
-            .auth-card h1 { font-size: 1.5rem; }
-            .form-row { flex-direction: column; gap: 0; }
-            .form-row .form-group { margin-bottom: 1.5rem; }
-        }
-    </style>
-</head>
-<body>
-    <!-- Glow effects -->
-    <div class="glow glow-1"></div>
-    <div class="glow glow-2"></div>
-
-    <!-- Nav -->
-    <nav>
-        <a href="/" class="logo">
-            <div class="logo-icon"></div>
-            HostAI
-        </a>
-        <a href="/login">Sign In</a>
-    </nav>
-
-    <!-- Auth Container -->
-    <div class="auth-container">
-        <div class="auth-card">
-            <h1>Create an Account</h1>
-            <p class="subtitle">Start automating your guest support.</p>
-
-            {% if error %}
-            <div class="alert alert-error">
-                <span>⚠️</span>
-                <span>{{ error }}</span>
-            </div>
-            {% endif %}
-
-            <form method="post" action="/signup">
-                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="first_name">First Name</label>
-                        <input
-                            type="text"
-                            id="first_name"
-                            name="first_name"
-                            placeholder="Alex"
-                            required
-                        >
-                    </div>
-                    <div class="form-group">
-                        <label for="last_name">Last Name</label>
-                        <input
-                            type="text"
-                            id="last_name"
-                            name="last_name"
-                            placeholder="Chen"
-                            required
-                        >
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        placeholder="you@example.com"
-                        required
-                        autocomplete="email"
-                    >
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="country">Country</label>
-                        <select id="country" name="country" required>
-                            <option value="">Select your country</option>
-                            <option value="US">🇺🇸 United States</option>
-                            <option value="GB">🇬🇧 United Kingdom</option>
-                            <option value="CA">🇨🇦 Canada</option>
-                            <option value="AU">🇦🇺 Australia</option>
-                            <option value="DE">🇩🇪 Germany</option>
-                            <option value="FR">🇫🇷 France</option>
-                            <option value="IT">🇮🇹 Italy</option>
-                            <option value="ES">🇪🇸 Spain</option>
-                            <option value="JP">🇯🇵 Japan</option>
-                            <option value="SG">🇸🇬 Singapore</option>
-                            <option value="IN">🇮🇳 India</option>
-                            <option value="BR">🇧🇷 Brazil</option>
-                            <option value="MX">🇲🇽 Mexico</option>
-                            <option value="NZ">🇳🇿 New Zealand</option>
-                            <option value="ZA">🇿🇦 South Africa</option>
-                            <option value="SG">🇸🇬 Singapore</option>
-                            <option value="HK">🇭🇰 Hong Kong</option>
-                            <option value="TH">🇹🇭 Thailand</option>
-                            <option value="PH">🇵🇭 Philippines</option>
-                            <option value="ID">🇮🇩 Indonesia</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="phone">Mobile Number</label>
-                        <input
-                            type="tel"
-                            id="phone"
-                            name="phone"
-                            placeholder="+1 (555) 123-4567"
-                            required
-                            autocomplete="tel"
-                        >
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        placeholder="Create a strong password"
-                        required
-                        autocomplete="new-password"
-                        minlength="8"
-                    >
-                </div>
-
-                <div class="terms">
-                    <input type="checkbox" id="terms" name="terms" required>
-                    <label for="terms" style="font-weight: normal; margin-bottom: 0;">
-                        I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
-                    </label>
-                </div>
-
-                <button type="submit" class="btn">Create Account</button>
-            </form>
-
-            <div class="auth-footer">
-                Already have an account? <a href="/login">Sign in →</a>
-            </div>
+{%- block main_wrapper %}
+{%- block content %}
+{% if error %}
+<div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-[#ffb4ab]/10 border border-[#ffb4ab]/30 text-[#ffb4ab] text-sm px-6 py-3 rounded-xl backdrop-blur-lg">
+  {{ error }}
+</div>
+{%- endif %}
+<form method="post" action="/signup">
+<input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+<!-- Ambient Background Orbs -->
+<div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none">
+<div class="absolute top-[20%] left-[30%] w-96 h-96 bg-primary-container glow-orb rounded-full"></div>
+<div class="absolute bottom-[20%] right-[30%] w-80 h-80 bg-secondary-container glow-orb rounded-full"></div>
+</div>
+<!-- Main Content Container -->
+<main class="relative z-10 w-full max-w-lg px-6 py-12 mx-auto">
+<!-- Center Card -->
+<div class="glass-card backdrop-blur-2xl rounded-xl p-8 md:p-10 flex flex-col items-center">
+<!-- Branding -->
+<div class="flex flex-col items-center gap-3 mb-8">
+<div class="w-12 h-12 bg-gradient-to-br from-primary-container to-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary-container/20">
+<span class="material-symbols-outlined text-on-primary-container text-3xl" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<h1 class="text-on-surface font-headline font-extrabold text-2xl tracking-tight">HostAI</h1>
+<p class="text-on-surface-variant text-sm text-center leading-relaxed">
+    Create an account to automate your guest support.
+</p>
+</div>
+<!-- Form Header -->
+<div class="w-full mb-6">
+<span class="text-on-surface-variant/60 font-label font-bold text-[10px] tracking-[0.15rem] uppercase block mb-6 border-b border-outline-variant/10 pb-2">Sign Up</span>
+</div>
+<!-- Form -->
+<div class="w-full space-y-4">
+    <div class="flex gap-4">
+        <div class="space-y-1.5 flex-1">
+            <input name="first_name" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="First Name" type="text" required/>
+        </div>
+        <div class="space-y-1.5 flex-1">
+            <input name="last_name" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Last Name" type="text" required/>
         </div>
     </div>
-</body>
-</html>
+    <div class="space-y-1.5">
+        <input name="email" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Email address" type="email" required/>
+    </div>
+    <div class="flex gap-4">
+        <div class="space-y-1.5 flex-1">
+            <select name="country" class="w-full bg-surface-container-lowest text-on-surface-variant text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all" required>
+                <option value="">Country</option>
+                <option value="US">🇺🇸 United States</option>
+                <option value="GB">🇬🇧 United Kingdom</option>
+                <option value="CA">🇨🇦 Canada</option>
+                <option value="AU">🇦🇺 Australia</option>
+                <option value="DE">🇩🇪 Germany</option>
+                <option value="FR">🇫🇷 France</option>
+                <option value="IT">🇮🇹 Italy</option>
+                <option value="ES">🇪🇸 Spain</option>
+            </select>
+        </div>
+        <div class="space-y-1.5 flex-1">
+            <input name="phone" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Mobile (+1...)" type="tel" required/>
+        </div>
+    </div>
+    <div class="space-y-1.5">
+        <input name="password" minlength="8" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Create Password" type="password" required/>
+    </div>
+    
+    <div class="flex items-start gap-2 pt-2">
+        <input type="checkbox" name="terms" id="terms" required class="mt-1 accent-primary">
+        <label for="terms" class="text-xs text-on-surface-variant leading-relaxed">I agree to the <a href="#" class="text-primary hover:underline">Terms of Service</a> & <a href="#" class="text-primary hover:underline">Privacy Policy</a>.</label>
+    </div>
+
+    <!-- Submit Button -->
+    <button class="group relative w-full bg-gradient-to-r from-primary-container to-primary-fixed-dim py-3.5 mt-2 rounded-lg flex items-center justify-center gap-2 overflow-hidden transition-all hover:shadow-[0_0_20px_rgba(174,198,255,0.3)] active:scale-[0.98]" type="submit">
+    <span class="text-on-primary-container font-headline font-bold text-sm">Create Account</span>
+    <span class="material-symbols-outlined text-on-primary-container text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
+    </button>
+</div>
+<!-- Bottom Links -->
+<div class="mt-8 flex flex-col items-center gap-4">
+<a class="text-on-surface-variant text-sm hover:text-on-surface transition-colors flex items-center gap-1.5 group" href="/login">
+    Already have an account? <span class="text-primary font-semibold group-hover:underline underline-offset-4 decoration-primary/30">Sign in →</span>
+</a>
+</div>
+</div>
+</main>
+</form>
+{%- endblock %}
+{%- endblock %}

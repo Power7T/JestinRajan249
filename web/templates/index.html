@@ -97,9 +97,9 @@ tailwind.config = {
                 HostAI
             </div>
 <div class="hidden md:flex items-center gap-8 font-['Plus_Jakarta_Sans'] font-medium text-sm">
-<a class="text-[#5B8DEF] font-bold border-b-2 border-[#5B8DEF] pb-1" href="#">Features</a>
-<a class="text-slate-400 hover:text-white transition-colors" href="#">Pricing</a>
-<a class="text-slate-400 hover:text-white transition-colors" href="#">Compare Plans</a>
+<a class="text-[#5B8DEF] font-bold border-b-2 border-[#5B8DEF] pb-1" href="#features">Features</a>
+<a class="text-slate-400 hover:text-white transition-colors" href="/pricing">Pricing</a>
+<a class="text-slate-400 hover:text-white transition-colors" href="/pricing">Compare Plans</a>
 </div>
 <div class="flex items-center gap-4">
 <a href="/login" class="text-slate-400 hover:text-white text-sm font-medium transition-colors">Sign In</a>
@@ -141,8 +141,8 @@ tailwind.config = {
 </div>
 <!-- Hero CTAs -->
 <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-24">
-<a href="/signup" class="w-full sm:w-auto px-8 py-4 bg-gradient-to-br from-primary to-primary-container rounded-xl font-bold text-on-primary shadow-[0_0_25px_rgba(93,142,241,0.3)] hover:shadow-[0_0_40px_rgba(93,142,241,0.4)] transition-all active:scale-95 text-center">Start Free Trial</a>
-<button class="w-full sm:w-auto px-8 py-4 text-primary font-bold hover:bg-surface-container-high/40 rounded-xl transition-all flex items-center justify-center gap-2">
+<a href="/pricing" class="w-full sm:w-auto px-8 py-4 bg-gradient-to-br from-primary to-primary-container rounded-xl font-bold text-on-primary shadow-[0_0_25px_rgba(93,142,241,0.3)] hover:shadow-[0_0_40px_rgba(93,142,241,0.4)] transition-all active:scale-95 text-center">View Pricing Plans</a>
+<button onclick="window.location.href='/login'" class="w-full sm:w-auto px-8 py-4 text-primary font-bold hover:bg-surface-container-high/40 rounded-xl transition-all flex items-center justify-center gap-2">
 <span class="material-symbols-outlined" data-icon="play_circle">play_circle</span>
                     Watch Demo
                 </button>
@@ -231,10 +231,10 @@ tailwind.config = {
                         Join 1,200+ hosts who save an average of 15 hours per week on guest communication.
                     </p>
 <div class="flex flex-col sm:flex-row items-center justify-center gap-6">
-<button class="px-10 py-4 bg-white text-surface font-bold rounded-xl hover:bg-primary-fixed transition-colors">
-                            Start Your 14-Day Free Trial
-                        </button>
-<span class="text-on-surface-variant text-sm font-medium">No credit card required.</span>
+<a href="/pricing" class="inline-block px-10 py-4 bg-white text-surface font-bold rounded-xl hover:bg-primary-fixed transition-colors">
+                            Explore Pricing Plans
+                        </a>
+<span class="text-on-surface-variant text-sm font-medium mt-2">Find the right scale for your portfolio.</span>
 </div>
 </div>
 </div>
@@ -255,8 +255,8 @@ tailwind.config = {
 <div>
 <h4 class="text-white font-bold mb-6">Product</h4>
 <ul class="space-y-4">
-<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">Features</a></li>
-<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">Pricing</a></li>
+<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#features">Features</a></li>
+<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="/pricing">Pricing</a></li>
 <li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">Integrations</a></li>
 <li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">Changelog</a></li>
 </ul>
