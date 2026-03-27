@@ -244,7 +244,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <h3>Needs host attention</h3>
       <p>Refund requests, complaints, safety concerns, and anything the bot cannot answer from the current stay context should land here.</p>
       <div class="queue-meta">
-        <span class="chip bad">Urgent</span>
+        <span class="chip">Urgent</span>
         <span class="chip">Human review</span>
       </div>
       {% if exceptions %}
@@ -257,7 +257,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <h3>Needs more context</h3>
       <p>Missing room mapping, missing guest phone, or an incomplete reservation should be resolved before the bot answers confidently.</p>
       <div class="queue-meta">
-        <span class="chip warn">Needs mapping</span>
+        <span class="chip">Needs mapping</span>
         <span class="chip">Arrival activation</span>
       </div>
       {% if exceptions|length > 1 %}
@@ -270,7 +270,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <h3>Ready to automate</h3>
       <p>Routine questions, known arrival messages, and common amenity requests should be allowed to flow through without friction.</p>
       <div class="queue-meta">
-        <span class="chip good">Automation</span>
+        <span class="chip">Automation</span>
         <span class="chip">Low risk</span>
       </div>
       {% if exceptions|length > 2 %}
