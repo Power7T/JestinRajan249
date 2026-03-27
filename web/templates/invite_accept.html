@@ -6,41 +6,41 @@
   <title>Set Your Password — HostAI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg:      #0D0B10;
       --bg-2:    #131118;
-      --surface: #181512;
+      --surface: #0D1220;
       --border:  rgba(160,140,220,0.1);
       --border-2:rgba(160,140,220,0.18);
       --accent:  var(--accent);
       --accent-2:var(--accent-2);
-      --accent-glow: rgba(201,169,110,0.28);
+      --accent-glow: rgba(79,142,247,0.22);
       --rose:    #FF6B8A;
       --text-1:  #F0EDF8;
       --text-2:  #9B94B8;
       --text-3:  #5E5875;
       --danger:  #FF6B8A;
-      --danger-bg: rgba(217,115,115,0.08);
-      --danger-border: rgba(217,115,115,0.2);
-      --success: #6FCFB4;
-      --success-bg: rgba(111,207,180,0.08);
-      --success-border: rgba(111,207,180,0.18);
+      --danger-bg: rgba(248,113,113,0.08);
+      --danger-border: rgba(248,113,113,0.2);
+      --success: #34D399;
+      --success-bg: rgba(52,211,153,0.08);
+      --success-border: rgba(52,211,153,0.2);
       --radius:  10px;
       --radius-sm: 6px;
       --t: 150ms ease;
     }
     [data-theme="light"] {
-      --bg: #F5F1EA; --bg-2: #EDE7DC; --surface: #FDFAF5;
-      --border: rgba(120,90,50,0.1); --border-2: rgba(120,90,50,0.18);
-      --text-1: #1E1812; --text-2: #5C4E3A; --text-3: #9B8A72;
+      --bg: #F8FAFF; --bg-2: #EFF3FB; --surface: #FFFFFF;
+      --border: rgba(60,90,180,0.1); --border-2: rgba(60,90,180,0.18);
+      --text-1: #0D1629; --text-2: #475A82; --text-3: #8A99BB;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Outfit', -apple-system, sans-serif;
+      font-family: 'Figtree', -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text-1);
       min-height: 100vh;
@@ -115,7 +115,7 @@
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 2rem;
-      box-shadow: 0 8px 48px rgba(0,0,0,0.5), 0 0 80px rgba(201,169,110,0.04);
+      box-shadow: 0 8px 48px rgba(0,0,0,0.5), 0 0 80px rgba(79,142,247,0.04);
       position: relative;
       overflow: hidden;
     }
@@ -123,7 +123,7 @@
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(135deg, rgba(232,160,32,0.05) 0%, transparent 60%);
+      background: linear-gradient(135deg, rgba(79,142,247,0.05) 0%, transparent 60%);
       pointer-events: none;
     }
 
@@ -177,7 +177,7 @@
     .btn:active { transform: translateY(0); }
 
     .btn-primary {
-      background: linear-gradient(135deg, var(--accent), #8C6828);
+      background: linear-gradient(135deg, var(--accent), #2B5FC8);
       color: #0C0A08;
       font-weight: 700;
       margin-bottom: 0.75rem;
