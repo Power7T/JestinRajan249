@@ -158,6 +158,154 @@
 .compat-layer .stepper{display:flex;flex-direction:column;gap:1.25rem}.compat-layer .step{display:flex;gap:1rem;align-items:flex-start;position:relative}.compat-layer .step::before{content:"";position:absolute;left:13px;top:28px;bottom:-1.25rem;width:2px;background:rgba(174,198,255,0.1);z-index:0}.compat-layer .step:last-child::before{display:none}.compat-layer .step.done::before{background:rgba(39,201,63,0.3)}.compat-layer .step.warn::before{background:rgba(255,189,46,0.3)}.compat-layer .num{width:28px;height:28px;border-radius:50%;background:#0d0e14;border:1px solid rgba(174,198,255,0.2);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;color:#aec6ff;flex-shrink:0;z-index:1}.compat-layer .step.done .num{background:rgba(39,201,63,0.1);border-color:rgba(39,201,63,0.4);color:#27c93f}.compat-layer .step.warn .num{background:rgba(255,189,46,0.1);border-color:rgba(255,189,46,0.4);color:#ffbd2e}.compat-layer .step .body h4{font-size:0.95rem;font-weight:700;color:#e3e1eb;margin-bottom:0.25rem}.compat-layer .step .body p{font-size:0.84rem;color:#8d909e;line-height:1.6;margin:0}
 .compat-layer details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
 .compat-layer code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
+.compat-layer .priority-high{border-left:3px solid #ffb4ab}
+.compat-layer .priority-medium{border-left:3px solid #ffbd2e}
+.compat-layer .priority-low{border-left:3px solid #27c93f}
+.compat-layer .rule-row,.compat-layer .issue-card{background:#0d0e14;border:1px solid rgba(66,71,82,0.3);border-radius:0.75rem;padding:1rem;margin-bottom:0.75rem}
+</style>
+<style>
+/* ── Reservations page specific ── */
+
+/* KPI stat tiles */
+.analytics-widget{
+  background:rgba(13,14,20,0.6);
+  border:1px solid rgba(174,198,255,0.07);
+  border-top:2px solid rgba(91,141,239,0.35);
+  border-radius:0.85rem;
+  padding:1.1rem 1rem 0.9rem;
+  text-align:center;
+  transition:border-color .2s,box-shadow .2s;
+  position:relative;
+  overflow:hidden;
+}
+.analytics-widget::before{
+  content:"";
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(91,141,239,0.06) 0%,transparent 70%);
+  pointer-events:none;
+}
+.analytics-widget:hover{border-top-color:rgba(174,198,255,0.6);box-shadow:0 0 18px rgba(91,141,239,0.12)}
+.widget-value{font-size:1.85rem;font-weight:800;color:#aec6ff;letter-spacing:-0.03em;line-height:1;margin-bottom:0.3rem}
+.widget-label{font-size:0.67rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.09em;font-weight:700}
+.analytics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.75rem;margin-bottom:1.5rem}
+
+/* Toolbar / filter bar */
+.res-toolbar{
+  display:flex;
+  align-items:center;
+  gap:0.6rem;
+  flex-wrap:wrap;
+  background:rgba(13,14,20,0.5);
+  border:1px solid rgba(66,71,82,0.25);
+  border-radius:0.75rem;
+  padding:0.6rem 0.9rem;
+  margin-bottom:1.25rem;
+}
+.res-toolbar label{margin:0;font-size:0.75rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;white-space:nowrap}
+.res-toolbar select{max-width:260px;margin-bottom:0;background:#0d0e14;border-color:rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.38rem 0.7rem;font-size:0.82rem}
+.res-toolbar .spacer{flex:1}
+
+/* CSV upload card */
+.upload-card{
+  border:1.5px dashed rgba(91,141,239,0.3);
+  border-radius:1rem;
+  background:rgba(91,141,239,0.03);
+  padding:1.4rem 1.6rem;
+  margin-bottom:1.25rem;
+  text-align:center;
+  transition:border-color .2s,background .2s;
+}
+.upload-card:hover{border-color:rgba(91,141,239,0.55);background:rgba(91,141,239,0.06)}
+.upload-card h3{font-size:0.95rem;font-weight:700;color:#e3e1eb;margin-bottom:0.3rem}
+.upload-card p{font-size:0.82rem;color:#8d909e;margin-bottom:0.85rem;line-height:1.6}
+.upload-card input[type=file]{color:#c3c6d4;font-size:0.8rem}
+
+/* Manual booking – collapsed by default */
+.manual-details>summary{
+  font-size:0.82rem;
+  font-weight:600;
+  color:#8d909e;
+  cursor:pointer;
+  padding:0.55rem 0.9rem;
+  background:rgba(13,14,20,0.4);
+  border:1px solid rgba(66,71,82,0.25);
+  border-radius:0.65rem;
+  list-style:none;
+  display:flex;
+  align-items:center;
+  gap:0.5rem;
+  transition:color .15s,background .15s;
+  margin-bottom:0;
+}
+.manual-details>summary:hover{color:#aec6ff;background:rgba(174,198,255,0.05)}
+.manual-details[open]>summary{color:#aec6ff;border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-color:transparent}
+.manual-details>summary::before{content:"＋";font-size:0.9rem;transition:transform .2s}
+.manual-details[open]>summary::before{content:"−"}
+.manual-details .manual-body{
+  background:rgba(13,14,20,0.5);
+  border:1px solid rgba(66,71,82,0.25);
+  border-top:none;
+  border-bottom-left-radius:0.65rem;
+  border-bottom-right-radius:0.65rem;
+  padding:1.25rem 1rem 1rem;
+  margin-bottom:1.25rem;
+}
+
+/* What HostAI does accordion */
+.info-details>summary{
+  font-size:0.8rem;font-weight:600;color:#5B8DEF;
+  cursor:pointer;padding:3px 0;
+  list-style:none;display:flex;align-items:center;gap:0.4rem;
+}
+.info-details>summary::before{content:"▶";font-size:0.65rem;transition:transform .2s;display:inline-block}
+.info-details[open]>summary::before{transform:rotate(90deg)}
+.info-panel{
+  background:rgba(13,14,20,0.5);
+  border:1px solid rgba(66,71,82,0.2);
+  border-radius:0.6rem;
+  padding:0.9rem 1rem;
+  margin-top:0.5rem;
+  font-size:0.81rem;
+  line-height:1.9;
+  color:#c3c6d4;
+  margin-bottom:1.25rem;
+}
+
+/* Table toolbar row */
+.table-toolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:0.6rem;
+}
+.table-toolbar h3{font-size:0.78rem;font-weight:700;color:#8d909e;text-transform:uppercase;letter-spacing:0.08em;margin:0}
+
+/* Status badges for table */
+.badge{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:0.67rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
+.badge-confirmed,.badge-ok{background:rgba(39,201,63,0.1);color:#27c93f;border:1px solid rgba(39,201,63,0.25)}
+.badge-cancelled,.badge-bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border:1px solid rgba(255,180,171,0.25)}
+.badge-pending{background:rgba(255,189,46,0.1);color:#ffbd2e;border:1px solid rgba(255,189,46,0.25)}
+.badge-today{background:rgba(91,141,239,0.15);color:#aec6ff;border:1px solid rgba(91,141,239,0.3)}
+
+/* Row highlights */
+tr.checkin-soon td{background:rgba(91,141,239,0.04)}
+tr.checkout-today td{background:rgba(255,189,46,0.04)}
+
+/* Draft cell mini-chips */
+.draft-tick{display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;color:#8d909e;white-space:nowrap}
+.draft-tick.done{color:#27c93f}
+
+/* Pagination */
+.pagination{display:flex;gap:0.35rem;justify-content:center;margin-top:1.25rem;flex-wrap:wrap}
+.pagination a{display:inline-flex;padding:5px 11px;border-radius:0.5rem;font-size:0.78rem;font-weight:600;color:#8d909e;border:1px solid rgba(66,71,82,0.3);text-decoration:none;transition:all .15s}
+.pagination a:hover{color:#aec6ff;border-color:rgba(174,198,255,0.3);background:rgba(174,198,255,0.05)}
+.pagination a.active{color:#002e6b;background:linear-gradient(135deg,#5B8DEF,#aec6ff);border-color:transparent}
+
+/* Alert / notification banners */
+.alert{padding:0.65rem 1rem;border-radius:0.6rem;font-size:0.83rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.6rem}
+.alert-success{background:rgba(39,201,63,0.08);border:1px solid rgba(39,201,63,0.25);color:#27c93f}
+.alert-error{background:rgba(255,180,171,0.08);border:1px solid rgba(255,180,171,0.25);color:#ffb4ab}
+
 </style>
 {%- endblock %}
 
@@ -260,21 +408,21 @@
 </div>
 <div class="compat-layer">
 
-
-<form method="get" action="/reservations" style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin:0.75rem 0 1.25rem">
-  <label style="margin:0;font-size:0.82rem;color:var(--text-3)">Property view</label>
-  <select name="property" style="max-width:320px;margin-bottom:0">
+<div class="res-toolbar">
+  <label>Property</label>
+  <select name="property" form="prop-filter" style="max-width:260px;margin-bottom:0">
     <option value="">All properties</option>
     {% for property_name in property_options or [] %}
     <option value="{{ property_name }}" {% if property_name == selected_property %}selected{% endif %}>{{ property_name }}</option>
     {% endfor %}
   </select>
-  <button type="submit" class="btn btn-outline btn-sm">Apply</button>
+  <button type="submit" form="prop-filter" class="btn btn-outline btn-sm">Apply</button>
   {% if selected_property %}
   <a href="/reservations" class="btn btn-outline btn-sm">Clear</a>
-  <span class="chip good">Scoped to {{ selected_property }}</span>
+  <span class="chip">{{ selected_property }}</span>
   {% endif %}
-</form>
+</div>
+<form id="prop-filter" method="get" action="/reservations"></form>
 
 
 <!-- Analytics -->
@@ -368,72 +516,69 @@
   </p>
 </div>
 
-<div class="card" style="margin-bottom:1.25rem">
-  <h3 style="margin-bottom:0.5rem;font-size:1rem">Manual booking fallback</h3>
-  <p class="help-text" style="margin-top:0;margin-bottom:1rem">
-    Use this only when CSV or PMS intake is unavailable. It keeps HostAI usable for the edge cases without removing CSV as the primary fallback.
-  </p>
-  <form method="post" action="/reservations/manual">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <div class="form-row">
-      <div>
-        <label>Guest name</label>
-        <input type="text" name="guest_name" placeholder="Jane Doe" required>
+<details class="manual-details" style="margin-bottom:1.25rem">
+  <summary>Add a manual booking</summary>
+  <div class="manual-body">
+    <p class="help-text" style="margin-top:0;margin-bottom:1rem">Use this only when CSV or PMS intake is unavailable.</p>
+    <form method="post" action="/reservations/manual">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <div class="form-row">
+        <div>
+          <label>Guest name</label>
+          <input type="text" name="guest_name" placeholder="Jane Doe" required>
+        </div>
+        <div>
+          <label>Booking ref</label>
+          <input type="text" name="confirmation_code" placeholder="Optional">
+        </div>
       </div>
-      <div>
-        <label>Booking ref</label>
-        <input type="text" name="confirmation_code" placeholder="Optional">
+      <div class="form-row">
+        <div>
+          <label>Property</label>
+          <input type="text" name="listing_name" placeholder="Beach House">
+        </div>
+        <div>
+          <label>Room / unit</label>
+          <input type="text" name="unit_identifier" placeholder="12A">
+        </div>
       </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Property</label>
-        <input type="text" name="listing_name" placeholder="Beach House">
+      <div class="form-row">
+        <div>
+          <label>Guest phone</label>
+          <input type="text" name="guest_phone" placeholder="+91 98765 43210">
+        </div>
+        <div>
+          <label>Guests</label>
+          <input type="text" name="guests_count" placeholder="2">
+        </div>
       </div>
-      <div>
-        <label>Room / unit</label>
-        <input type="text" name="unit_identifier" placeholder="12A">
+      <div class="form-row">
+        <div>
+          <label>Check-in</label>
+          <input type="date" name="checkin">
+        </div>
+        <div>
+          <label>Check-out</label>
+          <input type="date" name="checkout">
+        </div>
       </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Guest phone</label>
-        <input type="text" name="guest_phone" placeholder="+91 98765 43210">
-      </div>
-      <div>
-        <label>Guests</label>
-        <input type="text" name="guests_count" placeholder="2">
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Check-in</label>
-        <input type="date" name="checkin">
-      </div>
-      <div>
-        <label>Check-out</label>
-        <input type="date" name="checkout">
-      </div>
-    </div>
-    <label>Notes</label>
-    <textarea name="notes" rows="2" placeholder="Optional manual intake notes"></textarea>
-    <button type="submit" class="btn btn-outline btn-sm">Add manual booking</button>
-  </form>
-</div>
+      <label>Notes</label>
+      <textarea name="notes" rows="2" placeholder="Optional"></textarea>
+      <button type="submit" class="btn btn-outline btn-sm">Add booking</button>
+    </form>
+  </div>
+</details>
 
 
 
-<!-- What happens after upload -->
-<details style="margin-bottom:1.5rem">
-  <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;color:var(--accent);padding:4px 0">
-    ▶ What HostAI does with your reservations
-  </summary>
-  <div style="background:var(--bg-2);border-radius:6px;padding:1rem;margin-top:0.5rem;font-size:0.82rem;line-height:1.9;color:var(--text-2)">
-    <strong>Guest context enrichment</strong> — When a guest emails you, HostAI matches them to their reservation and includes room/unit, check-in date, checkout date, and nights stayed in the AI prompt. Replies become far more personal.<br>
-    <strong>Pre-arrival message</strong> — 7 days before check-in, a warm welcome draft is auto-generated for your approval.<br>
-    <strong>Check-out thank-you</strong> — On checkout day, a thank-you message with a review request is drafted.<br>
-    <strong>Cleaner brief</strong> — On checkout day, a full cleaning checklist is drafted for your cleaner.<br>
-    <strong>Review reminder</strong> — 14 days after checkout, a nudge to leave the guest a review before the Airbnb window closes.
+<details class="info-details" style="margin-bottom:1.5rem">
+  <summary>What HostAI does with your reservations</summary>
+  <div class="info-panel">
+    <strong>Guest context enrichment</strong> — Room/unit, dates and nights injected into every AI reply.<br>
+    <strong>Pre-arrival</strong> — Welcome draft auto-generated 7 days before check-in.<br>
+    <strong>Check-out</strong> — Thank-you + review request drafted on checkout day.<br>
+    <strong>Cleaner brief</strong> — Full cleaning checklist drafted on checkout day.<br>
+    <strong>Review reminder</strong> — Nudge sent 14 days after checkout.
   </div>
 </details>
 
@@ -448,8 +593,9 @@
 
 <!-- Reservations table -->
 {% if rows %}
-<div style="display:flex;justify-content:flex-end;margin-bottom:0.75rem">
-  <a href="/reservations/export.csv{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" class="btn btn-outline btn-sm">⬇ Export CSV</a>
+<div class="table-toolbar">
+  <h3>{{ rows|length }} reservation{{ 's' if rows|length != 1 else '' }}</h3>
+  <a href="/reservations/export.csv{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" class="btn btn-outline btn-sm">⬇ Export</a>
 </div>
 <div class="card" style="padding:0;overflow:hidden">
   <table>
@@ -552,7 +698,7 @@
         <div style="margin-top:0.4rem;display:flex;gap:0.35rem;flex-wrap:wrap">
           <a href="/reservations/{{ r.id }}/timeline" class="btn btn-outline btn-sm">Timeline</a>
           {% if issue_counts.get(r.id) %}
-          <span class="chip bad">{{ issue_counts.get(r.id) }} open issue{% if issue_counts.get(r.id) != 1 %}s{% endif %}</span>
+          <span class="chip" style="background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)">{{ issue_counts.get(r.id) }} issue{{ 's' if issue_counts.get(r.id) != 1 else '' }}</span>
           {% endif %}
         </div>
       </td>
