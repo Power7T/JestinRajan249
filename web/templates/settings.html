@@ -185,69 +185,99 @@
 {%- block main_wrapper %}
 {%- block content %}
 <!-- SideNavBar -->
-<aside class="w-[260px] h-screen fixed left-0 top-0 border-r border-[#424752]/15 bg-[#08090F]/60 backdrop-blur-xl flex flex-col py-8 px-6 shadow-[0px_0px_40px_rgba(174,198,255,0.08)] z-50">
-<div class="mb-10 flex items-center gap-3">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5b8def] flex items-center justify-center">
-<span class="material-symbols-outlined text-on-primary-container text-lg">bolt</span>
+<!-- SideNavBar Shell -->
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
+<div class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
 </div>
-<div>
-<h1 class="text-xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-[#aec6ff] to-[#5b8def]">HostAI</h1>
-<p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Premium Management</p>
+<span>HostAI</span>
 </div>
-</div>
-<nav class="flex-1 space-y-2">
-<a class="flex items-center gap-3 py-3 px-4 text-slate-400 hover:text-slate-200 transition-colors font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 rounded-md" href="#">
+<nav class="flex-1 px-4 space-y-1">
+<!-- Dashboard Active -->
+<a class="flex items-center gap-3 px-6 py-3 text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF] transition-all duration-200 active:scale-[0.98]" href="/dashboard">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
                 Dashboard
             </a>
-<a class="flex items-center gap-3 py-3 px-4 text-slate-400 hover:text-slate-200 transition-colors font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 rounded-md" href="#">
-<span class="material-symbols-outlined" data-icon="calendar_month">calendar_month</span>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+                Conversations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
                 Reservations
             </a>
-<a class="flex items-center gap-3 py-3 px-4 text-slate-400 hover:text-slate-200 transition-colors font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 rounded-md" href="#">
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Activity
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
 <span class="material-symbols-outlined" data-icon="analytics">analytics</span>
                 Analytics
             </a>
-<a class="flex items-center gap-3 py-3 px-4 text-[#aec6ff] font-bold bg-[#5d8ef1]/10 backdrop-blur-md rounded-md transition-all duration-200" href="#">
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+                Workflow Center
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
                 Settings
             </a>
-</nav>
-<div class="mt-auto pt-6 border-t border-[#424752]/15 space-y-2">
-<button class="w-full btn-gradient py-2.5 px-4 rounded-xl text-on-primary text-sm font-bold flex items-center justify-center gap-2 mb-6 active:scale-95 transition-transform">
-<span class="material-symbols-outlined text-sm">add</span>
-                New Booking
-            </button>
-<a class="flex items-center gap-3 py-2 px-4 text-slate-400 hover:text-slate-200 transition-colors font-medium text-[0.875rem] tracking-tight" href="#">
-<span class="material-symbols-outlined" data-icon="help">help</span>
-                Help
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 text-rose-400 hover:text-rose-300 hover:bg-white/5 transition-all duration-200 font-bold" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+                Admin
             </a>
-<form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}"><button type="submit" class="flex items-center gap-3 py-2 px-4 text-slate-400 hover:text-slate-200 transition-colors font-medium text-[0.875rem] tracking-tight w-full"><span class="material-symbols-outlined" data-icon="logout">logout</span>Sign Out</button></form>
+{% endif %}
+</nav>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+  {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ current_user.name if current_user else "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+</div>
+</div>
+<form method="post" action="/logout">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+    <span class="material-symbols-outlined text-sm">logout</span>
+    Sign Out
+  </button>
+</form>
 </div>
 </aside>
+
 <!-- Main Content Area -->
 <main class="flex-1 ml-[260px] relative">
 <!-- TopAppBar -->
-<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-16 bg-transparent flex justify-between items-center px-10 z-40">
-<div class="flex items-center">
-<h2 class="font-['Plus_Jakarta_Sans'] font-extrabold text-2xl text-[#aec6ff]">Settings</h2>
+<!-- TopNavBar Shell -->
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts, or analytics..." type="text"/>
+</div>
 </div>
 <div class="flex items-center gap-6">
-<div class="relative group">
-<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-sm">search</span>
-<input class="bg-surface-container-lowest text-on-surface text-sm rounded-full pl-10 pr-4 py-1.5 w-64 border-none focus:ring-1 focus:ring-primary/40 transition-all outline-none" placeholder="Search settings..." type="text"/>
-</div>
-<div class="flex items-center gap-4 text-[#aec6ff]">
-<button class="hover:opacity-80 transition-opacity">
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
 <span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
 </button>
-<button class="flex items-center gap-2 hover:opacity-80 transition-opacity">
-<img alt="User Profile" class="w-8 h-8 rounded-full border border-primary/20" data-alt="professional portrait of a tech executive with neutral background and cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYltmN80DnRJYRxf4ZJ9vg8L6hZzWQue_dZubX3R4vmrExl1y7BcHdOTA5AaGS8BnSI-T0w57f7TOvpx-IGVcbVagIPn4NB0z7iYeJhVpsWPoxbVPQySESzuVSW7TAqUjePX4_F6Sn1GuyfTocvXzaK1eNOUCzwICx5p6tnDaNsFW5bNUq2m1ogGhXIXbctnDXxk7otQ0e2oVfjzKsBwomiSmA8ZMSEarPWpJtYP6YG74rYZPu94BvlPJPztJyo_f4IkBV63dyGODp"/>
-<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
-</button>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+  {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
 </div>
 </div>
 </header>
+
 <!-- Settings Content Canvas -->
 <div class="pt-24 pb-16 px-10 max-w-5xl mx-auto">
 <div class="mb-10">
