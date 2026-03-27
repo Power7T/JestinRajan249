@@ -1,192 +1,349 @@
-{% extends "base.html" %}
-{% block title %}Guest Timeline — HostAI{% endblock %}
+{%- extends "base.html" %}
+{%- block title %}Guest Timeline — HostAI{%- endblock %}
 
-{% block content %}
-<h1>Guest Timeline</h1>
-<p class="section-lead">
-  One stay, one thread. This screen should combine the guest's arrival details, channel history, approvals, and unresolved requests into a single operational timeline.
-</p>
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-highest": "#34343b",
+              "surface-tint": "#aec6ff",
+              "secondary-container": "#00e3fd",
+              "on-tertiary-container": "#3e2400",
+              "background": "#121319",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-tertiary-fixed": "#2a1700",
+              "surface-container-low": "#1a1b22",
+              "tertiary-fixed": "#ffddb8",
+              "outline": "#8d909e",
+              "on-secondary-container": "#00616d",
+              "error": "#ffb4ab",
+              "surface-container-lowest": "#0d0e14",
+              "primary-fixed-dim": "#aec6ff",
+              "surface-variant": "#34343b",
+              "secondary-fixed-dim": "#00daf3",
+              "primary-fixed": "#d8e2ff",
+              "on-error": "#690005",
+              "on-surface-variant": "#c3c6d4",
+              "tertiary-fixed-dim": "#ffb960",
+              "secondary-fixed": "#9cf0ff",
+              "on-background": "#e3e1eb",
+              "tertiary": "#ffb960",
+              "on-primary-fixed": "#001a43",
+              "secondary": "#bdf4ff",
+              "error-container": "#93000a",
+              "surface-container": "#1e1f26",
+              "on-surface": "#e3e1eb",
+              "tertiary-container": "#ca8103",
+              "outline-variant": "#424752",
+              "on-tertiary": "#472a00",
+              "on-error-container": "#ffdad6",
+              "inverse-surface": "#e3e1eb",
+              "surface-bright": "#383940",
+              "primary-container": "#5d8ef1",
+              "on-primary-fixed-variant": "#004397",
+              "on-primary-container": "#00275e",
+              "primary": "#aec6ff",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-secondary-fixed": "#001f24",
+              "on-primary": "#002e6b",
+              "surface-dim": "#121319",
+              "on-secondary": "#00363d",
+              "inverse-primary": "#1e5bba",
+              "surface": "#121319",
+              "surface-container-high": "#292930",
+              "inverse-on-surface": "#2f3037"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
+        }
+    </style>
+{%- endblock %}
 
-<div class="card" style="margin-bottom:1rem;background:linear-gradient(135deg,#fff9f2 0%,#fff 100%);border:1px solid #f3d7b0">
-  <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start">
-    <div>
-      <h2 style="margin-bottom:0.3rem">Stay summary</h2>
-      <p style="margin:0;font-size:0.86rem;color:var(--text-2);line-height:1.7">
-        Guest: <strong>{{ reservation.guest_name if reservation is defined and reservation else 'Guest name' }}</strong><br>
-        Room / unit: <strong>{{ reservation.unit_identifier if reservation is defined and reservation and reservation.unit_identifier else 'Room 204' }}</strong><br>
-        Booking ref: <strong>{{ reservation.confirmation_code if reservation is defined and reservation and reservation.confirmation_code else 'ABC123' }}</strong>
-      </p>
-    </div>
-    <div class="chip-row" style="margin-top:0">
-      <span class="chip good">Arrival active</span>
-      <span class="chip">Email</span>
-      <span class="chip">WhatsApp</span>
-      <span class="chip">SMS</span>
-    </div>
-  </div>
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r border-[#424752]/15 bg-[#08090F] dark:bg-[#08090F]/60 backdrop-blur-xl flex flex-col py-8 px-4 z-50">
+<div class="mb-10 px-4">
+<h1 class="text-xl font-extrabold text-[#aec6ff] tracking-tighter">HostAI</h1>
+<p class="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mt-1">Internal Tools</p>
 </div>
-
-<div class="workflow-grid" style="margin-bottom:1rem">
-  <div class="workflow-card">
-    <h3>What belongs here</h3>
-    <p>Incoming guest messages, draft generation, approvals, auto-sends, manual edits, vendor notes, and check-in events should all be visible in one place.</p>
-  </div>
-  <div class="workflow-card">
-    <h3>What should not</h3>
-    <p>Hosts should not need to scan unrelated dashboards or switch between channels to understand what happened on a stay.</p>
-  </div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-[#292930]/40 transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="dashboard">dashboard</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-[#292930]/40 transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="chat">chat</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Conversations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-[#292930]/40 transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="event_available">event_available</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Reservations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-[#aec6ff] bg-[#1a1b22] font-bold border-l-2 border-[#5b8def] scale-98 transition-transform" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Guests</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-[#292930]/40 transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="insights">insights</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-[#292930]/40 transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="settings">settings</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Settings</span>
+</a>
+</nav>
+<div class="mt-auto px-4 py-4 glass-panel rounded-xl flex items-center gap-3">
+<img alt="User Profile" class="w-8 h-8 rounded-full bg-surface-container-highest" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6JDH70f8COFA9o-fWXdi_WzYEcf44HbhcrGPNqfGdws-A4OOtlrnGoOP2gftmttB9sgUfen95lXqXgDOsJNAws2-eoTVxftyFizXmAwM7wFC6ADXhlw9aRUjWmJpfhPO8BchctRXzvwFA-wSpvjTyKAgpUXysXLYQ-ozB5dqvcnGatz-q3C8mKkQPgIHJVw10__M3b5y6Sd8OJwLnBeK8JSaFZu-_EYNzGeI2LFVCDYduXl3qD6hmPAhPKBLUl_e0rIs_Uq12mMyN"/>
+<div class="overflow-hidden">
+<p class="text-xs font-bold truncate text-on-surface">Alex Rivera</p>
+<p class="text-[10px] text-slate-500 truncate">Superhost Status</p>
 </div>
-
-<div class="timeline">
-  {% if timeline_events %}
-    {% for event in timeline_events %}
-    <div class="timeline-item">
-      <div class="timeline-meta">
-        {{ event.created_at.strftime('%b %d %H:%M') if event.created_at else '' }}
-        {% if event.channel %} · {{ event.channel }}{% endif %}
-        {% if event.event_type %} · {{ event.event_type|replace('_', ' ') }}{% endif %}
-      </div>
-      <div class="timeline-title">{{ event.message or event.summary or 'Timeline event' }}</div>
-      <div class="timeline-text">{{ event.status or event.detail or '' }}</div>
-    </div>
-    {% endfor %}
-  {% else %}
-    <div class="timeline-item">
-      <div class="timeline-meta">No live events yet</div>
-      <div class="timeline-title">This stay has not generated guest events yet</div>
-      <div class="timeline-text">As soon as the guest messages or the host activates the stay, the timeline will start filling with real events.</div>
-    </div>
-  {% endif %}
 </div>
-
-<div class="workflow-grid" style="margin-top:1rem">
-  <div class="workflow-card">
-    <h3>Guest interactions</h3>
-    <p>Wi-Fi, parking, towels, late checkout, local recommendations, and issue reporting are the core concierge flows.</p>
-  </div>
-  <div class="workflow-card">
-    <h3>Exception handling</h3>
-    <p>Refunds, complaints, safety concerns, and room mapping problems should be tagged and escalated.</p>
-  </div>
-  <div class="workflow-card">
-    <h3>Room-aware replies</h3>
-    <p>Always include the property, room, and arrival details when they matter so the response feels specific and professional.</p>
-  </div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 bg-[#08090F] dark:bg-[#08090F]/60 backdrop-blur-xl flex justify-between items-center px-8 border-b border-[#424752]/15 z-40">
+<div class="flex items-center gap-4 flex-1 max-w-xl">
+<div class="relative w-full group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-[#aec6ff] transition-colors" data-icon="search">search</span>
+<input class="w-full bg-surface-container-lowest border-none focus:ring-1 focus:ring-[#5b8def]/40 rounded-lg pl-10 pr-4 py-2 text-sm text-on-surface placeholder:text-slate-600" placeholder="Search guests or events..." type="text"/>
 </div>
-
-<div class="card" style="margin-top:1rem">
-  <h2 style="margin-bottom:0.5rem">Conversation memory</h2>
-  <div class="draft-text">{{ conversation_memory or 'No memory block yet. HostAI will build one as stay events arrive.' }}</div>
 </div>
-
-<div class="card" style="margin-top:1rem">
-  <h2 style="margin-bottom:0.5rem">Open issues</h2>
-{% if open_issues %}
-    <div class="timeline">
-      {% for issue in open_issues %}
-      <div class="timeline-item">
-        <div class="timeline-meta">{{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}</div>
-        <div class="timeline-title">{{ issue.title }}</div>
-        <div class="timeline-text">{{ issue.description or 'No description provided.' }}</div>
-        <div class="chip-row" style="margin-top:0.5rem">
-          <span class="chip">{{ issue.status|replace('_', ' ') }}</span>
-          <span class="chip">{% if issue.assigned_to_member %}{{ issue.assigned_to_member.display_name }}{% else %}Unassigned{% endif %}</span>
-          <span class="chip">{% if issue.vendor %}{{ issue.vendor.name }}{% else %}No vendor{% endif %}</span>
-        </div>
-        <form method="post" action="/issues/{{ issue.id }}/update" style="margin-top:0.75rem">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-          <input type="hidden" name="next_path" value="/reservations/{{ reservation.id }}/timeline">
-          <div class="form-row">
-            <div>
-              <label>Status</label>
-              <select name="status">
-                <option value="open" {% if issue.status == 'open' %}selected{% endif %}>Open</option>
-                <option value="triage" {% if issue.status == 'triage' %}selected{% endif %}>Triage</option>
-                <option value="assigned" {% if issue.status == 'assigned' %}selected{% endif %}>Assigned</option>
-                <option value="vendor_dispatched" {% if issue.status == 'vendor_dispatched' %}selected{% endif %}>Vendor dispatched</option>
-                <option value="resolved" {% if issue.status == 'resolved' %}selected{% endif %}>Resolved</option>
-              </select>
-            </div>
-            <div>
-              <label>Assigned team member</label>
-              <select name="assigned_to_member_id">
-                <option value="">Unassigned</option>
-                {% for member in team_members or [] %}
-                <option value="{{ member.id }}" {% if issue.assigned_to_member_id == member.id %}selected{% endif %}>{{ member.display_name }} — {{ member.role|replace('_', ' ') }}</option>
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div>
-              <label>Vendor</label>
-              <select name="vendor_id">
-                <option value="">No vendor</option>
-                {% for vendor in vendors or [] %}
-                <option value="{{ vendor.id }}" {% if issue.vendor_id == vendor.id %}selected{% endif %}>{{ vendor.name }} — {{ vendor.category }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div>
-              <label>Resolution notes</label>
-              <input type="text" name="resolution_notes" value="{{ issue.resolution_notes or '' }}" placeholder="ETA, fix, or follow-up note">
-            </div>
-          </div>
-          <button type="submit" class="btn btn-outline btn-sm">Update issue</button>
-        </form>
-      </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <p style="font-size:0.85rem;color:var(--text-3)">No unresolved issues for this stay.</p>
-  {% endif %}
-
-  <form method="post" action="/reservations/{{ reservation.id }}/issues" style="margin-top:1rem">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <div class="form-row">
-      <div>
-        <label>Issue title</label>
-        <input type="text" name="title" placeholder="Guest reported AC issue" required>
-      </div>
-      <div>
-        <label>Category</label>
-        <select name="category">
-          <option value="guest_request">Guest request</option>
-          <option value="maintenance">Maintenance</option>
-          <option value="cleaning">Cleaning</option>
-          <option value="billing">Billing</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Priority</label>
-        <select name="priority">
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="urgent">Urgent</option>
-        </select>
-      </div>
-      <div>
-        <label>Assigned team member</label>
-        <select name="assigned_to_member_id">
-          <option value="">Assign later</option>
-          {% for member in team_members or [] %}
-          <option value="{{ member.id }}">{{ member.display_name }} — {{ member.role|replace('_', ' ') }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    </div>
-    <label>Vendor</label>
-    <select name="vendor_id">
-      <option value="">No vendor yet</option>
-      {% for vendor in vendors or [] %}
-      <option value="{{ vendor.id }}">{{ vendor.name }} — {{ vendor.category }}</option>
-      {% endfor %}
-    </select>
-    <label>Description</label>
-    <textarea name="description" rows="3" placeholder="What happened, where, and what the guest needs next"></textarea>
-    <button type="submit" class="btn btn-primary btn-sm">Create issue</button>
-  </form>
+<div class="flex items-center gap-6">
+<button class="text-slate-400 hover:text-white transition-colors flex relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-secondary-container rounded-full border-2 border-[#08090F]"></span>
+</button>
+<button class="text-slate-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant/15 mx-2"></div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-bold text-[#aec6ff] uppercase tracking-widest">Guest Context</span>
 </div>
-{% endblock %}
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-64 pt-16 min-h-screen">
+<div class="max-w-7xl mx-auto p-8 lg:p-12">
+<!-- Guest Header Section -->
+<section class="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+<div class="flex gap-6 items-center">
+<div class="relative">
+<img class="w-24 h-24 rounded-2xl object-cover shadow-[0_0_30px_rgba(174,198,255,0.15)] border border-primary/10" data-alt="portrait of a friendly middle-aged man with short hair in a soft lit studio environment, professional photography style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCf6BNqPFGgQK_P99J5xhOyju9_bcIyYXyCsua1CNPHXgAmHEBRhKV5jHKFerJRHILUoimSzccEojWZmpACUFtR9m4yb5HpyxFrA30M__sdru3_eBwf3qZrJGj4Q5vz8tVLAYKlkHOk6S6ms9rOKbI6swxjE9qiwN3tZ-u_ZQXqoQ8T1uXFrxBBgVbDqsLNqDifOQ0v1dwS0InvMh0OgsiO7R3Cr1E_tiwXchlt3yFBvk4GIOhlaRFrcIE1_pJ6WuM98C9koRM-M7ab"/>
+<div class="absolute -bottom-2 -right-2 bg-secondary-container text-on-secondary px-2 py-1 rounded text-[10px] font-black tracking-tighter shadow-lg">PRO GUEST</div>
+</div>
+<div>
+<h2 class="text-4xl font-extrabold text-on-surface tracking-tighter">Julian Thorne</h2>
+<p class="text-slate-400 font-medium flex items-center gap-2 mt-1">
+<span class="material-symbols-outlined text-sm" data-icon="location_on">location_on</span>
+                            London, UK • 4.98 Rating
+                        </p>
+<div class="flex gap-4 mt-4">
+<div class="bg-surface-container-low px-4 py-2 rounded-lg border border-outline-variant/10">
+<p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Current Stay</p>
+<p class="text-primary font-bold">Azure Bay Villa #4</p>
+</div>
+<div class="bg-surface-container-low px-4 py-2 rounded-lg border border-outline-variant/10">
+<p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Duration</p>
+<p class="text-on-surface font-bold italic">Oct 12 — Oct 18</p>
+</div>
+</div>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-6 py-3 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-lg" data-icon="edit">edit</span>
+                        Edit Profile
+                    </button>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary-container px-6 py-3 rounded-lg font-bold text-sm shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-lg" data-icon="send">send</span>
+                        Send Message
+                    </button>
+</div>
+</section>
+<!-- Timeline Section -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+<!-- Main Activity Log -->
+<div class="lg:col-span-8 space-y-8">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-2xl font-extrabold text-on-surface tracking-tight">Activity Timeline</h3>
+<div class="flex items-center gap-2 text-slate-500">
+<span class="text-xs font-bold uppercase tracking-widest">Sort:</span>
+<button class="text-xs font-bold text-primary">Newest First</button>
+</div>
+</div>
+<!-- Timeline Body -->
+<div class="relative space-y-12 pl-12 before:content-[''] before:absolute before:left-[1.375rem] before:top-2 before:bottom-2 before:w-[2px] before:bg-gradient-to-b before:from-primary/40 before:via-outline-variant/20 before:to-transparent">
+<!-- Event 1 -->
+<div class="relative group">
+<div class="absolute -left-12 mt-1 w-11 h-11 rounded-full glass-panel border border-primary/30 flex items-center justify-center z-10 shadow-[0_0_15px_rgba(174,198,255,0.1)] group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="calendar_check">calendar_check</span>
+</div>
+<div class="glass-panel p-6 rounded-2xl border border-outline-variant/5 hover:border-primary/20 transition-all duration-300">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-extrabold text-lg text-on-surface">Booking Confirmed</h4>
+<span class="text-[10px] font-black bg-surface-container-highest px-2 py-1 rounded text-slate-400 uppercase tracking-widest">Sep 28, 14:20</span>
+</div>
+<p class="text-sm text-slate-400 leading-relaxed mb-4">Reservation #HA-90210 for 6 nights at Azure Bay Villa confirmed via Airbnb. Total payout: $2,450.00.</p>
+<div class="flex items-center gap-4">
+<div class="flex -space-x-2">
+<img alt="Property" class="w-6 h-6 rounded bg-surface-container-highest border border-[#08090F]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqBqe0HQs1_r9mNcKmTqcvQiO83y6fBNUldcsLUCdL0CtMwq4LJ4TsIDv4dtUcAMLKC3oJlhX4G1bv_4UT6sQ7AOA-43479Y798Dc9wwmPYJOqTtDTK0ifl882ZE4HN7iCz7XttE_nLmFb8eyPBq4dJ0EtiObtNUqBU28teByHqaZ0IzoZpbNFmphg8_4h4UgEbKoeXT5GNulfNmS635Us_3Uxa0AUUJ0SkZowdWu7jEq3OTqiAJNkBTHXJjVVfIyrsWUn6bDwjf6Z"/>
+<img alt="Verified" class="w-6 h-6 rounded bg-surface-container-highest border border-[#08090F]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzLz7ApK3jIzJ4bbReTwgNSjaTKP20AiVvGgwtPc568aJszLrF5Cqt2_JYK3qG4I0Pq-DbOqfI_2WDoWjvblF9uTWNQ0fB3YRaevWkiYtFhix8cvpO1ESHO4pbpUbBNa199YAXVKgwkIzytnU888NbgId7QLGo2xy0kK1VpPys55wI-rHO4EaNyMGg7S_Vdn_TM8MaEys0Gx6BUMxk2cv4_SMZ9xOTmEsUz92mhmRjwSA1_-lG8v2nLagGN1nztfqvUy-iiUpvTDSN"/>
+</div>
+<span class="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Payment Method: Credit Card • Verified</span>
+</div>
+</div>
+</div>
+<!-- Event 2 -->
+<div class="relative group">
+<div class="absolute -left-12 mt-1 w-11 h-11 rounded-full glass-panel border border-outline-variant/30 flex items-center justify-center z-10 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-slate-300 text-xl" data-icon="mail">mail</span>
+</div>
+<div class="glass-panel p-6 rounded-2xl border border-outline-variant/5">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-extrabold text-lg text-on-surface">Pre-arrival Message Sent</h4>
+<span class="text-[10px] font-black bg-surface-container-highest px-2 py-1 rounded text-slate-400 uppercase tracking-widest">Oct 10, 09:00</span>
+</div>
+<p class="text-sm text-slate-400 leading-relaxed italic">"Hi Julian! We're excited to host you. Please find the driving directions and digital house manual attached..."</p>
+<div class="mt-4 flex gap-2">
+<span class="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded">Automated Flow #Arrival-01</span>
+<span class="px-2 py-1 bg-surface-container-high text-slate-400 text-[10px] font-bold rounded">Read Receipt: 10:15 AM</span>
+</div>
+</div>
+</div>
+<!-- Event 3 -->
+<div class="relative group">
+<div class="absolute -left-12 mt-1 w-11 h-11 rounded-full glass-panel border border-secondary-container/30 flex items-center justify-center z-10 shadow-[0_0_15px_rgba(0,227,253,0.1)] group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-secondary-container text-xl" data-icon="key">key</span>
+</div>
+<div class="glass-panel p-6 rounded-2xl border border-outline-variant/5">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-extrabold text-lg text-on-surface">Lock PIN Generated</h4>
+<span class="text-[10px] font-black bg-surface-container-highest px-2 py-1 rounded text-slate-400 uppercase tracking-widest">Oct 12, 11:30</span>
+</div>
+<p class="text-sm text-slate-400 leading-relaxed">August Smart Lock integration generated unique entry code <span class="text-secondary font-mono tracking-widest font-bold px-1 select-all">8-4-2-9</span> valid from Oct 12, 3:00 PM.</p>
+<div class="mt-4 flex items-center gap-2 text-secondary-container">
+<span class="material-symbols-outlined text-sm" data-icon="bolt">bolt</span>
+<span class="text-[10px] font-black uppercase tracking-widest">Provisioned Successfully</span>
+</div>
+</div>
+</div>
+<!-- Event 4 (Check-in) -->
+<div class="relative group">
+<div class="absolute -left-12 mt-1 w-11 h-11 rounded-full bg-primary-container flex items-center justify-center z-10 shadow-[0_0_20px_rgba(93,142,241,0.4)] group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-primary-container text-xl" data-icon="login" style="font-variation-settings: 'FILL' 1;">login</span>
+</div>
+<div class="bg-primary/5 p-6 rounded-2xl border border-primary/20 backdrop-blur-md">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-extrabold text-lg text-primary">Guest Checked In</h4>
+<span class="text-[10px] font-black bg-primary-container/20 px-2 py-1 rounded text-primary uppercase tracking-widest">Oct 12, 15:42</span>
+</div>
+<p class="text-sm text-slate-300 leading-relaxed font-medium">Smart lock activation recorded at main entrance. Welcome lighting scene "Evening Calm" triggered automatically.</p>
+</div>
+</div>
+<!-- Event 5 -->
+<div class="relative group">
+<div class="absolute -left-12 mt-1 w-11 h-11 rounded-full glass-panel border border-outline-variant/30 flex items-center justify-center z-10 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-slate-400 text-xl" data-icon="logout">logout</span>
+</div>
+<div class="glass-panel p-6 rounded-2xl border border-outline-variant/5 opacity-60">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-extrabold text-lg text-slate-300">Scheduled Check-out</h4>
+<span class="text-[10px] font-black bg-surface-container-highest px-2 py-1 rounded text-slate-500 uppercase tracking-widest">Upcoming: Oct 18</span>
+</div>
+<p class="text-sm text-slate-500 leading-relaxed">Cleaning crew #C-12 scheduled for 11:30 AM follow-up.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Sidebar Stats -->
+<div class="lg:col-span-4 space-y-6">
+<!-- Property Context Card -->
+<div class="glass-panel rounded-3xl overflow-hidden border border-outline-variant/10">
+<div class="h-40 w-full relative">
+<img class="w-full h-full object-cover" data-alt="ultra-modern luxury villa exterior with infinity pool at dusk, architectural photography with deep blue sky and warm interior lights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuANcKLq2Mk2hr6xKcA7SKS8xTM5HgjREPYcAqHF0EOKm5b9PuGmAjhSi7Bjl1a-JeEAmP48DpUDGdX4kR6U1PMFJkIWQLQrAzfVwVosFq4z_k5Dzx4yyB3LfbInsKDWu6oY1Ff83PCyvfYWWFY8QVAWVa-yGQzt6usSrI7CVW4AhwzhVi5iNlwcDI8J4CDineMBQWZvzSOIAGO1ikpZL8r2nJA_DYCKqdNb7xxm0WyU9w3VKy0qqo7PPjmTBECNiUDurZaKCeGUTmOi"/>
+<div class="absolute inset-0 bg-gradient-to-t from-[#08090F] to-transparent"></div>
+<div class="absolute bottom-4 left-6">
+<p class="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Current Unit</p>
+<h5 class="text-xl font-extrabold text-white">Azure Bay Villa</h5>
+</div>
+</div>
+<div class="p-6 space-y-4">
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<span class="text-xs text-slate-400">Nightly Rate</span>
+<span class="text-sm font-bold text-on-surface">$399</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<span class="text-xs text-slate-400">Total Revenue</span>
+<span class="text-sm font-bold text-secondary-container">$2,394</span>
+</div>
+<div class="flex justify-between items-center py-2">
+<span class="text-xs text-slate-400">House Rules</span>
+<span class="text-xs font-bold text-primary cursor-pointer hover:underline">View Manual</span>
+</div>
+</div>
+</div>
+<!-- Guest Sentiment Glass Card -->
+<div class="glass-panel p-6 rounded-3xl border border-outline-variant/10 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-500">
+<span class="material-symbols-outlined text-6xl text-primary" data-icon="monitoring">monitoring</span>
+</div>
+<h4 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Sentiment Analysis</h4>
+<div class="flex items-end gap-3 mb-4">
+<span class="text-4xl font-black text-on-surface">98%</span>
+<span class="text-secondary-container text-xs font-bold pb-2">+2.4% vs Avg</span>
+</div>
+<p class="text-xs text-slate-400 leading-relaxed mb-6">Julian's recent interactions indicate high satisfaction. Positive response to pre-arrival communication.</p>
+<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+<div class="bg-gradient-to-r from-primary to-secondary-container h-full w-[98%]"></div>
+</div>
+</div>
+<!-- Internal Notes -->
+<div class="bg-surface-container-low p-6 rounded-3xl border border-outline-variant/10">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-tertiary" data-icon="stylus">stylus</span>
+<h4 class="text-sm font-bold text-on-surface">Staff Notes</h4>
+</div>
+<div class="space-y-4">
+<div class="bg-[#08090F]/40 p-3 rounded-xl">
+<p class="text-xs text-slate-300">"Guest requested extra nespresso pods and early check-in if possible. Housekeeping notified."</p>
+<p class="text-[10px] text-slate-500 mt-2">— Maria (Host Service)</p>
+</div>
+</div>
+<button class="w-full mt-4 py-2 text-xs font-bold text-slate-400 hover:text-white border border-outline-variant/20 rounded-lg hover:bg-surface-container-high transition-all">
+                            Add Note
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+{%- endblock %}
+{%- endblock %}

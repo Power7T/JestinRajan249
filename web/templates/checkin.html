@@ -1,382 +1,183 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Check-in Info — {{ cfg.property_names or 'Your Stay' }}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #060911; --bg-2: #0C1018; --bg-3: #1C1917;
-      --surface: #0D1220; --surface-2: #211E1B;
-      --border: rgba(80,120,220,0.1); --border-2: rgba(80,120,220,0.2);
-      --accent: #4F8EF7; --accent-2: #93BEFF; --accent-glow: rgba(79,142,247,0.22);
-      --success: #34D399; --success-bg: rgba(16,217,168,0.08); --success-border: rgba(16,217,168,0.2);
-      --text-1: #EEF2FF; --text-2: #8898BB; --text-3: #445070;
-    }
-    [data-theme="light"] {
-      --bg: #F8FAFF; --bg-2: #EFF3FB; --bg-3: #E0DDF0; --surface: #FFFFFF; --surface-2: #F8F7FF;
-      --border: rgba(60,90,180,0.1); --border-2: rgba(80,60,120,0.18);
-      --text-1: #0D1629; --text-2: #475A82; --text-3: #8A99BB;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Figtree', -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text-1);
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-    }
-    h1, h2, h3 { font-family: 'Bricolage Grotesque', sans-serif; }
 
-    .header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 1rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      backdrop-filter: blur(12px);
-    }
-    .header-brand {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      font-family: 'Bricolage Grotesque', sans-serif;
-      font-weight: 800;
-      font-size: 1rem;
-      color: var(--text-1);
-    }
-    .header-brand-icon {
-      width: 28px; height: 28px;
-      background: linear-gradient(135deg, var(--accent), #2B5FC8);
-      border-radius: 7px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
-    }
-    .header-sub { font-size: 0.8rem; color: var(--text-3); }
-
-    .theme-toggle {
-      width: 32px; height: 32px;
-      border-radius: 8px;
-      border: 1px solid var(--border-2);
-      background: var(--surface-2);
-      color: var(--text-2);
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
-    }
-
-    .container { max-width: 620px; margin: 0 auto; padding: 2rem 1rem 4rem; }
-
-    .hero {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 2rem;
-      margin-bottom: 1.25rem;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(245,166,35,0.07) 0%, transparent 60%);
-      pointer-events: none;
-    }
-    .hero-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
-    .hero h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.03em; }
-    .hero .welcome { font-size: 0.9rem; color: var(--text-2); line-height: 1.6; }
-
-    .badge-guests {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border);
-      border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; font-weight: 600;
-      margin-top: 0.75rem;
-    }
-
-    .section {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 1rem;
-      transition: border-color 150ms ease;
-    }
-    .section:hover { border-color: var(--border-2); }
-    .section h2 {
-      font-size: 0.9rem;
-      font-weight: 700;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--text-1);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      font-size: 0.72rem;
-      color: var(--text-3);
-    }
-    .info-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75rem;
-      padding: 0.65rem 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.875rem;
-    }
-    .info-row:last-child { border-bottom: none; padding-bottom: 0; }
-    .info-label { font-weight: 600; min-width: 110px; color: var(--text-3); font-size: 0.78rem; padding-top: 2px; }
-    .info-value { color: var(--text-1); flex: 1; line-height: 1.5; }
-
-    .checkin-dates {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-    }
-    .date-card {
-      background: var(--bg-2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1rem;
-      text-align: center;
-    }
-    .date-card .date-label { font-size: 0.68rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.3rem; }
-    .date-card .date-val { font-size: 1.05rem; font-weight: 700; color: var(--text-1); font-family: 'Bricolage Grotesque', sans-serif; }
-    .date-card .time-val { font-size: 0.78rem; color: var(--accent); margin-top: 0.2rem; font-weight: 600; }
-
-    pre.rules {
-      font-family: inherit;
-      font-size: 0.85rem;
-      color: var(--text-2);
-      white-space: pre-wrap;
-      line-height: 1.75;
-    }
-
-    .faq-item {
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .faq-item:last-child { border-bottom: none; padding-bottom: 0; }
-    .faq-q { font-weight: 700; font-size: 0.875rem; margin-bottom: 0.35rem; color: var(--text-1); }
-    .faq-a { font-size: 0.84rem; color: var(--text-2); line-height: 1.65; }
-
-    .footer {
-      text-align: center;
-      font-size: 0.75rem;
-      color: var(--text-3);
-      padding: 2rem 1rem;
-      line-height: 1.7;
-    }
-
-    @media (max-width: 480px) {
-      .checkin-dates { grid-template-columns: 1fr; }
-      .hero { padding: 1.5rem; }
-      .section { padding: 1.25rem; }
-    }
-  </style>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-highest": "#34343b",
+              "surface-tint": "#aec6ff",
+              "secondary-container": "#00e3fd",
+              "on-tertiary-container": "#3e2400",
+              "background": "#08090F",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-tertiary-fixed": "#2a1700",
+              "surface-container-low": "#1a1b22",
+              "tertiary-fixed": "#ffddb8",
+              "outline": "#8d909e",
+              "on-secondary-container": "#00616d",
+              "error": "#ffb4ab",
+              "surface-container-lowest": "#0d0e14",
+              "primary-fixed-dim": "#aec6ff",
+              "surface-variant": "#34343b",
+              "secondary-fixed-dim": "#00daf3",
+              "primary-fixed": "#d8e2ff",
+              "on-error": "#690005",
+              "on-surface-variant": "#c3c6d4",
+              "tertiary-fixed-dim": "#ffb960",
+              "secondary-fixed": "#9cf0ff",
+              "on-background": "#e3e1eb",
+              "tertiary": "#ffb960",
+              "on-primary-fixed": "#001a43",
+              "secondary": "#bdf4ff",
+              "error-container": "#93000a",
+              "surface-container": "#1e1f26",
+              "on-surface": "#e3e1eb",
+              "tertiary-container": "#ca8103",
+              "outline-variant": "#424752",
+              "on-tertiary": "#472a00",
+              "on-error-container": "#ffdad6",
+              "inverse-surface": "#e3e1eb",
+              "surface-bright": "#383940",
+              "primary-container": "#5d8ef1",
+              "on-primary-fixed-variant": "#004397",
+              "on-primary-container": "#00275e",
+              "primary": "#aec6ff",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-secondary-fixed": "#001f24",
+              "on-primary": "#002e6b",
+              "surface-dim": "#08090F",
+              "on-secondary": "#00363d",
+              "inverse-primary": "#1e5bba",
+              "surface": "#08090F",
+              "surface-container-high": "#292930",
+              "inverse-on-surface": "#2f3037"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .glass-card {
+        background: rgba(26, 27, 34, 0.7);
+        backdrop-filter: blur(24px);
+        border-top: 1px solid rgba(174, 198, 255, 0.1);
+        border-left: 1px solid rgba(174, 198, 255, 0.1);
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+      }
+      .gradient-text {
+        background: linear-gradient(135deg, #aec6ff 0%, #5d8ef1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .pin-box {
+        background: rgba(13, 14, 20, 0.6);
+        box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+      }
+    </style>
 </head>
-<body>
-
-<div class="header">
-  <div class="header-brand">
-    <div class="header-brand-icon">🏠</div>
-    HostAI
-  </div>
-  <span class="header-sub">Guest Portal</span>
-  <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme"><span id="theme-icon">☀️</span></button>
+<body class="bg-background text-on-background font-body min-h-screen flex items-center justify-center relative overflow-hidden">
+<!-- Background Ambient Aura -->
+<div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary-container opacity-[0.05] blur-[120px] rounded-full"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-secondary-container opacity-[0.03] blur-[120px] rounded-full"></div>
+<main class="relative z-10 w-full max-w-2xl px-6 py-12">
+<!-- Logo/Brand Header -->
+<div class="flex flex-col items-center mb-12 space-y-2">
+<span class="material-symbols-outlined text-primary text-4xl mb-2" data-icon="key">key</span>
+<h1 class="text-label-sm font-bold tracking-[0.2em] text-primary uppercase">Guest Portal</h1>
 </div>
-
-<div class="container">
-
-  <!-- Hero -->
-  <div class="hero">
-    <div class="hero-icon">🏡</div>
-    <h1>Welcome, {{ reservation.guest_name.split()[0] }}!</h1>
-    <p class="welcome">
-      Everything you need for your stay at
-      <strong>{{ cfg.property_names or 'the property' }}</strong>.
-    </p>
-    {% if reservation.guests_count %}
-    <div style="margin-top:0.75rem">
-      <span class="badge-guests">👥 {{ reservation.guests_count }} guest{% if reservation.guests_count != 1 %}s{% endif %}</span>
-    </div>
-    {% endif %}
-  </div>
-
-  <div class="workflow-grid" style="margin-bottom:1rem">
-    <div class="workflow-card">
-      <h3>How guests can use this portal</h3>
-      <p>Guests should see their room number, check-in and check-out timing, house rules, and any arrival instructions in one place.</p>
-    </div>
-    <div class="workflow-card">
-      <h3>What the bot can help with</h3>
-      <p>Wi-Fi, parking, towels, local recommendations, late checkout, and issue reporting should be easy to ask from the guest side.</p>
-    </div>
-    <div class="workflow-card">
-      <h3>What stays private</h3>
-      <p>Host-facing operations like automation rules, vendor dispatch, and exception handling stay out of the guest's view.</p>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>💬 Ask HostAI About</h2>
-    <div class="info-row">
-      <span class="info-label">Typical questions</span>
-      <span class="info-value">Wi-Fi password, parking, breakfast timing, towels, extra blankets, early check-in, late checkout, local recommendations, and room-specific issues.</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">How replies work</span>
-      <span class="info-value">HostAI answers using your stay details, property rules, and {% if reservation.unit_identifier %}room {{ reservation.unit_identifier }}{% else %}the mapped room or unit{% endif %} so the reply stays specific to this booking.</span>
-    </div>
-  </div>
-
-  <!-- Dates -->
-  <div class="section">
-    <h2>📅 Your Reservation</h2>
-    <div class="checkin-dates">
-      <div class="date-card">
-        <div class="date-label">Check-in</div>
-        <div class="date-val">{{ reservation.checkin.strftime('%a, %b %d') if reservation.checkin else '—' }}</div>
-        <div class="time-val">from {{ cfg.check_in_time or '3:00 PM' }}</div>
-      </div>
-      <div class="date-card">
-        <div class="date-label">Check-out</div>
-        <div class="date-val">{{ reservation.checkout.strftime('%a, %b %d') if reservation.checkout else '—' }}</div>
-        <div class="time-val">by {{ cfg.check_out_time or '11:00 AM' }}</div>
-      </div>
-    </div>
-    {% if reservation.nights %}
-    <div class="info-row">
-      <span class="info-label">Duration</span>
-      <span class="info-value">{{ reservation.nights }} night{% if reservation.nights != 1 %}s{% endif %}</span>
-    </div>
-    {% endif %}
-    {% if reservation.listing_name %}
-    <div class="info-row">
-      <span class="info-label">Property</span>
-      <span class="info-value">{{ reservation.listing_name }}</span>
-    </div>
-    {% endif %}
-    {% if reservation.unit_identifier %}
-    <div class="info-row">
-      <span class="info-label">Room / Unit</span>
-      <span class="info-value">{{ reservation.unit_identifier }}</span>
-    </div>
-    {% endif %}
-    {% if reservation.confirmation_code %}
-    <div class="info-row">
-      <span class="info-label">Booking ref</span>
-      <span class="info-value" style="font-family:monospace">{{ reservation.confirmation_code }}</span>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- Property info -->
-  {% if cfg.property_city or cfg.max_guests %}
-  <div class="section">
-    <h2>🏠 Property Info</h2>
-    {% if cfg.property_city %}
-    <div class="info-row">
-      <span class="info-label">Location</span>
-      <span class="info-value">{{ cfg.property_city }}</span>
-    </div>
-    {% endif %}
-    {% if cfg.max_guests %}
-    <div class="info-row">
-      <span class="info-label">Max guests</span>
-      <span class="info-value">{{ cfg.max_guests }}</span>
-    </div>
-    {% endif %}
-    {% if cfg.amenities %}
-    <div class="info-row">
-      <span class="info-label">Amenities</span>
-      <span class="info-value">{{ cfg.amenities }}</span>
-    </div>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <!-- House rules -->
-  {% if cfg.house_rules %}
-  <div class="section">
-    <h2>📋 House Rules</h2>
-    <pre class="rules">{{ cfg.house_rules }}</pre>
-  </div>
-  {% endif %}
-
-  <!-- FAQ -->
-  {% if faq_items %}
-  <div class="section">
-    <h2>❓ Frequently Asked Questions</h2>
-    {% for item in faq_items %}
-    <div class="faq-item">
-      <div class="faq-q">{{ item.q }}</div>
-      <div class="faq-a">{{ item.a }}</div>
-    </div>
-    {% endfor %}
-  </div>
-  {% elif cfg.faq %}
-  <div class="section">
-    <h2>❓ Guest Info</h2>
-    <pre class="rules">{{ cfg.faq }}</pre>
-  </div>
-  {% endif %}
-
-  <!-- Food & nearby -->
-  {% if cfg.nearby_restaurants %}
-  <div class="section">
-    <h2>🍽️ Nearby Restaurants</h2>
-    <pre class="rules">{{ cfg.nearby_restaurants }}</pre>
-  </div>
-  {% endif %}
-
-  <!-- Escalation contact -->
-  {% if cfg.escalation_email %}
-  <div class="section">
-    <h2>📞 Need Help?</h2>
-    <div class="info-row">
-      <span class="info-label">Contact</span>
-      <span class="info-value">
-        <a href="mailto:{{ cfg.escalation_email }}" style="color:#e00b27">{{ cfg.escalation_email }}</a>
-      </span>
-    </div>
-  </div>
-  {% endif %}
-
+<!-- Main Glass Card -->
+<div class="glass-card rounded-xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
+<!-- Property Information -->
+<div class="text-center mb-10">
+<h2 class="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter mb-4 text-on-surface">
+                    The Obsidian Heights
+                </h2>
+<div class="flex items-center justify-center space-x-6 text-slate-400">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-sm mr-2" data-icon="calendar_today">calendar_today</span>
+<span class="text-sm font-medium">Oct 24, 2023</span>
 </div>
-
-<div class="footer">
-  This page was generated by HostAI for your reservation.<br>
-  Link expires after check-out. For issues, contact your host directly.
+<div class="w-1 h-1 rounded-full bg-outline-variant"></div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-sm mr-2" data-icon="schedule">schedule</span>
+<span class="text-sm font-medium">15:00 PM</span>
 </div>
-
-<script nonce="{{ request.state.csp_nonce }}">
-  const THEME_KEY = 'hostai-checkin-theme';
-  function applyTheme(t) {
-    document.documentElement.setAttribute('data-theme', t);
-    const icon = document.getElementById('theme-icon');
-    if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
-    localStorage.setItem(THEME_KEY, t);
-  }
-  (function() {
-    const saved = localStorage.getItem(THEME_KEY);
-    if (saved) applyTheme(saved);
-    const btn = document.getElementById('theme-toggle-btn');
-    if (btn) btn.addEventListener('click', function() {
-      const cur = document.documentElement.getAttribute('data-theme');
-      applyTheme(cur === 'dark' ? 'light' : 'dark');
-    });
-  })();
-</script>
-
-</body>
-</html>
+</div>
+</div>
+<!-- PIN Display Section -->
+<div class="relative mb-10">
+<div class="pin-box rounded-xl p-10 flex flex-col items-center justify-center border border-outline-variant/15">
+<p class="text-label-sm font-bold tracking-widest text-slate-500 uppercase mb-6">Access Code</p>
+<div class="flex space-x-4 mb-6">
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+</div>
+<div class="flex items-center bg-primary/10 px-4 py-2 rounded-full border border-primary/20">
+<span class="material-symbols-outlined text-[16px] text-primary mr-2" data-icon="lock_clock">lock_clock</span>
+<span class="text-xs font-bold text-primary tracking-wide">AWAITING ACTIVATION</span>
+</div>
+</div>
+</div>
+<!-- Secondary Info Grid (Bento Style Lite) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+<div class="bg-surface-container-lowest/50 p-5 rounded-lg border border-outline-variant/10">
+<span class="material-symbols-outlined text-secondary text-xl mb-2" data-icon="wifi">wifi</span>
+<h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Network</h4>
+<p class="text-on-surface font-medium">Obsidian_Guest_5G</p>
+</div>
+<div class="bg-surface-container-lowest/50 p-5 rounded-lg border border-outline-variant/10">
+<span class="material-symbols-outlined text-secondary text-xl mb-2" data-icon="room_service">room_service</span>
+<h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Assistance</h4>
+<p class="text-on-surface font-medium">Concierge Active</p>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col space-y-4">
+<button class="w-full py-4 rounded-lg font-bold text-on-primary bg-gradient-to-br from-primary to-primary-container shadow-[0_0_20px_rgba(93,142,241,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span>Contact Host</span>
+</button>
+<button class="w-full py-4 rounded-lg font-bold text-slate-400 hover:text-on-surface hover:bg-surface-container-high/40 transition-all flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span>View Arrival Instructions</span>
+</button>
+</div>
+</div>
+<!-- Footer Help -->
+<p class="mt-8 text-center text-slate-500 text-sm font-medium">
+            Trouble checking in? <a class="text-primary hover:underline transition-all" href="#">Call Support</a>
+</p>
+</main>
+<!-- Decorative Elements -->
+<div class="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+<div class="fixed bottom-10 left-1/2 -translate-x-1/2 opacity-20">
+<img alt="HostAI Logo" class="h-6 grayscale contrast-125" data-alt="minimalist tech company logo with clean geometric lines and futuristic typography on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9IbqgDXR23tBTHc_R5pTX_itopaWEPD0ZsDPn2rHDtIDF1chHU7SaWz-W6HjQb6D086QEsNzUBLOhps5lb5h9BzQPgfM_6QyTsfWLvYyE5FGiF1ZftmfkKL92sNOqPf3EqYBstPe79s1TVhG5P5lwHlTjILUL7ynhxyv0lGCuJnhB54ucxGCZn5DboFyso-KJP6vBvRIfMcD4pQeZwjBXXmEevmwdjf74bFGrZu0vJgAF30qz6_UViVyNWm0DleQ0XXTHQnzWn6c6"/>
+</div>
+</body></html>

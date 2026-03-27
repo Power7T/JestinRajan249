@@ -1,462 +1,417 @@
-{% extends "base.html" %}
-{% block title %}Guest Check-ins — HostAI{% endblock %}
+{%- extends "base.html" %}
+{%- block title %}Guest Contacts — HostAI{%- endblock %}
 
-{% block head %}
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-container-highest": "#34343b",
+            "surface-tint": "#aec6ff",
+            "secondary-container": "#00e3fd",
+            "on-tertiary-container": "#3e2400",
+            "background": "#121319",
+            "on-tertiary-fixed-variant": "#653e00",
+            "on-tertiary-fixed": "#2a1700",
+            "surface-container-low": "#1a1b22",
+            "tertiary-fixed": "#ffddb8",
+            "outline": "#8d909e",
+            "on-secondary-container": "#00616d",
+            "error": "#ffb4ab",
+            "surface-container-lowest": "#0d0e14",
+            "primary-fixed-dim": "#aec6ff",
+            "surface-variant": "#34343b",
+            "secondary-fixed-dim": "#00daf3",
+            "primary-fixed": "#d8e2ff",
+            "on-error": "#690005",
+            "on-surface-variant": "#c3c6d4",
+            "tertiary-fixed-dim": "#ffb960",
+            "secondary-fixed": "#9cf0ff",
+            "on-background": "#e3e1eb",
+            "tertiary": "#ffb960",
+            "on-primary-fixed": "#001a43",
+            "secondary": "#bdf4ff",
+            "error-container": "#93000a",
+            "surface-container": "#1e1f26",
+            "on-surface": "#e3e1eb",
+            "tertiary-container": "#ca8103",
+            "outline-variant": "#424752",
+            "on-tertiary": "#472a00",
+            "on-error-container": "#ffdad6",
+            "inverse-surface": "#e3e1eb",
+            "surface-bright": "#383940",
+            "primary-container": "#5d8ef1",
+            "on-primary-fixed-variant": "#004397",
+            "on-primary-container": "#00275e",
+            "primary": "#aec6ff",
+            "on-secondary-fixed-variant": "#004f58",
+            "on-secondary-fixed": "#001f24",
+            "on-primary": "#002e6b",
+            "surface-dim": "#121319",
+            "on-secondary": "#00363d",
+            "inverse-primary": "#1e5bba",
+            "surface": "#121319",
+            "surface-container-high": "#292930",
+            "inverse-on-surface": "#2f3037"
+          },
+          fontFamily: {
+            "headline": ["Plus Jakarta Sans"],
+            "body": ["Plus Jakarta Sans"],
+            "label": ["Plus Jakarta Sans"]
+          },
+          borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+        },
+      },
+    }
+  </script>
 <style>
-  .checkin-section { margin-bottom:2rem; }
-  .checkin-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem; }
-  .checkin-header h2 { margin:0; }
-
-  /* Check-in cards grid */
-  .checkins-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem;margin-bottom:2rem; }
-
-  /* Check-in card */
-  .checkin-card {
-    background:var(--surface);
-    border:1px solid var(--border);
-    border-radius:var(--radius);
-    padding:1.25rem;
-    transition:all var(--t);
-  }
-  .checkin-card:hover { border-color:var(--border-2);box-shadow:var(--glow); }
-  .checkin-card.contacted { border-left:4px solid var(--success); }
-  .checkin-card.pending { border-left:4px solid var(--warning); }
-
-  .checkin-guest-name { font-size:1rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-1); }
-  .checkin-room { font-size:0.85rem;color:var(--text-2);margin-bottom:0.75rem; }
-  .checkin-time { font-size:0.8rem;color:var(--text-3);display:flex;align-items:center;gap:0.4rem;margin-bottom:0.75rem; }
-
-  .checkin-status {
-    display:inline-block;
-    padding:0.35rem 0.75rem;
-    border-radius:var(--radius-sm);
-    font-size:0.75rem;
-    font-weight:600;
-    margin-bottom:1rem;
-  }
-  .status-contacted { background:var(--success-bg);color:var(--success);border:1px solid var(--success-border); }
-  .status-pending { background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning-border); }
-  .status-failed { background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border); }
-
-  .checkin-actions {
-    display:flex;
-    gap:0.5rem;
-    margin-top:1rem;
-    padding-top:1rem;
-    border-top:1px solid var(--border);
-  }
-  .checkin-actions .btn { flex:1;font-size:0.8rem;padding:0.5rem 0.75rem; }
-
-  /* Empty state */
-  .empty-state {
-    text-align:center;
-    padding:3rem 2rem;
-    background:var(--surface);
-    border:1px dashed var(--border);
-    border-radius:var(--radius);
-  }
-  .empty-state-icon { font-size:2.5rem;margin-bottom:0.5rem; }
-  .empty-state-title { font-size:1rem;font-weight:700;margin-bottom:0.25rem; }
-  .empty-state-text { font-size:0.85rem;color:var(--text-3); }
-
-  /* Modal */
-  .modal-backdrop { display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999; }
-  .modal-backdrop.active { display:flex;align-items:center;justify-content:center; }
-  .modal-content {
-    background:var(--surface);
-    border-radius:var(--radius-lg);
-    width:90%;
-    max-width:500px;
-    box-shadow:0 20px 60px rgba(0,0,0,0.3);
-    max-height:90vh;
-    overflow-y:auto;
-  }
-  .modal-header {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:1.5rem;
-    border-bottom:1px solid var(--border);
-  }
-  .modal-header h3 { margin:0;font-size:1.1rem; }
-  .modal-close {
-    background:none;
-    border:none;
-    font-size:1.5rem;
-    cursor:pointer;
-    color:var(--text-3);
-    padding:0;
-    width:2rem;
-    height:2rem;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-  .modal-close:hover { color:var(--text-1); }
-  .modal-body { padding:1.5rem; }
-  .modal-footer {
-    display:flex;
-    gap:0.75rem;
-    padding:1.5rem;
-    border-top:1px solid var(--border);
-    justify-content:flex-end;
-  }
-
-  /* Form */
-  .form-group { margin-bottom:1.25rem; }
-  .form-group label { display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.4rem;color:var(--text-2); }
-  .form-group input,
-  .form-group select {
-    width:100%;
-    padding:0.6rem 0.8rem;
-    border:1px solid var(--border);
-    border-radius:var(--radius-sm);
-    font-size:0.9rem;
-    background:var(--bg-2);
-    color:var(--text-1);
-    font-family:inherit;
-  }
-  .form-group input:focus,
-  .form-group select:focus {
-    outline:none;
-    border-color:var(--accent);
-    box-shadow:0 0 0 3px var(--accent-glow);
-  }
-
-  .help-text { font-size:0.75rem;color:var(--text-3);margin-top:0.3rem; }
-
-  /* Loading state */
-  .loading { opacity:0.6;pointer-events:none; }
-  .spinner { display:inline-block;width:1rem;height:1rem;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite; }
-  @keyframes spin { to { transform:rotate(360deg); } }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="checkin-section">
-  <div class="checkin-header">
-    <div>
-      <h1>Guest Check-ins</h1>
-      <p style="margin:0.25rem 0 0;font-size:0.85rem;color:var(--text-3)">Today's arrivals — send welcome messages</p>
-    </div>
-    <button class="btn btn-primary" onclick="openAddContactModal()">+ Add Guest Contact</button>
-  </div>
-
-  {% if guest_contacts %}
-  <div class="checkins-grid">
-    {% for gc in guest_contacts %}
-    <div class="checkin-card {% if gc.welcome_status == 'sent' %}contacted{% else %}pending{% endif %}"
-         data-gc-id="{{ gc.id }}"
-         data-check-in="{{ gc.check_in.isoformat() }}"
-         data-check-out="{{ gc.check_out.isoformat() }}"
-         data-property="{{ gc.property_name or '' }}">
-      <div class="checkin-guest-name">{{ gc.guest_name }}</div>
-      <div class="checkin-room">
-        {% if gc.property_name %}{{ gc.property_name }}{% if gc.room_identifier %} • Room {{ gc.room_identifier }}{% endif %}{% else %}Room {{ gc.room_identifier or 'TBD' }}{% endif %}
-      </div>
-      <div class="checkin-time">
-        🕐 {{ gc.check_in.strftime('%I:%M %p') }} — {{ gc.check_out.strftime('%b %d') }}
-      </div>
-
-      <!-- Status badge -->
-      {% if gc.welcome_status == 'sent' %}
-      <span class="checkin-status status-contacted">✓ Welcome sent</span>
-      {% elif gc.welcome_status == 'failed' %}
-      <span class="checkin-status status-failed">✗ Send failed</span>
-      {% else %}
-      <span class="checkin-status status-pending">⏳ Pending</span>
-      {% endif %}
-
-      <!-- Guest phone -->
-      <div style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem;word-break:break-all;" data-phone>
-        {{ gc.guest_phone }}
-      </div>
-
-      <!-- Sent timestamp -->
-      {% if gc.welcome_sent_at %}
-      <div style="font-size:0.75rem;color:var(--text-3);margin-bottom:0.75rem;">
-        Sent: {{ gc.welcome_sent_at.strftime('%I:%M %p') }}
-      </div>
-      {% endif %}
-
-      <!-- Actions -->
-      <div class="checkin-actions">
-        {% if gc.welcome_status != 'sent' %}
-        <button class="btn btn-outline btn-sm" onclick="resendWelcome('{{ gc.id }}', '{{ gc.guest_name }}')">Resend</button>
-        {% endif %}
-        <button class="btn btn-outline btn-sm" onclick="editGuestContact('{{ gc.id }}')">Edit</button>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-state-icon">📭</div>
-    <div class="empty-state-title">No check-ins today</div>
-    <div class="empty-state-text">Your calendar is clear, or you haven't added any guests yet.</div>
-  </div>
-  {% endif %}
-</div>
-
-<!-- Add Guest Contact Modal -->
-<div class="modal-backdrop" id="addContactModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>Add Guest Contact</h3>
-      <button class="modal-close" onclick="closeAddContactModal()">×</button>
-    </div>
-
-    <form id="addContactForm" onsubmit="submitAddContact(event)">
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="guestName">Guest Name *</label>
-          <input type="text" id="guestName" name="guest_name" required placeholder="John Doe">
-          <div class="help-text">Full name of the guest</div>
-        </div>
-
-        <div class="form-group">
-          <label for="guestPhone">WhatsApp/Phone Number *</label>
-          <input type="tel" id="guestPhone" name="guest_phone" required placeholder="+1 234 567 8900">
-          <div class="help-text">Include country code (e.g., +1 for USA)</div>
-        </div>
-
-        <div class="form-group">
-          <label for="propertyName">Property Name</label>
-          <input type="text" id="propertyName" name="property_name" placeholder="Beach House">
-          <div class="help-text">Optional — will help personalize the message</div>
-        </div>
-
-        <div class="form-group">
-          <label for="roomId">Room / Unit</label>
-          <input type="text" id="roomId" name="room_identifier" placeholder="201">
-          <div class="help-text">Room number or unit identifier</div>
-        </div>
-
-        <div class="form-group">
-          <label for="checkIn">Check-in Time *</label>
-          <input type="datetime-local" id="checkIn" name="check_in" required>
-          <div class="help-text">When the guest checks in</div>
-        </div>
-
-        <div class="form-group">
-          <label for="checkOut">Check-out Date *</label>
-          <input type="date" id="checkOut" name="check_out" required>
-          <div class="help-text">When the guest checks out</div>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline" onclick="closeAddContactModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="submitBtn">Send Welcome</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Edit Guest Contact Modal -->
-<div class="modal-backdrop" id="editContactModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>Edit Guest Contact</h3>
-      <button class="modal-close" onclick="closeEditContactModal()">×</button>
-    </div>
-
-    <form id="editContactForm" onsubmit="submitEditContact(event)">
-      <div class="modal-body">
-        <input type="hidden" id="editGcId" name="gc_id">
-
-        <div class="form-group">
-          <label for="editGuestName">Guest Name *</label>
-          <input type="text" id="editGuestName" name="guest_name" required>
-        </div>
-
-        <div class="form-group">
-          <label for="editGuestPhone">WhatsApp/Phone Number *</label>
-          <input type="tel" id="editGuestPhone" name="guest_phone" required>
-          <div class="help-text">Include country code (e.g., +1 for USA)</div>
-        </div>
-
-        <div class="form-group">
-          <label for="editPropertyName">Property Name</label>
-          <input type="text" id="editPropertyName" name="property_name">
-        </div>
-
-        <div class="form-group">
-          <label for="editRoomId">Room / Unit</label>
-          <input type="text" id="editRoomId" name="room_identifier">
-        </div>
-
-        <div class="form-group">
-          <label for="editCheckIn">Check-in Time *</label>
-          <input type="datetime-local" id="editCheckIn" name="check_in" required>
-        </div>
-
-        <div class="form-group">
-          <label for="editCheckOut">Check-out Date *</label>
-          <input type="date" id="editCheckOut" name="check_out" required>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline" onclick="closeEditContactModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save Changes</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<script nonce="{{ request.state.csp_nonce }}">
-function openAddContactModal() {
-  document.getElementById('addContactModal').classList.add('active');
-  // Auto-fill check-in to now
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const time = now.toISOString().slice(0, 16);
-  document.getElementById('checkIn').value = time;
-  document.getElementById('checkOut').value = today;
-}
-
-function closeAddContactModal() {
-  document.getElementById('addContactModal').classList.remove('active');
-  document.getElementById('addContactForm').reset();
-}
-
-async function submitAddContact(event) {
-  event.preventDefault();
-
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Sending...';
-
-  try {
-    const formData = new FormData(document.getElementById('addContactForm'));
-    const response = await fetch('/api/guest-contacts/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        guest_name: formData.get('guest_name'),
-        guest_phone: formData.get('guest_phone'),
-        property_name: formData.get('property_name'),
-        room_identifier: formData.get('room_identifier'),
-        check_in: new Date(formData.get('check_in')).toISOString(),
-        check_out: new Date(formData.get('check_out')).toISOString(),
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      alert('Error: ' + (error.detail || 'Failed to add guest'));
-      return;
+    body {
+      background-color: #08090F;
+      font-family: 'Plus Jakarta Sans', sans-serif;
     }
-
-    const result = await response.json();
-    alert('✓ Welcome sent to ' + formData.get('guest_name'));
-    closeAddContactModal();
-    location.reload();
-  } catch (err) {
-    alert('Error: ' + err.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = 'Send Welcome';
-  }
-}
-
-async function resendWelcome(gcId, guestName) {
-  if (confirm(`Resend welcome message to ${guestName}?`)) {
-    try {
-      const response = await fetch(`/api/guest-contacts/${gcId}/resend`, {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        alert('Error: ' + (error.detail || 'Failed to resend'));
-        return;
-      }
-      const result = await response.json();
-      alert('✓ Message resent to ' + guestName);
-      location.reload();
-    } catch (err) {
-      alert('Error: ' + err.message);
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
     }
-  }
-}
-
-function editGuestContact(gcId) {
-  // Find the card and extract current data
-  const card = document.querySelector(`[data-gc-id="${gcId}"]`);
-  if (!card) return;
-
-  const guestName = card.querySelector('.checkin-guest-name')?.textContent || '';
-  const guestPhone = card.querySelector('[data-phone]')?.textContent || '';
-  const roomId = card.querySelector('[data-room]')?.textContent || '';
-  const checkIn = card.getAttribute('data-check-in') || '';
-  const checkOut = card.getAttribute('data-check-out') || '';
-  const propertyName = card.getAttribute('data-property') || '';
-
-  // Pre-fill modal
-  document.getElementById('editGuestName').value = guestName;
-  document.getElementById('editGuestPhone').value = guestPhone;
-  document.getElementById('editPropertyName').value = propertyName;
-  document.getElementById('editRoomId').value = roomId;
-  document.getElementById('editCheckIn').value = checkIn;
-  document.getElementById('editCheckOut').value = checkOut;
-  document.getElementById('editGcId').value = gcId;
-
-  // Show modal
-  document.getElementById('editContactModal').classList.add('active');
-}
-
-function closeEditContactModal() {
-  document.getElementById('editContactModal').classList.remove('active');
-  document.getElementById('editContactForm').reset();
-}
-
-async function submitEditContact(event) {
-  event.preventDefault();
-
-  const gcId = document.getElementById('editGcId').value;
-  const btn = document.querySelector('#editContactForm button[type="submit"]');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Saving...';
-
-  try {
-    const response = await fetch(`/api/guest-contacts/${gcId}/edit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        guest_name: document.getElementById('editGuestName').value,
-        guest_phone: document.getElementById('editGuestPhone').value,
-        property_name: document.getElementById('editPropertyName').value,
-        room_identifier: document.getElementById('editRoomId').value,
-        check_in: new Date(document.getElementById('editCheckIn').value).toISOString(),
-        check_out: new Date(document.getElementById('editCheckOut').value).toISOString(),
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      alert('Error: ' + (error.detail || 'Failed to update guest'));
-      return;
+    .glass-card {
+      background: rgba(26, 27, 34, 0.7);
+      backdrop-filter: blur(24px);
+      border-top: 1px solid rgba(174, 198, 255, 0.1);
+      border-left: 1px solid rgba(174, 198, 255, 0.1);
     }
+    .text-glow {
+      text-shadow: 0 0 12px rgba(174, 198, 255, 0.3);
+    }
+  </style>
+{%- endblock %}
 
-    alert('✓ Guest updated');
-    closeEditContactModal();
-    location.reload();
-  } catch (err) {
-    alert('Error: ' + err.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = 'Save Changes';
-  }
-}
+{%- block nav %}{%- endblock %}
 
-// Close modal on backdrop click
-document.getElementById('addContactModal').addEventListener('click', (e) => {
-  if (e.target.id === 'addContactModal') closeAddContactModal();
-});
-
-document.getElementById('editContactModal').addEventListener('click', (e) => {
-  if (e.target.id === 'editContactModal') closeEditContactModal();
-});
-</script>
-{% endblock %}
+{%- block main_wrapper %}
+{%- block content %}
+<!-- SideNavBar Component -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r border-[#424752]/15 bg-[#08090F] dark:bg-[#08090F]/60 backdrop-blur-xl flex flex-col py-8 px-4 z-50">
+<div class="mb-10 px-2 flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shadow-[0_0_15px_rgba(174,198,255,0.4)]">
+<span class="material-symbols-outlined text-on-primary text-xl" data-icon="hub">hub</span>
+</div>
+<div>
+<h1 class="text-xl font-extrabold text-[#aec6ff] tracking-tighter">HostAI</h1>
+<p class="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">Internal Tools</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Dashboard -->
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-300 group scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Dashboard</span>
+</a>
+<!-- Conversations -->
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-300 group scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Conversations</span>
+</a>
+<!-- Reservations -->
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-300 group scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Reservations</span>
+</a>
+<!-- Guests (ACTIVE) -->
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-[#aec6ff] bg-[#1a1b22] font-bold border-l-2 border-[#5b8def] scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Guests</span>
+</a>
+<!-- Analytics -->
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-300 group scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Analytics</span>
+</a>
+<!-- Settings -->
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-300 group scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-8 border-t border-[#424752]/15">
+<div class="flex items-center gap-3 px-2">
+<img alt="HostAI Logo" class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/30" data-alt="minimalist tech logo with abstract geometric shape in blue and silver neon lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCN7hZXpuU3eF0rrHjr-HwbuterRTEdbUOe-TxfJ0qXeBOsSq5LmJNcwe9pyg79-HcAceUzJyB7Dy14VZeJps4i6y4IaNLdVpFC-L9bH8msHEgmlzRTEoQE9MEDkx7WR8mSOAtNjFdpL4JdBZq2tKTN1uOdvsWhYNtj35-Y-xkhZG8GEe76aA9f8Yib0cntc1httk9HGJnWBzsYnpioqwO9V4qp3icxVCt9QRmTSscqGn9-uKA8sBqH232rFjNP4_sq3c0tEtQufL0n"/>
+<div class="overflow-hidden">
+<p class="text-sm font-bold text-on-surface truncate">Admin Terminal</p>
+<p class="text-[10px] text-slate-500 truncate">v2.4.0-stable</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopNavBar Component -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 border-b border-[#424752]/15 bg-[#08090F] dark:bg-[#08090F]/60 backdrop-blur-xl flex justify-between items-center px-8 z-40">
+<div class="flex items-center gap-6 flex-1">
+<div class="relative w-full max-w-md group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="w-full bg-surface-container-lowest border-none rounded-xl py-2 pl-10 pr-4 text-sm text-on-surface focus:ring-1 focus:ring-[#5b8def]/40 placeholder:text-slate-600 transition-all" placeholder="Search guest database..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative text-slate-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-secondary-container rounded-full border-2 border-[#08090F]"></span>
+</button>
+<button class="text-slate-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant/20 mx-2"></div>
+<div class="flex items-center gap-3 pl-2">
+<span class="text-sm font-medium text-slate-300">Alex Rivers</span>
+<img alt="User Profile" class="w-8 h-8 rounded-full border border-primary/20 shadow-[0_0_10px_rgba(174,198,255,0.1)]" data-alt="professional headshot of a young male property manager with a clean modern aesthetic and soft blue ambient lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAK1XKguX9u3kt1_bfrvKxhRiuu-_URjShUd79CqUtBgJpGvl2MQp1nMD8rs9WwT7ye8F5h-z4av7uxrIne4AxEwoFwGWprEZKO29HQUILrWtZrJ30ejdMpr2D28f7QcL5tFUpbEXgvMdx_otoKqjuR2Di9lc906p69FAHJpiMW-eK-7lpu4MV3KlIgYpJU1B5Wl5mgJYU7hQMa8ZDbPHO99oXRRkhg8xhcIRkdmeyOqkPxOOcgeb1ZTalv24hgnfoQ1qRAjt3SCfGU"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-64 pt-16 min-h-screen bg-[#08090F]">
+<div class="p-8 max-w-7xl mx-auto space-y-10">
+<!-- Page Header & Action Bar -->
+<section class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h2 class="text-4xl font-extrabold text-on-surface tracking-tight mb-2">Guest Contacts</h2>
+<p class="text-slate-400 max-w-lg">Manage and analyze your historical guest data to improve retention and personalized experiences.</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-outline-variant/20 bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-all text-sm font-semibold">
+<span class="material-symbols-outlined text-sm">download</span>
+            Export CSV
+          </button>
+<button class="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold shadow-[0_0_20px_rgba(174,198,255,0.2)] hover:scale-[1.02] active:scale-95 transition-all text-sm">
+<span class="material-symbols-outlined text-sm">person_add</span>
+            Import Guests
+          </button>
+</div>
+</section>
+<!-- Filter Bar -->
+<section class="flex flex-wrap items-center gap-3">
+<button class="px-5 py-1.5 rounded-full bg-primary/15 text-primary border border-primary/20 text-xs font-bold tracking-wider uppercase">All Guests</button>
+<button class="px-5 py-1.5 rounded-full bg-surface-container-low text-slate-400 border border-outline-variant/10 text-xs font-bold tracking-wider uppercase hover:border-primary/40 transition-colors">Active Stay</button>
+<button class="px-5 py-1.5 rounded-full bg-surface-container-low text-slate-400 border border-outline-variant/10 text-xs font-bold tracking-wider uppercase hover:border-primary/40 transition-colors">Recent Check-outs</button>
+<button class="px-5 py-1.5 rounded-full bg-surface-container-low text-slate-400 border border-outline-variant/10 text-xs font-bold tracking-wider uppercase hover:border-primary/40 transition-colors">Repeat Visitors</button>
+<div class="h-6 w-[1px] bg-outline-variant/20 mx-2"></div>
+<button class="flex items-center gap-1.5 text-slate-500 hover:text-primary transition-colors text-xs font-bold tracking-wider uppercase">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+          Advanced Filters
+        </button>
+</section>
+<!-- CRM Table Bento Panel -->
+<section class="glass-card rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.3)]">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-lowest/50">
+<th class="px-8 py-5 text-[11px] font-extrabold text-slate-500 uppercase tracking-[0.15em] border-b border-outline-variant/10">Guest Name</th>
+<th class="px-8 py-5 text-[11px] font-extrabold text-slate-500 uppercase tracking-[0.15em] border-b border-outline-variant/10">Contact Info</th>
+<th class="px-8 py-5 text-[11px] font-extrabold text-slate-500 uppercase tracking-[0.15em] border-b border-outline-variant/10 text-center">Last Stay</th>
+<th class="px-8 py-5 text-[11px] font-extrabold text-slate-500 uppercase tracking-[0.15em] border-b border-outline-variant/10 text-center">Bookings</th>
+<th class="px-8 py-5 text-[11px] font-extrabold text-slate-500 uppercase tracking-[0.15em] border-b border-outline-variant/10 text-right">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<!-- Guest Row 1 -->
+<tr class="group hover:bg-primary/5 transition-colors cursor-pointer">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<img alt="Sarah Chen" class="w-10 h-10 rounded-xl object-cover grayscale group-hover:grayscale-0 transition-all border border-outline-variant/20" data-alt="portrait of a young asian woman smiling with a soft natural background and professional lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoLNGxgxgRzwH_mgyB_fw69U4zyw7Kob9olLb_21yDGTXxIJPAwQf_mpjOajWMqK3Q30lNS7RwJOJ75kXMoK6JGcaNuNs3iCFIUFnpmriAOHUD1t3PQnGHuvPIGU0BwpUOCo9PwYD4_1XQDUsCbBkQG2BXl57aSi96E_g8oZRSzUoe8GHS9hXaZGRlwn-WLcfCPWRfDUBxYGP_yUk2LwYP_8G9OMYYvJLa9LkQe03Rjo0hyu2FdawwYGBaCziItsD2epWdXdkWq4ad"/>
+<div>
+<p class="font-bold text-on-surface text-base group-hover:text-primary transition-colors">Sarah Chen</p>
+<p class="text-[11px] text-slate-500 font-medium">Guest ID: #HS-9942</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="space-y-0.5">
+<p class="text-sm text-slate-300 font-medium">+1 (555) 234-8891</p>
+<p class="text-sm text-slate-500">sarah.c@globalnexus.com</p>
+</div>
+</td>
+<td class="px-8 py-6 text-center">
+<p class="text-sm text-slate-300 font-semibold">Oct 12 - Oct 18, 2023</p>
+<p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Loft Studio A</p>
+</td>
+<td class="px-8 py-6 text-center">
+<div class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-surface-container-high border border-outline-variant/20">
+<span class="text-sm font-bold text-primary">12</span>
+</div>
+</td>
+<td class="px-8 py-6 text-right">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-container/10 text-secondary-container text-[10px] font-extrabold uppercase tracking-widest">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container shadow-[0_0_8px_rgba(0,227,253,0.8)]"></span>
+                    Verified
+                  </span>
+</td>
+</tr>
+<!-- Guest Row 2 -->
+<tr class="group hover:bg-primary/5 transition-colors cursor-pointer">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<img alt="Julian Marcus" class="w-10 h-10 rounded-xl object-cover grayscale group-hover:grayscale-0 transition-all border border-outline-variant/20" data-alt="portrait of a middle aged man with glasses and a friendly expression in a modern office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNd_U1Ca2LwphgVE5VOrYnH4IobPXIPwo0IfHBg8hLNdRaW-YMC2m_QWTivL1kYeh9uljp9zcVtMM_uOm19BZZNKrbWOzw2MMDoxBuNDNkdga_bn9ySy5C4_nQakF3hGwhPCo0u8rJM7xNGtKOGDjIk5wGGgLtVpVWfuioEXFTn1kNPbL85YWq4gh6SK0vAnKWtKgeJBSyFFPsJcrNxilqZC81JxHiCopF0kJ9ZaYW6sflRItXmXegi1AN3S422SJurcWAN6b16cEE"/>
+<div>
+<p class="font-bold text-on-surface text-base group-hover:text-primary transition-colors">Julian Marcus</p>
+<p class="text-[11px] text-slate-500 font-medium">Guest ID: #HS-8821</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="space-y-0.5">
+<p class="text-sm text-slate-300 font-medium">+44 20 7946 0122</p>
+<p class="text-sm text-slate-500">jmarcus@designco.uk</p>
+</div>
+</td>
+<td class="px-8 py-6 text-center">
+<p class="text-sm text-slate-300 font-semibold">Nov 02 - Nov 05, 2023</p>
+<p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Skyline Penthouse</p>
+</td>
+<td class="px-8 py-6 text-center">
+<div class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-surface-container-high border border-outline-variant/20">
+<span class="text-sm font-bold text-primary">3</span>
+</div>
+</td>
+<td class="px-8 py-6 text-right">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-tertiary-container/10 text-tertiary-fixed text-[10px] font-extrabold uppercase tracking-widest">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed shadow-[0_0_8px_rgba(255,185,96,0.8)]"></span>
+                    VIP Tier
+                  </span>
+</td>
+</tr>
+<!-- Guest Row 3 -->
+<tr class="group hover:bg-primary/5 transition-colors cursor-pointer">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<img alt="Elena Moretti" class="w-10 h-10 rounded-xl object-cover grayscale group-hover:grayscale-0 transition-all border border-outline-variant/20" data-alt="lifestyle headshot of a stylish woman with long hair outdoors in a sunlit urban area" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxjA3eA76Nk5qwPNtS_vAI1lAnjbVm9dKGpCFKx0ui8zgDchmqxON5BCHQ6IPw_1N7Jf-GzpGd2Ta5fLNQXEu5EyaglGUZgSeroLl5NZJVYT7nBHytn-wofPYqX_W9imHfuiefg1HiMmu5BGeDx84K1pflRKfNoS4ODb0g-HhdznPHqpu28hTtKzY5-OLcQvtVgxOP8lLUY6zpWcQYCjEmeXSgEZw43hHRpNEEkJ4JuKT089kC1RPUK9EmFIui_Llaakr1EuqyJ0HB"/>
+<div>
+<p class="font-bold text-on-surface text-base group-hover:text-primary transition-colors">Elena Moretti</p>
+<p class="text-[11px] text-slate-500 font-medium">Guest ID: #HS-7710</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="space-y-0.5">
+<p class="text-sm text-slate-300 font-medium">+39 02 123 4567</p>
+<p class="text-sm text-slate-500">elena.m@studio-v.it</p>
+</div>
+</td>
+<td class="px-8 py-6 text-center">
+<p class="text-sm text-slate-300 font-semibold">Oct 28 - Nov 01, 2023</p>
+<p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Garden Villa 04</p>
+</td>
+<td class="px-8 py-6 text-center">
+<div class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-surface-container-high border border-outline-variant/20">
+<span class="text-sm font-bold text-primary">1</span>
+</div>
+</td>
+<td class="px-8 py-6 text-right">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-outline-variant/10 text-slate-400 text-[10px] font-extrabold uppercase tracking-widest">
+<span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                    Pending
+                  </span>
+</td>
+</tr>
+<!-- Guest Row 4 -->
+<tr class="group hover:bg-primary/5 transition-colors cursor-pointer">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<img alt="David Hudson" class="w-10 h-10 rounded-xl object-cover grayscale group-hover:grayscale-0 transition-all border border-outline-variant/20" data-alt="close up of a professional man in a suit with a modern city skyline reflecting in a window behind him" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDM2DkDe1geg0G3NMA12LPDUm3ZEgRY0goh9ZT6EcW4s1hzu6zUKEnUaZzJfeeZCzGlpyDf2IdBw_ajR-um1FqYhlmKgnUcgAgp7UXPOlv-_NIeA62VJ8qlrTFmc7OctHX_C61xPRQzf4xdxSg-8BHZ49qeEYZ3cCRaH_CiynjUtN8tBM3ANK-0GmP9r3RaasU7B_Xrs9hAZWMYyy-Kqj_HzxzCKr_4zGy3QBIuEPRPjG5vEdYB0UoSCrFcBoCcRLB-HLEIqI9DAKFk"/>
+<div>
+<p class="font-bold text-on-surface text-base group-hover:text-primary transition-colors">David Hudson</p>
+<p class="text-[11px] text-slate-500 font-medium">Guest ID: #HS-6651</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="space-y-0.5">
+<p class="text-sm text-slate-300 font-medium">+1 (212) 555-0198</p>
+<p class="text-sm text-slate-500">david.hudson@fin-tech.co</p>
+</div>
+</td>
+<td class="px-8 py-6 text-center">
+<p class="text-sm text-slate-300 font-semibold">Sep 15 - Sep 20, 2023</p>
+<p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Modern Suite 12</p>
+</td>
+<td class="px-8 py-6 text-center">
+<div class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-surface-container-high border border-outline-variant/20">
+<span class="text-sm font-bold text-primary">22</span>
+</div>
+</td>
+<td class="px-8 py-6 text-right">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-container/10 text-secondary-container text-[10px] font-extrabold uppercase tracking-widest">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container shadow-[0_0_8px_rgba(0,227,253,0.8)]"></span>
+                    Verified
+                  </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Pagination -->
+<div class="px-8 py-6 flex items-center justify-between border-t border-outline-variant/10 bg-surface-container-low/30">
+<p class="text-xs text-slate-500 font-medium">Showing <span class="text-slate-300">1 to 10</span> of 1,248 guests</p>
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 rounded-lg flex items-center justify-center border border-outline-variant/20 text-slate-400 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center bg-primary text-on-primary text-xs font-bold">1</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center border border-outline-variant/20 text-slate-400 hover:bg-surface-container-high transition-colors text-xs font-bold">2</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center border border-outline-variant/20 text-slate-400 hover:bg-surface-container-high transition-colors text-xs font-bold">3</button>
+<span class="text-slate-600 px-1">...</span>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center border border-outline-variant/20 text-slate-400 hover:bg-surface-container-high transition-colors text-xs font-bold">125</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center border border-outline-variant/20 text-slate-400 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Insights Bento Section -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="glass-card p-6 rounded-2xl flex items-center gap-5">
+<div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+</div>
+<div>
+<p class="text-slate-500 text-[10px] font-extrabold uppercase tracking-widest">Total Database</p>
+<h3 class="text-2xl font-extrabold text-on-surface">4,821</h3>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex items-center gap-5">
+<div class="w-12 h-12 rounded-xl bg-secondary-container/10 flex items-center justify-center text-secondary-container">
+<span class="material-symbols-outlined" data-icon="repeat">repeat</span>
+</div>
+<div>
+<p class="text-slate-500 text-[10px] font-extrabold uppercase tracking-widest">Return Rate</p>
+<h3 class="text-2xl font-extrabold text-on-surface">32.4%</h3>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex items-center gap-5">
+<div class="w-12 h-12 rounded-xl bg-tertiary/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined" data-icon="star_rate" style="font-variation-settings: 'FILL' 1;">star_rate</span>
+</div>
+<div>
+<p class="text-slate-500 text-[10px] font-extrabold uppercase tracking-widest">VIP Profiles</p>
+<h3 class="text-2xl font-extrabold text-on-surface">142</h3>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Notification Toast (Ambient UI) -->
+<div class="fixed bottom-8 right-8 z-[100] translate-y-20 opacity-0 transform pointer-events-none transition-all duration-500">
+<div class="glass-card px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-primary/20">
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">sync</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Syncing Database...</p>
+<p class="text-xs text-slate-500">Updating 14 new guest contacts.</p>
+</div>
+</div>
+</div>
+{%- endblock %}
+{%- endblock %}
