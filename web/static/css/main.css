@@ -48,7 +48,7 @@ a:hover { color: var(--text-1); }
 /* ═══════════════════════════════════════════════════════════════
    NAVIGATION
 ═══════════════════════════════════════════════════════════════ */
-nav {
+.legacy-nav {
   position: sticky;
   top: 0;
   z-index: 200;
@@ -62,7 +62,7 @@ nav {
   align-items: center;
   gap: 0;
 }
-[data-theme="light"] nav { background: rgba(248,250,255,0.92); }
+[data-theme="light"] .legacy-nav { background: rgba(248,250,255,0.92); }
 
 .brand {
   display: flex;
@@ -98,7 +98,7 @@ nav {
   flex: 1;
   height: 100%;
 }
-nav a {
+.legacy-nav a {
   position: relative;
   color: var(--text-3);
   font-size: 0.81rem;
@@ -593,8 +593,8 @@ td strong { color: var(--text-1); }
 @media (max-width: 900px)  { .workflow-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 680px) {
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
-  nav { padding: 0 1rem; }
-  nav a { padding: 0 0.5rem; font-size: 0.75rem; }
+.legacy-nav { padding: 0 1rem; }
+  .legacy-nav a { padding: 0 0.5rem; font-size: 0.75rem; }
   .nav-links a:not(.active) { display: none; }
   .container { padding: 1.5rem 1rem 3.5rem; }
   h1 { font-size: 1.4rem; }
@@ -604,7 +604,7 @@ td strong { color: var(--text-1); }
 }
 @media (max-width: 420px) {
   .kpi-grid { grid-template-columns: 1fr 1fr; }
-  nav a { font-size: 0.72rem; }
+  .legacy-nav a { font-size: 0.72rem; }
 }
 
 /* ═══════════════════════════════════════════════════════════════

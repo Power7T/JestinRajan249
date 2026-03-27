@@ -16,38 +16,7 @@
 </head>
 <body>
 
-{% block nav %}
-<nav>
-  <a href="/dashboard" class="brand">
-    <span class="brand-icon">🏠</span>
-    HostAI
-  </a>
-  <div class="nav-links">
-    <a href="/dashboard"    class="{% if request.url.path == '/dashboard' %}active{% endif %}">Dashboard</a>
-    <a href="/guest-contacts" class="{% if request.url.path == '/guest-contacts' %}active{% endif %}">Check-ins</a>
-    <a href="/conversations" class="{% if request.url.path == '/conversations' %}active{% endif %}">Messages</a>
-    <a href="/workflow"     class="{% if request.url.path == '/workflow' %}active{% endif %}">Workflow</a>
-    <a href="/reservations" class="{% if request.url.path == '/reservations' %}active{% endif %}">Reservations</a>
-    <a href="/activity"     class="{% if request.url.path.startswith('/activity') %}active{% endif %}">Activity</a>
-    <a href="/analytics"    class="{% if request.url.path == '/analytics' %}active{% endif %}">Analytics</a>
-    <a href="/ops"          class="{% if request.url.path == '/ops' or request.url.path == '/vendors/workflow' %}active{% endif %}">Ops</a>
-    <a href="/settings"     class="{% if request.url.path == '/settings' %}active{% endif %}">Settings</a>
-    <a href="/billing"      class="{% if request.url.path == '/billing' %}active{% endif %}">Billing</a>
-    {% if tenant is defined and tenant and is_admin(tenant.email) %}
-    <a href="/admin" class="{% if request.url.path.startswith('/admin') %}active{% endif %}" style="color:var(--rose);font-weight:700">Admin</a>
-    {% endif %}
-  </div>
-  <div class="nav-end">
-    <button class="theme-toggle" id="theme-toggle-btn" title="Toggle dark/light mode" aria-label="Toggle theme">
-      <span id="theme-icon">☀️</span>
-    </button>
-    <form method="post" action="/logout" style="display:inline">
-      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-      <button type="submit" class="nav-signout">Sign out</button>
-    </form>
-  </div>
-</nav>
-{% endblock %}
+
 
 {% if request.cookies.get("admin_session") %}
 <div class="banner-admin">
