@@ -109,22 +109,14 @@ tailwind.config = {
 
     <!-- Actions (Right) -->
     <div class="hidden sm:flex flex-1 justify-end items-center gap-5">
-        {% if request.cookies.get("session") %}
-        <a href="/dashboard" class="bg-[#5B8DEF] hover:bg-[#3B6DDF] text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(91,141,239,0.4)] hover:scale-105 transition-all outline-none whitespace-nowrap">Dashboard &rarr;</a>
-        {% else %}
         <a href="/login" class="text-slate-300 hover:text-white text-sm font-semibold transition-colors hidden lg:block">Sign In</a>
         <a href="/signup" class="bg-[#5B8DEF] text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(91,141,239,0.4)] hover:bg-[#3B6DDF] transition-all outline-none whitespace-nowrap">Get Started</a>
-        {% endif %}
     </div>
 
     <!-- Mobile Menu Button -->
     <div class="flex sm:hidden flex-1 justify-end items-center">
-        {% if request.cookies.get("session") %}
-        <a href="/dashboard" class="text-[#5B8DEF] font-bold text-sm">Dashboard &rarr;</a>
-        {% else %}
         <a href="/login" class="text-slate-300 text-sm font-semibold mr-4">Log in</a>
         <a href="/signup" class="text-[#5B8DEF] font-bold text-sm">Sign Up</a>
-        {% endif %}
     </div>
 </div>
 </nav>
@@ -162,11 +154,7 @@ tailwind.config = {
 </div>
 <!-- Hero CTAs -->
 <div class="flex flex-col sm:flex-row items-center justify-center gap-5 mb-24">
-{% if request.cookies.get("session") %}
-<a href="/dashboard" class="w-full sm:w-auto px-8 py-4 bg-[#5B8DEF] rounded-xl font-bold text-white shadow-[0_0_25px_rgba(91,141,239,0.3)] hover:shadow-[0_0_40px_rgba(91,141,239,0.5)] transition-all active:scale-95 text-center">Go to Dashboard</a>
-{% else %}
 <a href="/signup" class="w-full sm:w-auto px-8 py-4 bg-[#5B8DEF] rounded-xl font-bold text-white shadow-[0_0_25px_rgba(91,141,239,0.3)] hover:shadow-[0_0_40px_rgba(91,141,239,0.5)] hover:bg-[#3B6DDF] transition-all active:scale-95 text-center">Start Free Trial</a>
-{% endif %}
 <button onclick="window.location.href='/pricing'" class="w-full sm:w-auto px-8 py-4 text-white font-bold bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg backdrop-blur-sm">
                     View Pricing
                 </button>
