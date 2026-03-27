@@ -12,8 +12,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-import anthropic
-
 from web.workflow import build_structured_policy_context
 from web.crypto import decrypt
 

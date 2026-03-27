@@ -79,9 +79,9 @@ def _process_tenant(tenant_id: str, property_context: str):
         for r in reservations:
             if not r.checkin or not r.checkout:
                 continue
-            _maybe_pre_arrival(r, today, api_key, property_context, db, tenant_id)
-            _maybe_cleaner_brief(r, today, api_key, property_context, db, tenant_id)
-            _maybe_checkout_message(r, today, api_key, property_context, db, tenant_id)
+            _maybe_pre_arrival(r, today, property_context, db, tenant_id)
+            _maybe_cleaner_brief(r, today, property_context, db, tenant_id)
+            _maybe_checkout_message(r, today, property_context, db, tenant_id)
 
         # Review reminders need checkout in the review window
         review_window_start = today - timedelta(days=_REVIEW_REMIND_DAYS + 1)
@@ -94,7 +94,7 @@ def _process_tenant(tenant_id: str, property_context: str):
             Reservation.review_reminder_sent == False,  # noqa: E712
         ).all()
         for r in review_rows:
-            _maybe_review_reminder(r, today, api_key, property_context, db, tenant_id)
+            _maybe_review_reminder(r, today, property_context, db, tenant_id)
 
     finally:
         db.close()
@@ -116,7 +116,7 @@ def _save_draft(db, tenant_id: str, draft_id: str, guest_name: str,
     db.commit()
 
 
-def _maybe_pre_arrival(r, today, api_key: str, property_context: str, db, tenant_id: str):
+def _maybe_pre_arrival(r, today, property_context: str, db, tenant_id: str):
     if r.pre_arrival_sent:
         return
     days_until = (r.checkin - today).days
@@ -140,7 +140,7 @@ def _maybe_pre_arrival(r, today, api_key: str, property_context: str, db, tenant
         f"and express excitement about their visit."
     )
     try:
-        draft = generate_draft(api_key, r.guest_name, context, "complex",
+        draft = generate_draft(r.guest_name, context, "complex",
                                skill="reply", property_context=property_context)
         _save_draft(db, tenant_id, make_draft_id("reservation"), r.guest_name,
                     context, draft, "pre_arrival")
@@ -151,7 +151,7 @@ def _maybe_pre_arrival(r, today, api_key: str, property_context: str, db, tenant
         log.error("[%s] Pre-arrival draft failed for %s: %s", tenant_id, r.guest_name, exc)
 
 
-def _maybe_cleaner_brief(r, today, api_key: str, property_context: str, db, tenant_id: str):
+def _maybe_cleaner_brief(r, today, property_context: str, db, tenant_id: str):
     if r.cleaner_brief_sent:
         return
     if r.checkout != today:
@@ -170,7 +170,7 @@ def _maybe_cleaner_brief(r, today, api_key: str, property_context: str, db, tena
         f"Cover all rooms, linen change, restocking, damage check, and preparing for the next guest."
     )
     try:
-        draft = generate_draft(api_key, "Cleaner", context, "complex",
+        draft = generate_draft("Cleaner", context, "complex",
                                skill="cleaner-brief", property_context=property_context)
         _save_draft(db, tenant_id, make_draft_id("reservation"), f"{r.guest_name} checkout",
                     context, draft, "cleaner_brief")
@@ -181,7 +181,7 @@ def _maybe_cleaner_brief(r, today, api_key: str, property_context: str, db, tena
         log.error("[%s] Cleaner brief failed for %s: %s", tenant_id, r.guest_name, exc)
 
 
-def _maybe_checkout_message(r, today, api_key: str, property_context: str, db, tenant_id: str):
+def _maybe_checkout_message(r, today, property_context: str, db, tenant_id: str):
     if r.checkout_msg_sent:
         return
     if r.checkout != today:
@@ -201,7 +201,7 @@ def _maybe_checkout_message(r, today, api_key: str, property_context: str, db, t
         f"Thank them for staying, wish them safe travels, and gently mention that a 5-star review would mean the world."
     )
     try:
-        draft = generate_draft(api_key, r.guest_name, context, "complex",
+        draft = generate_draft(r.guest_name, context, "complex",
                                skill="reply", property_context=property_context)
         _save_draft(db, tenant_id, make_draft_id("reservation"), r.guest_name,
                     context, draft, "checkout_thanks")
@@ -212,7 +212,7 @@ def _maybe_checkout_message(r, today, api_key: str, property_context: str, db, t
         log.error("[%s] Checkout message failed for %s: %s", tenant_id, r.guest_name, exc)
 
 
-def _maybe_review_reminder(r, today, api_key: str, property_context: str, db, tenant_id: str):
+def _maybe_review_reminder(r, today, property_context: str, db, tenant_id: str):
     from web.classifier import generate_draft, make_draft_id
     prop = r.listing_name or "the property"
     context = (
@@ -225,7 +225,7 @@ def _maybe_review_reminder(r, today, api_key: str, property_context: str, db, te
         f"Keep it casual, under 3 sentences."
     )
     try:
-        draft = generate_draft(api_key, r.guest_name, context, "complex",
+        draft = generate_draft(r.guest_name, context, "complex",
                                skill="reply", property_context=property_context)
         _save_draft(db, tenant_id, make_draft_id("reservation"), r.guest_name,
                     context, draft, "review_reminder")
