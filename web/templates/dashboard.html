@@ -138,7 +138,9 @@ body {
 </nav>
 <div class="mt-auto p-6 space-y-4">
 <div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
-<img alt="Profile" class="w-10 h-10 rounded-full object-cover" data-alt="professional portrait of a confident male executive in a modern workspace with natural soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhQJQQb7dxXRNRhJo6ozviZ-V5pVSCCyOhG7MaZyL0VO3bxiKJSrpPPQPLes_Vv32v5ygC22ZX7RMiPiLu9z6ToZ9hc9AU8elRKaOTmtGlPi9O2K5BK2ME6PGdXJ7wt9mp-9mGm325p9LYaK71yrwHEBpjCZ38F4IjQdXelI9QXSutOA9LKQTMufFMPO8qwFP9cihr6opv6kfMmRZeibEIPHZ9kVWB9dmW_ahXYeMG9mswyQQWubbm8iPrUe8ada1yjMo5G9gLU5Gu"/>
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+  {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
 <div class="flex-1 min-w-0">
 <p class="text-white font-bold truncate">{{ current_user.name if current_user else "Your Account" }}</p>
 <p class="text-slate-500 text-xs truncate">Host Administrator</p>
@@ -169,8 +171,8 @@ body {
 <div class="h-8 w-px bg-white/10"></div>
 <div class="flex items-center gap-3 cursor-pointer group">
 <span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
-<div class="w-8 h-8 rounded-full bg-surface-container-high border border-white/10 overflow-hidden">
-<img alt="User Avatar" class="w-full h-full object-cover" data-alt="close-up profile photo of a modern entrepreneur with neutral background and cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuABW8Qelc6KTdNSDo0fYFx8C18_jPnQtWQJZQ8b18U_PZAdmsQrvB5UNPOqqpkFT9sxYA0QV6VD9dKLOGJ_6QFm_2CyaG0asg4qRNa5TVYr5kYXA8d5YNyER4XyY7GjiNoG5qIVCFj6WHywoXCu0G_ND8HMjOmWNGcff43TjsMyJlSYUZuieI2exmXE-_fr4OE3VZmcgvyDeCjtpW2hb_zBx6jbiXVpam6x8GPztvgsFvu03OhRZ1Lc3hPAdTCQx1i301PNae5H5YI6"/>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+  {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
 </div>
 </div>
 </div>
