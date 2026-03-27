@@ -293,20 +293,7 @@
 
 
 
-<div class="card">
-  <h2 style="margin-bottom:0.5rem">Recommended setup</h2>
-  <p class="help-text" style="margin-top:0;margin-bottom:1rem">
-    Keep this simple: use forwarding for email intake, map one real reservation with guest phone and room number, then let HostAI handle routine questions and show you only exceptions.
-  </p>
-  {% for item in activation_checklist or [] %}
-  <div class="checklist-item">
-    <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
-    <span>{{ item.label }}</span>
-    <span style="color:var(--text-3);font-size:0.8rem">{{ item.detail }}</span>
-    {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
-  </div>
-  {% endfor %}
-</div>
+
 
 <form method="post" action="/settings">
   <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
@@ -454,51 +441,7 @@
     </details>
   </div>
 
-  <div class="form-section" id="workflow">
-    <h2>Workflow controls</h2>
-    <p class="help-text">
-      Use these patterns to keep hosts out of the weeds: automate the obvious, activate the stay at arrival, and reserve human attention for exceptions.
-    </p>
-    <div class="workflow-grid">
-      <div class="workflow-card">
-        <h3>Automation rules</h3>
-        <p>Routine asks should auto-send. Refunds, complaints, and anything low-confidence should escalate for review.</p>
-        <div class="chip-row">
-          <span class="chip">Routine</span>
-          <span class="chip">Low confidence</span>
-          <span class="chip">Escalate</span>
-        </div>
-      </div>
-      <div class="workflow-card">
-        <h3>Arrival activation</h3>
-        <p>When the guest phone and room number are mapped, the bot can speak with the right stay context and check-in details.</p>
-        <div class="chip-row">
-          <span class="chip">Guest phone</span>
-          <span class="chip">Room mapped</span>
-          <span class="chip">Guest portal</span>
-        </div>
-      </div>
-      <div class="workflow-card">
-        <h3>Role-aware ops</h3>
-        <p>Owner, front desk, maintenance, and cleaners should each get only the queue that matches their responsibility.</p>
-        <div class="chip-row">
-          <span class="chip">Owner</span>
-          <span class="chip">Front desk</span>
-          <span class="chip">Maintenance</span>
-          <span class="chip">Cleaner</span>
-        </div>
-      </div>
-      <div class="workflow-card">
-        <h3>Fallback intake</h3>
-        <p>Keep CSV for hosts without a PMS, wire PMS sync when available, and leave room for manual booking entry as the last resort.</p>
-        <div class="chip-row">
-          <span class="chip">CSV</span>
-          <span class="chip">PMS</span>
-          <span class="chip">Manual</span>
-        </div>
-      </div>
-    </div>
-  </div>
+
 
 
   <!-- ── WhatsApp: Baileys ─────────────────────────────────────────── -->

@@ -115,10 +115,12 @@
 .compat-layer .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
 .compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
 .compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
-.compat-layer .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
-.compat-layer .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
-.compat-layer .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
-.compat-layer .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
+.compat-layer .analytics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.75rem;margin-bottom:1.5rem}
+.compat-layer .analytics-widget{background:rgba(13,14,20,0.6);border:1px solid rgba(174,198,255,0.07);border-top:2px solid rgba(91,141,239,0.35);border-radius:0.85rem;padding:1.1rem 1rem 0.9rem;text-align:center;transition:border-color .2s,box-shadow .2s;position:relative;overflow:hidden;}
+.compat-layer .analytics-widget::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(91,141,239,0.06) 0%,transparent 70%);pointer-events:none;}
+.compat-layer .analytics-widget:hover{border-top-color:rgba(174,198,255,0.6);box-shadow:0 0 18px rgba(91,141,239,0.12)}
+.compat-layer .widget-value{font-size:1.85rem;font-weight:800;color:#aec6ff;letter-spacing:-0.03em;line-height:1;margin-bottom:0.3rem}
+.compat-layer .widget-label{font-size:0.67rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.09em;font-weight:700}
 .compat-layer .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;margin-left:0.2rem;background:rgba(174,198,255,0.08);color:#aec6ff}
 .compat-layer .badge-escalation{background:rgba(255,180,171,0.1);color:#ffb4ab}
 .compat-layer .badge-whatsapp{background:rgba(39,201,63,0.1);color:#27c93f}
@@ -241,54 +243,14 @@
 
 
 
-<div class="kpi-grid" style="margin-bottom:1.25rem">
-  <div class="kpi-card"><div class="kpi-value">{{ kpis.ops.automation_ready_ratio }}%</div><div class="kpi-label">Automation-ready asks</div><div class="kpi-note">Routine messages with enough context to move fast.</div></div>
-  <div class="kpi-card"><div class="kpi-value">{{ exception_queue|length }}</div><div class="kpi-label">Open exceptions</div><div class="kpi-note">Needs a host or vendor to touch it.</div></div>
-  <div class="kpi-card"><div class="kpi-value">{{ kpis.reservations.context_complete }}</div><div class="kpi-label">Stay contexts ready</div><div class="kpi-note">Reservations with guest phone and room mapped.</div></div>
-  <div class="kpi-card"><div class="kpi-value">{{ automation_rules|length }}</div><div class="kpi-label">Automation rules</div><div class="kpi-note">Rules decide what auto-sends, reviews, or escalates.</div></div>
+<div class="analytics-row" style="margin-bottom:1.25rem">
+  <div class="analytics-widget"><div class="widget-value">{{ kpis.ops.automation_ready_ratio }}%</div><div class="widget-label">Automation-ready</div></div>
+  <div class="analytics-widget"><div class="widget-value">{{ exception_queue|length }}</div><div class="widget-label">Open exceptions</div></div>
+  <div class="analytics-widget"><div class="widget-value">{{ kpis.reservations.context_complete }}</div><div class="widget-label">Contexts ready</div></div>
+  <div class="analytics-widget"><div class="widget-value">{{ automation_rules|length }}</div><div class="widget-label">Active rules</div></div>
 </div>
 
-<div class="workflow-grid" style="margin-bottom:1rem">
-  <div class="workflow-card">
-    <h3>Automation rules</h3>
-    <p>Define what gets answered automatically, what gets queued for review, and what should always escalate.</p>
-    <div class="chip-row">
-      {% for rule in automation_rules[:4] %}
-      <span class="chip">
-        {{ rule.name }}
-      </span>
-      {% endfor %}
-      {% if not automation_rules %}<span class="chip">No rules configured yet</span>{% endif %}
-    </div>
-  </div>
-  <div class="workflow-card">
-    <h3>Arrival activation</h3>
-    <p>Host enters guest phone and room number once. The bot can then answer with room-aware context for the rest of the stay.</p>
-    <div class="chip-row">
-      <span class="chip">Context ready {{ kpis.reservations.context_complete }}</span>
-      <span class="chip">Calendar</span>
-      <span class="chip">Email intake</span>
-    </div>
-  </div>
-  <div class="workflow-card">
-    <h3>Unified guest timeline</h3>
-    <p>Bring email, WhatsApp, SMS, approval history, and follow-up actions into one thread so the host sees the full story.</p>
-    <div class="chip-row">
-      <span class="chip">{{ timeline_events|length }} recent events</span>
-      <span class="chip">{{ open_issues|length }} open issues</span>
-    </div>
-  </div>
-  <div class="workflow-card">
-    <h3>Fallback intake</h3>
-    <p>CSV remains the fallback for hosts without a PMS. PMS sync and manual entry stay available as the next layers.</p>
-    <div class="chip-row">
-      {% for batch in recent_batches[:3] %}
-      <span class="chip">{{ batch.source_kind|upper }}</span>
-      {% endfor %}
-      {% if not recent_batches %}<span class="chip">No intake batches yet</span>{% endif %}
-    </div>
-  </div>
-</div>
+
 
 <div class="card" style="margin-bottom:1rem">
   <h2>Activation checklist</h2>
@@ -302,11 +264,11 @@
   {% endfor %}
 </div>
 
-<div class="workflow-grid">
-  <div class="workflow-card">
-    <h3>Recent timeline</h3>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem">
+  <div class="card" style="padding:1.25rem">
+    <h3 style="margin-bottom:0.75rem">Recent timeline</h3>
     <div class="timeline" style="padding-left:0">
-      {% for event in timeline_events[:5] %}
+      {% for event in timeline_events[:6] %}
       <div class="timeline-item">
         <div class="timeline-meta">{{ event.created_at.strftime('%b %d %H:%M') if event.created_at else '' }}{% if event.channel %} · {{ event.channel }}{% endif %}</div>
         <div class="timeline-title">{{ event.message or event.summary }}</div>
@@ -316,35 +278,27 @@
       {% if not timeline_events %}<p style="font-size:0.85rem;color:var(--text-3)">No timeline events yet.</p>{% endif %}
     </div>
   </div>
-  <div class="workflow-card">
-    <h3>Exception queue</h3>
-    {% for item in exception_queue[:5] %}
-    <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
-      <div style="font-size:0.84rem;font-weight:600">{{ item.title }}</div>
-      <div style="font-size:0.78rem;color:var(--text-3)">{{ item.detail }}</div>
+  <div style="display:flex;flex-direction:column;gap:1rem">
+    <div class="card" style="padding:1.25rem">
+      <h3 style="margin-bottom:0.75rem">Exception queue</h3>
+      {% for item in exception_queue[:5] %}
+      <div style="padding:0.75rem 0;border-bottom:1px solid rgba(66,71,82,0.15)">
+        <div style="font-size:0.86rem;font-weight:600;color:#e3e1eb;margin-bottom:0.15rem">{{ item.title }}</div>
+        <div style="font-size:0.8rem;color:var(--text-3)">{{ item.detail }}</div>
+      </div>
+      {% endfor %}
+      {% if not exception_queue %}<p style="font-size:0.85rem;color:var(--text-3)">No exceptions right now.</p>{% endif %}
     </div>
-    {% endfor %}
-    {% if not exception_queue %}<p style="font-size:0.85rem;color:var(--text-3)">No exceptions right now.</p>{% endif %}
-  </div>
-  <div class="workflow-card">
-    <h3>Open issues</h3>
-    {% for issue in open_issues[:5] %}
-    <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
-      <div style="font-size:0.84rem;font-weight:600">{{ issue.title }}</div>
-      <div style="font-size:0.78rem;color:var(--text-3)">{{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}</div>
+    <div class="card" style="padding:1.25rem">
+      <h3 style="margin-bottom:0.75rem">Open issues</h3>
+      {% for issue in open_issues[:5] %}
+      <div style="padding:0.75rem 0;border-bottom:1px solid rgba(66,71,82,0.15)">
+        <div style="font-size:0.86rem;font-weight:600;color:#e3e1eb;margin-bottom:0.15rem">{{ issue.title }}</div>
+        <div style="font-size:0.8rem;color:var(--text-3)">{{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}</div>
+      </div>
+      {% endfor %}
+      {% if not open_issues %}<p style="font-size:0.85rem;color:var(--text-3)">No open issues.</p>{% endif %}
     </div>
-    {% endfor %}
-    {% if not open_issues %}<p style="font-size:0.85rem;color:var(--text-3)">No open issues.</p>{% endif %}
-  </div>
-  <div class="workflow-card">
-    <h3>Recent intake</h3>
-    {% for batch in recent_batches[:5] %}
-    <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
-      <div style="font-size:0.84rem;font-weight:600">{{ batch.source_name or batch.source_kind|upper }}</div>
-      <div style="font-size:0.78rem;color:var(--text-3)">{{ batch.source_kind|upper }} · {{ batch.rows_imported }}/{{ batch.rows_total }} rows</div>
-    </div>
-    {% endfor %}
-    {% if not recent_batches %}<p style="font-size:0.85rem;color:var(--text-3)">No reservation intake yet.</p>{% endif %}
   </div>
 </div>
 

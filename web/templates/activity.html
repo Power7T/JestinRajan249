@@ -61,6 +61,12 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 .compat .timeline-text{font-size:0.8rem;color:#8d909e}
 .compat .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
 .compat .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
+.compat .analytics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.75rem;margin-bottom:1.5rem}
+.compat .analytics-widget{background:rgba(13,14,20,0.6);border:1px solid rgba(174,198,255,0.07);border-top:2px solid rgba(91,141,239,0.35);border-radius:0.85rem;padding:1.1rem 1rem 0.9rem;text-align:center;transition:border-color .2s,box-shadow .2s;position:relative;overflow:hidden;}
+.compat .analytics-widget::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(91,141,239,0.06) 0%,transparent 70%);pointer-events:none;}
+.compat .analytics-widget:hover{border-top-color:rgba(174,198,255,0.6);box-shadow:0 0 18px rgba(91,141,239,0.12)}
+.compat .widget-value{font-size:1.85rem;font-weight:800;color:#aec6ff;letter-spacing:-0.03em;line-height:1;margin-bottom:0.3rem}
+.compat .widget-label{font-size:0.67rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.09em;font-weight:700}
 .compat .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
 .compat .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
 .compat .card-meta{font-size:0.75rem;color:#8d909e}
@@ -167,9 +173,6 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   </div>
   <div class="compat">
 <h1>Activity Log</h1>
-<p class="section-lead">
-  Unified guest timeline and exception stream. Routine work should stay automated; this screen is for review, escalation, and operational follow-up.
-</p>
 
 {% if not logs %}
 <div class="empty">
@@ -189,39 +192,26 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   {% if 'error' in et or 'failed' in et or 'escalat' in et %}{% set ns.errors = ns.errors + 1 %}{% endif %}
 {% endfor %}
 
-<div class="kpi-grid" style="margin-bottom:1rem">
-  <div class="kpi-card">
-    <div class="kpi-value">{{ logs|length }}</div>
-    <div class="kpi-label">Events in stream</div>
-    <div class="kpi-note">Everything the system did, in one place.</div>
+<div class="analytics-row">
+  <div class="analytics-widget">
+    <div class="widget-value">{{ logs|length }}</div>
+    <div class="widget-label">Events logged</div>
   </div>
-  <div class="kpi-card">
-    <div class="kpi-value">{{ ns.email }}</div>
-    <div class="kpi-label">Email events</div>
-    <div class="kpi-note">Inbound, processing, and forwarding updates.</div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ ns.email }}</div>
+    <div class="widget-label">Email events</div>
   </div>
-  <div class="kpi-card">
-    <div class="kpi-value">{{ ns.approved }}</div>
-    <div class="kpi-label">Approved drafts</div>
-    <div class="kpi-note">Host-approved or auto-sent replies.</div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ ns.approved }}</div>
+    <div class="widget-label">Approved drafts</div>
   </div>
-  <div class="kpi-card">
-    <div class="kpi-value">{{ ns.errors }}</div>
-    <div class="kpi-label">Exceptions</div>
-    <div class="kpi-note">Anything that needs a human to look once.</div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ ns.errors }}</div>
+    <div class="widget-label">Exceptions</div>
   </div>
 </div>
 
-<div class="workflow-grid" style="margin-bottom:1rem">
-  <div class="workflow-card">
-    <h3>Unified guest timeline</h3>
-    <p>Each stay should read like a single narrative: inbound message, context match, draft, approval, follow-up, and resolution.</p>
-  </div>
-  <div class="workflow-card">
-    <h3>Exception-based ops</h3>
-    <p>Hosts should only inspect the outliers: missing booking context, failed sends, maintenance, refunds, and unresolved issues.</p>
-  </div>
-</div>
+
 
 <div id="timeline" class="card" style="padding:1.25rem">
   <h2>Guest timeline</h2>
@@ -237,50 +227,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   </div>
 </div>
 
-<div id="ops" class="card" style="padding:1.25rem;margin-top:1rem">
-  <h2>Exception-based ops</h2>
-  <div class="queue-grid">
-    <div class="queue-card critical">
-      <h3>Needs host attention</h3>
-      <p>Refund requests, complaints, safety concerns, and anything the bot cannot answer from the current stay context should land here.</p>
-      <div class="queue-meta">
-        <span class="chip">Urgent</span>
-        <span class="chip">Human review</span>
-      </div>
-      {% if exceptions %}
-      <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-2)">
-        {{ exceptions[0].title }}
-      </div>
-      {% endif %}
-    </div>
-    <div class="queue-card warn">
-      <h3>Needs more context</h3>
-      <p>Missing room mapping, missing guest phone, or an incomplete reservation should be resolved before the bot answers confidently.</p>
-      <div class="queue-meta">
-        <span class="chip">Needs mapping</span>
-        <span class="chip">Arrival activation</span>
-      </div>
-      {% if exceptions|length > 1 %}
-      <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-2)">
-        {{ exceptions[1].title }}
-      </div>
-      {% endif %}
-    </div>
-    <div class="queue-card good">
-      <h3>Ready to automate</h3>
-      <p>Routine questions, known arrival messages, and common amenity requests should be allowed to flow through without friction.</p>
-      <div class="queue-meta">
-        <span class="chip">Automation</span>
-        <span class="chip">Low risk</span>
-      </div>
-      {% if exceptions|length > 2 %}
-      <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-2)">
-        {{ exceptions[2].title }}
-      </div>
-      {% endif %}
-    </div>
-  </div>
-</div>
+
 
 {% if activations %}
 <div class="card" style="padding:1.25rem;margin-top:1rem">
