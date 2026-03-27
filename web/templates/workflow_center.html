@@ -86,6 +86,61 @@
             border-left: 1px solid rgba(174, 198, 255, 0.1);
         }
     </style>
+<style>
+:root{--surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;--border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);--text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;--accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);--success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);--danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);--warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.3);--radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;--nav-h:64px;--rose:#ff6b8a}
+.compat-layer h1{font-size:1.8rem;font-weight:800;margin-bottom:0.25rem;color:#e3e1eb}.compat-layer h2{font-size:1.1rem;font-weight:700;margin-bottom:0.75rem;color:#e3e1eb}.compat-layer h3{font-size:0.92rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
+.compat-layer .card,.compat-layer .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
+.compat-layer label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
+.compat-layer input[type=text],.compat-layer input[type=number],.compat-layer select,.compat-layer textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
+.compat-layer input:focus,.compat-layer select:focus,.compat-layer textarea:focus{border-color:#5B8DEF}
+.compat-layer .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
+.compat-layer .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
+.compat-layer .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
+.compat-layer .btn-outline:hover{background:rgba(174,198,255,0.08)}
+.compat-layer .btn-success{background:rgba(39,201,63,0.12);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
+.compat-layer .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
+.compat-layer .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
+.compat-layer .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
+.compat-layer .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
+.compat-layer .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+.compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
+.compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
+.compat-layer td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
+.compat-layer .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
+.compat-layer .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
+.compat-layer .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
+.compat-layer .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
+.compat-layer .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;margin-bottom:0.3rem}
+.compat-layer .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
+.compat-layer .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
+.compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
+.compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
+.compat-layer .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
+.compat-layer .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
+.compat-layer .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
+.compat-layer .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
+.compat-layer .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;margin-left:0.2rem;background:rgba(174,198,255,0.08);color:#aec6ff}
+.compat-layer .badge-escalation{background:rgba(255,180,171,0.1);color:#ffb4ab}
+.compat-layer .badge-whatsapp{background:rgba(39,201,63,0.1);color:#27c93f}
+.compat-layer .badge-email{background:rgba(91,141,239,0.1);color:#5B8DEF}
+.compat-layer .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
+.compat-layer .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
+.compat-layer .timeline{display:flex;flex-direction:column;gap:0}
+.compat-layer .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
+.compat-layer .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
+.compat-layer .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
+.compat-layer .timeline-text{font-size:0.8rem;color:#8d909e}
+.compat-layer input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
+.compat-layer .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
+.compat-layer .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
+.compat-layer .card-meta{font-size:0.75rem;color:#8d909e}
+.compat-layer .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.compat-layer code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
+.compat-layer .priority-high{border-left:3px solid #ffb4ab}
+.compat-layer .priority-medium{border-left:3px solid #ffbd2e}
+.compat-layer .priority-low{border-left:3px solid #27c93f}
+.compat-layer .rule-row,.compat-layer .issue-card{background:#0d0e14;border:1px solid rgba(66,71,82,0.3);border-radius:0.75rem;padding:1rem;margin-bottom:0.75rem}
+</style>
 {%- endblock %}
 
 {%- block nav %}{%- endblock %}
@@ -103,7 +158,7 @@
             New Workflow
         </button>
 <nav class="flex-1 space-y-1">
-<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-[#AEC6FF] font-bold border-r-2 border-[#5B8DEF] bg-[#5B8DEF]/10 transition-all" href="#">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-[#AEC6FF] font-bold border-r-2 border-[#5B8DEF] bg-[#5B8DEF]/10 transition-all" href="/workflow">
 <span class="material-symbols-outlined">hub</span>
 <span class="text-sm">Workflow Center</span>
 </a>
@@ -129,7 +184,7 @@
 </a>
 </nav>
 <div class="mt-auto pt-8 border-t border-[#424752]/15 space-y-1">
-<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 font-medium hover:text-white hover:bg-[#292930]/40 transition-all" href="#">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 font-medium hover:text-white hover:bg-[#292930]/40 transition-all" href="/settings">
 <span class="material-symbols-outlined">settings</span>
 <span class="text-sm">Settings</span>
 </a>
@@ -140,294 +195,129 @@
 </div>
 </aside>
 <!-- Main Content Area -->
-<main class="ml-[260px] min-h-screen relative">
-<!-- TopNavBar -->
-<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-16 bg-[#08090F]/40 backdrop-blur-2xl border-b border-[#424752]/15 z-40 flex items-center justify-between px-8">
-<div class="flex items-center flex-1 max-w-md">
-<div class="relative w-full group">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-<input class="w-full bg-surface-container-lowest border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-1 focus:ring-[#5B8DEF]/40 transition-all outline-none" placeholder="Search rules or logs..." type="text"/>
-</div>
-</div>
-<div class="flex items-center gap-6">
-<nav class="hidden lg:flex items-center gap-6 mr-6 border-r border-[#424752]/15 pr-6">
-<a class="text-slate-400 text-sm hover:text-white transition-colors" href="#">Documentation</a>
-<a class="text-slate-400 text-sm hover:text-white transition-colors" href="#">Changelog</a>
-</nav>
-<div class="flex items-center gap-4">
-<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/5 transition-all">
-<span class="material-symbols-outlined text-slate-400">notifications</span>
-</button>
-<div class="flex items-center gap-3 pl-2">
-<div class="text-right hidden sm:block">
-<p class="text-xs font-bold text-white">Alex Sterling</p>
-<p class="text-[10px] text-slate-500 uppercase tracking-tighter">Property Manager</p>
-</div>
-<img alt="User Profile" class="w-9 h-9 rounded-full ring-2 ring-[#5B8DEF]/20" data-alt="close-up portrait of a professional man in a tech office setting with soft cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCEyfvJhqE6wHk9BUnIMcoanFmoVlFflFHpmuIHzJA2UmfBGZ49zZXmji9JM5665htrB1XO0yJk0oj_ce4j28C9_gAtsWJ3twxmJ8TsNhoqLy9hgewWsL0_LTrmG9rcWG2RzPZhLUpZHITRa5Pg9W0yh0hcWkX6IcET_1j2bfgk-qEZo8KJ1aNto0-W7za9iP8bWpoeSWjXS36Y2zilunSCbHN5P4idb0Zs2iY-OSF0bJMNn8tBrEqtrvGajega14xjNgHLiK5jSzO"/>
-</div>
-</div>
-</div>
-</header>
-<!-- Content Canvas -->
-<div class="pt-24 px-8 pb-12 max-w-7xl mx-auto">
-<!-- Header Section -->
-<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-<div>
-<h2 class="text-4xl font-extrabold text-white tracking-tight mb-2">Workflow Center</h2>
-<p class="text-slate-400 max-w-xl">Intelligent automation for guest communication, operations, and revenue management across your entire portfolio.</p>
-</div>
-<div class="flex items-center gap-3">
-<div class="flex -space-x-2">
-<div class="w-8 h-8 rounded-full border-2 border-[#08090F] bg-surface-container-high flex items-center justify-center text-[10px] font-bold">JD</div>
-<div class="w-8 h-8 rounded-full border-2 border-[#08090F] bg-primary flex items-center justify-center text-[10px] font-bold text-on-primary">AS</div>
-<div class="w-8 h-8 rounded-full border-2 border-[#08090F] bg-secondary flex items-center justify-center text-[10px] font-bold text-on-secondary">+4</div>
-</div>
-<span class="text-xs font-medium text-slate-500 ml-2">Active now</span>
-</div>
-</div>
-<!-- Dashboard Stats Grid -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-<div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
-<div class="flex items-center justify-between">
-<span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Active Rules</span>
-<span class="material-symbols-outlined text-primary text-lg">bolt</span>
-</div>
-<div class="flex items-end gap-2">
-<span class="text-3xl font-extrabold text-white">24</span>
-<span class="text-xs text-emerald-400 mb-1">+2 this week</span>
-</div>
-</div>
-<div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
-<div class="flex items-center justify-between">
-<span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Triggers Hit</span>
-<span class="material-symbols-outlined text-[#00e3fd] text-lg">analytics</span>
-</div>
-<div class="flex items-end gap-2">
-<span class="text-3xl font-extrabold text-white">1,482</span>
-<span class="text-xs text-slate-500 mb-1">Last 30d</span>
-</div>
-</div>
-<div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
-<div class="flex items-center justify-between">
-<span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Efficiency</span>
-<span class="material-symbols-outlined text-tertiary text-lg">speed</span>
-</div>
-<div class="flex items-end gap-2">
-<span class="text-3xl font-extrabold text-white">92%</span>
-<span class="text-xs text-emerald-400 mb-1">+4.2%</span>
-</div>
-</div>
-<div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
-<div class="flex items-center justify-between">
-<span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Auto-Resolved</span>
-<span class="material-symbols-outlined text-white text-lg">task_alt</span>
-</div>
-<div class="flex items-end gap-2">
-<span class="text-3xl font-extrabold text-white">840</span>
-<span class="text-xs text-slate-500 mb-1">Human hours saved</span>
-</div>
-</div>
-</div>
-<!-- Workflow List -->
-<div class="space-y-4">
-<div class="flex items-center justify-between mb-4 px-2">
-<h3 class="text-lg font-extrabold text-white">Automation Rules</h3>
-<div class="flex items-center gap-4">
-<button class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors">
-<span class="material-symbols-outlined text-sm">filter_list</span>
-                            Filter
-                        </button>
-<button class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors">
-<span class="material-symbols-outlined text-sm">sort</span>
-                            Recently Updated
-                        </button>
-</div>
-</div>
-<!-- Rule Card 1 -->
-<div class="glass-card rounded-2xl p-6 group transition-all hover:bg-surface-container-high/40 flex items-center justify-between">
-<div class="flex items-start gap-6">
-<div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-<span class="material-symbols-outlined" style="font-variation-settings: 'wght' 300">mail</span>
-</div>
-<div>
-<div class="flex items-center gap-3 mb-1">
-<h4 class="text-white font-bold text-lg">Send pre-arrival message 3 days before</h4>
-<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold uppercase tracking-tight">Active</span>
-</div>
-<div class="flex items-center gap-4 text-xs text-slate-500">
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span>3 days prior to check-in</span>
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">chat_bubble</span>Email &amp; SMS</span>
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">home</span>128 Listings</span>
-</div>
-</div>
-</div>
-<div class="flex items-center gap-8">
-<div class="flex flex-col items-end gap-1">
-<span class="text-[10px] font-bold text-slate-600 uppercase">Success Rate</span>
-<span class="text-sm font-bold text-white">99.8%</span>
-</div>
-<div class="h-10 w-[1px] bg-outline-variant/15"></div>
-<div class="flex items-center gap-6">
-<label class="relative inline-flex items-center cursor-pointer">
-<input checked="" class="sr-only peer" type="checkbox"/>
-<div class="w-10 h-5 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container"></div>
-</label>
-<div class="flex items-center gap-2">
-<button class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-<span class="material-symbols-outlined text-sm">edit</span>
-</button>
-<button class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-error hover:bg-error/10 transition-all">
-<span class="material-symbols-outlined text-sm">delete</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-<!-- Rule Card 2 -->
-<div class="glass-card rounded-2xl p-6 group transition-all hover:bg-surface-container-high/40 flex items-center justify-between">
-<div class="flex items-start gap-6">
-<div class="w-12 h-12 rounded-xl bg-[#00e3fd]/10 flex items-center justify-center text-[#00e3fd]">
-<span class="material-symbols-outlined" style="font-variation-settings: 'wght' 300">cleaning_services</span>
-</div>
-<div>
-<div class="flex items-center gap-3 mb-1">
-<h4 class="text-white font-bold text-lg">Notify cleaner on check-out</h4>
-<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold uppercase tracking-tight">Active</span>
-</div>
-<div class="flex items-center gap-4 text-xs text-slate-500">
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">event</span>At check-out time</span>
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">smartphone</span>Push notification</span>
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">home</span>Global (All listings)</span>
-</div>
-</div>
-</div>
-<div class="flex items-center gap-8">
-<div class="flex flex-col items-end gap-1">
-<span class="text-[10px] font-bold text-slate-600 uppercase">Success Rate</span>
-<span class="text-sm font-bold text-white">94.2%</span>
-</div>
-<div class="h-10 w-[1px] bg-outline-variant/15"></div>
-<div class="flex items-center gap-6">
-<label class="relative inline-flex items-center cursor-pointer">
-<input checked="" class="sr-only peer" type="checkbox"/>
-<div class="w-10 h-5 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container"></div>
-</label>
-<div class="flex items-center gap-2">
-<button class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-<span class="material-symbols-outlined text-sm">edit</span>
-</button>
-<button class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-error hover:bg-error/10 transition-all">
-<span class="material-symbols-outlined text-sm">delete</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-<!-- Rule Card 3 (Paused) -->
-<div class="glass-card rounded-2xl p-6 group transition-all hover:bg-surface-container-high/40 flex items-center justify-between opacity-70">
-<div class="flex items-start gap-6">
-<div class="w-12 h-12 rounded-xl bg-slate-500/10 flex items-center justify-center text-slate-400">
-<span class="material-symbols-outlined" style="font-variation-settings: 'wght' 300">payments</span>
-</div>
-<div>
-<div class="flex items-center gap-3 mb-1">
-<h4 class="text-white font-bold text-lg">Upsell early check-in (Premium)</h4>
-<span class="px-2 py-0.5 rounded bg-slate-500/20 text-slate-400 text-[10px] font-extrabold uppercase tracking-tight">Paused</span>
-</div>
-<div class="flex items-center gap-4 text-xs text-slate-500">
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">update</span>24h before arrival</span>
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">chat</span>Airbnb App</span>
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">home</span>Luxury Collection</span>
-</div>
-</div>
-</div>
-<div class="flex items-center gap-8">
-<div class="flex flex-col items-end gap-1">
-<span class="text-[10px] font-bold text-slate-600 uppercase">Projected Rev</span>
-<span class="text-sm font-bold text-white">$4,200/mo</span>
-</div>
-<div class="h-10 w-[1px] bg-outline-variant/15"></div>
-<div class="flex items-center gap-6">
-<label class="relative inline-flex items-center cursor-pointer">
-<input class="sr-only peer" type="checkbox"/>
-<div class="w-10 h-5 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container"></div>
-</label>
-<div class="flex items-center gap-2">
-<button class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-<span class="material-symbols-outlined text-sm">edit</span>
-</button>
-<button class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-error hover:bg-error/10 transition-all">
-<span class="material-symbols-outlined text-sm">delete</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-<!-- Rule Card 4 -->
-<div class="glass-card rounded-2xl p-6 group transition-all hover:bg-surface-container-high/40 flex items-center justify-between">
-<div class="flex items-start gap-6">
-<div class="w-12 h-12 rounded-xl bg-tertiary/10 flex items-center justify-center text-tertiary">
-<span class="material-symbols-outlined" style="font-variation-settings: 'wght' 300">emergency</span>
-</div>
-<div>
-<div class="flex items-center gap-3 mb-1">
-<h4 class="text-white font-bold text-lg">Alert Maintenance on bad review keyword</h4>
-<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold uppercase tracking-tight">Active</span>
-</div>
-<div class="flex items-center gap-4 text-xs text-slate-500">
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">psychology</span>AI Pattern Match</span>
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">chat</span>Slack Channel #ops</span>
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">home</span>Global</span>
-</div>
-</div>
-</div>
-<div class="flex items-center gap-8">
-<div class="flex flex-col items-end gap-1">
-<span class="text-[10px] font-bold text-slate-600 uppercase">Avg Response</span>
-<span class="text-sm font-bold text-white">4.5 mins</span>
-</div>
-<div class="h-10 w-[1px] bg-outline-variant/15"></div>
-<div class="flex items-center gap-6">
-<label class="relative inline-flex items-center cursor-pointer">
-<input checked="" class="sr-only peer" type="checkbox"/>
-<div class="w-10 h-5 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container"></div>
-</label>
-<div class="flex items-center gap-2">
-<button class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-<span class="material-symbols-outlined text-sm">edit</span>
-</button>
-<button class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-error hover:bg-error/10 transition-all">
-<span class="material-symbols-outlined text-sm">delete</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- AI Automation Insight Card -->
-<div class="mt-12 p-8 rounded-3xl bg-gradient-to-br from-[#1a1b22] to-[#0d0e14] relative overflow-hidden border border-[#424752]/10 group">
-<div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent"></div>
-<div class="relative z-10 flex flex-col md:flex-row items-center gap-10">
-<div class="flex-1">
-<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest mb-6">
-<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
-                            Smart Recommendation
-                        </div>
-<h3 class="text-2xl font-extrabold text-white mb-4 leading-tight">HostAI suggests a new "Quick Response" rule for guest queries after 10 PM.</h3>
-<p class="text-slate-400 text-sm mb-6 leading-relaxed">Based on your recent guest interaction data, 14% of response delays happen between 10 PM and 6 AM. This rule would reduce resolution time by 3.2 hours.</p>
-<button class="px-6 py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-bold transition-all border border-white/5">
-                            Generate Workflow
-                        </button>
-</div>
-<div class="w-full md:w-72 h-48 rounded-2xl bg-surface-container-high relative overflow-hidden">
-<img alt="Workflow Visualization" class="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700" data-alt="abstract 3d visualization of data flow and interconnected nodes with luminous blue and purple lighting effects" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9y7grK7ZRXVOMPS_j7bF_a2DeS5HSr9UpaSIEZvkqQmNkZfVNSNXF87VFyo3rpdeXIuOVoih9X4BQaWXAaMBddWCpY7IRuZ5Fpa7Tt9GFxU9DiTWR1sEGUKW9lF5J0q74ZuO2M-hLWbYK-aY1dYxpqWvT95H7lDczchHLOWM5KTEURVFJAswXi_eok2uFjlWvwhMC2OV0rybQ6ZjZHLmB9xVgPa25OXOgBOtWKbmqX5WENQ85Wv95hZ597ZYps48RBgPj6g35J_Q8"/>
-<div class="absolute inset-0 flex items-center justify-center">
-<div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-[0_0_20px_rgba(174,198,255,0.4)]">
-<span class="material-symbols-outlined text-on-primary">play_arrow</span>
-</div>
-</div>
-</div>
-</div>
+<main class="ml-[260px] pt-24 pb-12 px-8 min-h-screen">
+<div class="mb-8">
+  <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Workflow Center</h1>
+  <p class="text-slate-400 text-sm">Manage automation rules and issue escalation</p>
+</div>
+<div class="compat-layer">
+<h1>Workflow Center</h1>
+<p class="section-lead">
+  This is the operating model HostAI should enforce: automate routine replies, activate the stay at arrival, and keep humans focused on exceptions, vendors, and unresolved guest issues.
+</p>
+
+<div class="kpi-grid" style="margin-bottom:1.25rem">
+  <div class="kpi-card"><div class="kpi-value">{{ kpis.ops.automation_ready_ratio }}%</div><div class="kpi-label">Automation-ready asks</div><div class="kpi-note">Routine messages with enough context to move fast.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ exception_queue|length }}</div><div class="kpi-label">Open exceptions</div><div class="kpi-note">Needs a host or vendor to touch it.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ kpis.reservations.context_complete }}</div><div class="kpi-label">Stay contexts ready</div><div class="kpi-note">Reservations with guest phone and room mapped.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ automation_rules|length }}</div><div class="kpi-label">Automation rules</div><div class="kpi-note">Rules decide what auto-sends, reviews, or escalates.</div></div>
+</div>
+
+<div class="workflow-grid" style="margin-bottom:1rem">
+  <div class="workflow-card">
+    <h3>Automation rules</h3>
+    <p>Define what gets answered automatically, what gets queued for review, and what should always escalate.</p>
+    <div class="chip-row">
+      {% for rule in automation_rules[:4] %}
+      <span class="chip {% if (rule.actions_json or {}).get('mode', 'auto_send') == 'auto_send' %}good{% elif (rule.actions_json or {}).get('mode') == 'escalate' %}bad{% else %}warn{% endif %}">
+        {{ rule.name }}
+      </span>
+      {% endfor %}
+      {% if not automation_rules %}<span class="chip warn">No rules configured yet</span>{% endif %}
+    </div>
+  </div>
+  <div class="workflow-card">
+    <h3>Arrival activation</h3>
+    <p>Host enters guest phone and room number once. The bot can then answer with room-aware context for the rest of the stay.</p>
+    <div class="chip-row">
+      <span class="chip {% if kpis.reservations.context_complete %}good{% else %}warn{% endif %}">Context ready {{ kpis.reservations.context_complete }}</span>
+      <span class="chip {% if cfg.ical_urls %}good{% else %}warn{% endif %}">Calendar</span>
+      <span class="chip {% if cfg.email_ingest_mode == 'forwarding' %}good{% else %}warn{% endif %}">Email intake</span>
+    </div>
+  </div>
+  <div class="workflow-card">
+    <h3>Unified guest timeline</h3>
+    <p>Bring email, WhatsApp, SMS, approval history, and follow-up actions into one thread so the host sees the full story.</p>
+    <div class="chip-row">
+      <span class="chip">{{ timeline_events|length }} recent events</span>
+      <span class="chip">{{ open_issues|length }} open issues</span>
+    </div>
+  </div>
+  <div class="workflow-card">
+    <h3>Fallback intake</h3>
+    <p>CSV remains the fallback for hosts without a PMS. PMS sync and manual entry stay available as the next layers.</p>
+    <div class="chip-row">
+      {% for batch in recent_batches[:3] %}
+      <span class="chip">{{ batch.source_kind|upper }}</span>
+      {% endfor %}
+      {% if not recent_batches %}<span class="chip warn">No intake batches yet</span>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1rem">
+  <h2>Activation checklist</h2>
+  {% for item in activation_checklist %}
+  <div class="checklist-item">
+    <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
+    <span>{{ item.label }}</span>
+    <span style="color:var(--text-3);font-size:0.8rem">{{ item.detail }}</span>
+    {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="workflow-grid">
+  <div class="workflow-card">
+    <h3>Recent timeline</h3>
+    <div class="timeline" style="padding-left:0">
+      {% for event in timeline_events[:5] %}
+      <div class="timeline-item">
+        <div class="timeline-meta">{{ event.created_at.strftime('%b %d %H:%M') if event.created_at else '' }}{% if event.channel %} · {{ event.channel }}{% endif %}</div>
+        <div class="timeline-title">{{ event.message or event.summary }}</div>
+        <div class="timeline-text">{{ event.detail or event.status or '' }}</div>
+      </div>
+      {% endfor %}
+      {% if not timeline_events %}<p style="font-size:0.85rem;color:var(--text-3)">No timeline events yet.</p>{% endif %}
+    </div>
+  </div>
+  <div class="workflow-card">
+    <h3>Exception queue</h3>
+    {% for item in exception_queue[:5] %}
+    <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
+      <div style="font-size:0.84rem;font-weight:600">{{ item.title }}</div>
+      <div style="font-size:0.78rem;color:var(--text-3)">{{ item.detail }}</div>
+    </div>
+    {% endfor %}
+    {% if not exception_queue %}<p style="font-size:0.85rem;color:var(--text-3)">No exceptions right now.</p>{% endif %}
+  </div>
+  <div class="workflow-card">
+    <h3>Open issues</h3>
+    {% for issue in open_issues[:5] %}
+    <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
+      <div style="font-size:0.84rem;font-weight:600">{{ issue.title }}</div>
+      <div style="font-size:0.78rem;color:var(--text-3)">{{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}</div>
+    </div>
+    {% endfor %}
+    {% if not open_issues %}<p style="font-size:0.85rem;color:var(--text-3)">No open issues.</p>{% endif %}
+  </div>
+  <div class="workflow-card">
+    <h3>Recent intake</h3>
+    {% for batch in recent_batches[:5] %}
+    <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
+      <div style="font-size:0.84rem;font-weight:600">{{ batch.source_name or batch.source_kind|upper }}</div>
+      <div style="font-size:0.78rem;color:var(--text-3)">{{ batch.source_kind|upper }} · {{ batch.rows_imported }}/{{ batch.rows_total }} rows</div>
+    </div>
+    {% endfor %}
+    {% if not recent_batches %}<p style="font-size:0.85rem;color:var(--text-3)">No reservation intake yet.</p>{% endif %}
+  </div>
+</div>
+
+<div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem">
+  <a class="btn btn-primary btn-sm" href="/dashboard">Back to dashboard</a>
+  <a class="btn btn-outline btn-sm" href="/reservations">Open reservations</a>
+  <a class="btn btn-outline btn-sm" href="/settings#workflow">Open settings</a>
+  <a class="btn btn-outline btn-sm" href="/ops">Open ops queue</a>
 </div>
 </div>
 </main>

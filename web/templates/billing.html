@@ -86,6 +86,79 @@
             border-left: 1px solid rgba(174, 198, 255, 0.1);
         }
     </style>
+<style>
+/* Compat layer — maps old CSS variables to Obsidian tokens */
+:root{
+  --surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;
+  --border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);
+  --text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;
+  --accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);
+  --success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);
+  --danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);
+  --warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.3);
+  --radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;--nav-h:64px;
+  --rose:#ff6b8a;--kpi-yellow:#ffbd2e;
+}
+.compat-layer h1{font-size:1.8rem;font-weight:800;margin-bottom:0.25rem;color:#e3e1eb}
+.compat-layer h2{font-size:1.1rem;font-weight:700;margin-bottom:0.75rem;color:#e3e1eb}
+.compat-layer h3{font-size:0.92rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
+.compat-layer .card,.compat-layer .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
+.compat-layer label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
+.compat-layer input[type=text],.compat-layer input[type=email],.compat-layer select,.compat-layer textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
+.compat-layer input:focus,.compat-layer select:focus,.compat-layer textarea:focus{border-color:#5B8DEF}
+.compat-layer .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
+.compat-layer .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
+.compat-layer .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
+.compat-layer .btn-outline:hover{background:rgba(174,198,255,0.08)}
+.compat-layer .btn-success{background:rgba(39,201,63,0.12);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
+.compat-layer .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
+.compat-layer .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
+.compat-layer .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
+.compat-layer .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
+.compat-layer .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+.compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
+.compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
+.compat-layer td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
+.compat-layer tr:hover td{background:rgba(174,198,255,0.02)}
+.compat-layer .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
+.compat-layer .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
+.compat-layer .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
+.compat-layer .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
+.compat-layer .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;margin-bottom:0.3rem}
+.compat-layer .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
+.compat-layer .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
+.compat-layer .csv-banner{background:rgba(255,189,46,0.07);border:1px solid rgba(255,189,46,0.2);color:#ffbd2e;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap}
+.compat-layer .csv-banner a{color:#aec6ff}
+.compat-layer .analytics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+.compat-layer .analytics-widget{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.25rem;text-align:center}
+.compat-layer .widget-value{font-size:2rem;font-weight:800;color:#aec6ff;font-family:'Plus Jakarta Sans',sans-serif}
+.compat-layer .widget-label{font-size:0.72rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.06em;margin-top:0.25rem}
+.compat-layer .widget-sub{font-size:0.7rem;color:#424752;margin-top:0.15rem}
+.compat-layer .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
+.compat-layer .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
+.compat-layer .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
+.compat-layer .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
+.compat-layer .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;margin-left:0.2rem;background:rgba(174,198,255,0.08);color:#aec6ff}
+.compat-layer .badge-escalation{background:rgba(255,180,171,0.1);color:#ffb4ab}
+.compat-layer .badge-whatsapp{background:rgba(39,201,63,0.1);color:#27c93f}
+.compat-layer .badge-email{background:rgba(91,141,239,0.1);color:#5B8DEF}
+.compat-layer .badge-sms{background:rgba(255,189,46,0.1);color:#ffbd2e}
+.compat-layer .draft-text{font-size:0.85rem;line-height:1.6;color:#c3c6d4;white-space:pre-wrap;background:#0d0e14;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.75rem;border:1px solid rgba(66,71,82,0.2)}
+.compat-layer .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
+.compat-layer .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
+.compat-layer .timeline{display:flex;flex-direction:column;gap:0}
+.compat-layer .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
+.compat-layer .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
+.compat-layer .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
+.compat-layer .timeline-text{font-size:0.8rem;color:#8d909e}
+.compat-layer input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
+.compat-layer .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
+.compat-layer .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
+.compat-layer .card-meta{font-size:0.75rem;color:#8d909e}
+.compat-layer .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.compat-layer details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
+.compat-layer code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
+</style>
 {%- endblock %}
 
 {%- block nav %}{%- endblock %}
@@ -99,7 +172,7 @@
 <p class="text-[11px] font-medium tracking-wider uppercase text-slate-500 font-label">Enterprise</p>
 </div>
 <nav class="flex-1 space-y-1">
-<a class="flex items-center gap-3 px-4 py-3 text-slate-400 font-medium hover:text-white transition-colors hover:bg-[#292930]/40 hover:backdrop-blur-md rounded-lg group" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 font-medium hover:text-white transition-colors hover:bg-[#292930]/40 hover:backdrop-blur-md rounded-lg group" href="/workflow">
 <span class="material-symbols-outlined" data-icon="hub">hub</span>
 <span class="text-sm">Workflow Center</span>
 </a>
@@ -128,7 +201,7 @@
 <button class="w-full mb-4 py-3 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-on-primary-container font-bold rounded-lg text-sm shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-95 active:scale-90 transition-transform duration-200">
                 New Workflow
             </button>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-400 font-medium hover:text-white transition-colors hover:bg-[#292930]/40 rounded-lg" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 font-medium hover:text-white transition-colors hover:bg-[#292930]/40 rounded-lg" href="/settings">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
 <span class="text-sm">Settings</span>
 </a>
@@ -164,203 +237,134 @@
 </div>
 </header>
 <!-- Main Content Canvas -->
-<main class="ml-[260px] pt-24 px-12 pb-20 min-h-screen">
-<!-- Hero Header -->
-<section class="mb-12">
-<div class="flex items-end justify-between">
-<div>
-<h2 class="text-4xl font-extrabold font-headline tracking-tight mb-2">Billing &amp; Plans</h2>
-<p class="text-slate-400 max-w-lg">Manage your organization's subscription, payment methods, and download historical invoices.</p>
+<main class="ml-[260px] pt-24 pb-12 px-8 min-h-screen">
+<div class="mb-8">
+  <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Billing & Plans</h1>
+  <p class="text-slate-400 text-sm">Manage your subscription and usage</p>
 </div>
-<div class="flex items-center gap-3">
-<button class="px-6 py-2.5 rounded-lg border border-outline-variant/20 hover:bg-surface-container-high transition-all font-medium text-sm">Compare Plans</button>
-<button class="px-6 py-2.5 rounded-lg bg-surface-container-high text-white hover:bg-surface-container-highest transition-all font-medium text-sm">Download All Invoices</button>
+<div class="compat-layer">
+<h1>Billing</h1>
+
+{% if success_msg is defined and success_msg %}
+<div class="alert alert-success">{{ success_msg }}</div>
+{% endif %}
+
+<!-- Current plan summary -->
+<div class="billing-grid">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Current plan</span>
+      {% if is_active %}
+        <span class="plan-badge-lg">Active</span>
+      {% elif cfg.subscription_status == 'past_due' %}
+        <span class="plan-badge-lg past_due">Past due</span>
+      {% else %}
+        <span class="plan-badge-lg inactive">Inactive</span>
+      {% endif %}
+    </div>
+    <div class="plan-price-lg">{{ current_plan.price }}</div>
+    <div style="font-size:1.1rem;font-weight:700;margin:0.4rem 0 0.75rem">{{ current_plan.name }}</div>
+
+    <div style="margin-bottom:0.75rem">
+      {% for ch in current_plan.channels %}
+        {% if ch == 'baileys' %}<span class="channel-pill pill-wa">WhatsApp (Baileys)</span>{% endif %}
+        {% if ch == 'meta_cloud' %}<span class="channel-pill pill-meta">Meta Cloud API</span>{% endif %}
+        {% if ch == 'sms' %}<span class="channel-pill pill-sms">SMS / Twilio</span>{% endif %}
+      {% else %}
+        <span class="channel-pill pill-none">Email &amp; iCal only</span>
+      {% endfor %}
+    </div>
+
+    {% if cfg.subscription_expires_at %}
+    <p style="font-size:0.8rem;color:var(--text-2)">
+      Renews: {{ cfg.subscription_expires_at.strftime('%b %d, %Y') }}
+    </p>
+    {% endif %}
+
+    {% if cfg.stripe_customer_id and is_active %}
+    <form method="post" action="/billing/portal" style="margin-top:1rem">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn btn-outline btn-sm">Manage / Cancel subscription</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Change plan</span></div>
+    <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">Upgrade or switch your messaging channel.</p>
+
+    <div style="display:flex;flex-direction:column;gap:0.5rem">
+      {% if cfg.subscription_plan != 'baileys' %}
+      <form method="post" action="/billing/subscribe/baileys">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
+          📱 Baileys (Local Bot) — $19/mo
+        </button>
+      </form>
+      {% endif %}
+
+      {% if cfg.subscription_plan != 'meta_cloud' %}
+      <form method="post" action="/billing/subscribe/meta_cloud">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
+          💬 Meta Cloud API — $29/mo
+        </button>
+      </form>
+      {% endif %}
+
+      {% if cfg.subscription_plan != 'sms' %}
+      <form method="post" action="/billing/subscribe/sms">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
+          📟 SMS / Twilio — $19/mo
+        </button>
+      </form>
+      {% endif %}
+
+      {% if cfg.subscription_plan != 'pro' %}
+      <form method="post" action="/billing/subscribe/pro">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <button type="submit" class="btn btn-primary" style="width:100%;text-align:left">
+          ⭐ Pro (All Channels) — $49/mo
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    <p style="margin-top:1rem;font-size:0.78rem;color:var(--text-2)">
+      <a href="/pricing">See full plan comparison →</a>
+    </p>
+  </div>
 </div>
+
+<!-- Included in all plans -->
+<div class="card">
+  <div class="card-header"><span class="card-title">What's always included</span></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.5rem;font-size:0.85rem;color:var(--text-2)">
+    <div>✓ Web dashboard</div>
+    <div>✓ AI draft generation (System managed)</div>
+    <div>✓ iCal calendar sync</div>
+    <div>✓ Email (IMAP/SMTP)</div>
+    <div>✓ Vendor management</div>
+    <div>✓ Activity log</div>
+    <div>✓ Unlimited properties</div>
+    <div>✓ Cancel anytime</div>
+  </div>
 </div>
-</section>
-<!-- Bento Layout -->
-<div class="grid grid-cols-12 gap-6">
-<!-- Current Plan Card (Large) -->
-<div class="col-span-8 glass-card rounded-2xl p-8 relative overflow-hidden">
-<div class="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] -mr-32 -mt-32"></div>
-<div class="relative z-10">
-<div class="flex items-start justify-between mb-8">
-<div>
-<span class="px-3 py-1 rounded-full bg-secondary-container/10 text-secondary-container text-[10px] font-bold tracking-widest uppercase mb-4 inline-block">Current Active Plan</span>
-<h3 class="text-3xl font-extrabold font-headline mb-1">Pro Plan</h3>
-<p class="text-slate-400 text-sm">Your next billing cycle is on Oct 12, 2023</p>
+
+<!-- Past due warning -->
+{% if cfg.subscription_status == 'past_due' %}
+<div class="alert alert-error" style="margin-top:1rem">
+  Your last payment failed. Please update your payment method to restore messaging channels.
+  {% if cfg.stripe_customer_id %}
+  <form method="post" action="/billing/portal" style="display:inline;margin-left:0.5rem">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button type="submit" class="btn btn-primary btn-sm">Update payment</button>
+  </form>
+  {% endif %}
 </div>
-<div class="text-right">
-<div class="text-4xl font-extrabold text-white mb-1">$79<span class="text-lg text-slate-500 font-medium">/mo</span></div>
-<p class="text-xs text-secondary-container font-medium">Billed monthly</p>
+{% endif %}
 </div>
-</div>
-<div class="grid grid-cols-3 gap-6 mb-8">
-<div class="p-4 rounded-xl bg-surface-container-lowest/50 border border-outline-variant/10">
-<span class="material-symbols-outlined text-primary mb-2" data-icon="auto_awesome">auto_awesome</span>
-<div class="text-xs text-slate-500 font-bold uppercase tracking-tighter mb-1">AI Tokens</div>
-<div class="text-lg font-bold">50,000 / 100k</div>
-</div>
-<div class="p-4 rounded-xl bg-surface-container-lowest/50 border border-outline-variant/10">
-<span class="material-symbols-outlined text-primary mb-2" data-icon="cloud_done">cloud_done</span>
-<div class="text-xs text-slate-500 font-bold uppercase tracking-tighter mb-1">Compute Nodes</div>
-<div class="text-lg font-bold">12 Active</div>
-</div>
-<div class="p-4 rounded-xl bg-surface-container-lowest/50 border border-outline-variant/10">
-<span class="material-symbols-outlined text-primary mb-2" data-icon="support_agent">support_agent</span>
-<div class="text-xs text-slate-500 font-bold uppercase tracking-tighter mb-1">Priority</div>
-<div class="text-lg font-bold">24/7 Concierge</div>
-</div>
-</div>
-<div class="flex gap-4">
-<button class="px-8 py-3 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-on-primary-container font-extrabold rounded-xl shadow-lg hover:brightness-110 transition-all">Upgrade to Enterprise</button>
-<button class="px-8 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all">Cancel Subscription</button>
-</div>
-</div>
-</div>
-<!-- Payment Method Card (Small) -->
-<div class="col-span-4 glass-card rounded-2xl p-8 flex flex-col">
-<h4 class="text-lg font-extrabold font-headline mb-6">Payment Method</h4>
-<div class="flex-1">
-<div class="w-full h-48 bg-gradient-to-br from-surface-container-high to-surface-container rounded-2xl p-6 relative shadow-xl border border-white/5 mb-6 group cursor-pointer overflow-hidden">
-<div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
-<div class="relative flex flex-col h-full">
-<div class="flex justify-between items-start mb-auto">
-<div class="w-12 h-8 bg-surface-container-highest/80 rounded flex items-center justify-center">
-<div class="w-8 h-6 bg-yellow-500/20 rounded-sm border border-yellow-500/40"></div>
-</div>
-<div class="flex items-center">
-<div class="w-10 h-6 bg-slate-200/10 rounded flex items-center justify-center italic font-black text-xs">VISA</div>
-</div>
-</div>
-<div class="mt-4">
-<div class="text-xl font-medium tracking-[0.2em] mb-4">•••• •••• •••• 4242</div>
-<div class="flex justify-between items-end">
-<div>
-<p class="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Card Holder</p>
-<p class="text-sm font-bold">ALEXANDER RIVERA</p>
-</div>
-<div class="text-right">
-<p class="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Expires</p>
-<p class="text-sm font-bold">12/25</p>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<button class="w-full py-3 rounded-xl border border-outline-variant/20 hover:bg-surface-container-high transition-all text-sm font-bold flex items-center justify-center gap-2">
-<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
-                    Edit Payment Details
-                </button>
-</div>
-<!-- Billing History (Full Width) -->
-<div class="col-span-12 glass-card rounded-2xl overflow-hidden">
-<div class="px-8 py-6 border-b border-outline-variant/10 flex items-center justify-between">
-<h4 class="text-lg font-extrabold font-headline">Billing History</h4>
-<div class="flex items-center gap-4">
-<div class="relative">
-<select class="bg-surface-container-lowest border-none rounded-lg py-1.5 pl-4 pr-10 text-xs font-bold appearance-none cursor-pointer focus:ring-1 focus:ring-primary/40">
-<option>All Status</option>
-<option>Paid</option>
-<option>Pending</option>
-</select>
-<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-sm">expand_more</span>
-</div>
-<button class="p-1.5 text-slate-500 hover:text-white transition-colors">
-<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
-</button>
-</div>
-</div>
-<div class="overflow-x-auto">
-<table class="w-full text-left border-collapse">
-<thead>
-<tr class="bg-surface-container-lowest/30">
-<th class="px-8 py-4 text-[10px] uppercase font-bold tracking-widest text-slate-500">Invoice ID</th>
-<th class="px-8 py-4 text-[10px] uppercase font-bold tracking-widest text-slate-500">Date</th>
-<th class="px-8 py-4 text-[10px] uppercase font-bold tracking-widest text-slate-500">Amount</th>
-<th class="px-8 py-4 text-[10px] uppercase font-bold tracking-widest text-slate-500">Status</th>
-<th class="px-8 py-4 text-[10px] uppercase font-bold tracking-widest text-slate-500 text-right">Invoice</th>
-</tr>
-</thead>
-<tbody class="divide-y divide-outline-variant/5">
-<tr class="hover:bg-white/5 transition-colors group">
-<td class="px-8 py-5 text-sm font-medium">#INV-2023-009</td>
-<td class="px-8 py-5 text-sm text-slate-400">Sep 12, 2023</td>
-<td class="px-8 py-5 text-sm font-bold">$79.00</td>
-<td class="px-8 py-5 text-sm">
-<span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase">Paid</span>
-</td>
-<td class="px-8 py-5 text-right">
-<a class="inline-flex items-center gap-2 text-primary hover:text-secondary-fixed transition-colors text-sm font-medium group-hover:translate-x-[-4px] transform transition-transform" href="#">
-<span class="material-symbols-outlined text-lg" data-icon="picture_as_pdf">picture_as_pdf</span>
-                                        Download PDF
-                                    </a>
-</td>
-</tr>
-<tr class="hover:bg-white/5 transition-colors group">
-<td class="px-8 py-5 text-sm font-medium">#INV-2023-008</td>
-<td class="px-8 py-5 text-sm text-slate-400">Aug 12, 2023</td>
-<td class="px-8 py-5 text-sm font-bold">$79.00</td>
-<td class="px-8 py-5 text-sm">
-<span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase">Paid</span>
-</td>
-<td class="px-8 py-5 text-right">
-<a class="inline-flex items-center gap-2 text-primary hover:text-secondary-fixed transition-colors text-sm font-medium group-hover:translate-x-[-4px] transform transition-transform" href="#">
-<span class="material-symbols-outlined text-lg" data-icon="picture_as_pdf">picture_as_pdf</span>
-                                        Download PDF
-                                    </a>
-</td>
-</tr>
-<tr class="hover:bg-white/5 transition-colors group">
-<td class="px-8 py-5 text-sm font-medium">#INV-2023-007</td>
-<td class="px-8 py-5 text-sm text-slate-400">Jul 12, 2023</td>
-<td class="px-8 py-5 text-sm font-bold">$79.00</td>
-<td class="px-8 py-5 text-sm">
-<span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase">Paid</span>
-</td>
-<td class="px-8 py-5 text-right">
-<a class="inline-flex items-center gap-2 text-primary hover:text-secondary-fixed transition-colors text-sm font-medium group-hover:translate-x-[-4px] transform transition-transform" href="#">
-<span class="material-symbols-outlined text-lg" data-icon="picture_as_pdf">picture_as_pdf</span>
-                                        Download PDF
-                                    </a>
-</td>
-</tr>
-<tr class="hover:bg-white/5 transition-colors group">
-<td class="px-8 py-5 text-sm font-medium">#INV-2023-006</td>
-<td class="px-8 py-5 text-sm text-slate-400">Jun 12, 2023</td>
-<td class="px-8 py-5 text-sm font-bold">$124.00</td>
-<td class="px-8 py-5 text-sm">
-<span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase">Paid</span>
-</td>
-<td class="px-8 py-5 text-right">
-<a class="inline-flex items-center gap-2 text-primary hover:text-secondary-fixed transition-colors text-sm font-medium group-hover:translate-x-[-4px] transform transition-transform" href="#">
-<span class="material-symbols-outlined text-lg" data-icon="picture_as_pdf">picture_as_pdf</span>
-                                        Download PDF
-                                    </a>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="px-8 py-4 bg-surface-container-lowest/10 border-t border-outline-variant/10 text-center">
-<button class="text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest">Load More Transactions</button>
-</div>
-</div>
-</div>
-<!-- Support Section -->
-<section class="mt-12 flex items-center justify-between p-8 rounded-2xl bg-gradient-to-r from-primary-container/10 to-transparent border border-primary/5">
-<div class="flex items-center gap-6">
-<div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-<span class="material-symbols-outlined" data-icon="contact_support">contact_support</span>
-</div>
-<div>
-<h5 class="text-lg font-bold">Need help with your enterprise billing?</h5>
-<p class="text-sm text-slate-400">Our accounts team is available for custom invoicing and multi-seat licensing.</p>
-</div>
-</div>
-<button class="px-6 py-2.5 bg-surface-container-high rounded-lg text-white font-bold text-sm hover:bg-surface-container-highest transition-all">Contact Billing Support</button>
-</section>
 </main>
 {%- endblock %}
 {%- endblock %}

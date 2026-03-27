@@ -85,6 +85,79 @@
             -webkit-backdrop-filter: blur(24px);
         }
     </style>
+<style>
+/* Compat layer — maps old CSS variables to Obsidian tokens */
+:root{
+  --surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;
+  --border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);
+  --text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;
+  --accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);
+  --success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);
+  --danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);
+  --warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.3);
+  --radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;--nav-h:64px;
+  --rose:#ff6b8a;--kpi-yellow:#ffbd2e;
+}
+.compat-layer h1{font-size:1.8rem;font-weight:800;margin-bottom:0.25rem;color:#e3e1eb}
+.compat-layer h2{font-size:1.1rem;font-weight:700;margin-bottom:0.75rem;color:#e3e1eb}
+.compat-layer h3{font-size:0.92rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
+.compat-layer .card,.compat-layer .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
+.compat-layer label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
+.compat-layer input[type=text],.compat-layer input[type=email],.compat-layer select,.compat-layer textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
+.compat-layer input:focus,.compat-layer select:focus,.compat-layer textarea:focus{border-color:#5B8DEF}
+.compat-layer .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
+.compat-layer .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
+.compat-layer .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
+.compat-layer .btn-outline:hover{background:rgba(174,198,255,0.08)}
+.compat-layer .btn-success{background:rgba(39,201,63,0.12);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
+.compat-layer .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
+.compat-layer .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
+.compat-layer .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
+.compat-layer .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
+.compat-layer .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+.compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
+.compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
+.compat-layer td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
+.compat-layer tr:hover td{background:rgba(174,198,255,0.02)}
+.compat-layer .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
+.compat-layer .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
+.compat-layer .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
+.compat-layer .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
+.compat-layer .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;margin-bottom:0.3rem}
+.compat-layer .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
+.compat-layer .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
+.compat-layer .csv-banner{background:rgba(255,189,46,0.07);border:1px solid rgba(255,189,46,0.2);color:#ffbd2e;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap}
+.compat-layer .csv-banner a{color:#aec6ff}
+.compat-layer .analytics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+.compat-layer .analytics-widget{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.25rem;text-align:center}
+.compat-layer .widget-value{font-size:2rem;font-weight:800;color:#aec6ff;font-family:'Plus Jakarta Sans',sans-serif}
+.compat-layer .widget-label{font-size:0.72rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.06em;margin-top:0.25rem}
+.compat-layer .widget-sub{font-size:0.7rem;color:#424752;margin-top:0.15rem}
+.compat-layer .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
+.compat-layer .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
+.compat-layer .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
+.compat-layer .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
+.compat-layer .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;margin-left:0.2rem;background:rgba(174,198,255,0.08);color:#aec6ff}
+.compat-layer .badge-escalation{background:rgba(255,180,171,0.1);color:#ffb4ab}
+.compat-layer .badge-whatsapp{background:rgba(39,201,63,0.1);color:#27c93f}
+.compat-layer .badge-email{background:rgba(91,141,239,0.1);color:#5B8DEF}
+.compat-layer .badge-sms{background:rgba(255,189,46,0.1);color:#ffbd2e}
+.compat-layer .draft-text{font-size:0.85rem;line-height:1.6;color:#c3c6d4;white-space:pre-wrap;background:#0d0e14;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.75rem;border:1px solid rgba(66,71,82,0.2)}
+.compat-layer .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
+.compat-layer .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
+.compat-layer .timeline{display:flex;flex-direction:column;gap:0}
+.compat-layer .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
+.compat-layer .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
+.compat-layer .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
+.compat-layer .timeline-text{font-size:0.8rem;color:#8d909e}
+.compat-layer input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
+.compat-layer .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
+.compat-layer .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
+.compat-layer .card-meta{font-size:0.75rem;color:#8d909e}
+.compat-layer .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.compat-layer details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
+.compat-layer code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
+</style>
 {%- endblock %}
 
 {%- block nav %}{%- endblock %}
@@ -99,22 +172,22 @@
 </div>
 <nav class="flex-1 space-y-2">
 <!-- Dashboard -->
-<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="/dashboard">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
 <span class="font-medium text-[0.875rem] tracking-tight">Dashboard</span>
 </a>
 <!-- Reservations (Active) -->
-<a class="flex items-center gap-3 px-4 py-3 text-[#aec6ff] font-bold bg-[#5d8ef1]/10 backdrop-blur-md rounded-md transition-all duration-200" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-[#aec6ff] font-bold bg-[#5d8ef1]/10 backdrop-blur-md rounded-md transition-all duration-200" href="/reservations">
 <span class="material-symbols-outlined" data-icon="calendar_month">calendar_month</span>
 <span class="font-medium text-[0.875rem] tracking-tight">Reservations</span>
 </a>
 <!-- Analytics -->
-<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="/analytics">
 <span class="material-symbols-outlined" data-icon="analytics">analytics</span>
 <span class="font-medium text-[0.875rem] tracking-tight">Analytics</span>
 </a>
 <!-- Settings -->
-<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="/settings">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
 <span class="font-medium text-[0.875rem] tracking-tight">Settings</span>
 </a>
@@ -156,225 +229,506 @@
 </div>
 </header>
 <!-- Main Content Canvas -->
-<main class="ml-[260px] pt-24 px-10 pb-16 min-h-screen">
-<!-- Filter Header Section -->
-<section class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-<div class="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-<button class="px-5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase bg-primary-container/20 text-primary border border-primary/20 whitespace-nowrap">All Bookings</button>
-<button class="px-5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase bg-surface-container-low text-slate-400 hover:text-white transition-colors border border-transparent whitespace-nowrap">Confirmed</button>
-<button class="px-5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase bg-surface-container-low text-slate-400 hover:text-white transition-colors border border-transparent whitespace-nowrap">Pending</button>
-<button class="px-5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase bg-surface-container-low text-slate-400 hover:text-white transition-colors border border-transparent whitespace-nowrap">Completed</button>
+<main class="ml-[260px] pt-24 pb-12 px-8 min-h-screen">
+<div class="mb-8">
+  <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Reservations</h1>
+  <p class="text-slate-400 text-sm">Upload your Airbnb CSV and manage guest room mappings</p>
 </div>
-<div class="flex items-center gap-3">
-<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-low text-slate-300 rounded-lg text-sm font-medium hover:bg-surface-container-high transition-colors">
-<span class="material-symbols-outlined text-sm" data-icon="filter_list">filter_list</span>
-                    Advanced Filters
-                </button>
-<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-low text-slate-300 rounded-lg text-sm font-medium hover:bg-surface-container-high transition-colors">
-<span class="material-symbols-outlined text-sm" data-icon="download">download</span>
-                    Export
-                </button>
+<div class="compat-layer">
+<h1>Reservations</h1>
+
+<form method="get" action="/reservations" style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin:0.75rem 0 1.25rem">
+  <label style="margin:0;font-size:0.82rem;color:var(--text-3)">Property view</label>
+  <select name="property" style="max-width:320px;margin-bottom:0">
+    <option value="">All properties</option>
+    {% for property_name in property_options or [] %}
+    <option value="{{ property_name }}" {% if property_name == selected_property %}selected{% endif %}>{{ property_name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-outline btn-sm">Apply</button>
+  {% if selected_property %}
+  <a href="/reservations" class="btn btn-outline btn-sm">Clear</a>
+  <span class="chip good">Scoped to {{ selected_property }}</span>
+  {% endif %}
+</form>
+
+<!-- Upload frequency recommendation -->
+<div style="display:flex;gap:0.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center">
+  <div class="freq-badge">
+    <div class="freq-dot" style="background:#28a745"></div>
+    Recommended: upload CSV <strong>twice daily</strong>
+  </div>
+  <div class="freq-badge">
+    <div class="freq-dot" style="background:#ffc107"></div>
+    Morning (7–8am) + Evening (8–9pm)
+  </div>
+  {% if sync_log %}
+  <div class="freq-badge">
+    <div class="freq-dot" style="background:{% if csv_stale %}#dc3545{% else %}#28a745{% endif %}"></div>
+    Last synced: {{ sync_log.last_synced.strftime('%b %d, %H:%M UTC') }}
+    {% if csv_stale %} — <span style="color:#dc3545;font-weight:600">overdue</span>{% endif %}
+  </div>
+  {% endif %}
 </div>
-</section>
-<!-- Data Table Container -->
-<section class="glass-panel rounded-2xl border border-[#424752]/15 overflow-hidden">
-<div class="overflow-x-auto">
-<table class="w-full text-left border-collapse">
-<thead>
-<tr class="bg-surface-container-high/40 border-b border-[#424752]/15">
-<th class="px-6 py-5 text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500">Guest</th>
-<th class="px-6 py-5 text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500">Property</th>
-<th class="px-6 py-5 text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500">Dates</th>
-<th class="px-6 py-5 text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500">Amount</th>
-<th class="px-6 py-5 text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500">Status</th>
-<th class="px-6 py-5 text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500 text-right">Actions</th>
-</tr>
-</thead>
-<tbody class="divide-y divide-[#424752]/10">
-<!-- Row 1 -->
-<tr class="hover:bg-[#292930]/20 transition-colors">
-<td class="px-6 py-4">
-<div class="flex items-center gap-3">
-<img class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10" data-alt="close-up portrait of a woman with a warm friendly expression in bright natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVqXf2IytfBcDGFBcnPvZUK1eO-_SKquCawbMij2ajhayY2oAvqFjMpC1REDeVQPmksnHKZgJhFi4iW20jXq60rqgUvdcDMs3tvuJcagyRNzHPLTKR3PBL0csa9hhrZnarTucX5OfmGDW_HClNcsf9mR2UcLcOXx_wuELMUMFaaRjbQFu8aWwQzPWOUEBOAlgnEkFxPXwK-E9uuPhsvBpoSHRzUZ1PZMtxlF4f5ter8atPeTeWeuy3ts6T_nRe-IoR1g556Vux1n-x"/>
-<div>
-<div class="text-sm font-bold text-on-surface">Sarah Jenkins</div>
-<div class="text-xs text-slate-500">sarah.j@example.com</div>
+
+<!-- Analytics -->
+{% if total > 0 %}
+<div class="analytics-row">
+  <div class="analytics-widget">
+    <div class="widget-value">{{ upcoming }}</div>
+    <div class="widget-label">Upcoming check-ins</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">${{ "%.0f"|format(month_revenue) }}</div>
+    <div class="widget-label">Revenue this month</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ occupancy_pct }}%</div>
+    <div class="widget-label">Occupancy this month</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ total }}</div>
+    <div class="widget-label">Total reservations</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ activation_count }}</div>
+    <div class="widget-label">Active arrival mappings</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{% if avg_review_rating %}{{ "%.2f"|format(avg_review_rating) }}{% else %}—{% endif %}</div>
+    <div class="widget-label">Average review rating</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ sentiment_summary.trend }}</div>
+    <div class="widget-label">Guest sentiment trend</div>
+  </div>
 </div>
+{% endif %}
+
+<div class="workflow-grid" style="margin-bottom:1rem">
+  <div class="workflow-card">
+    <h3>Arrival activations</h3>
+    <p>{{ activation_count }} stays are currently active or pending. This is the explicit handoff from booking intake to guest-facing bot behavior.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>Intake fallbacks</h3>
+    <p>CSV stays first-class for hosts without a PMS. Manual booking is the final fallback when CSV or PMS is not available. Review data from CSV now feeds sentiment and rating analytics too.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>Ops coverage</h3>
+    <p>{{ team_members|length }} team member role{% if team_members|length != 1 %}s{% endif %} are configured for reservation activation, issue follow-up, and vendor dispatch.</p>
+  </div>
 </div>
-</td>
-<td class="px-6 py-4">
-<div class="text-sm font-medium text-secondary">Modern Loft</div>
-<div class="text-xs text-slate-500">Downtown District</div>
-</td>
-<td class="px-6 py-4 text-sm text-slate-300">Oct 12-15, 2023</td>
-<td class="px-6 py-4 text-sm font-bold text-on-surface">$450.00</td>
-<td class="px-6 py-4">
-<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-500/10 text-green-400 border border-green-500/20">Confirmed</span>
-</td>
-<td class="px-6 py-4 text-right">
-<button class="text-slate-500 hover:text-[#aec6ff] transition-colors">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 2 -->
-<tr class="hover:bg-[#292930]/20 transition-colors">
-<td class="px-6 py-4">
-<div class="flex items-center gap-3">
-<img class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10" data-alt="portrait of a young man with glasses and a stylish haircut in a minimalist urban setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaVLcu1T6o0mzGTI2DOAcu3rCbaHHUVv5JDyk9tqRI99r7fmgAuKaP4dH9rCuxxe4EO3_OcpOzXFZiCBgEM-PnQ7tX_v2ALUSL0yKK2qDnNRSYJTo_6f6JtarY7vQcDUEDLVOpiVVDwKINuUkvuq9emfkaXzJBz8fRrD729dz8EH_pZKjq1XILNM7hiTfxLyUveiZuC9mc9OEgNuwQWpZxAaDnWTxw64oqh0V4lyShsILGWCq-oJMWiEuoi8RQaJ6ebb91j4cgXIki"/>
-<div>
-<div class="text-sm font-bold text-on-surface">Marcus Thorne</div>
-<div class="text-xs text-slate-500">m.thorne@global.net</div>
+
+{% if recent_batches %}
+<div class="card" style="margin-bottom:1rem">
+  <h2 style="margin-bottom:0.5rem">Recent intake batches</h2>
+  <table>
+    <thead>
+      <tr><th>Source</th><th>Name</th><th>Status</th><th>Imported</th><th>Created</th></tr>
+    </thead>
+    <tbody>
+      {% for batch in recent_batches %}
+      <tr>
+        <td>{{ batch.source_kind|upper }}</td>
+        <td>{{ batch.source_name or '—' }}</td>
+        <td>{{ batch.status }}</td>
+        <td>{{ batch.rows_imported }}/{{ batch.rows_total }}</td>
+        <td>{{ batch.created_at.strftime('%b %d %H:%M') if batch.created_at else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
+{% endif %}
+
+{% if recent_batches or team_members %}
+<div class="workflow-grid" style="margin-bottom:1.25rem">
+  <div class="workflow-card">
+    <h3>Fallback intake sources</h3>
+    {% if recent_batches %}
+    <div class="timeline">
+      {% for batch in recent_batches %}
+      <div class="timeline-item">
+        <div class="timeline-meta">{{ batch.source_kind|upper }} · {{ batch.status }}</div>
+        <div class="timeline-title">{{ batch.source_name or 'Reservation intake batch' }}</div>
+        <div class="timeline-text">{{ batch.rows_imported or 0 }} imported / {{ batch.rows_total or 0 }} total</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:var(--text-3);font-size:0.84rem">No intake batches yet. CSV, PMS sync, and manual entry all land here.</p>
+    {% endif %}
+  </div>
+  <div class="workflow-card">
+    <h3>Ops roster for arrivals</h3>
+    {% if team_members %}
+    <div class="chip-row">
+      {% for member in team_members %}
+      <span class="chip">{{ member.role|replace('_', ' ') }} · {{ member.display_name }}</span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:var(--text-3);font-size:0.84rem">No team members configured yet. Add front desk or maintenance contacts in Settings.</p>
+    {% endif %}
+  </div>
 </div>
-</td>
-<td class="px-6 py-4">
-<div class="text-sm font-medium text-secondary">Sunset Villa</div>
-<div class="text-xs text-slate-500">Ocean View Estates</div>
-</td>
-<td class="px-6 py-4 text-sm text-slate-300">Oct 18-24, 2023</td>
-<td class="px-6 py-4 text-sm font-bold text-on-surface">$1,280.00</td>
-<td class="px-6 py-4">
-<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-tertiary-container/10 text-tertiary border border-tertiary/20">Pending</span>
-</td>
-<td class="px-6 py-4 text-right">
-<button class="text-slate-500 hover:text-[#aec6ff] transition-colors">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 3 -->
-<tr class="hover:bg-[#292930]/20 transition-colors">
-<td class="px-6 py-4">
-<div class="flex items-center gap-3">
-<img class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10" data-alt="fashionable young woman looking at camera with sophisticated professional makeup in soft studio light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwwY_e-r81MgQVDjOTiv2aveCRKQ9MolLV3etjUlHpP7XtXE5tH6L60L96IDHbu_LM7FH0_QTq35ijTkJLeqfZVYcMBhgMpxapnTn6zA--ALFZbBjbibR3M_wjxaka_h2dFVv9V7tM6IpFaMwbIbGP0yAozlEiw_kEu0ZS5Mga8zRW9iUxLq59NdiQrJrSr9NUkittxmirZ0SKSUdIsD_-Y-e2mgzQM9BY_xiRLqbs8yjnGui0sELP0mI7Oeftdw_OwaVXl4gDO8uQ"/>
-<div>
-<div class="text-sm font-bold text-on-surface">Elena Rodriguez</div>
-<div class="text-xs text-slate-500">elena.rod@webmail.com</div>
+{% endif %}
+
+{% if request.query_params.get('imported') %}
+<div class="alert alert-success">
+  ✓ {{ request.query_params.get('imported') }} new reservation(s) imported successfully.
 </div>
+{% endif %}
+{% if request.query_params.get('error') %}
+<div class="alert alert-error">
+  Upload error: {{ request.query_params.get('error') | replace('_', ' ') }}. Please try again with a valid Airbnb CSV file.
 </div>
-</td>
-<td class="px-6 py-4">
-<div class="text-sm font-medium text-secondary">Skyline Suite</div>
-<div class="text-xs text-slate-500">Financial Hub</div>
-</td>
-<td class="px-6 py-4 text-sm text-slate-300">Oct 20-22, 2023</td>
-<td class="px-6 py-4 text-sm font-bold text-on-surface">$620.00</td>
-<td class="px-6 py-4">
-<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-500/10 text-green-400 border border-green-500/20">Confirmed</span>
-</td>
-<td class="px-6 py-4 text-right">
-<button class="text-slate-500 hover:text-[#aec6ff] transition-colors">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 4 -->
-<tr class="hover:bg-[#292930]/20 transition-colors">
-<td class="px-6 py-4">
-<div class="flex items-center gap-3">
-<img class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10" data-alt="middle aged businessman in suit with a confident smile in a bright corporate hallway" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC78jTOQAU6ZonyqvOQN-m_9De4UoBkD3Vcvh4RyFcXRP8EcpyLfiC3lDuhDjg20nL-GaO5Z91bGwDiK7Bla0SGKSG_b8m3Pa3yoOlCnx6873Ls13ekPFzACY-VRorBgY_x0Nd5y9AvQZcmXEMSfHGC2GjXK9Fkb0Itec9AzTLZ0at05Jz9GiuUHh_V_qOyz6Jg5vU0wGC0256kJdU6GS5LlChhGeyAVZ_f3UmtjvgQUdUh_-VUXjruuYnGh7-G1zXTAZaG1vBR8neW"/>
-<div>
-<div class="text-sm font-bold text-on-surface">David Chen</div>
-<div class="text-xs text-slate-500">david.c@tech.io</div>
+{% endif %}
+{% if request.query_params.get('context_updated') %}
+<div class="alert alert-success">
+  ✓ Reservation guest context saved. HostAI will now use the mapped phone number and room / unit info in guest chat.
 </div>
+{% endif %}
+
+<!-- Upload card -->
+<div class="upload-card">
+  <h3>Upload Airbnb Reservation CSV</h3>
+  <p>
+    On Airbnb → <strong>Reservations</strong> → <strong>Export CSV</strong>.<br>
+    Upload here twice a day for best results. CSV stays supported for hosts without a PMS, and it remains the fallback when PMS sync is unavailable.
+  </p>
+  <form method="post" action="/reservations/upload" enctype="multipart/form-data" style="display:inline-flex;gap:0.75rem;align-items:center;flex-wrap:wrap;justify-content:center">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <input type="file" name="csv_file" accept=".csv" required style="width:auto;margin:0">
+    <button type="submit" class="btn btn-primary">Upload CSV</button>
+  </form>
+  <p style="font-size:0.75rem;color:var(--text-3);margin-top:0.75rem;margin-bottom:0">
+    Existing reservations are updated (not duplicated). Cancelled bookings are flagged automatically.
+  </p>
 </div>
-</td>
-<td class="px-6 py-4">
-<div class="text-sm font-medium text-secondary">Garden Cottage</div>
-<div class="text-xs text-slate-500">Quiet Suburbs</div>
-</td>
-<td class="px-6 py-4 text-sm text-slate-300">Oct 25-27, 2023</td>
-<td class="px-6 py-4 text-sm font-bold text-on-surface">$310.00</td>
-<td class="px-6 py-4">
-<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/20">Completed</span>
-</td>
-<td class="px-6 py-4 text-right">
-<button class="text-slate-500 hover:text-[#aec6ff] transition-colors">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 5 -->
-<tr class="hover:bg-[#292930]/20 transition-colors">
-<td class="px-6 py-4">
-<div class="flex items-center gap-3">
-<img class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10" data-alt="natural portrait of a woman with curly hair and a subtle smile in soft daylight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJhkZfEWDZVWOchGjMcGdIaU45NHSwG0GLevx8MEf4GaE0F3IarAl6P2NE9KPHCoJUEFxRlK8O3svuyR2WMlcPkHj6imWTJYawLZAFQh7FADjOICXRUQldIV1I-Fiy3YsjaA72TbLFfVMtOJ2OT_bxZO6KhMmTBolcsohBwDGOkLkiSVhwOCm6oNhn97jSjjncGNHHcOMA4qo9WzmhJj_b8nkbeEPI3jHSA5jkVrHxix24oatW7JCUxvxlcaDnFKnmlE8HfuDrvvS3"/>
-<div>
-<div class="text-sm font-bold text-on-surface">Amara Okafor</div>
-<div class="text-xs text-slate-500">amara.o@design.co</div>
+
+<div class="card" style="margin-bottom:1.25rem">
+  <h3 style="margin-bottom:0.5rem;font-size:1rem">Manual booking fallback</h3>
+  <p class="help-text" style="margin-top:0;margin-bottom:1rem">
+    Use this only when CSV or PMS intake is unavailable. It keeps HostAI usable for the edge cases without removing CSV as the primary fallback.
+  </p>
+  <form method="post" action="/reservations/manual">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div class="form-row">
+      <div>
+        <label>Guest name</label>
+        <input type="text" name="guest_name" placeholder="Jane Doe" required>
+      </div>
+      <div>
+        <label>Booking ref</label>
+        <input type="text" name="confirmation_code" placeholder="Optional">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Property</label>
+        <input type="text" name="listing_name" placeholder="Beach House">
+      </div>
+      <div>
+        <label>Room / unit</label>
+        <input type="text" name="unit_identifier" placeholder="12A">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Guest phone</label>
+        <input type="text" name="guest_phone" placeholder="+91 98765 43210">
+      </div>
+      <div>
+        <label>Guests</label>
+        <input type="text" name="guests_count" placeholder="2">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Check-in</label>
+        <input type="date" name="checkin">
+      </div>
+      <div>
+        <label>Check-out</label>
+        <input type="date" name="checkout">
+      </div>
+    </div>
+    <label>Notes</label>
+    <textarea name="notes" rows="2" placeholder="Optional manual intake notes"></textarea>
+    <button type="submit" class="btn btn-outline btn-sm">Add manual booking</button>
+  </form>
 </div>
+
+<div class="card" style="margin-bottom:1.25rem;background:linear-gradient(135deg,#fff9f2 0%,#fff 100%);border:1px solid #f3d7b0">
+  <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap;justify-content:space-between">
+    <div style="max-width:760px">
+      <h3 style="margin-bottom:0.4rem;font-size:1rem">Guest context mapping</h3>
+      <p style="margin:0;color:var(--text-2);font-size:0.86rem;line-height:1.7">
+        Add the guest phone number and room / unit / property number to a reservation. When the guest messages from that number, HostAI matches the reservation, injects the room context into the AI prompt, and replies more naturally.
+      </p>
+    </div>
+    <div style="font-size:0.82rem;color:var(--text-3);line-height:1.7;min-width:240px">
+      Examples:
+      <div>• "Unit 12A" for a suite</div>
+      <div>• "Room 204" for a hotel room</div>
+      <div>• "+91 98765 43210" for the guest phone</div>
+    </div>
+  </div>
 </div>
-</td>
-<td class="px-6 py-4">
-<div class="text-sm font-medium text-secondary">Desert Oasis</div>
-<div class="text-xs text-slate-500">Sand Dunes Retreat</div>
-</td>
-<td class="px-6 py-4 text-sm text-slate-300">Nov 02-08, 2023</td>
-<td class="px-6 py-4 text-sm font-bold text-on-surface">$1,850.00</td>
-<td class="px-6 py-4">
-<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-tertiary-container/10 text-tertiary border border-tertiary/20">Pending</span>
-</td>
-<td class="px-6 py-4 text-right">
-<button class="text-slate-500 hover:text-[#aec6ff] transition-colors">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-</tbody>
-</table>
+
+<div class="card" id="arrival" style="margin-bottom:1.25rem;background:linear-gradient(135deg,#eef8ff 0%,#fff 100%);border:1px solid #cfe3f1">
+  <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start">
+    <div style="max-width:720px">
+      <h3 style="margin-bottom:0.35rem;font-size:1rem">Arrival activation workflow</h3>
+      <p style="margin:0;color:var(--text-2);font-size:0.86rem;line-height:1.7">
+        The cleanest host flow is simple: booking imported, guest phone saved, room or unit mapped, then the bot can answer in the context of the stay. That makes guest chat feel personal instead of generic.
+      </p>
+    </div>
+    <div class="chip-row" style="margin-top:0">
+      <span class="chip good">Arrival ready</span>
+      <span class="chip {% if sync_log %}good{% else %}warn{% endif %}">CSV fallback</span>
+      <span class="chip good">Room-aware chat</span>
+      <span class="chip warn">Manual booking fallback</span>
+    </div>
+  </div>
+
+  <div class="stepper" style="margin-top:1rem">
+    <div class="step done">
+      <div class="num">1</div>
+      <div class="body">
+        <h4>Import the stay</h4>
+        <p>Use CSV if the host has no PMS. If a PMS exists, keep it as the primary source of truth and CSV as backup.</p>
+      </div>
+    </div>
+    <div class="step done">
+      <div class="num">2</div>
+      <div class="body">
+        <h4>Map guest phone and room</h4>
+        <p>Save the guest phone plus room, unit, or property number. That lets HostAI match the right reservation when the guest writes in.</p>
+      </div>
+    </div>
+    <div class="step warn">
+      <div class="num">3</div>
+      <div class="body">
+        <h4>Activate the guest channel</h4>
+        <p>Forward the guest's messages into HostAI. The system should answer using the stay context, house rules, and check-in details.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num">4</div>
+      <div class="body">
+        <h4>Review exceptions only</h4>
+        <p>Complaints, refunds, maintenance, and missing booking context should be the only things that need deliberate host attention.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="workflow-grid" style="margin-top:1rem">
+    <div class="workflow-card">
+      <h3>What guests can ask</h3>
+      <p>Wi-Fi, parking, towels, early check-in, late checkout, local recommendations, lost keys, and maintenance requests are all fair game for the bot.</p>
+      <div class="chip-row">
+        <span class="chip">Wi-Fi</span>
+        <span class="chip">Parking</span>
+        <span class="chip">Towels</span>
+        <span class="chip">Late checkout</span>
+      </div>
+    </div>
+    <div class="workflow-card">
+      <h3>How the bot behaves</h3>
+      <p>It should answer with room-aware context, use house rules and FAQs, and escalate only if the message is sensitive, ambiguous, or high-risk.</p>
+      <div class="chip-row">
+        <span class="chip good">Context aware</span>
+        <span class="chip warn">Escalates risk</span>
+        <span class="chip good">Stay-specific</span>
+      </div>
+    </div>
+    <div class="workflow-card">
+      <h3>Fallback intake</h3>
+      <p>CSV remains the fallback for hosts without a PMS, while manual booking entry covers the few cases where CSV or PMS intake misses a stay.</p>
+      <div class="chip-row">
+        <span class="chip good">CSV</span>
+        <span class="chip good">PMS</span>
+        <span class="chip warn">Manual</span>
+      </div>
+    </div>
+  </div>
 </div>
-<!-- Table Footer/Pagination -->
-<div class="px-6 py-4 flex items-center justify-between border-t border-[#424752]/15 bg-surface-container-low/40">
-<p class="text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">Showing 5 of 142 reservations</p>
-<div class="flex items-center gap-2">
-<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-container-high text-slate-400 hover:text-white transition-colors">
-<span class="material-symbols-outlined text-lg" data-icon="chevron_left">chevron_left</span>
-</button>
-<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/20 text-primary font-bold text-xs">1</button>
-<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-container-high text-slate-400 hover:text-white transition-colors font-bold text-xs">2</button>
-<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-container-high text-slate-400 hover:text-white transition-colors font-bold text-xs">3</button>
-<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-container-high text-slate-400 hover:text-white transition-colors">
-<span class="material-symbols-outlined text-lg" data-icon="chevron_right">chevron_right</span>
-</button>
+
+<!-- What happens after upload -->
+<details style="margin-bottom:1.5rem">
+  <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;color:var(--accent);padding:4px 0">
+    ▶ What HostAI does with your reservations
+  </summary>
+  <div style="background:var(--bg-2);border-radius:6px;padding:1rem;margin-top:0.5rem;font-size:0.82rem;line-height:1.9;color:var(--text-2)">
+    <strong>Guest context enrichment</strong> — When a guest emails you, HostAI matches them to their reservation and includes room/unit, check-in date, checkout date, and nights stayed in the AI prompt. Replies become far more personal.<br>
+    <strong>Pre-arrival message</strong> — 7 days before check-in, a warm welcome draft is auto-generated for your approval.<br>
+    <strong>Check-out thank-you</strong> — On checkout day, a thank-you message with a review request is drafted.<br>
+    <strong>Cleaner brief</strong> — On checkout day, a full cleaning checklist is drafted for your cleaner.<br>
+    <strong>Review reminder</strong> — 14 days after checkout, a nudge to leave the guest a review before the Airbnb window closes.
+  </div>
+</details>
+
+<!-- Export + check-in link notification -->
+{% if request.query_params.get('checkin_link') %}
+<div class="alert alert-success" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+  ✓ Check-in link generated:
+  <code style="font-size:0.82rem;word-break:break-all">{{ request.url.scheme }}://{{ request.headers.get('host', '') }}/checkin/{{ request.query_params.get('checkin_link') }}</code>
+  <button class="btn btn-outline btn-sm copy-link-btn" data-link="{{ request.url.scheme }}://{{ request.headers.get('host', '') }}/checkin/{{ request.query_params.get('checkin_link') }}">Copy link</button>
 </div>
+{% endif %}
+
+<!-- Reservations table -->
+{% if rows %}
+<div style="display:flex;justify-content:flex-end;margin-bottom:0.75rem">
+  <a href="/reservations/export.csv{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" class="btn btn-outline btn-sm">⬇ Export CSV</a>
 </div>
-</section>
-<!-- Stats Overview Cards (Asymmetric Layout) -->
-<section class="mt-12 grid grid-cols-12 gap-6">
-<div class="col-span-12 lg:col-span-4 glass-panel p-6 rounded-2xl border border-[#424752]/15 flex flex-col justify-between">
-<div>
-<h4 class="text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500 mb-4">Occupancy Rate</h4>
-<div class="flex items-end gap-3">
-<span class="text-4xl font-extrabold text-[#aec6ff]">92.4%</span>
-<span class="text-green-400 text-xs font-bold pb-1 flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px]" data-icon="trending_up">trending_up</span>
-                            +4.2%
-                        </span>
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead>
+      <tr>
+        <th>Guest</th>
+        <th>Property</th>
+        <th>Check-in</th>
+        <th>Check-out</th>
+        <th>Nights</th>
+        <th>Guests</th>
+        <th>Payout</th>
+        <th>Review</th>
+        <th>Status</th>
+        <th>Guest context</th>
+        <th>Drafts</th>
+        <th>Portal</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+    {% set is_today_checkout = r.checkout == today %}
+    {% set is_soon = r.checkin and (r.checkin - today).days <= 3 and (r.checkin - today).days >= 0 %}
+    <tr class="{% if is_today_checkout %}checkout-today{% elif is_soon %}checkin-soon{% endif %}">
+      <td>
+        <strong>{{ r.guest_name }}</strong>
+        <div style="font-size:0.72rem;color:var(--text-3);font-family:monospace">{{ r.confirmation_code }}</div>
+      </td>
+      <td style="font-size:0.82rem">{{ r.listing_name or '—' }}</td>
+      <td style="font-size:0.82rem;white-space:nowrap">
+        {% if r.checkin %}
+          {{ r.checkin.strftime('%b %d, %Y') }}
+          {% if r.checkin == today %}<span class="badge badge-ok" style="margin-left:4px">today</span>{% endif %}
+          {% if is_soon and r.checkin != today %}<span style="font-size:0.7rem;color:#856404">soon</span>{% endif %}
+        {% else %}—{% endif %}
+      </td>
+      <td style="font-size:0.82rem;white-space:nowrap">
+        {% if r.checkout %}
+          {{ r.checkout.strftime('%b %d, %Y') }}
+          {% if is_today_checkout %}<span class="badge badge-ok" style="margin-left:4px">today</span>{% endif %}
+        {% else %}—{% endif %}
+      </td>
+      <td style="text-align:center">{{ r.nights or '—' }}</td>
+      <td style="text-align:center">{{ r.guests_count or '—' }}</td>
+      <td style="text-align:right;font-size:0.85rem">
+        {% if r.payout_usd %}${{ "%.2f"|format(r.payout_usd) }}{% else %}—{% endif %}
+      </td>
+      <td style="font-size:0.78rem;min-width:120px">
+        {% if r.review_rating is not none %}
+        <div><strong>{{ "%.1f"|format(r.review_rating) }}</strong> stars</div>
+        {% if r.review_sentiment %}<div style="color:var(--text-3)">{{ r.review_sentiment }}</div>{% endif %}
+        {% else %}
+        <span style="color:#adb5bd">No review yet</span>
+        {% endif %}
+      </td>
+      <td>
+        <span class="badge badge-{{ r.status }}">{{ r.status }}</span>
+      </td>
+      <td style="font-size:0.78rem;min-width:220px">
+        <form method="post" action="/reservations/{{ r.id }}/context{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="display:flex;flex-direction:column;gap:0.45rem">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <input type="tel" name="guest_phone" value="{{ r.guest_phone or '' }}" placeholder="Guest phone"
+                 style="width:100%;padding:6px 8px;font-size:0.78rem">
+          <input type="text" name="unit_identifier" value="{{ r.unit_identifier or '' }}" placeholder="Room / unit / property #"
+                 style="width:100%;padding:6px 8px;font-size:0.78rem">
+          <div style="display:flex;gap:0.35rem;flex-wrap:wrap">
+            <button type="submit" class="btn btn-outline btn-sm" style="align-self:flex-start">Save context</button>
+          </div>
+        </form>
+        <form method="post" action="/reservations/{{ r.id }}/activate{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="margin-top:0.45rem;display:flex;flex-direction:column;gap:0.35rem">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <input type="hidden" name="guest_phone" value="{{ r.guest_phone or '' }}">
+          <input type="hidden" name="unit_identifier" value="{{ r.unit_identifier or '' }}">
+          <input type="text" name="notes" placeholder="Activation note (optional)"
+                 style="width:100%;padding:6px 8px;font-size:0.78rem">
+          <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-start">Activate guest bot</button>
+        </form>
+      </td>
+      <td style="font-size:0.72rem;color:var(--text-3);white-space:nowrap">
+        {% if r.pre_arrival_sent %}✓ pre-arrival<br>{% endif %}
+        {% if r.cleaner_brief_sent %}✓ cleaner<br>{% endif %}
+        {% if r.checkout_msg_sent %}✓ checkout<br>{% endif %}
+        {% if r.review_reminder_sent %}✓ review<br>{% endif %}
+        {% if not r.pre_arrival_sent and not r.cleaner_brief_sent and not r.checkout_msg_sent and not r.review_reminder_sent %}
+        <span style="color:#adb5bd">pending</span>
+        {% endif %}
+      </td>
+      <td style="white-space:nowrap">
+        {% if r.checkin_token %}
+          <a href="/checkin/{{ r.checkin_token }}" target="_blank"
+             class="btn btn-outline btn-sm" title="Open guest check-in portal">🔗 View</a>
+        {% else %}
+          <form method="post" action="/reservations/{{ r.id }}/checkin-link" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="btn btn-outline btn-sm" title="Generate check-in link for guest">
+              + Link
+            </button>
+          </form>
+        {% endif %}
+        <div style="margin-top:0.4rem;display:flex;gap:0.35rem;flex-wrap:wrap">
+          <a href="/reservations/{{ r.id }}/timeline" class="btn btn-outline btn-sm">Timeline</a>
+          {% if issue_counts.get(r.id) %}
+          <span class="chip bad">{{ issue_counts.get(r.id) }} open issue{% if issue_counts.get(r.id) != 1 %}s{% endif %}</span>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
 </div>
+
+<!-- Pagination -->
+{% if pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}<a href="/reservations?page={{ page - 1 }}{% if selected_property %}&property={{ selected_property|replace(' ', '%20') }}{% endif %}">← Prev</a>{% endif %}
+  {% for p in range(1, pages + 1) %}
+    <a href="/reservations?page={{ p }}{% if selected_property %}&property={{ selected_property|replace(' ', '%20') }}{% endif %}" class="{% if p == page %}active{% endif %}">{{ p }}</a>
+  {% endfor %}
+  {% if page < pages %}<a href="/reservations?page={{ page + 1 }}{% if selected_property %}&property={{ selected_property|replace(' ', '%20') }}{% endif %}">Next →</a>{% endif %}
 </div>
-<div class="mt-6 h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
-<div class="h-full bg-gradient-to-r from-primary to-secondary w-[92.4%] rounded-full shadow-[0px_0px_8px_rgba(174,198,255,0.4)]"></div>
+{% endif %}
+
+{% else %}
+<div class="empty">
+  <div class="empty-icon">📋</div>
+  <p>No reservations imported yet.</p>
+  <p style="font-size:0.82rem;margin-top:0.4rem">Upload your Airbnb CSV above to get started.</p>
 </div>
+{% endif %}
+
+{% block scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('copy-link-btn')) {
+        const link = e.target.getAttribute('data-link');
+        navigator.clipboard.writeText(link);
+        const oldText = e.target.textContent;
+        e.target.textContent = 'Copied!';
+        setTimeout(() => e.target.textContent = oldText, 1500);
+    }
+});
+</script>
+{%- endblock %}
 </div>
-<div class="col-span-12 lg:col-span-8 glass-panel p-6 rounded-2xl border border-[#424752]/15 flex items-center justify-between">
-<div>
-<h4 class="text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500 mb-2">Revenue Growth</h4>
-<p class="text-slate-400 text-sm max-w-md">Your portfolio has generated $24.8k this month, exceeding the seasonal average by 12% across all 8 properties.</p>
-</div>
-<div class="flex items-center gap-4">
-<div class="text-right">
-<div class="text-2xl font-extrabold text-on-surface">$24,802</div>
-<div class="text-xs text-slate-500">Gross Earnings</div>
-</div>
-<div class="w-px h-12 bg-[#424752]/30"></div>
-<div class="text-right">
-<div class="text-2xl font-extrabold text-secondary">18</div>
-<div class="text-xs text-slate-500">Upcoming Check-ins</div>
-</div>
-</div>
-</div>
-</section>
 </main>
 {%- endblock %}
 {%- endblock %}
