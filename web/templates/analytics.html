@@ -1,435 +1,311 @@
-{% extends "base.html" %}
+{%- extends "base.html" %}
+{%- block title %}Analytics — HostAI{%- endblock %}
 
-{% block title %}Analytics — HostAI{% endblock %}
-
-{% block content %}
-<div class="analytics-page">
-  <div class="page-header">
-    <h1>Analytics Dashboard</h1>
-
-    <div class="filters">
-      <div class="date-range">
-        <a href="?range_days=7" {% if range_days == 7 %}class="active"{% endif %}>7 days</a>
-        <a href="?range_days=30" {% if range_days == 30 %}class="active"{% endif %}>30 days</a>
-        <a href="?range_days=90" {% if range_days == 90 %}class="active"{% endif %}>90 days</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- KPI Cards -->
-  <div class="kpi-cards">
-    <div class="kpi-card">
-      <div class="kpi-value">{{ kpis['drafts']['total'] | default(0) }}</div>
-      <div class="kpi-label">Total Drafts</div>
-      <div class="kpi-subtext">in selected period</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ '%.0f'|format(kpis['drafts']['approval_rate'] | default(0)) }}%</div>
-      <div class="kpi-label">Approval Rate</div>
-      <div class="kpi-subtext">of pending drafts approved</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ '%.0f'|format(((kpis['drafts']['avg_response_seconds'] or 0) / 60)) }}m</div>
-      <div class="kpi-label">Avg Response</div>
-      <div class="kpi-subtext">time to approve</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ kpis['reservations']['active_stays'] | default(0) }}</div>
-      <div class="kpi-label">Active Stays</div>
-      <div class="kpi-subtext">in progress</div>
-    </div>
-  </div>
-
-  <!-- Guest Contact Stats -->
-  <div class="kpi-cards" style="margin-top: 2rem;">
-    <h3 style="grid-column: 1 / -1; margin: 0 0 1rem 0; font-size: 1rem;">Guest Check-ins</h3>
-    <div class="kpi-card">
-      <div class="kpi-value">{{ guest_contact_stats.total_guests | default(0) }}</div>
-      <div class="kpi-label">Total Guests</div>
-      <div class="kpi-subtext">added for check-in</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ guest_contact_stats.sent_pct | default(0) }}%</div>
-      <div class="kpi-label">Welcome Sent</div>
-      <div class="kpi-subtext">{{ guest_contact_stats.welcome_sent | default(0) }} guests</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ guest_contact_stats.welcome_pending | default(0) }}</div>
-      <div class="kpi-label">Pending</div>
-      <div class="kpi-subtext">not yet sent</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ guest_contact_stats.welcome_failed | default(0) }}</div>
-      <div class="kpi-label">Failed</div>
-      <div class="kpi-subtext">delivery errors</div>
-    </div>
-  </div>
-
-  <!-- Auto-Send Stats -->
-  <div class="kpi-cards" style="margin-top: 2rem;">
-    <h3 style="grid-column: 1 / -1; margin: 0 0 1rem 0; font-size: 1rem;">🤖 Message Automation</h3>
-    <div class="kpi-card">
-      <div class="kpi-value">{{ auto_send_stats.auto_send_pct | default(0) }}%</div>
-      <div class="kpi-label">Auto-Sent</div>
-      <div class="kpi-subtext">{{ auto_send_stats.auto_sent | default(0) }} of {{ auto_send_stats.total | default(0) }}</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ auto_send_stats.pending | default(0) }}</div>
-      <div class="kpi-label">Pending Review</div>
-      <div class="kpi-subtext">need your decision</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ auto_send_stats.total | default(0) }}</div>
-      <div class="kpi-label">Total Messages</div>
-      <div class="kpi-subtext">in this period</div>
-    </div>
-  </div>
-
-  <!-- Charts Section -->
-  <script src="https://unpkg.com/chart.js@4/dist/chart.umd.min.js"></script>
-
-  <div class="charts-grid">
-    <div class="chart-container">
-      <h3>Daily Draft Volume</h3>
-      <canvas id="dailyVolumeChart"></canvas>
-    </div>
-
-    <div class="chart-container">
-      <h3>Approval Rate Trend</h3>
-      <canvas id="approvalRateChart"></canvas>
-    </div>
-
-    <div class="chart-container">
-      <h3>Message Channels</h3>
-      <canvas id="channelBreakdownChart"></canvas>
-    </div>
-
-    <div class="chart-container">
-      <h3>Guest Sentiment</h3>
-      <canvas id="sentimentChart"></canvas>
-    </div>
-  </div>
-
-  <!-- Historical Snapshots -->
-  {% if snapshots %}
-  <div class="snapshots-section">
-    <h2>Historical KPI Snapshots</h2>
-    <div class="snapshots-table">
-      <div class="snapshot-header">
-        <div>Date</div>
-        <div>Drafts</div>
-        <div>Approval Rate</div>
-        <div>Avg Response</div>
-      </div>
-      {% for snap in snapshots | reverse %}
-      <div class="snapshot-row">
-        <div>{{ snap.period_start.strftime('%b %d, %Y') }}</div>
-        <div>{{ snap.total_drafts }}</div>
-        <div>{{ '%.0f'|format(snap.approval_rate | default(0)) }}%</div>
-        <div>{{ '%.0f'|format(((snap.avg_response_seconds or 0) / 60)) }}m</div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-</div>
-
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#121319",
+              "tertiary-fixed-dim": "#ffb960",
+              "tertiary-container": "#ca8103",
+              "on-error": "#690005",
+              "on-tertiary-fixed": "#2a1700",
+              "secondary-fixed-dim": "#00daf3",
+              "primary": "#aec6ff",
+              "surface-container": "#1e1f26",
+              "tertiary": "#ffb960",
+              "primary-fixed-dim": "#aec6ff",
+              "on-tertiary": "#472a00",
+              "inverse-on-surface": "#2f3037",
+              "surface": "#121319",
+              "secondary": "#bdf4ff",
+              "outline": "#8d909e",
+              "surface-variant": "#34343b",
+              "inverse-surface": "#e3e1eb",
+              "on-primary-container": "#00275e",
+              "background": "#121319",
+              "error-container": "#93000a",
+              "surface-bright": "#383940",
+              "primary-fixed": "#d8e2ff",
+              "primary-container": "#5d8ef1",
+              "on-secondary-container": "#00616d",
+              "secondary-container": "#00e3fd",
+              "on-surface": "#e3e1eb",
+              "surface-container-highest": "#34343b",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-secondary-fixed": "#001f24",
+              "surface-container-lowest": "#0d0e14",
+              "on-tertiary-container": "#3e2400",
+              "surface-container-low": "#1a1b22",
+              "on-surface-variant": "#c3c6d4",
+              "surface-container-high": "#292930",
+              "on-secondary": "#00363d",
+              "error": "#ffb4ab",
+              "secondary-fixed": "#9cf0ff",
+              "on-primary-fixed-variant": "#004397",
+              "inverse-primary": "#1e5bba",
+              "on-primary-fixed": "#001a43",
+              "surface-tint": "#aec6ff",
+              "on-error-container": "#ffdad6",
+              "on-primary": "#002e6b",
+              "outline-variant": "#424752",
+              "on-background": "#e3e1eb",
+              "tertiary-fixed": "#ffddb8",
+              "on-tertiary-fixed-variant": "#653e00"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
 <style>
-  .analytics-page {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-  }
+        body {
+            background-color: #08090F;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #e3e1eb;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
+        }
+    </style>
+{%- endblock %}
 
-  .page-header {
-    margin-bottom: 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .page-header h1 {
-    font-size: 2rem;
-    margin: 0;
-  }
+{%- block nav %}{%- endblock %}
 
-  .filters {
-    display: flex;
-    gap: 1rem;
-  }
-  .date-range {
-    display: flex;
-    gap: 0.5rem;
-    background: var(--surface, #fff);
-    padding: 0.5rem;
-    border-radius: 8px;
-    border: 1px solid var(--border, #e0e0e0);
-  }
-  .date-range a {
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-2, #666);
-    text-decoration: none;
-    transition: all 150ms ease;
-  }
-  .date-range a:hover {
-    background: var(--bg-2, #f5f5f5);
-  }
-  .date-range a.active {
-    background: var(--accent, var(--accent));
-    color: white;
-  }
-
-  .kpi-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  .kpi-card {
-    background: var(--surface, #fff);
-    border: 1px solid var(--border, #e0e0e0);
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  }
-
-  .kpi-value {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--accent, var(--accent));
-    margin-bottom: 0.5rem;
-  }
-
-  .kpi-label {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-1, #000);
-    margin-bottom: 0.3rem;
-  }
-
-  .kpi-subtext {
-    font-size: 0.8rem;
-    color: var(--text-3, #999);
-  }
-
-  .charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 2rem;
-    margin-bottom: 3rem;
-  }
-
-  .chart-container {
-    background: var(--surface, #fff);
-    border: 1px solid var(--border, #e0e0e0);
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  }
-
-  .chart-container h3 {
-    font-size: 1rem;
-    margin-bottom: 1rem;
-    color: var(--text-1, #000);
-  }
-
-  .chart-container canvas {
-    max-height: 300px;
-  }
-
-  .snapshots-section {
-    margin-top: 3rem;
-  }
-
-  .snapshots-section h2 {
-    font-size: 1.3rem;
-    margin-bottom: 1rem;
-    color: var(--text-1, #000);
-  }
-
-  .snapshots-table {
-    background: var(--surface, #fff);
-    border: 1px solid var(--border, #e0e0e0);
-    border-radius: 12px;
-    overflow: hidden;
-  }
-
-  .snapshot-header,
-  .snapshot-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1.2fr 1.2fr;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--border, #e0e0e0);
-    font-size: 0.9rem;
-  }
-
-  .snapshot-header {
-    background: var(--bg-2, #f5f5f5);
-    font-weight: 600;
-    color: var(--text-2, #666);
-  }
-
-  .snapshot-row:last-child {
-    border-bottom: none;
-  }
-
-  .snapshot-row {
-    color: var(--text-1, #000);
-  }
-
-  .snapshot-row:hover {
-    background: var(--bg-2, #f9f9f9);
-  }
-
-  @media (max-width: 768px) {
-    .page-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1rem;
-    }
-
-    .charts-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .snapshot-header,
-    .snapshot-row {
-      grid-template-columns: 1fr;
-      gap: 0.5rem;
-    }
-  }
-</style>
-
-<script nonce="{{ request.state.csp_nonce }}">
-  const snapshots = {{ snapshots_data | tojson }} || [];
-
-  // Extract dates and values from snapshots
-  const dates = snapshots.map(s => new Date(s.period_start).toLocaleDateString());
-  const draftsData = snapshots.map(s => s.total_drafts || 0);
-  const approvalData = snapshots.map(s => ((s.approval_rate || 0) * 100).toFixed(1));
-
-  // Daily Volume Chart
-  const dailyCtx = document.getElementById('dailyVolumeChart')?.getContext('2d');
-  if (dailyCtx) {
-    new Chart(dailyCtx, {
-      type: 'bar',
-      data: {
-        labels: dates || ['Day 1', 'Day 2', 'Day 3'],
-        datasets: [{
-          label: 'Drafts',
-          data: draftsData || [4, 6, 3],
-          backgroundColor: 'rgba(79, 142, 247, 0.85)',
-          borderColor: 'rgba(232, 160, 32, 1)',
-          borderWidth: 1,
-          borderRadius: 4,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } },
-      },
-    });
-  }
-
-  // Approval Rate Chart
-  const approvalCtx = document.getElementById('approvalRateChart')?.getContext('2d');
-  if (approvalCtx) {
-    new Chart(approvalCtx, {
-      type: 'line',
-      data: {
-        labels: dates || ['Day 1', 'Day 2', 'Day 3'],
-        datasets: [{
-          label: 'Approval Rate %',
-          data: approvalData || [75, 80, 72],
-          borderColor: 'rgba(34, 197, 94, 1)',
-          backgroundColor: 'rgba(34, 197, 94, 0.1)',
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: 'rgba(34, 197, 94, 1)',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { min: 0, max: 100 } },
-      },
-    });
-  }
-
-  // Channel Breakdown Chart
-  const channelCtx = document.getElementById('channelBreakdownChart')?.getContext('2d');
-  if (channelCtx) {
-    new Chart(channelCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['WhatsApp', 'Email', 'SMS'],
-        datasets: [{
-          data: [45, 30, 25],
-          backgroundColor: [
-            'rgba(79, 142, 247, 0.85)',
-            'rgba(255, 77, 109, 0.8)',
-            'rgba(34, 197, 94, 0.8)',
-          ],
-          borderColor: ['#fff', '#fff', '#fff'],
-          borderWidth: 2,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: { legend: { position: 'bottom' } },
-      },
-    });
-  }
-
-  // Sentiment Chart
-  const sentimentCtx = document.getElementById('sentimentChart')?.getContext('2d');
-  if (sentimentCtx) {
-    new Chart(sentimentCtx, {
-      type: 'bar',
-      data: {
-        labels: ['Week 1', 'Week 2', 'Week 3'],
-        datasets: [
-          {
-            label: 'Positive',
-            data: [20, 22, 19],
-            backgroundColor: 'rgba(34, 197, 94, 0.8)',
-          },
-          {
-            label: 'Neutral',
-            data: [30, 28, 32],
-            backgroundColor: 'rgba(79, 142, 247, 0.85)',
-          },
-          {
-            label: 'Negative',
-            data: [5, 4, 6],
-            backgroundColor: 'rgba(255, 77, 109, 0.8)',
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        indexAxis: 'x',
-        scales: { x: { stacked: false }, y: { stacked: false } },
-      },
-    });
-  }
-</script>
-{% endblock %}
+{%- block main_wrapper %}
+{%- block content %}
+<!-- SideNavBar -->
+<aside class="w-[260px] h-screen fixed left-0 top-0 border-r border-[#424752]/15 bg-[#08090F]/60 backdrop-blur-xl shadow-[0px_0px_40px_rgba(174,198,255,0.08)] flex flex-col h-full py-8 px-6 z-50">
+<div class="mb-10 px-2">
+<h1 class="text-xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-[#aec6ff] to-[#5b8def]">HostAI</h1>
+<p class="text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500 mt-1">Premium Management</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors font-['Plus_Jakarta_Sans'] font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors font-['Plus_Jakarta_Sans'] font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="#">
+<span class="material-symbols-outlined text-[20px]">calendar_month</span>
+<span>Reservations</span>
+</a>
+<!-- Active Tab: Analytics -->
+<a class="flex items-center gap-3 px-4 py-3 text-[#aec6ff] font-bold bg-[#5d8ef1]/10 backdrop-blur-md rounded-md font-['Plus_Jakarta_Sans'] text-[0.875rem] tracking-tight transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span>Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors font-['Plus_Jakarta_Sans'] font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="mt-auto space-y-2 pt-6 border-t border-[#424752]/15">
+<button class="w-full bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-[#002e6b] font-bold py-3 rounded-md mb-6 active:scale-95 transition-transform text-sm">
+                New Booking
+            </button>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors text-[0.875rem]" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+<span>Help</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors text-[0.875rem]" href="#">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[260px] min-h-screen">
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-16 flex justify-between items-center px-10 z-40 bg-transparent">
+<div class="flex items-center gap-4">
+<h2 class="font-['Plus_Jakarta_Sans'] font-extrabold text-2xl text-[#aec6ff]">Analytics</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm group-focus-within:text-[#aec6ff]">search</span>
+<input class="bg-surface-container-lowest border-none rounded-full py-2 pl-10 pr-4 text-sm w-64 focus:ring-1 focus:ring-[#aec6ff]/40 transition-all placeholder:text-slate-500" placeholder="Search data..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-slate-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-[#aec6ff]/20">
+<img class="w-full h-full object-cover" data-alt="close-up portrait of a professional male business executive in dark lighting with blue rim light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvBHhPxCIdEXMJS9beEmmCuGpQLItZUTWuQaBQcD__DXrvLNd5foBBpSuILeznoStfkNDltRNZb_TX4mpo9oHwe8lughEbHKe3ftDgO127XjDynTIqnl3iEUDrJpWnfm3j-_D9HWr7zwhEgeJKw8W-nkhS5ocHjA2AF9WdM6kv7BnM-Ghxpz6cglqt5eVGgtRS67ncOeuL2ic7Xgow4XC4eD68iX25mB7nArvoK5PRE9oPq3aE-c30eJXicmmTHBYBcw3trOac28xe"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Scrollable Dashboard Content -->
+<div class="pt-24 pb-16 px-10 max-w-7xl mx-auto space-y-10">
+<!-- Metric Summary Cards (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="glass-card p-6 rounded-xl flex flex-col justify-between group">
+<div class="flex justify-between items-start">
+<p class="text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500">Occupancy Rate</p>
+<span class="material-symbols-outlined text-primary text-[20px]">trending_up</span>
+</div>
+<div class="mt-4">
+<h3 class="text-4xl font-extrabold text-[#aec6ff]">94%</h3>
+<p class="text-xs text-secondary-fixed-dim mt-2 font-medium">+2.4% from last month</p>
+</div>
+</div>
+<div class="glass-card p-6 rounded-xl flex flex-col justify-between border-primary/20 bg-primary-container/5">
+<div class="flex justify-between items-start">
+<p class="text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500">AI Resolution Accuracy</p>
+<span class="material-symbols-outlined text-secondary-container text-[20px]">auto_awesome</span>
+</div>
+<div class="mt-4">
+<h3 class="text-4xl font-extrabold text-[#aec6ff]">98.2%</h3>
+<p class="text-xs text-slate-400 mt-2">Target: 95.0%</p>
+</div>
+</div>
+<div class="glass-card p-6 rounded-xl flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<p class="text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500">Avg. Response Time</p>
+<span class="material-symbols-outlined text-error text-[20px]">timer</span>
+</div>
+<div class="mt-4">
+<h3 class="text-4xl font-extrabold text-[#aec6ff]">45s</h3>
+<p class="text-xs text-slate-400 mt-2 font-medium">12s faster than average</p>
+</div>
+</div>
+</div>
+<!-- Main Charts Area -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Occupancy Trends (Line Chart) -->
+<div class="lg:col-span-8 glass-card rounded-xl p-8 min-h-[450px] relative overflow-hidden">
+<div class="flex justify-between items-center mb-10">
+<div>
+<h4 class="text-lg font-bold text-white">Occupancy Trends</h4>
+<p class="text-sm text-slate-500">Performance over the last 12 months</p>
+</div>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-surface-container-high rounded-full text-[0.6875rem] font-bold uppercase text-slate-400">Monthly</span>
+<span class="px-3 py-1 bg-primary/10 rounded-full text-[0.6875rem] font-bold uppercase text-primary border border-primary/20">Yearly</span>
+</div>
+</div>
+<!-- Line Chart Visual Representation -->
+<div class="relative h-[280px] w-full flex items-end">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 800 200">
+<defs>
+<lineargradient id="lineGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#aec6ff" stop-opacity="0.5"></stop>
+<stop offset="100%" stop-color="#aec6ff" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,150 Q50,140 100,160 T200,120 T300,80 T400,100 T500,60 T600,40 T700,70 T800,30" fill="none" stroke="#aec6ff" stroke-linecap="round" stroke-width="4"></path>
+<path d="M0,150 Q50,140 100,160 T200,120 T300,80 T400,100 T500,60 T600,40 T700,70 T800,30 V200 H0 Z" fill="url(#lineGradient)"></path>
+<!-- Interaction Dots -->
+<circle cx="500" cy="60" fill="#08090F" r="6" stroke="#aec6ff" stroke-width="3"></circle>
+</svg>
+<!-- Tooltip Placeholder -->
+<div class="absolute left-[510px] top-[10px] glass-card px-3 py-2 rounded-lg border border-primary/30">
+<p class="text-[0.6rem] uppercase text-slate-400 font-bold">August Peak</p>
+<p class="text-sm font-bold text-white">96.8%</p>
+</div>
+</div>
+<!-- X-Axis Labels -->
+<div class="flex justify-between mt-6 px-2 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-600">
+<span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span>
+</div>
+</div>
+<!-- Weekly Guest Volume (Bar Chart) -->
+<div class="lg:col-span-4 glass-card rounded-xl p-8 flex flex-col">
+<div class="mb-10">
+<h4 class="text-lg font-bold text-white">Weekly Volume</h4>
+<p class="text-sm text-slate-500">Guest check-ins per day</p>
+</div>
+<div class="flex-1 flex items-end justify-between gap-3 px-2">
+<!-- Bar 1 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[40%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">M</span>
+</div>
+<!-- Bar 2 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[55%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">T</span>
+</div>
+<!-- Bar 3 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[45%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">W</span>
+</div>
+<!-- Bar 4 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-primary-container rounded-t-sm h-[85%] relative">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 text-[0.6rem] text-primary font-bold">142</div>
+</div>
+<span class="text-[0.6rem] font-bold text-primary">T</span>
+</div>
+<!-- Bar 5 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[70%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">F</span>
+</div>
+<!-- Bar 6 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[95%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">S</span>
+</div>
+<!-- Bar 7 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[60%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">S</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-[#424752]/15">
+<div class="flex justify-between items-center text-sm">
+<span class="text-slate-500">Average Stay</span>
+<span class="text-white font-bold">3.4 Days</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Insights Section (Asymmetric Grid) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="glass-card rounded-xl p-6 flex gap-6 items-center">
+<div class="w-16 h-16 rounded-full bg-secondary-container/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-secondary-container text-3xl">lightbulb</span>
+</div>
+<div>
+<h5 class="font-bold text-white">AI Strategy Insight</h5>
+<p class="text-sm text-slate-400 mt-1">Properties with high AI resolution (98%+) see 14% higher repeat booking rates. Consider expanding AI automation to check-out procedures.</p>
+</div>
+</div>
+<div class="glass-card rounded-xl p-6 overflow-hidden relative">
+<div class="flex justify-between items-center relative z-10">
+<div>
+<h5 class="font-bold text-white">Revenue Impact</h5>
+<p class="text-sm text-slate-400 mt-1">Smart pricing increased yield by $4,200 this week.</p>
+</div>
+<button class="bg-[#292930]/60 p-2 rounded-full text-primary hover:bg-[#aec6ff]/10">
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<!-- Background Decoration -->
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl"></div>
+</div>
+</div>
+</div>
+</main>
+{%- endblock %}
+{%- endblock %}
