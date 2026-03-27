@@ -93,6 +93,44 @@ body {
 
 {%- block main_wrapper %}
 {%- block content %}
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#121319]/80 backdrop-blur-xl border-b border-white/10 shadow-[0_4px_30px_rgba(91,141,239,0.15)] flex h-20 items-center">
+<div class="flex justify-between items-center w-full px-4 md:px-8 max-w-7xl mx-auto">
+    <!-- Logo -->
+    <div class="flex-1 flex items-center">
+        <a href="/" class="flex items-center gap-2 text-2xl font-extrabold text-white tracking-tight hover:opacity-80 transition-opacity">
+            <span class="material-symbols-outlined text-[#5B8DEF] text-3xl" data-icon="hub">hub</span>
+            HostAI
+        </a>
+    </div>
+    
+    <!-- Links (Center) -->
+    <div class="hidden md:flex flex-1 justify-center items-center gap-10 font-['Plus_Jakarta_Sans'] font-semibold text-sm">
+        <a class="text-white hover:text-[#5B8DEF] transition-colors" href="/#features">Features</a>
+        <a class="text-slate-400 hover:text-white transition-colors" href="/pricing">Pricing</a>
+    </div>
+
+    <!-- Actions (Right) -->
+    <div class="hidden sm:flex flex-1 justify-end items-center gap-5">
+        {% if request.cookies.get("session") %}
+        <a href="/dashboard" class="bg-[#5B8DEF] hover:bg-[#3B6DDF] text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(91,141,239,0.4)] hover:scale-105 transition-all outline-none whitespace-nowrap">Dashboard &rarr;</a>
+        {% else %}
+        <a href="/login" class="text-slate-300 hover:text-white text-sm font-semibold transition-colors hidden lg:block">Sign In</a>
+        <a href="/signup" class="bg-[#5B8DEF] text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(91,141,239,0.4)] hover:bg-[#3B6DDF] transition-all outline-none whitespace-nowrap">Get Started</a>
+        {% endif %}
+    </div>
+
+    <!-- Mobile Menu Button -->
+    <div class="flex sm:hidden flex-1 justify-end items-center">
+        {% if request.cookies.get("session") %}
+        <a href="/dashboard" class="text-[#5B8DEF] font-bold text-sm">Dashboard &rarr;</a>
+        {% else %}
+        <a href="/login" class="text-slate-300 text-sm font-semibold mr-4">Log in</a>
+        <a href="/signup" class="text-[#5B8DEF] font-bold text-sm">Sign Up</a>
+        {% endif %}
+    </div>
+</div>
+</nav>
 {% if error %}
 <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-[#ffb4ab]/10 border border-[#ffb4ab]/30 text-[#ffb4ab] text-sm px-6 py-3 rounded-xl backdrop-blur-lg">
   {{ error }}
@@ -106,7 +144,7 @@ body {
 <div class="absolute bottom-[20%] right-[30%] w-80 h-80 bg-secondary-container glow-orb rounded-full"></div>
 </div>
 <!-- Main Content Container -->
-<main class="relative z-10 w-full max-w-md px-6">
+<main class="relative z-10 w-full max-w-md px-6 py-12 mx-auto mt-16 md:mt-24">
 <!-- Center Card -->
 <div class="glass-card backdrop-blur-2xl rounded-xl p-8 md:p-10 flex flex-col items-center">
 <!-- Branding -->
