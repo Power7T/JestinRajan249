@@ -1,185 +1,71 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verify Email — HostAI</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <meta name="description" content="Verify your HostAI email address.">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com?plugins=forms" nonce="{{ request.state.csp_nonce }}"></script>
+  <script nonce="{{ request.state.csp_nonce }}">
+    tailwind.config = {
+      darkMode: "class",
+      theme: { extend: { colors: {
+        "primary": "#aec6ff", "primary-container": "#5d8ef1", "on-primary": "#002e6b",
+        "surface": "#121319", "surface-container": "#1e1f26", "surface-container-lowest": "#0d0e14",
+        "on-surface": "#e3e1eb", "on-surface-variant": "#c3c6d4", "outline": "#424752",
+        "error": "#ffb4ab", "tertiary": "#ffb960",
+      }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
+    }
+  </script>
   <style>
-    :root {
-      --bg: #060911; --bg-2: #0C1018; --surface: #0D1220;
-      --border: rgba(80,120,220,0.1); --border-2: rgba(80,120,220,0.2);
-      --accent: #4F8EF7; --accent-2: #93BEFF; --accent-glow: rgba(79,142,247,0.22);
-      --rose: #9B7FE8;
-      --text-1: #EEF2FF; --text-2: #8898BB; --text-3: #445070;
-      --danger: #F87171; --danger-bg: rgba(248,113,113,0.08); --danger-border: rgba(248,113,113,0.2);
-      --success: #34D399; --success-bg: rgba(52,211,153,0.08); --success-border: rgba(52,211,153,0.2);
-      --radius: 10px; --radius-sm: 6px; --t: 150ms ease;
-    }
-    [data-theme="light"] {
-      --bg: #F8FAFF; --bg-2: #EFF3FB; --surface: #FFFFFF;
-      --border: rgba(60,90,180,0.1); --border-2: rgba(60,90,180,0.18);
-      --text-1: #0D1629; --text-2: #475A82; --text-3: #8A99BB;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Figtree', -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text-1);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-      -webkit-font-smoothing: antialiased;
-      position: relative;
-      overflow-x: hidden;
-    }
-    body::before {
-      content: '';
-      position: fixed;
-      top: -20%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 80vw;
-      height: 60vh;
-      background: radial-gradient(ellipse at 40% 50%, rgba(245,166,35,0.1) 0%, rgba(124,111,255,0.06) 45%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-    .wrap {
-      width: 100%;
-      max-width: 440px;
-      text-align: center;
-      position: relative;
-      z-index: 1;
-      animation: fadeUp 0.4s ease both;
-    }
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-
-    .brand { margin-bottom: 1.75rem; }
-    .brand-icon {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 48px; height: 48px;
-      background: linear-gradient(135deg, var(--accent), var(--rose));
-      border-radius: 14px;
-      font-size: 22px;
-      margin-bottom: 0.7rem;
-      box-shadow: 0 8px 28px var(--accent-glow);
-    }
-    .brand h1 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 2rem;
-      box-shadow: 0 8px 48px rgba(0,0,0,0.45);
-      position: relative;
-      overflow: hidden;
-    }
-    .card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(79,142,247,0.04) 0%, transparent 60%);
-      pointer-events: none;
-    }
-
-    .status-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
-    h2 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 0.75rem; letter-spacing: -0.02em; }
-    p { color: var(--text-2); font-size: 0.875rem; line-height: 1.6; margin-bottom: 1rem; }
-
-    .alert {
-      padding: 0.65rem 0.9rem;
-      border-radius: var(--radius-sm);
-      font-size: 0.8rem;
-      margin-bottom: 1.25rem;
-      text-align: left;
-    }
-    .alert-success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
-    .alert-error { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
-
-    .btn {
-      display: inline-block;
-      padding: 10px 24px;
-      border-radius: var(--radius-sm);
-      font-size: 0.875rem;
-      font-weight: 700;
-      text-decoration: none;
-      font-family: inherit;
-      transition: all var(--t);
-      border: none;
-      cursor: pointer;
-    }
-    .btn-primary { background: linear-gradient(135deg, var(--accent), #2B5FC8); color: #060911; box-shadow: 0 4px 18px var(--accent-glow); }
-    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--accent-glow); }
-    .btn-secondary { background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border-2); }
-    .btn-secondary:hover { background: var(--bg); }
-
-    .theme-toggle {
-      position: fixed; top: 1rem; right: 1rem;
-      width: 34px; height: 34px;
-      border-radius: 9px;
-      border: 1px solid var(--border-2);
-      background: var(--surface);
-      color: var(--text-2);
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 15px; z-index: 10;
-    }
+    body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass { background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border: 1px solid rgba(174,198,255,0.1); }
+    .glow-ring { box-shadow: 0 0 80px rgba(91,141,239,0.12); }
+    .btn-primary { background: linear-gradient(135deg,#5B8DEF,#aec6ff); color: #002e6b; }
+    .input-obsidian { background: #0d0e14; border: 1px solid rgba(66,71,82,0.5); color: #e3e1eb; }
+    .input-obsidian:focus { outline: none; border-color: #5B8DEF; box-shadow: 0 0 0 2px rgba(91,141,239,0.15); }
+    .alert-error { background: rgba(255,180,171,0.1); border: 1px solid rgba(255,180,171,0.3); color: #ffb4ab; border-radius:0.5rem; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.84rem; }
+    .alert-success { background: rgba(39,201,63,0.1); border: 1px solid rgba(39,201,63,0.3); color: #27c93f; border-radius:0.5rem; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.84rem; }
+    
   </style>
 </head>
-<body>
-  <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme"><span id="theme-icon">☀️</span></button>
-
-  <div class="wrap">
-    <div class="brand">
-      <div class="brand-icon">🏠</div>
-      <h1>HostAI</h1>
+<body class="min-h-screen flex flex-col">
+  <!-- Nav -->
+  <nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#08090F]/80 backdrop-blur-xl">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="/" class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#aec6ff] to-[#5B8DEF] tracking-tight">HostAI</a>
+      <a href="/login" class="text-sm text-slate-400 hover:text-white transition-colors">Sign in &rarr;</a>
     </div>
-
-    <div class="card">
-      {% if success %}
-        <div class="status-icon">✅</div>
-        <h2>Email verified!</h2>
-        <div class="alert alert-success">Your email address has been confirmed. Your account is fully active.</div>
-        <a href="/dashboard" class="btn btn-primary">Go to Dashboard →</a>
-      {% elif expired %}
-        <div class="status-icon">⏰</div>
-        <h2>Link expired</h2>
-        <div class="alert alert-error">This verification link has expired (links are valid for 24 hours).</div>
-        <p>Sign in and we'll send you a new verification email from your account settings.</p>
-        <a href="/login" class="btn btn-secondary">Sign in</a>
-      {% else %}
-        <div class="status-icon">❌</div>
-        <h2>Invalid link</h2>
-        <div class="alert alert-error">This verification link is invalid or has already been used.</div>
-        <p>If you need help, contact support.</p>
-        <a href="/login" class="btn btn-secondary">Back to login</a>
-      {% endif %}
+  </nav>
+  <!-- Ambient glow -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden">
+    <div class="absolute top-[-20%] left-[30%] w-[600px] h-[600px] bg-[#5B8DEF]/8 rounded-full blur-[120px]"></div>
+  </div>
+  <!-- Content -->
+  <div class="flex-1 flex items-center justify-center px-4 pt-24 pb-12">
+    <div class="w-full max-w-md">
+      <div class="glass glow-ring rounded-3xl p-10 text-center">
+  <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center mx-auto mb-6">
+    <svg class="w-8 h-8 text-[#002e6b]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+  </div>
+  {% if status == "verified" %}
+  <h1 class="text-2xl font-extrabold text-white mb-2">Email confirmed!</h1>
+  <p class="text-slate-400 text-sm mb-6">Your account is fully active. You're ready to go.</p>
+  <div class="alert-success mb-4">✓ Your email address has been confirmed. Your account is fully active.</div>
+  <a href="/dashboard" class="inline-block btn-primary font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-all">Go to Dashboard &rarr;</a>
+  {% elif status == "expired" %}
+  <h1 class="text-2xl font-extrabold text-white mb-2">Link expired</h1>
+  <p class="text-slate-400 text-sm mb-4">Verification links are valid for 24 hours.</p>
+  <div class="alert-error mb-4">This verification link has expired. Sign in and request a new one.</div>
+  <a href="/login" class="inline-block text-primary text-sm hover:underline">&larr; Back to sign in</a>
+  {% else %}
+  <h1 class="text-2xl font-extrabold text-white mb-2">Invalid link</h1>
+  <div class="alert-error mb-4">This verification link is invalid or has already been used.</div>
+  <a href="/login" class="inline-block text-primary text-sm hover:underline">&larr; Back to sign in</a>
+  {% endif %}
+</div>
     </div>
   </div>
-
-  <script nonce="{{ request.state.csp_nonce }}">
-    const THEME_KEY = 'hostai-theme';
-    function applyTheme(t) {
-      document.documentElement.setAttribute('data-theme', t);
-      const icon = document.getElementById('theme-icon');
-      if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
-      localStorage.setItem(THEME_KEY, t);
-    }
-    (function() {
-      const saved = localStorage.getItem(THEME_KEY);
-      if (saved) applyTheme(saved);
-      const btn = document.getElementById('theme-toggle-btn');
-      if (btn) btn.addEventListener('click', function() {
-        const cur = document.documentElement.getAttribute('data-theme');
-        applyTheme(cur === 'dark' ? 'light' : 'dark');
-      });
-    })();
-  </script>
 </body>
 </html>

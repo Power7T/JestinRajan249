@@ -1,8 +1,124 @@
 {% extends "base.html" %}
+{% block title %}Admin — Pricing — HostAI{% endblock %}
 
-{% block title %}Admin Pricing — HostAI{% endblock %}
+{% block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+  darkMode: "class",
+  theme: { extend: { colors: {
+    "primary": "#aec6ff","primary-container":"#5d8ef1","on-primary":"#002e6b",
+    "surface":"#121319","surface-container":"#1e1f26","surface-container-lowest":"#0d0e14",
+    "surface-container-high":"#292930","on-surface":"#e3e1eb","on-surface-variant":"#c3c6d4",
+    "outline":"#424752","outline-variant":"#34343b","error":"#ffb4ab","tertiary":"#ffb960",
+    "secondary":"#bdf4ff","secondary-fixed-dim":"#00daf3",
+  }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
+}
+</script>
+<style>
+body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
+.glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
+.material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 200,'GRAD' 0,'opsz' 24; }
+/* Compat layer */
+:root{--surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;--border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);--text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;--accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);--success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);--danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);--warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.2);--radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;}
+.compat h1{font-size:1.6rem;font-weight:800;color:#e3e1eb;margin-bottom:0.25rem}.compat h2{font-size:1.05rem;font-weight:700;color:#e3e1eb;margin-bottom:0.65rem}.compat h3{font-size:0.9rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
+.compat .card,.compat .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
+.compat label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
+.compat input[type=text],.compat input[type=email],.compat input[type=number],.compat select,.compat textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
+.compat input:focus,.compat select:focus,.compat textarea:focus{border-color:#5B8DEF}
+.compat .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
+.compat .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
+.compat .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
+.compat .btn-outline:hover{background:rgba(174,198,255,0.08)}
+.compat .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
+.compat .btn-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
+.compat .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
+.compat .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
+.compat .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
+.compat .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+.compat table{width:100%;border-collapse:collapse;font-size:0.84rem}
+.compat th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
+.compat td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
+.compat .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
+.compat .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
+.compat .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
+.compat .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
+.compat .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem}
+.compat .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
+.compat .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
+.compat .alert-error,.compat .alert-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
+.compat .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
+.compat .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
+.compat .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
+.compat .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
+.compat .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;background:rgba(174,198,255,0.08);color:#aec6ff;margin-left:0.2rem}
+.compat .timeline{display:flex;flex-direction:column}
+.compat .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
+.compat .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
+.compat .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
+.compat .timeline-text{font-size:0.8rem;color:#8d909e}
+.compat .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
+.compat .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
+.compat .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
+.compat .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
+.compat .card-meta{font-size:0.75rem;color:#8d909e}
+.compat .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.compat code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
+.compat input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
+.compat details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
+</style>
+{%- endblock %}
 
-{% block content %}
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- Sidebar -->
+<aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col">
+  <div class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7">
+    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
+      <span class="material-symbols-outlined text-[#002e6b] text-lg">bolt</span>
+    </div>
+    <span>HostAI</span>
+  </div>
+  <nav class="flex-1 px-4 space-y-1">
+    <a href="/dashboard" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">dashboard</span>Dashboard</a>
+<a href="/conversations" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">forum</span>Conversations</a>
+<a href="/reservations" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">event_available</span>Reservations</a>
+<a href="/activity" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">history</span>Activity</a>
+<a href="/analytics" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">analytics</span>Analytics</a>
+<a href="/workflow" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">hub</span>Workflow</a>
+<a href="/settings" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">settings</span>Settings</a>
+<a href="/billing" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-[#aec6ff] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]"><span class="material-symbols-outlined text-lg">receipt_long</span>Billing</a>
+
+  </nav>
+  <div class="p-6 border-t border-white/5">
+    <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
+      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+        {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-white text-sm font-bold truncate">{{ tenant.name or tenant.email.split('@')[0]|title if tenant else 'Host' }}</p>
+        <p class="text-slate-500 text-xs truncate">Host Account</p>
+      </div>
+    </div>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-red-400 transition-colors text-xs font-bold uppercase tracking-widest py-2">
+        <span class="material-symbols-outlined text-sm">logout</span>Sign Out
+      </button>
+    </form>
+  </div>
+</aside>
+<!-- Main -->
+<main class="ml-[260px] pt-8 pb-12 px-8 min-h-screen">
+  <div class="mb-8 pt-4">
+    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Admin — Pricing</h1>
+    <p class="text-slate-400 text-sm">Manage subscription plans and pricing tiers</p>
+  </div>
+  <div class="compat">
 <div class="admin-page">
   <div class="page-header">
     <h1>Pricing Configuration</h1>
@@ -156,4 +272,7 @@
     box-shadow: 0 4px 12px rgba(232, 160, 32, 0.3);
   }
 </style>
-{% endblock %}
+  </div>
+</main>
+{%- endblock %}
+{%- endblock %}

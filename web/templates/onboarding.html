@@ -2,7 +2,42 @@
 {% block title %}Setup — HostAI{% endblock %}
 
 {% block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
+body{background:#08090F;font-family:'Plus Jakarta Sans',sans-serif;color:#e3e1eb;}
+:root{--surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;--border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);--text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;--accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);--success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);--danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);--warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.2);--radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;}
+h1,h2,h3{color:#e3e1eb;}
+.card,.form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem;}
+label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em;}
+input[type=text],input[type=email],input[type=password],select,textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s;}
+input:focus,select:focus,textarea:focus{border-color:#5B8DEF;}
+textarea{min-height:4rem;resize:vertical;}
+.btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1.1rem;border-radius:0.5rem;font-size:0.84rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none;}
+.btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b;}
+.btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff;}
+.btn-outline:hover{background:rgba(174,198,255,0.08);}
+.btn-sm{padding:0.3rem 0.75rem;font-size:0.77rem;}
+.help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.5rem;margin-bottom:0.75rem;}
+.alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem;}
+.alert-error{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem;}
+.chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);}
+.chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2);}
+.chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2);}
+.chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin:0.3rem 0;}
+.step-indicator{display:flex;align-items:center;gap:0;margin-bottom:2rem;}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;border:2px solid rgba(66,71,82,0.5);color:#8d909e;background:#0d0e14;flex-shrink:0;transition:all 0.2s;}
+.step-dot.active{background:#5B8DEF;border-color:#5B8DEF;color:#002e6b;}
+.step-dot.done{background:rgba(39,201,63,0.15);border-color:#27c93f;color:#27c93f;}
+.step-line{flex:1;height:2px;background:rgba(66,71,82,0.4);}
+.step-line.done{background:#27c93f;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.copy-box{display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;}
+.copy-box input{margin-bottom:0;font-family:monospace;}
+input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem;}
+details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
+</style>
+/* already have styles */<style style="display:none">
   /* Wizard chrome */
   .wizard-header { text-align:center; margin-bottom:2rem; }
   .wizard-header h1 { font-size:1.65rem; font-weight:800; letter-spacing:-0.03em; margin-bottom:0.4rem; }
@@ -80,7 +115,12 @@
 {% endblock %}
 
 {% block content %}
-<div class="wizard-header">
+<div class="max-w-3xl mx-auto px-4 pt-12 pb-20">
+  <div class="flex items-center gap-3 mb-8">
+    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">H</div>
+    <span class="text-xl font-extrabold text-white">HostAI Setup</span>
+  </div>
+  <div class="wizard-header">
   <h1>Set up your HostAI</h1>
   <p>Takes about 5 minutes. Skip anything — you can always update it later in Settings.</p>
 </div>
@@ -721,4 +761,5 @@ document.addEventListener('click', (e) => {
     }
 });
 </script>
+</div>
 {% endblock %}

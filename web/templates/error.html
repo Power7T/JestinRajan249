@@ -1,23 +1,22 @@
 {% extends "base.html" %}
-{% block title %}{{ code }} {{ title }} — HostAI{% endblock %}
-
+{% block title %}Error — HostAI{% endblock %}
+{% block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>body{background:#08090F;font-family:'Plus Jakarta Sans',sans-serif;color:#e3e1eb;}</style>
+{% endblock %}
 {% block content %}
-<div class="empty" style="padding: 5rem 1rem">
-  <div style="font-size: 4rem; font-weight: 800; color: var(--border-2); margin-bottom: 0.5rem; font-family: 'Bricolage Grotesque', sans-serif; letter-spacing: -0.04em">
-    {{ code }}
+<div class="min-h-screen flex items-center justify-center px-4">
+  <div class="text-center max-w-md">
+    <div class="text-8xl font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] mb-4">
+      {{ status_code or 500 }}
+    </div>
+    <h1 class="text-2xl font-extrabold text-white mb-3">{{ title or "Something went wrong" }}</h1>
+    <p class="text-slate-400 text-sm mb-8">{{ detail or "An unexpected error occurred. Please try again." }}</p>
+    <div class="flex gap-3 justify-center">
+      <a href="/dashboard" class="px-6 py-3 rounded-xl font-bold text-sm text-[#002e6b]" style="background:linear-gradient(135deg,#5B8DEF,#aec6ff)">Go to Dashboard</a>
+      <a href="javascript:history.back()" class="px-6 py-3 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 font-bold text-sm transition-all">&larr; Go back</a>
+    </div>
   </div>
-  <h1 style="margin-bottom: 0.75rem; font-size: 1.4rem">{{ title }}</h1>
-  <p style="max-width: 400px; margin: 0 auto 1.5rem; color: var(--text-2); font-size: 0.9rem; line-height: 1.6">
-    {{ message }}
-  </p>
-  {% if is_admin(request.session.get("admin_email", "")) and debug_detail %}
-  <details style="margin:2rem auto 1.5rem;max-width:600px;font-size:0.8rem;color:var(--text-3);background:var(--bg-2);padding:1rem;border-radius:var(--radius);border:1px solid var(--border)">
-    <summary style="cursor:pointer;font-weight:600;color:var(--text-2)">Admin debug detail</summary>
-    <pre style="margin-top:0.5rem;overflow-x:auto;white-space:pre-wrap;font-size:0.75rem">{{ debug_detail }}</pre>
-  </details>
-  {% endif %}
-  <a href="/dashboard" class="btn btn-primary">Go to dashboard</a>
-  &nbsp;
-  <a href="javascript:history.back()" class="btn btn-outline">Go back</a>
 </div>
 {% endblock %}

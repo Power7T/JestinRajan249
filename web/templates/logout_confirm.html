@@ -1,11 +1,69 @@
-{% extends "base.html" %}
-
-{% block content %}
-<h1>Sign out</h1>
-<p style="color:var(--text-2)">Confirm you want to end your session.</p>
-<form method="post" action="/logout" style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap">
-  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-  <button type="submit" class="btn btn-primary">Sign out</button>
-  <a href="/dashboard" class="btn btn-outline">Cancel</a>
-</form>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Out — HostAI</title>
+  <meta name="description" content="Sign out of your HostAI account.">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com?plugins=forms" nonce="{{ request.state.csp_nonce }}"></script>
+  <script nonce="{{ request.state.csp_nonce }}">
+    tailwind.config = {
+      darkMode: "class",
+      theme: { extend: { colors: {
+        "primary": "#aec6ff", "primary-container": "#5d8ef1", "on-primary": "#002e6b",
+        "surface": "#121319", "surface-container": "#1e1f26", "surface-container-lowest": "#0d0e14",
+        "on-surface": "#e3e1eb", "on-surface-variant": "#c3c6d4", "outline": "#424752",
+        "error": "#ffb4ab", "tertiary": "#ffb960",
+      }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
+    }
+  </script>
+  <style>
+    body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass { background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border: 1px solid rgba(174,198,255,0.1); }
+    .glow-ring { box-shadow: 0 0 80px rgba(91,141,239,0.12); }
+    .btn-primary { background: linear-gradient(135deg,#5B8DEF,#aec6ff); color: #002e6b; }
+    .input-obsidian { background: #0d0e14; border: 1px solid rgba(66,71,82,0.5); color: #e3e1eb; }
+    .input-obsidian:focus { outline: none; border-color: #5B8DEF; box-shadow: 0 0 0 2px rgba(91,141,239,0.15); }
+    .alert-error { background: rgba(255,180,171,0.1); border: 1px solid rgba(255,180,171,0.3); color: #ffb4ab; border-radius:0.5rem; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.84rem; }
+    .alert-success { background: rgba(39,201,63,0.1); border: 1px solid rgba(39,201,63,0.3); color: #27c93f; border-radius:0.5rem; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.84rem; }
+    
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- Nav -->
+  <nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#08090F]/80 backdrop-blur-xl">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="/" class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#aec6ff] to-[#5B8DEF] tracking-tight">HostAI</a>
+      <a href="/login" class="text-sm text-slate-400 hover:text-white transition-colors">Sign in &rarr;</a>
+    </div>
+  </nav>
+  <!-- Ambient glow -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden">
+    <div class="absolute top-[-20%] left-[30%] w-[600px] h-[600px] bg-[#5B8DEF]/8 rounded-full blur-[120px]"></div>
+  </div>
+  <!-- Content -->
+  <div class="flex-1 flex items-center justify-center px-4 pt-24 pb-12">
+    <div class="w-full max-w-md">
+      <div class="glass glow-ring rounded-3xl p-10 text-center">
+  <div class="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-6">
+    <svg class="w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+  </div>
+  <h1 class="text-2xl font-extrabold text-white mb-2">Sign out?</h1>
+  <p class="text-slate-400 text-sm mb-8">Confirm you want to end your current session.</p>
+  <div class="flex gap-3 justify-center">
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn-primary font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-all active:scale-[0.98]">
+        Yes, sign out
+      </button>
+    </form>
+    <a href="/dashboard" class="px-8 py-3 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 font-bold transition-all">
+      Cancel
+    </a>
+  </div>
+</div>
+    </div>
+  </div>
+</body>
+</html>
