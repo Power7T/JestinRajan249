@@ -1,436 +1,424 @@
-{% extends "base.html" %}
-{% block title %}Dashboard — HostAI{% endblock %}
+{%- extends "base.html" %}
+{%- block title %}Dashboard — HostAI{%- endblock %}
 
-{% block head %}
-{# Load Tailwind CDN + Material Icons for the new premium Stitch design #}
+{%- block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script id="tailwind-config">
-  tailwind.config = {
-    darkMode: "class",
-    theme: {
-      extend: {
-        colors: {
-          "primary-container": "#508ff8",
-          "on-primary-container": "#00285b",
-          "primary": "#acc7ff",
-          "secondary": "#b2c7f5",
-          "tertiary": "#ffb873",
-          "error": "#ffb4ab",
-          "surface": "#10131c",
-          "surface-container-low": "#181b24",
-          "surface-container": "#1c1f28",
-          "surface-container-high": "#262a33",
-          "surface-container-highest": "#31353e",
-          "surface-container-lowest": "#0b0e16",
-          "surface-dim": "#10131c",
-          "surface-bright": "#363942",
-          "surface-variant": "#31353e",
-          "on-surface": "#e0e2ee",
-          "on-surface-variant": "#c2c6d5",
-          "on-primary": "#002f68",
-          "on-secondary": "#1a3055",
-          "on-secondary-container": "#a4b8e6",
-          "secondary-container": "#344970",
-          "tertiary-container": "#d37b02",
-          "outline-variant": "#424753",
-          "outline": "#8c909e",
-          "inverse-primary": "#005bbf",
+tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#121319",
+              "inverse-surface": "#e3e1eb",
+              "surface-container-lowest": "#0d0e14",
+              "on-secondary": "#00363d",
+              "on-primary": "#002e6b",
+              "tertiary-fixed": "#ffddb8",
+              "primary-fixed": "#d8e2ff",
+              "on-primary-fixed-variant": "#004397",
+              "surface-container-low": "#1a1b22",
+              "secondary": "#bdf4ff",
+              "on-secondary-fixed-variant": "#004f58",
+              "tertiary-fixed-dim": "#ffb960",
+              "surface-variant": "#34343b",
+              "primary-fixed-dim": "#aec6ff",
+              "outline": "#8d909e",
+              "primary-container": "#5d8ef1",
+              "surface-tint": "#aec6ff",
+              "surface-container-highest": "#34343b",
+              "on-error": "#690005",
+              "on-background": "#e3e1eb",
+              "on-secondary-container": "#00616d",
+              "secondary-fixed": "#9cf0ff",
+              "on-tertiary-container": "#3e2400",
+              "background": "#121319",
+              "secondary-container": "#00e3fd",
+              "primary": "#aec6ff",
+              "on-primary-fixed": "#001a43",
+              "on-error-container": "#ffdad6",
+              "tertiary": "#ffb960",
+              "surface-container": "#1e1f26",
+              "surface": "#121319",
+              "surface-bright": "#383940",
+              "on-primary-container": "#00275e",
+              "outline-variant": "#424752",
+              "on-surface": "#e3e1eb",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-secondary-fixed": "#001f24",
+              "secondary-fixed-dim": "#00daf3",
+              "inverse-primary": "#1e5bba",
+              "on-tertiary-fixed": "#2a1700",
+              "error-container": "#93000a",
+              "error": "#ffb4ab",
+              "tertiary-container": "#ca8103",
+              "on-surface-variant": "#c3c6d4",
+              "on-tertiary": "#472a00",
+              "surface-container-high": "#292930",
+              "inverse-on-surface": "#2f3037"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
         },
-        fontFamily: {
-          "headline": ["Bricolage Grotesque", "sans-serif"],
-          "body": ["Figtree", "Inter", "sans-serif"],
-        },
-        borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
-      },
-    },
-  }
+      }
 </script>
 <style>
-  .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; vertical-align: middle; }
-  .glass-card { background: rgba(24,27,36,0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-  .sapphire-pulse:active { box-shadow: 0 0 20px rgba(80,143,248,0.4); transform: scale(0.98); }
-  /* Override base.html container to use full width for dashboard */
-  body > .container { max-width: none !important; padding: 0 !important; margin: 0 !important; animation: none !important; }
+body {
+            background-color: #08090F;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #e3e1eb;
+        }
+        .glass-card {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
 </style>
-{% endblock %}
+{%- endblock %}
+{%- endblock %}
 
-{% block nav %}{% endblock %}{# Remove top nav — dashboard uses sidebar #}
+{%- block nav %}{%- endblock %}
 
-{% block content %}
-<div class="flex h-screen overflow-hidden bg-[#10131c] text-[#e0e2ee] font-body">
-
-  {# ── SIDEBAR ── #}
-  <aside class="h-screen w-72 fixed left-0 top-0 border-r border-[#424753]/15 bg-[#181b24]/40 backdrop-blur-xl shadow-[0px_0px_15px_rgba(80,143,248,0.06)] flex flex-col py-8 px-6 space-y-8 z-50">
-    <div class="flex items-center space-x-3 px-2">
-      <div class="w-10 h-10 bg-[#508ff8] rounded-lg flex items-center justify-center shadow-[0px_0px_15px_rgba(80,143,248,0.3)]">
-        <span class="material-symbols-outlined text-white" style="font-variation-settings:'FILL' 1;">hub</span>
-      </div>
-      <div>
-        <h2 class="text-2xl font-headline tracking-tighter text-[#508ff8]">HostAI</h2>
-        <p class="text-[10px] uppercase tracking-widest text-[#c2c6d5] font-medium opacity-60">Ethereal Concierge</p>
-      </div>
-    </div>
-
-    <nav class="flex-1 space-y-1">
-      <a href="/dashboard" class="flex items-center space-x-3 px-4 py-3 text-[#508ff8] bg-[#508ff8]/10 rounded-lg shadow-[0px_0px_15px_rgba(80,143,248,0.15)] font-bold transition-all duration-300">
-        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">dashboard</span>
-        <span class="font-headline tracking-wide text-sm">Dashboard</span>
-      </a>
-      <a href="/conversations" class="flex items-center space-x-3 px-4 py-3 text-[#e0e2ee]/60 hover:text-[#e0e2ee] hover:bg-[#262a33] hover:scale-[1.02] transition-all duration-300 rounded-lg">
-        <span class="material-symbols-outlined">chat_bubble</span>
-        <span class="font-headline tracking-wide text-sm">Conversations</span>
-      </a>
-      <a href="/reservations" class="flex items-center space-x-3 px-4 py-3 text-[#e0e2ee]/60 hover:text-[#e0e2ee] hover:bg-[#262a33] hover:scale-[1.02] transition-all duration-300 rounded-lg">
-        <span class="material-symbols-outlined">calendar_today</span>
-        <span class="font-headline tracking-wide text-sm">Reservations</span>
-      </a>
-      <a href="/activity" class="flex items-center space-x-3 px-4 py-3 text-[#e0e2ee]/60 hover:text-[#e0e2ee] hover:bg-[#262a33] hover:scale-[1.02] transition-all duration-300 rounded-lg">
-        <span class="material-symbols-outlined">notifications_active</span>
-        <span class="font-headline tracking-wide text-sm">Activity</span>
-      </a>
-      <a href="/analytics" class="flex items-center space-x-3 px-4 py-3 text-[#e0e2ee]/60 hover:text-[#e0e2ee] hover:bg-[#262a33] hover:scale-[1.02] transition-all duration-300 rounded-lg">
-        <span class="material-symbols-outlined">analytics</span>
-        <span class="font-headline tracking-wide text-sm">Analytics</span>
-      </a>
-      <a href="/workflow" class="flex items-center space-x-3 px-4 py-3 text-[#e0e2ee]/60 hover:text-[#e0e2ee] hover:bg-[#262a33] hover:scale-[1.02] transition-all duration-300 rounded-lg">
-        <span class="material-symbols-outlined">hub</span>
-        <span class="font-headline tracking-wide text-sm">Workflow Center</span>
-      </a>
-      <a href="/ops" class="flex items-center space-x-3 px-4 py-3 text-[#e0e2ee]/60 hover:text-[#e0e2ee] hover:bg-[#262a33] hover:scale-[1.02] transition-all duration-300 rounded-lg">
-        <span class="material-symbols-outlined">build</span>
-        <span class="font-headline tracking-wide text-sm">Ops</span>
-      </a>
-      <a href="/settings" class="flex items-center space-x-3 px-4 py-3 text-[#e0e2ee]/60 hover:text-[#e0e2ee] hover:bg-[#262a33] hover:scale-[1.02] transition-all duration-300 rounded-lg">
-        <span class="material-symbols-outlined">settings</span>
-        <span class="font-headline tracking-wide text-sm">Settings</span>
-      </a>
-    </nav>
-
-    <div class="pt-6 border-t border-[#424753]/15 space-y-2">
-      {% if tenant is defined and tenant and is_admin(tenant.email) %}
-      <a href="/admin" class="flex items-center space-x-3 px-4 py-3 text-[#9B7FE8]/80 hover:text-[#9B7FE8] hover:bg-[#9B7FE8]/10 transition-all duration-300 rounded-lg">
-        <span class="material-symbols-outlined">admin_panel_settings</span>
-        <span class="font-headline tracking-wide text-sm font-bold">Admin</span>
-      </a>
-      {% endif %}
-      <form method="post" action="/logout">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="w-full flex items-center space-x-3 px-4 py-3 text-[#e0e2ee]/40 hover:text-[#F87171] hover:bg-[#F87171]/10 transition-all duration-300 rounded-lg text-left">
-          <span class="material-symbols-outlined">logout</span>
-          <span class="font-headline tracking-wide text-sm">Sign out</span>
-        </button>
-      </form>
-    </div>
-  </aside>
-
-  {# ── TOPBAR ── #}
-  <header class="fixed top-0 right-0 w-[calc(100%-18rem)] z-40 bg-[#10131c]/20 backdrop-blur-md flex justify-between items-center h-20 px-10">
-    <div class="flex items-center bg-[#262a33]/40 rounded-full px-4 py-2 border border-[#424753]/10 w-96">
-      <span class="material-symbols-outlined text-[#c2c6d5] mr-2">search</span>
-      <input class="bg-transparent border-none text-sm focus:ring-0 text-[#e0e2ee] placeholder:text-[#c2c6d5]/50 w-full" placeholder="Search conversations or properties..." type="text"/>
-    </div>
-    <div class="flex items-center space-x-4">
-      <span class="text-sm font-bold text-[#e0e2ee]">{{ tenant.name if tenant is defined and tenant else "Host" }}</span>
-      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#508ff8] to-[#344970] flex items-center justify-center text-sm font-bold text-white">
-        {{ (tenant.name[0] if tenant is defined and tenant and tenant.name else "H") | upper }}
-      </div>
-    </div>
-  </header>
-
-  {# ── MAIN CONTENT ── #}
-  <main class="ml-72 pt-28 pb-20 px-10 min-h-screen flex-1 overflow-y-auto">
-
-    {# Banners #}
-    {% if request.cookies.get("admin_session") %}
-    <div class="mb-6 px-4 py-3 bg-[#F87171]/10 border border-[#F87171]/30 rounded-xl text-[#F87171] text-sm flex items-center gap-3">
-      🔍 Impersonating session —
-      <form method="post" action="/admin/unimpersonate" style="display:inline">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="underline font-bold">← Back to Admin</button>
-      </form>
-    </div>
-    {% endif %}
-    {% if tenant is defined and tenant and not tenant.email_verified %}
-    <div class="mb-6 px-4 py-3 bg-[#FBBF24]/10 border border-[#FBBF24]/30 rounded-xl text-[#FBBF24] text-sm text-center">
-      ⚠️ Please verify your email address.
-      <form method="post" action="/resend-verification" style="display:inline;margin-left:0.5rem">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="underline font-bold">Resend email</button>
-      </form>
-    </div>
-    {% endif %}
-
-    {# Page Header #}
-    <section class="flex justify-between items-end mb-12">
-      <div>
-        <h1 class="text-5xl font-headline font-extrabold tracking-tight text-[#e0e2ee] mb-2">Dashboard</h1>
-        <p class="text-[#c2c6d5] font-medium opacity-80">Your property overview at a glance</p>
-      </div>
-      <div class="flex items-center space-x-4">
-        <button class="bg-[#262a33] px-5 py-3 rounded-lg border border-[#424753]/15 flex items-center space-x-3 hover:bg-[#363942] transition-colors shadow-sm">
-          <span class="material-symbols-outlined text-[#acc7ff] text-lg">domain</span>
-          <span class="text-sm font-medium">All Properties</span>
-          <span class="material-symbols-outlined text-[#8c909e]">expand_more</span>
-        </button>
-      </div>
-    </section>
-
-    {# KPI Widgets #}
-    <section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-      <div class="glass-card p-6 rounded-xl border border-[#424753]/5 hover:border-[#acc7ff]/20 transition-all group">
-        <div class="flex justify-between items-start mb-4">
-          <span class="material-symbols-outlined text-[#acc7ff] p-2 bg-[#acc7ff]/10 rounded-lg">edit_note</span>
-          <span class="text-[10px] font-bold text-[#acc7ff] tracking-widest uppercase">Drafts</span>
-        </div>
-        <h3 class="text-3xl font-headline font-bold mb-1">{{ pending_count | default(0) }}</h3>
-        <p class="text-xs text-[#c2c6d5]">Waiting for approval</p>
-      </div>
-      <div class="glass-card p-6 rounded-xl border border-[#424753]/5 hover:border-[#acc7ff]/20 transition-all">
-        <div class="flex justify-between items-start mb-4">
-          <span class="material-symbols-outlined text-[#b2c7f5] p-2 bg-[#b2c7f5]/10 rounded-lg">luggage</span>
-          <span class="text-[10px] font-bold text-[#b2c7f5] tracking-widest uppercase">Guests</span>
-        </div>
-        <h3 class="text-3xl font-headline font-bold mb-1">{{ upcoming_arrivals | default(0) }}</h3>
-        <p class="text-xs text-[#c2c6d5]">Upcoming arrivals</p>
-      </div>
-      <div class="glass-card p-6 rounded-xl border border-[#424753]/5 hover:border-[#acc7ff]/20 transition-all">
-        <div class="flex justify-between items-start mb-4">
-          <span class="material-symbols-outlined text-[#ffb873] p-2 bg-[#ffb873]/10 rounded-lg">event_available</span>
-          <span class="text-[10px] font-bold text-[#ffb873] tracking-widest uppercase">Performance</span>
-        </div>
-        <h3 class="text-3xl font-headline font-bold mb-1">{{ occupancy_rate | default("—") }}%</h3>
-        <p class="text-xs text-[#c2c6d5]">Occupancy this month</p>
-      </div>
-      <div class="glass-card p-6 rounded-xl border border-[#424753]/5 hover:border-[#ffb4ab]/20 transition-all">
-        <div class="flex justify-between items-start mb-4">
-          <span class="material-symbols-outlined text-[#ffb4ab] p-2 bg-[#ffb4ab]/10 rounded-lg">local_fire_department</span>
-          <span class="text-[10px] font-bold text-[#ffb4ab] tracking-widest uppercase">Hot Streak</span>
-        </div>
-        <h3 class="text-3xl font-headline font-bold mb-1">🔥 {{ approval_streak | default(0) }}</h3>
-        <p class="text-xs text-[#c2c6d5]">Consecutive auto-approvals</p>
-      </div>
-    </section>
-
-    {# Analytics Row #}
-    <section class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12 items-center bg-[#181b24]/50 p-6 rounded-2xl">
-      <div class="lg:col-span-1">
-        <p class="text-[10px] uppercase tracking-tighter text-[#508ff8] font-bold mb-1">Financials</p>
-        <h4 class="text-2xl font-headline font-bold">${{ revenue_month | default("0") | int | format_number if revenue_month is defined else "0" }}</h4>
-        <p class="text-xs text-[#c2c6d5]">Revenue this month</p>
-      </div>
-      <div class="lg:col-span-1">
-        <p class="text-[10px] uppercase tracking-tighter text-[#508ff8] font-bold mb-1">Accuracy</p>
-        <h4 class="text-2xl font-headline font-bold">{{ approval_rate | default("—") }}%</h4>
-        <p class="text-xs text-[#c2c6d5]">AI Approval rate</p>
-      </div>
-      <div class="lg:col-span-1">
-        <p class="text-[10px] uppercase tracking-tighter text-[#508ff8] font-bold mb-1">Context Mapping</p>
-        <h4 class="text-2xl font-headline font-bold">{{ context_coverage | default("—") }}%</h4>
-        <p class="text-xs text-[#c2c6d5]">Stay context mapped</p>
-      </div>
-      <div class="lg:col-span-1 text-right">
-        <a class="inline-flex items-center text-[#508ff8] font-bold hover:underline group" href="/reservations">
-          All reservations
-          <span class="material-symbols-outlined ml-1 group-hover:translate-x-1 transition-transform">arrow_forward</span>
-        </a>
-      </div>
-    </section>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
-      {# LEFT: Workflow + Pending Drafts #}
-      <div class="lg:col-span-2 space-y-10">
-
-        {# Workflow Status #}
-        <div class="glass-card p-8 rounded-2xl border-l-4 border-[#508ff8]">
-          <div class="flex justify-between items-start mb-8">
-            <div>
-              <h3 class="text-xl font-headline font-bold mb-2">Workflow Status</h3>
-              <p class="text-sm text-[#c2c6d5]">AI automation engines are operating at peak capacity.</p>
-            </div>
-            <span class="flex items-center bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-              <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full mr-2 animate-pulse"></span>Live
-            </span>
-          </div>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            {% set wf_checks = [
-              ("Onboarding", workflow_status.onboarding if workflow_status is defined else True),
-              ("Email Sync", workflow_status.email if workflow_status is defined else True),
-              ("Calendar",  workflow_status.calendar if workflow_status is defined else True),
-              ("AI Context", workflow_status.ai_context if workflow_status is defined else True),
-            ] %}
-            {% for label, ok in wf_checks %}
-            <div class="flex items-center space-x-2">
-              <span class="material-symbols-outlined {% if ok %}text-[#508ff8]{% else %}text-[#F87171]{% endif %} text-lg" style="font-variation-settings:'FILL' 1;">
-                {% if ok %}check_circle{% else %}cancel{% endif %}
-              </span>
-              <span class="text-xs font-medium">{{ label }}</span>
-            </div>
-            {% endfor %}
-          </div>
-          <div class="flex flex-wrap gap-3">
-            <a href="/workflow" class="bg-[#508ff8] text-[#00285b] px-4 py-2 rounded-lg text-xs font-bold sapphire-pulse transition-all hover:brightness-110">Configure workflow</a>
-            <a href="/settings#rooms" class="bg-[#262a33] hover:bg-[#363942] px-4 py-2 rounded-lg text-xs font-bold transition-all">Map guest rooms</a>
-            <a href="/activity" class="bg-[#262a33] hover:bg-[#363942] px-4 py-2 rounded-lg text-xs font-bold transition-all">Activity log</a>
-          </div>
-        </div>
-
-        {# Pending AI Drafts #}
-        <div>
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="text-2xl font-headline font-bold">Pending AI Drafts</h2>
-            {% if pending_count is defined and pending_count > 0 %}
-            <span class="bg-[#acc7ff]/20 text-[#acc7ff] px-3 py-1 rounded-full text-[10px] font-bold">{{ pending_count }} PENDING</span>
-            {% endif %}
-          </div>
-
-          {% if queue is defined and queue %}
-          <div class="space-y-6">
-            {% for item in queue[:3] %}
-            <div class="glass-card rounded-2xl border border-[#424753]/10 overflow-hidden group">
-              <div class="p-6 border-b border-[#424753]/5 flex justify-between items-center bg-[#181b24]/30">
-                <div class="flex items-center space-x-4">
-                  <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[#508ff8] to-[#344970] flex items-center justify-center text-sm font-bold text-white">
-                    {{ item.guest_name[:2] | upper if item.guest_name else "?" }}
-                  </div>
-                  <div>
-                    <h4 class="font-bold text-[#e0e2ee]">{{ item.guest_name | default("Unknown Guest") }}</h4>
-                    <div class="flex items-center space-x-2 text-[10px] font-medium text-[#c2c6d5] uppercase tracking-tighter mt-1">
-                      <span class="{% if item.message_type == 'complex' %}bg-[#FBBF24]/10 text-[#FBBF24]{% else %}bg-[#508ff8]/10 text-[#acc7ff]{% endif %} px-2 py-0.5 rounded">
-                        {{ item.message_type | default("Routine") | title }}
-                      </span>
-                      <span>•</span>
-                      <span>{{ item.channel | default("Direct") | title }}</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="text-right">
-                  <p class="text-[10px] font-bold text-emerald-400 mb-1">CONFIDENCE</p>
-                  <p class="text-xl font-headline font-bold">{{ item.confidence | default("—") }}%</p>
-                </div>
-              </div>
-              <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p class="text-[10px] font-bold text-[#c2c6d5] uppercase mb-3">Guest Message</p>
-                  <div class="text-sm bg-[#181b24] p-4 rounded-xl text-[#e0e2ee]/80 italic leading-relaxed">
-                    "{{ item.guest_message | default("…") | truncate(180) }}"
-                  </div>
-                </div>
-                <div>
-                  <p class="text-[10px] font-bold text-[#508ff8] uppercase mb-3">AI Proposed Reply</p>
-                  <div class="text-sm bg-[#508ff8]/5 p-4 rounded-xl text-[#e0e2ee] border-l-2 border-[#508ff8] leading-relaxed shadow-[0px_0px_15px_rgba(80,143,248,0.05)]">
-                    {{ item.draft | default("Draft not available") | truncate(220) }}
-                  </div>
-                </div>
-              </div>
-              <div class="px-6 py-4 bg-[#31353e]/20 flex justify-between items-center">
-                <div class="flex space-x-3">
-                  <form method="post" action="/conversations/approve/{{ item.id }}" style="display:inline">
-                    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-                    <button type="submit" class="flex items-center space-x-2 bg-[#508ff8] text-[#002f68] px-4 py-2 rounded-lg text-xs font-bold hover:brightness-110 transition-all">
-                      <span class="material-symbols-outlined text-sm">check</span><span>Send this</span>
-                    </button>
-                  </form>
-                  <a href="/conversations/{{ item.id }}" class="flex items-center space-x-2 bg-[#262a33] text-[#e0e2ee] px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#363942] transition-all">
-                    <span class="material-symbols-outlined text-sm">edit</span><span>Edit & send</span>
-                  </a>
-                </div>
-                <div class="flex space-x-2">
-                  <form method="post" action="/conversations/skip/{{ item.id }}" style="display:inline">
-                    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-                    <button type="submit" class="p-2 text-[#c2c6d5] hover:text-[#ffb4ab] transition-colors">
-                      <span class="material-symbols-outlined">close</span>
-                    </button>
-                  </form>
-                  <button class="p-2 text-[#c2c6d5] hover:text-[#508ff8] transition-colors">
-                    <span class="material-symbols-outlined">schedule</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-
-          {% if pending_count is defined and pending_count > 3 %}
-          <div class="mt-6 text-center">
-            <a href="/conversations" class="inline-flex items-center gap-2 text-[#508ff8] font-bold hover:underline text-sm">
-              View all {{ pending_count }} pending drafts
-              <span class="material-symbols-outlined">arrow_forward</span>
-            </a>
-          </div>
-          {% endif %}
-
-          {% else %}
-          <div class="glass-card rounded-2xl border border-[#424753]/10 p-12 text-center">
-            <span class="material-symbols-outlined text-5xl text-[#508ff8]/30 mb-4 block">auto_awesome</span>
-            <h3 class="text-lg font-headline font-bold text-[#e0e2ee] mb-2">All caught up!</h3>
-            <p class="text-sm text-[#c2c6d5]">No pending AI drafts. The AI is handling things smoothly.</p>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-
-      {# RIGHT: Recent Sent + AI Context Card #}
-      <div class="space-y-10">
-        <div class="glass-card p-6 rounded-2xl border border-[#424753]/10">
-          <h3 class="text-lg font-headline font-bold mb-6">Recent Sent Replies</h3>
-          <div class="space-y-6">
-            {% if recent_sent is defined and recent_sent %}
-              {% for msg in recent_sent[:3] %}
-              <div class="relative pl-6 border-l border-[#424753]/20">
-                <div class="absolute -left-1.5 top-0 w-3 h-3 bg-[#508ff8] rounded-full shadow-[0px_0px_10px_rgba(80,143,248,0.5)]"></div>
-                <p class="text-[10px] text-[#c2c6d5] font-bold mb-1 uppercase">{{ msg.sent_at | default("") }} • To {{ msg.guest_name | default("Guest") }}</p>
-                <p class="text-xs text-[#e0e2ee] mb-3 line-clamp-2">{{ msg.message | default("") | truncate(120) }}</p>
-                <div class="flex items-center space-x-3">
-                  <button class="flex items-center space-x-1 text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded">
-                    <span class="material-symbols-outlined text-[14px]" style="font-variation-settings:'FILL' 1;">thumb_up</span>
-                    <span>Good</span>
-                  </button>
-                  <button class="text-[#c2c6d5] hover:text-[#ffb4ab]">
-                    <span class="material-symbols-outlined text-[16px]">thumb_down</span>
-                  </button>
-                </div>
-              </div>
-              {% endfor %}
-            {% else %}
-              <p class="text-xs text-[#c2c6d5] text-center py-4">No recent sent messages.</p>
-            {% endif %}
-          </div>
-          <div class="mt-6 pt-4 border-t border-[#424753]/20 text-center">
-            <a href="/activity" class="text-xs text-[#508ff8] font-bold hover:underline">View full activity log →</a>
-          </div>
-        </div>
-
-        {# AI Context Card #}
-        <div class="bg-gradient-to-br from-[#508ff8]/10 to-transparent p-6 rounded-2xl border border-[#508ff8]/20 relative overflow-hidden">
-          <div class="absolute -right-4 -bottom-4 opacity-10">
-            <span class="material-symbols-outlined text-8xl">smart_toy</span>
-          </div>
-          <h4 class="text-sm font-headline font-bold text-[#508ff8] mb-3">AI Context Map</h4>
-          <p class="text-xs text-[#c2c6d5] mb-4 leading-relaxed">
-            HostAI has successfully mapped {{ context_coverage | default("92") }}% of your property quirks. Accuracy is improving week over week.
-          </p>
-          <div class="w-full bg-[#31353e] h-1 rounded-full overflow-hidden mb-4">
-            <div class="bg-[#508ff8] h-full shadow-[0px_0px_10px_rgba(80,143,248,0.5)]" style="width: {{ context_coverage | default(92) }}%"></div>
-          </div>
-          <a href="/settings#context" class="text-[10px] font-bold text-[#508ff8] hover:underline">Update Knowledge Base</a>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  {# FAB #}
-  <a href="/conversations" class="fixed bottom-8 right-8 w-14 h-14 bg-[#508ff8] text-[#002f68] rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-50 group">
-    <span class="material-symbols-outlined text-2xl">add</span>
-    <div class="absolute right-16 bg-[#262a33] px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity border border-[#424753]/10">
-      New Conversation
-    </div>
-  </a>
-
-  {# Atmospheric glow #}
-  <div class="pointer-events-none fixed inset-0 z-0 opacity-10">
-    <div class="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#508ff8] rounded-full blur-[160px]"></div>
-    <div class="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#508ff8]/30 rounded-full blur-[180px]"></div>
-  </div>
+{%- block main_wrapper %}
+{%- block content %}
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
+<div class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
 </div>
-{% endblock %}
+<span>HostAI</span>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<!-- Dashboard Active -->
+<a class="flex items-center gap-3 px-6 py-3 text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF] transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+                Conversations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+                Reservations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Activity
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+                Workflow Center
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+</nav>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<img alt="Profile" class="w-10 h-10 rounded-full object-cover" data-alt="professional portrait of a confident male executive in a modern workspace with natural soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhQJQQb7dxXRNRhJo6ozviZ-V5pVSCCyOhG7MaZyL0VO3bxiKJSrpPPQPLes_Vv32v5ygC22ZX7RMiPiLu9z6ToZ9hc9AU8elRKaOTmtGlPi9O2K5BK2ME6PGdXJ7wt9mp-9mGm325p9LYaK71yrwHEBpjCZ38F4IjQdXelI9QXSutOA9LKQTMufFMPO8qwFP9cihr6opv6kfMmRZeibEIPHZ9kVWB9dmW_ahXYeMG9mswyQQWubbm8iPrUe8ada1yjMo5G9gLU5Gu"/>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ current_user.name if current_user else "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+</div>
+</div>
+<a href="/logout" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+<span class="material-symbols-outlined text-sm">logout</span>
+                Sign Out
+            </a>
+</div>
+</aside>
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts, or analytics..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
+</button>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-white/10 overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="close-up profile photo of a modern entrepreneur with neutral background and cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuABW8Qelc6KTdNSDo0fYFx8C18_jPnQtWQJZQ8b18U_PZAdmsQrvB5UNPOqqpkFT9sxYA0QV6VD9dKLOGJ_6QFm_2CyaG0asg4qRNa5TVYr5kYXA8d5YNyER4XyY7GjiNoG5qIVCFj6WHywoXCu0G_ND8HMjOmWNGcff43TjsMyJlSYUZuieI2exmXE-_fr4OE3VZmcgvyDeCjtpW2hb_zBx6jbiXVpam6x8GPztvgsFvu03OhRZ1Lc3hPAdTCQx1i301PNae5H5YI6"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[260px] pt-24 pb-12 px-8 min-h-screen">
+<!-- Page Title Hero -->
+<div class="mb-12 relative">
+<div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
+<h1 class="text-5xl font-extrabold tracking-tight text-white mb-2 font-headline">Dashboard</h1>
+<p class="text-slate-400 font-medium">Welcome back, Alex. Your AI agents have drafted 14 new responses today.</p>
+</div>
+<!-- KPI Row -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="text-slate-400 text-xs font-bold uppercase tracking-wider">Pending Drafts</span>
+<span class="material-symbols-outlined text-primary text-xl">pending_actions</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold text-white">14</span>
+<span class="text-primary text-xs font-bold">+3 today</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="text-slate-400 text-xs font-bold uppercase tracking-wider">Upcoming Arrivals</span>
+<span class="material-symbols-outlined text-secondary-fixed-dim text-xl">flight_land</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold text-white">28</span>
+<span class="text-secondary-fixed-dim text-xs font-bold">Next 48h</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="text-slate-400 text-xs font-bold uppercase tracking-wider">Occupancy Rate</span>
+<span class="material-symbols-outlined text-tertiary text-xl">bedroom_parent</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold text-white">94%</span>
+<span class="text-tertiary text-xs font-bold">Peak Season</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl border-primary/20 bg-primary/5 relative overflow-hidden">
+<div class="absolute -right-4 -bottom-4 opacity-10">
+<span class="material-symbols-outlined text-8xl" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<div class="flex items-center justify-between relative z-10">
+<span class="text-slate-400 text-xs font-bold uppercase tracking-wider">AI Streak</span>
+<span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<div class="flex items-baseline gap-2 relative z-10">
+<span class="text-4xl font-extrabold text-white">12</span>
+<span class="text-primary text-xs font-bold">Day streak</span>
+</div>
+</div>
+</div>
+<!-- Wide Analytics Bar -->
+<div class="glass-card rounded-2xl p-1 mb-12 flex flex-wrap items-center justify-between divide-x divide-white/5">
+<div class="px-8 py-6 flex flex-col gap-1">
+<span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">Revenue This Month</span>
+<span class="text-xl font-bold text-white">$42,910.00</span>
+</div>
+<div class="px-8 py-6 flex flex-col gap-1">
+<span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">AI Approval Rate</span>
+<span class="text-xl font-bold text-secondary-fixed-dim">98.2%</span>
+</div>
+<div class="px-8 py-6 flex flex-col gap-1">
+<span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">Context Coverage</span>
+<span class="text-xl font-bold text-primary">84/100</span>
+</div>
+<div class="px-8 py-6 flex flex-col gap-1 flex-1 text-right border-none">
+<a class="text-primary font-bold hover:underline inline-flex items-center gap-2 group" href="#">
+                    All Reservations 
+                    <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Dashboard Main Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
+<!-- AI Drafts Section -->
+<div class="lg:col-span-2 space-y-8">
+<div class="flex items-center justify-between mb-2">
+<h2 class="text-2xl font-extrabold text-white tracking-tight">Pending AI Drafts</h2>
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">14 NEW</span>
+</div>
+<!-- Draft Card 1 -->
+<div class="glass-card rounded-3xl p-8 group hover:bg-white/[0.03] transition-colors border-l-4 border-l-tertiary">
+<div class="flex items-start justify-between mb-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center border border-white/10">
+<img alt="Guest" class="w-full h-full object-cover rounded-2xl" data-alt="close-up portrait of a smiling young man in casual attire with bright natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAR2OBWHvij4HpPswep6b79eiQjICvWhmjKd7ynjhonYE5n6gLI4obx5xOrWGh7z-p7hwX3xZBbvEDtowDrlnolildk0QhUxt2buWIuSBcdfH3F4J3KSTOtPkTOhNQmXMJ0EBskF8xAvljKydg95dsx3gSlVXqGQuJ7wXv4kYPFYznFpwmAzdm2_4wWAzUv3Vaf6S9H9fTxemYC91nlPrLlc385ZiRQ-HbOcBGkZiTq7o7Ptfbbn1p49Mct0wR8hY87GsVkFAYvY7sq"/>
+</div>
+<div>
+<h3 class="font-bold text-lg text-white">Julian Marco</h3>
+<p class="text-slate-400 text-sm">Ocean View Villa • Check-in: Friday</p>
+</div>
+</div>
+<div class="text-right">
+<span class="bg-tertiary/20 text-tertiary px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-widest mb-2 block">Complex Query</span>
+<div class="flex items-center gap-1 text-secondary-fixed-dim">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="text-sm font-bold">94% Confidence</span>
+</div>
+</div>
+</div>
+<div class="mb-6 bg-surface-container-lowest/50 p-4 rounded-2xl italic text-slate-300 text-sm border-l-2 border-white/10">
+                        "Hey Alex, we're really excited for the stay! Does the kitchen have an espresso machine or should we bring ours? Also, can we drop bags 2 hours early?"
+                    </div>
+<div class="mb-8 p-6 bg-primary/5 rounded-2xl border border-primary/20 relative">
+<div class="absolute top-4 right-4 text-primary opacity-40">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<p class="text-primary-fixed-dim text-sm leading-relaxed">
+                            Hi Julian! We can't wait to host you. The kitchen is fully equipped with a Nespresso Vertuo machine and a French Press, so no need to bring yours! Regarding the early bag drop, that won't be a problem at all. You can leave them in the secure locker by the entrance starting at 1 PM. See you Friday!
+                        </p>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex-1 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-extrabold py-3 rounded-xl shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+                            Approve &amp; Send
+                        </button>
+<button class="px-6 py-3 text-white border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all">
+                            Edit
+                        </button>
+</div>
+</div>
+<!-- Draft Card 2 -->
+<div class="glass-card rounded-3xl p-8 group hover:bg-white/[0.03] transition-colors border-l-4 border-l-primary">
+<div class="flex items-start justify-between mb-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center border border-white/10">
+<img alt="Guest" class="w-full h-full object-cover rounded-2xl" data-alt="professional woman looking thoughtfully into distance, minimal office background, high key lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN_RTeSTjcV_LyXSqZiflSjFi9OrMfxe97965uPK4z9sXcGTas5ruVoGirkzLyrFuFbqmeao2SBJLc-o1LjhYVRwsiQLwlGZ7eQXGVhXo9G29g5W5SJpplqftGTovgCuaDRqOb5llf9xq_DHs4pqAY3IexEQ1E-OH769gpEQ0QyUhE7y_DqID8Ay77ogNno4-jQz4j57LEKGapRFjYmGyCCCpxVBBDtWUcJ6UcVYK1ifJ-IKkaYvvsrI8HneO7eeqhDQMV8Zywtmnc"/>
+</div>
+<div>
+<h3 class="font-bold text-lg text-white">Sarah Jenkins</h3>
+<p class="text-slate-400 text-sm">Downtown Loft • Check-out: Today</p>
+</div>
+</div>
+<div class="text-right">
+<span class="bg-primary/20 text-primary px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-widest mb-2 block">Routine Inquiry</span>
+<div class="flex items-center gap-1 text-secondary-fixed-dim">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="text-sm font-bold">99% Confidence</span>
+</div>
+</div>
+</div>
+<div class="mb-6 bg-surface-container-lowest/50 p-4 rounded-2xl italic text-slate-300 text-sm border-l-2 border-white/10">
+                        "What is the checkout code for the trash room again? Thanks!"
+                    </div>
+<div class="mb-8 p-6 bg-primary/5 rounded-2xl border border-primary/20 relative">
+<p class="text-primary-fixed-dim text-sm leading-relaxed">
+                            Hi Sarah! The trash room code is 5582#. It's located just to the right of the elevator bank on the ground floor. Have a safe trip home!
+                        </p>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex-1 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-extrabold py-3 rounded-xl shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+                            Approve &amp; Send
+                        </button>
+<button class="px-6 py-3 text-white border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all">
+                            Edit
+                        </button>
+</div>
+</div>
+</div>
+<!-- Recent Activity Sidebar -->
+<div class="space-y-12">
+<div>
+<h2 class="text-xl font-extrabold text-white tracking-tight mb-6 flex items-center gap-2">
+                        Recent Activity
+                        <span class="material-symbols-outlined text-primary text-sm">auto_graph</span>
+</h2>
+<div class="space-y-6">
+<!-- Activity Item -->
+<div class="flex gap-4 relative">
+<div class="absolute left-[11px] top-6 bottom-0 w-[2px] bg-white/5"></div>
+<div class="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-primary text-[10px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex-1 pb-6">
+<p class="text-white text-sm font-bold">Draft sent to Marco P.</p>
+<p class="text-slate-500 text-xs">2 minutes ago • Auto-approved</p>
+<div class="mt-2 flex gap-1">
+<span class="material-symbols-outlined text-secondary-fixed-dim text-xs">sentiment_satisfied</span>
+<span class="text-[10px] text-slate-400">High Sentiment</span>
+</div>
+</div>
+</div>
+<!-- Activity Item -->
+<div class="flex gap-4 relative">
+<div class="absolute left-[11px] top-6 bottom-0 w-[2px] bg-white/5"></div>
+<div class="w-6 h-6 rounded-full bg-tertiary/20 flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-tertiary text-[10px]" style="font-variation-settings: 'FILL' 1;">edit_note</span>
+</div>
+<div class="flex-1 pb-6">
+<p class="text-white text-sm font-bold">Draft modified: Elena S.</p>
+<p class="text-slate-500 text-xs">1 hour ago • By Alex</p>
+</div>
+</div>
+<!-- Activity Item -->
+<div class="flex gap-4 relative">
+<div class="w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-secondary text-[10px]" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+</div>
+<div class="flex-1">
+<p class="text-white text-sm font-bold">New Booking: Loft 4</p>
+<p class="text-slate-500 text-xs">3 hours ago • 4 nights</p>
+</div>
+</div>
+</div>
+</div>
+<!-- AI Context Map -->
+<div class="glass-card rounded-3xl p-6 border-primary/10">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold text-white">AI Context Map</h3>
+<span class="material-symbols-outlined text-primary">hub</span>
+</div>
+<p class="text-slate-400 text-xs mb-6 leading-relaxed">Your AI understands 84% of your property details and house rules.</p>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+<span>Check-in Rules</span>
+<span class="text-primary">95%</span>
+</div>
+<div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[95%] shadow-[0_0_8px_rgba(174,198,255,0.4)]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+<span>Local Recs</span>
+<span class="text-secondary-fixed-dim">72%</span>
+</div>
+<div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-secondary-fixed-dim w-[72%] shadow-[0_0_8px_rgba(0,227,253,0.4)]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+<span>Troubleshooting</span>
+<span class="text-tertiary">60%</span>
+</div>
+<div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[60%] shadow-[0_0_8px_rgba(255,185,96,0.4)]"></div>
+</div>
+</div>
+</div>
+<button class="w-full mt-8 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm transition-all border border-white/5">
+                        Expand Knowledge Base
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed bottom-8 right-8 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-container text-on-primary-container shadow-[0_8px_32px_rgba(93,142,241,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 group">
+<span class="material-symbols-outlined text-3xl group-hover:rotate-90 transition-transform duration-300" style="font-variation-settings: 'wght' 400;">add</span>
+</button>
+{%- endblock %}

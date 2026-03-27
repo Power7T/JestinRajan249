@@ -1,205 +1,272 @@
-{% extends "base.html" %}
+{%- extends "base.html" %}
+{%- block title %}Pricing — HostAI{%- endblock %}
 
-{% block title %}Pricing — HostAI{% endblock %}
-
-{% block content %}
-<div class="pricing-page">
-  <div class="hero">
-    <h1>Unit-Based Pricing</h1>
-    <p>Scale from 1 to 50+ properties. All plans include all messaging channels.</p>
-  </div>
-
-  {% if cfg is defined and cfg.subscription_status == 'requires_upgrade' %}
-  <div class="banner-upgrade">
-    <strong>⚠️ Upgrade required</strong> — Please select a plan to continue using HostAI
-  </div>
-  {% endif %}
-
-  <div class="plans" id="plans-container">
-    <!-- Plans loaded dynamically from /api/plan-pricing -->
-  </div>
-
-  <div class="faq">
-    <h2>Frequently asked questions</h2>
-
-    <div class="faq-item">
-      <strong>What counts as a "unit"?</strong>
-      <p>One unit = one property listing. If you manage 3 Airbnb properties, you need 3 units.</p>
-    </div>
-    <div class="faq-item">
-      <strong>What's included in all plans?</strong>
-      <p>All plans include full access to every messaging channel: WhatsApp (Baileys and Meta Cloud), SMS via Twilio, and email. There are no channel-based restrictions.</p>
-    </div>
-    <div class="faq-item">
-      <strong>What happens when my subscription expires?</strong>
-      <p>The messaging channels stop working immediately. Your dashboard, drafts, and data are preserved. Renew anytime to resume.</p>
-    </div>
-    <div class="faq-item">
-      <strong>Can I change my unit count?</strong>
-      <p>Yes — update your subscription at any time from the billing page. Price changes take effect immediately and are prorated.</p>
-    </div>
-  </div>
-</div>
-
-<style>
-  .pricing-page { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem 4rem; }
-
-  .hero { text-align: center; padding: 2rem 1rem 3rem; }
-  .hero h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; }
-  .hero p  { color: var(--text-2, #6c757d); font-size: 1.1rem; max-width: 500px; margin: 0 auto; }
-
-  .banner-upgrade {
-    background: rgba(239,68,68,0.1);
-    border: 1px solid rgba(239,68,68,0.25);
-    border-radius: 8px;
-    padding: 1rem 1.5rem;
-    margin-bottom: 2rem;
-    color: #ef4444;
-    text-align: center;
-  }
-
-  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 4rem; }
-
-  .plan-card { background: var(--surface, #fff); border: 2px solid var(--border, #dee2e6); border-radius: 14px; padding: 2rem; position: relative; transition: all 200ms; }
-  .plan-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.1); transform: translateY(-2px); }
-  .plan-card.featured { border-color: var(--accent, var(--accent, var(--accent))); box-shadow: 0 4px 24px rgba(245,166,35,0.15); }
-  .plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent, var(--accent, var(--accent))); color: #fff; font-size: 0.72rem; font-weight: 700; padding: 3px 14px; border-radius: 20px; text-transform: uppercase; white-space: nowrap; }
-
-  .plan-name { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.3rem; }
-  .plan-units-range { font-size: 0.85rem; color: var(--text-3, #999); margin-bottom: 1rem; }
-
-  .units-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
-  .units-row label { font-size: 0.85rem; font-weight: 600; color: var(--text-2, #666); white-space: nowrap; }
-  .units-row input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid var(--border, #dee2e6); border-radius: 6px; font-size: 0.9rem; font-family: inherit; background: var(--bg-2, #f5f5f5); color: var(--text-1, #000); }
-  .units-row input:focus { outline: none; border-color: var(--accent, var(--accent, var(--accent))); box-shadow: 0 0 0 2px rgba(245,166,35,0.15); }
-
-  .price-display { background: var(--bg-2, #f5f5f5); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem; text-align: center; }
-  .price-display .amount { font-size: 2.2rem; font-weight: 800; color: var(--accent, var(--accent, var(--accent))); }
-  .price-display .period { font-size: 0.85rem; color: var(--text-3, #999); }
-  .price-formula { font-size: 0.78rem; color: var(--text-3, #999); margin-top: 0.3rem; }
-
-  .plan-features { list-style: none; margin-bottom: 1.5rem; }
-  .plan-features li { padding: 0.4rem 0 0.4rem 1.5rem; font-size: 0.88rem; color: var(--text-2, #495057); position: relative; }
-  .plan-features li::before { content: "✓"; position: absolute; left: 0; color: #22c55e; font-weight: 700; }
-
-  .plan-btn { width: 100%; padding: 0.8rem; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 150ms; }
-  .plan-btn-primary { background: linear-gradient(135deg, var(--accent), #2B5FC8); color: #060911; font-weight: 700; }
-  .plan-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--accent-glow); }
-  .plan-btn-secondary { background: var(--bg-2, #f5f5f5); color: var(--text-1, #000); border: 1px solid var(--border, #dee2e6); }
-  .plan-btn-secondary:hover { background: var(--bg, #eee); }
-
-  .faq { max-width: 700px; margin: 0 auto; }
-  .faq h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; text-align: center; }
-  .faq-item { border-bottom: 1px solid var(--border, #dee2e6); padding: 1.1rem 0; }
-  .faq-item strong { display: block; margin-bottom: 0.4rem; font-size: 0.95rem; color: var(--text-1, #000); }
-  .faq-item p { font-size: 0.875rem; color: var(--text-2, #6c757d); line-height: 1.6; margin: 0; }
-
-  /* Mobile responsiveness */
-  @media (max-width: 768px) {
-    .pricing-page { padding: 1.5rem 0.75rem 3rem; }
-    .hero { padding: 1.5rem 0.75rem 2rem; }
-    .hero h1 { font-size: 1.8rem; }
-    .hero p { font-size: 0.95rem; }
-    .plans { grid-template-columns: 1fr; gap: 1rem; }
-    .plan-card { padding: 1.5rem; }
-    .plan-name { font-size: 1.1rem; }
-    .plan-units-range { font-size: 0.8rem; }
-    .price-display .amount { font-size: 1.8rem; }
-    .plan-features li { font-size: 0.82rem; }
-    .plan-btn { padding: 0.7rem; font-size: 0.85rem; }
-    .faq h2 { font-size: 1.2rem; }
-    .faq-item { padding: 0.9rem 0; }
-    .faq-item strong { font-size: 0.9rem; }
-    .faq-item p { font-size: 0.8rem; }
-  }
-
-  @media (max-width: 480px) {
-    .pricing-page { padding: 1rem 0.5rem 2rem; }
-    .hero { padding: 1rem 0.5rem 1.5rem; }
-    .hero h1 { font-size: 1.4rem; margin-bottom: 0.3rem; }
-    .hero p { font-size: 0.85rem; }
-    .banner-upgrade { padding: 0.8rem 1rem; font-size: 0.85rem; margin-bottom: 1.5rem; }
-    .plans { gap: 0.75rem; margin-bottom: 2rem; }
-    .plan-card { padding: 1.2rem; border-radius: 10px; }
-    .plan-badge { font-size: 0.65rem; padding: 2px 10px; top: -10px; }
-    .plan-name { font-size: 0.95rem; margin-bottom: 0.2rem; }
-    .plan-units-range { font-size: 0.75rem; margin-bottom: 0.75rem; }
-    .units-row { gap: 0.5rem; margin-bottom: 0.6rem; }
-    .units-row label { font-size: 0.8rem; }
-    .units-row input { padding: 0.45rem 0.6rem; font-size: 0.85rem; }
-    .price-display { padding: 0.8rem; margin-bottom: 1rem; }
-    .price-display .amount { font-size: 1.5rem; }
-    .price-display .period { font-size: 0.8rem; }
-    .price-formula { font-size: 0.7rem; }
-    .plan-features { margin-bottom: 1rem; }
-    .plan-features li { padding: 0.3rem 0 0.3rem 1.3rem; font-size: 0.78rem; }
-    .plan-btn { padding: 0.6rem; font-size: 0.8rem; min-height: 44px; }
-    .faq { padding: 0 0.5rem; }
-    .faq h2 { font-size: 1.1rem; margin-bottom: 1rem; }
-    .faq-item { padding: 0.8rem 0; }
-    .faq-item strong { font-size: 0.85rem; margin-bottom: 0.3rem; }
-    .faq-item p { font-size: 0.75rem; }
-  }
-</style>
-
-<script nonce="{{ request.state.csp_nonce }}">
-  async function loadPlans() {
-    try {
-      const res = await fetch('/api/plan-pricing');
-      if (!res.ok) throw new Error('Failed to load');
-      const plans = await res.json();
-      const container = document.getElementById('plans-container');
-      container.innerHTML = '';
-
-      plans.forEach((plan, idx) => {
-        const minTotal = plan.base_fee + plan.per_unit_fee * plan.min_units;
-        const isFeatured = idx === 1;
-        const card = document.createElement('div');
-        card.className = 'plan-card' + (isFeatured ? ' featured' : '');
-        card.innerHTML = `
-          ${isFeatured ? '<div class="plan-badge">Most popular</div>' : ''}
-          <div class="plan-name">${plan.display_name}</div>
-          <div class="plan-units-range">${plan.min_units}–${plan.max_units} properties</div>
-          <form method="post" action="/billing/subscribe/${plan.plan_key}">
-            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-            <div class="units-row">
-              <label for="u-${plan.plan_key}">Properties:</label>
-              <input type="number" id="u-${plan.plan_key}" name="num_units"
-                     value="${plan.min_units}" min="${plan.min_units}" max="${plan.max_units}" required
-                     oninput="calcPrice(this, ${plan.base_fee}, ${plan.per_unit_fee})">
-            </div>
-            <div class="price-display">
-              <div class="amount">$<span id="total-${plan.plan_key}">${minTotal.toFixed(0)}</span></div>
-              <div class="period">/month</div>
-              <div class="price-formula">$${plan.base_fee} base + $${plan.per_unit_fee}/unit</div>
-            </div>
-            <ul class="plan-features">
-              <li>All messaging channels (Email, WhatsApp, SMS)</li>
-              <li>AI-powered response drafts</li>
-              <li>Team member accounts</li>
-              <li>Analytics dashboard</li>
-              <li>PMS integrations</li>
-            </ul>
-            <button type="submit" class="plan-btn ${isFeatured ? 'plan-btn-primary' : 'plan-btn-secondary'}">
-              Subscribe to ${plan.display_name}
-            </button>
-          </form>
-        `;
-        container.appendChild(card);
-      });
-    } catch (err) {
-      document.getElementById('plans-container').innerHTML =
-        '<p style="grid-column:1/-1;text-align:center;color:#999;padding:2rem">Unable to load pricing. Please refresh the page.</p>';
-    }
-  }
-
-  function calcPrice(input, base, perUnit) {
-    const units = parseInt(input.value) || 0;
-    const planKey = input.id.replace('u-', '');
-    const totalEl = document.getElementById('total-' + planKey);
-    if (totalEl) totalEl.textContent = (base + perUnit * units).toFixed(0);
-  }
-
-  document.addEventListener('DOMContentLoaded', loadPlans);
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-variant": "#34343b",
+              "on-primary-fixed-variant": "#004397",
+              "on-background": "#e3e1eb",
+              "primary-fixed": "#d8e2ff",
+              "on-secondary-fixed": "#001f24",
+              "primary-container": "#5d8ef1",
+              "on-error-container": "#ffdad6",
+              "error": "#ffb4ab",
+              "surface-container-high": "#292930",
+              "on-secondary": "#00363d",
+              "on-tertiary-fixed": "#2a1700",
+              "surface-container-lowest": "#0d0e14",
+              "surface": "#121319",
+              "on-primary-container": "#00275e",
+              "error-container": "#93000a",
+              "surface-container-highest": "#34343b",
+              "on-surface-variant": "#c3c6d4",
+              "tertiary-fixed-dim": "#ffb960",
+              "secondary": "#bdf4ff",
+              "surface-container": "#1e1f26",
+              "on-secondary-container": "#00616d",
+              "tertiary-container": "#ca8103",
+              "secondary-fixed-dim": "#00daf3",
+              "on-surface": "#e3e1eb",
+              "inverse-on-surface": "#2f3037",
+              "secondary-container": "#00e3fd",
+              "outline": "#8d909e",
+              "on-primary-fixed": "#001a43",
+              "background": "#121319",
+              "surface-container-low": "#1a1b22",
+              "on-tertiary": "#472a00",
+              "tertiary-fixed": "#ffddb8",
+              "tertiary": "#ffb960",
+              "primary-fixed-dim": "#aec6ff",
+              "surface-bright": "#383940",
+              "inverse-primary": "#1e5bba",
+              "inverse-surface": "#e3e1eb",
+              "primary": "#aec6ff",
+              "on-secondary-fixed-variant": "#004f58",
+              "surface-tint": "#aec6ff",
+              "surface-dim": "#121319",
+              "on-primary": "#002e6b",
+              "on-tertiary-container": "#3e2400",
+              "secondary-fixed": "#9cf0ff",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-error": "#690005",
+              "outline-variant": "#424752"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
 </script>
-{% endblock %}
+<style>
+.material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+      }
+      .glass-card {
+        background: rgba(26, 27, 34, 0.7);
+        backdrop-filter: blur(24px);
+        border-top: 1px solid rgba(174, 198, 255, 0.1);
+        border-left: 1px solid rgba(174, 198, 255, 0.1);
+      }
+      .glow-primary {
+        box-shadow: 0 0 12px rgba(93, 142, 241, 0.3);
+      }
+</style>
+{%- endblock %}
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#121319]/60 backdrop-blur-xl border-b border-white/10 shadow-[0_0_20px_rgba(91,141,239,0.05)]">
+<div class="flex justify-between items-center max-w-7xl mx-auto px-6 h-20">
+<div class="text-2xl font-black text-white tracking-tighter font-['Plus_Jakarta_Sans'] font-extrabold tracking-tight">
+                HostAI
+            </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-slate-400 font-medium hover:text-white transition-colors transition-all duration-300" href="#">Features</a>
+<a class="text-[#5B8DEF] font-bold border-b-2 border-[#5B8DEF] pb-1 transition-all duration-300" href="#">Pricing</a>
+<a class="text-slate-400 font-medium hover:text-white transition-colors transition-all duration-300" href="#">Compare Plans</a>
+</div>
+<div class="flex items-center gap-4">
+<a href="/login" class="text-slate-400 font-medium hover:text-white transition-colors px-4 py-2 transition-transform active:scale-95">Sign In</a>
+<a href="/signup" class="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-lg font-bold hover:bg-white/5 transition-all duration-300 active:scale-95">Get Started Free</a>
+</div>
+</div>
+</nav>
+<main class="pt-32 pb-24">
+<!-- Hero Section -->
+<section class="max-w-7xl mx-auto px-6 text-center mb-24">
+<h1 class="text-5xl md:text-[56px] font-headline font-extrabold tracking-tight text-white mb-6 leading-tight">
+                Simple, transparent pricing.
+            </h1>
+<p class="text-xl text-on-surface-variant max-w-2xl mx-auto">
+                Choose the plan that fits your portfolio size.
+            </p>
+</section>
+<!-- Pricing Cards -->
+<section class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Starter Plan -->
+<div class="glass-card p-10 rounded-xl flex flex-col hover:bg-surface-container transition-all duration-500 group">
+<div class="mb-8">
+<h3 class="text-white font-bold text-lg mb-2">Starter</h3>
+<div class="flex items-baseline gap-1 mb-2">
+<span class="text-4xl font-extrabold text-white">$29</span>
+<span class="text-on-surface-variant">/mo</span>
+</div>
+<p class="text-sm font-medium text-primary uppercase tracking-wider">1-2 properties</p>
+</div>
+<ul class="space-y-4 mb-10 flex-grow">
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">Automated Messaging</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">Guest Sentiment Analysis</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">Basic Integrations</span>
+</li>
+</ul>
+<button class="w-full py-3 rounded-lg border border-outline-variant/30 text-primary font-bold hover:bg-surface-container-high transition-all duration-300 active:scale-95">
+                    Get Started
+                </button>
+</div>
+<!-- Pro Plan -->
+<div class="glass-card p-10 rounded-xl flex flex-col relative scale-105 border-primary/20 shadow-[0_0_40px_rgba(93,142,241,0.1)] ring-1 ring-primary-container/30">
+<div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-tertiary-container text-on-tertiary-container text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest uppercase">
+                    MOST POPULAR
+                </div>
+<div class="mb-8">
+<h3 class="text-white font-bold text-lg mb-2">Pro</h3>
+<div class="flex items-baseline gap-1 mb-2">
+<span class="text-4xl font-extrabold text-white">$79</span>
+<span class="text-on-surface-variant">/mo</span>
+</div>
+<p class="text-sm font-medium text-primary uppercase tracking-wider">3-10 properties</p>
+</div>
+<ul class="space-y-4 mb-10 flex-grow">
+<li class="flex items-center gap-3 text-on-surface">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">All Starter features</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm font-bold">AI Response Control</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm font-bold">Smart Context</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm font-bold">Custom Workflow</span>
+</li>
+</ul>
+<button class="w-full py-4 rounded-lg bg-gradient-to-br from-primary to-primary-container text-on-primary font-extrabold glow-primary hover:opacity-90 transition-all duration-300 active:scale-95">
+                    Start Free Trial
+                </button>
+</div>
+<!-- Scale Plan -->
+<div class="glass-card p-10 rounded-xl flex flex-col hover:bg-surface-container transition-all duration-500 group">
+<div class="mb-8">
+<h3 class="text-white font-bold text-lg mb-2">Scale</h3>
+<div class="flex items-baseline gap-1 mb-2">
+<span class="text-4xl font-extrabold text-white">$199</span>
+<span class="text-on-surface-variant">/mo</span>
+</div>
+<p class="text-sm font-medium text-primary uppercase tracking-wider">10+ properties</p>
+</div>
+<ul class="space-y-4 mb-10 flex-grow">
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">All Pro features</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">White-labeling</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">API Access</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">24/7 Dedicated Support</span>
+</li>
+</ul>
+<button class="w-full py-3 rounded-lg border border-outline-variant/30 text-primary font-bold hover:bg-surface-container-high transition-all duration-300 active:scale-95">
+                    Contact Sales
+                </button>
+</div>
+</section>
+<!-- FAQ Section -->
+<section class="max-w-4xl mx-auto px-6 mt-32">
+<h2 class="text-3xl font-headline font-extrabold text-white text-center mb-16">Frequently Asked Questions</h2>
+<div class="space-y-4">
+<div class="glass-card p-6 rounded-xl cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex justify-between items-center">
+<span class="font-bold text-white">Can I switch plans later?</span>
+<span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</div>
+<p class="mt-4 text-sm text-on-surface-variant leading-relaxed">Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle.</p>
+</div>
+<div class="glass-card p-6 rounded-xl cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex justify-between items-center">
+<span class="font-bold text-white">What is an AI message?</span>
+<span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-xl cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex justify-between items-center">
+<span class="font-bold text-white">Is there a free trial?</span>
+<span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-xl cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex justify-between items-center">
+<span class="font-bold text-white">Do you offer discounts for non-profits?</span>
+<span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Visual Background Decoration -->
+<div class="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-container/10 rounded-full blur-[120px] -z-10"></div>
+<div class="fixed bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-secondary-container/5 rounded-full blur-[100px] -z-10"></div>
+</main>
+<!-- Footer -->
+<footer class="bg-[#08090F] w-full py-12 mt-24 border-t border-white/5">
+<div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="text-lg font-bold text-white font-['Plus_Jakarta_Sans']">
+                HostAI
+            </div>
+<div class="flex flex-wrap justify-center gap-8 font-['Plus_Jakarta_Sans'] text-sm text-slate-500">
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">Product</a>
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">Features</a>
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">Pricing</a>
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">Company</a>
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">About</a>
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">Contact</a>
+</div>
+<div class="font-['Plus_Jakarta_Sans'] text-sm text-slate-500">
+                © 2024 HostAI Inc. All rights reserved.
+            </div>
+</div>
+</footer>
+{%- endblock %}

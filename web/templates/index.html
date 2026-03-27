@@ -1,1183 +1,286 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HostAI | AI Guest Support for Airbnb & Vacation Rentals</title>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #060911;
-            --surface: #0D1220;
-            --surface-hover: #1E1C2A;
-            --accent: #4F8EF7;
-            --accent-glow: rgba(245, 166, 35, 0.35);
-            --success: #34D399;
-            --success-bg: rgba(16, 217, 168, 0.1);
-            --warn: #FFA94D;
-            --text-main: #F2EDE4;
-            --text-muted: #9B94B8;
-            --text-light: #D0CBE8;
-            --border: rgba(160, 140, 220, 0.11);
-            --radius-lg: 18px;
-            --radius: 9px;
-            --t: 0.2s ease;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        h1, h2, h3, h4 { font-family: 'Bricolage Grotesque', sans-serif; }
-
-        body {
-            font-family: 'DM Sans', sans-serif;
-            background-color: var(--bg);
-            color: var(--text-main);
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-
-        /* ===== NAV ===== */
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.5rem 5%;
-            border-bottom: 1px solid var(--border);
-            backdrop-filter: blur(10px);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .logo {
-            font-size: 1.25rem;
-            font-weight: 800;
-            letter-spacing: -0.05em;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .logo-icon {
-            width: 24px;
-            height: 24px;
-            background: var(--accent);
-            border-radius: 4px;
-            box-shadow: 0 0 15px var(--accent-glow);
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-        }
-        .nav-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 0.95rem;
-            font-weight: 500;
-            transition: color var(--t);
-        }
-        .nav-links a:hover { color: var(--text-main); }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent), #2B5FC8);
-            color: #060911;
-            padding: 0.6rem 1.25rem;
-            border-radius: var(--radius);
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 0.95rem;
-            transition: all var(--t);
-            border: 1px solid transparent;
-            box-shadow: 0 4px 16px var(--accent-glow);
-            cursor: pointer;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 24px var(--accent-glow);
-            color: #060911;
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--text-main);
-            padding: 0.6rem 1.25rem;
-            border-radius: var(--radius);
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 0.95rem;
-            border: 1px solid var(--border);
-            transition: all var(--t);
-            cursor: pointer;
-        }
-        .btn-outline:hover {
-            background: var(--surface);
-            border-color: var(--text-muted);
-        }
-
-        /* ===== HERO ===== */
-        .hero {
-            padding: 6rem 5% 4rem;
-            text-align: center;
-            position: relative;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-            z-index: -1;
-            opacity: 0.5;
-            filter: blur(50px);
-        }
-
-        .hero-badge {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 99px;
-            background: rgba(232, 160, 32, 0.1);
-            color: var(--accent);
-            border: 1px solid rgba(232, 160, 32, 0.2);
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-        }
-
-        .hero h1 {
-            font-family: 'Bricolage Grotesque', sans-serif;
-            font-size: 4.5rem;
-            font-weight: 800;
-            line-height: 1.1;
-            letter-spacing: -0.04em;
-            margin-bottom: 1rem;
-        }
-
-        h1, h2, h3 { font-family: 'Bricolage Grotesque', sans-serif; }
-
-        .text-gradient {
-            background: linear-gradient(135deg, #F0EDF8 0%, var(--accent-2) 55%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero .subtext {
-            font-size: 1.25rem;
-            color: var(--text-muted);
-            max-width: 600px;
-            margin: 0 auto 1.5rem;
-        }
-
-        .hero-benefits {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin: 2rem auto;
-            flex-wrap: wrap;
-            max-width: 700px;
-            font-size: 0.95rem;
-        }
-        .benefit-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-light);
-        }
-        .benefit-item::before {
-            content: '✓';
-            color: var(--success);
-            font-weight: 800;
-            font-size: 1.2rem;
-        }
-
-        .hero-btns {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-        .hero-btns a {
-            padding: 0.9rem 2rem;
-            font-size: 1rem;
-        }
-
-        /* ===== SECTIONS ===== */
-        section {
-            padding: 5rem 5%;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .section-title {
-            text-align: center;
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 3rem;
-            letter-spacing: -0.03em;
-        }
-
-        .section-subtitle {
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 1.1rem;
-            margin-bottom: 4rem;
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* ===== PROBLEM SECTION ===== */
-        .problem-section {
-            background: transparent;
-            padding: 2rem 5%;
-            margin: 4rem auto;
-            max-width: 1000px;
-        }
-
-        .comparison {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-
-        .comparison-col {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 2rem;
-            border-radius: var(--radius-lg);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .comparison-col.bad {
-            background: linear-gradient(180deg, rgba(239, 68, 68, 0.05) 0%, var(--surface) 100%);
-            border-color: rgba(239, 68, 68, 0.1);
-        }
-
-        .comparison-col.good {
-            background: linear-gradient(180deg, rgba(34, 197, 94, 0.05) 0%, var(--surface) 100%);
-            border-color: rgba(34, 197, 94, 0.2);
-            box-shadow: 0 10px 40px -10px rgba(34, 197, 94, 0.1);
-        }
-
-        .comparison-col h3 {
-            font-size: 1.3rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .comparison-col.bad h3 { color: #EF4444; }
-        .comparison-col.good h3 { color: var(--success); }
-
-        .comparison-col ul {
-            list-style: none;
-            padding: 0;
-            flex: 1;
-        }
-
-        .comparison-col li {
-            padding: 1rem 0;
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-            color: var(--text-muted);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            font-size: 0.95rem;
-        }
-        
-        .comparison-col li:last-child {
-            border-bottom: none;
-        }
-
-        .comparison-col.bad li::before {
-            content: '✕';
-            color: #EF4444;
-            font-weight: 800;
-            flex-shrink: 0;
-        }
-
-        .comparison-col.good li::before {
-            content: '✓';
-            color: var(--success);
-            font-weight: 800;
-            flex-shrink: 0;
-        }
-
-        @media (max-width: 768px) {
-            .comparison { grid-template-columns: 1fr; }
-        }
-
-        /* ===== INTEGRATIONS ===== */
-        .integrations {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 2.5rem;
-            margin: 3rem 0;
-        }
-
-        .integration {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-light);
-        }
-
-        .integration-logo {
-            width: 24px;
-            height: 24px;
-            background: var(--accent);
-            border-radius: 4px;
-        }
-
-        /* ===== STATS/PROOF ===== */
-        .proof-section {
-            background: linear-gradient(135deg, rgba(232, 160, 32, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 3rem;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--accent);
-            line-height: 1;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-
-        /* ===== GRID ===== */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 2rem;
-        }
-
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 2.5rem;
-            transition: all var(--t);
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(255, 255, 255, 0.2);
-            background: var(--surface-hover);
-        }
-
-        .card-icon {
-            width: 50px;
-            height: 50px;
-            background: rgba(232, 160, 32, 0.1);
-            color: var(--accent);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .card h3 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            color: var(--text-main);
-        }
-
-        .card p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-            line-height: 1.7;
-        }
-
-        /* ===== TESTIMONIALS ===== */
-        .testimonial {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 2.5rem;
-            position: relative;
-        }
-
-        .testimonial-quote {
-            font-size: 1.1rem;
-            margin-bottom: 1.5rem;
-            color: var(--text-light);
-            font-style: italic;
-        }
-
-        .testimonial-author {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .author-avatar {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, var(--accent), #10B981);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 700;
-            font-size: 1.2rem;
-        }
-
-        .author-info h4 {
-            font-size: 1rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .author-info p {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
-        .stars {
-            color: var(--warn);
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-        }
-
-        /* ===== USE CASES ===== */
-        .use-case {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 2.5rem;
-            text-align: center;
-        }
-
-        .use-case-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-
-        .use-case h3 {
-            font-size: 1.2rem;
-            margin-bottom: 1rem;
-        }
-
-        .use-case p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-            margin-bottom: 1.5rem;
-        }
-
-        /* ===== PRICING ===== */
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-top: 3rem;
-        }
-
-        .pricing-card {
-            background: var(--surface);
-            border: 2px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 2.5rem;
-            transition: all var(--t);
-            position: relative;
-        }
-
-        .pricing-card.popular {
-            border-color: var(--accent);
-            transform: scale(1.05);
-        }
-
-        .pricing-card.popular::before {
-            content: 'POPULAR';
-            position: absolute;
-            top: -12px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--accent);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 99px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-        }
-
-        .pricing-name {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .pricing-price {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 0.25rem;
-        }
-
-        .pricing-price span {
-            font-size: 1rem;
-            color: var(--text-muted);
-        }
-
-        .pricing-desc {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-bottom: 2rem;
-            padding-bottom: 2rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .pricing-features {
-            list-style: none;
-            margin-bottom: 2rem;
-        }
-
-        .pricing-features li {
-            padding: 0.75rem 0;
-            color: var(--text-light);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 0.95rem;
-        }
-
-        .pricing-features li::before {
-            content: '✓';
-            color: var(--success);
-            font-weight: 800;
-        }
-
-        .pricing-card a {
-            display: block;
-            width: 100%;
-            text-align: center;
-            padding: 0.8rem;
-            border-radius: var(--radius);
-        }
-
-        /* ===== FAQ ===== */
-        .faq-section {
-            max-width: 800px;
-        }
-
-        .faq-item {
-            margin-bottom: 1.5rem;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-        }
-
-        .faq-question {
-            padding: 1.5rem;
-            cursor: pointer;
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background var(--t);
-        }
-
-        .faq-question:hover {
-            background: var(--surface-hover);
-        }
-
-        .faq-question::after {
-            content: '▼';
-            transition: transform var(--t);
-            color: var(--accent);
-        }
-
-        .faq-item.open .faq-question::after {
-            transform: rotate(180deg);
-        }
-
-        .faq-answer {
-            padding: 0 1.5rem;
-            max-height: 0;
-            overflow: hidden;
-            transition: all var(--t);
-            color: var(--text-muted);
-        }
-
-        .faq-item.open .faq-answer {
-            padding: 0 1.5rem 1.5rem;
-            max-height: 500px;
-        }
-
-        /* ===== TRUST SECTION ===== */
-        .trust-section {
-            display: flex;
-            justify-content: center;
-            gap: 3rem;
-            flex-wrap: wrap;
-            margin: 3rem 0;
-            padding: 2rem;
-            background: rgba(16, 185, 129, 0.05);
-            border-radius: var(--radius-lg);
-        }
-
-        .trust-item {
-            text-align: center;
-        }
-
-        .trust-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .trust-item p {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            max-width: 150px;
-        }
-
-        /* ===== CTA SECTION ===== */
-        .cta-section {
-            background: linear-gradient(135deg, rgba(232, 160, 32, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 4rem;
-            text-align: center;
-        }
-
-        .cta-section h2 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .cta-section p {
-            color: var(--text-muted);
-            margin-bottom: 2rem;
-            font-size: 1.1rem;
-        }
-
-        .cta-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .cta-buttons a {
-            padding: 1rem 2rem;
-            font-size: 1rem;
-            border-radius: var(--radius);
-            text-decoration: none;
-            font-weight: 600;
-            transition: all var(--t);
-        }
-
-        /* ===== FOOTER ===== */
-        footer {
-            padding: 3rem 5%;
-            text-align: center;
-            color: var(--text-muted);
-            border-top: 1px solid var(--border);
-            margin-top: 6rem;
-            background: var(--surface);
-        }
-
-        footer .logo {
-            justify-content: center;
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
-            color: var(--text-main);
-        }
-
-        footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin: 1.5rem 0;
-            flex-wrap: wrap;
-        }
-
-        footer a {
-            color: var(--text-muted);
-            text-decoration: none;
-            transition: color var(--t);
-        }
-
-        footer a:hover {
-            color: var(--text-main);
-        }
-
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 3rem; }
-            .nav-links { display: none; }
-            .pricing-card.popular { transform: scale(1); }
-            .cta-section { padding: 2rem; }
-            .hero-benefits { gap: 1rem; }
-        }
-    </style>
-</head>
-<body>
-
-    <!-- ===== NAV ===== -->
-    <nav>
-        <div class="logo">
-            <div class="logo-icon"></div>
-            HostAI
-        </div>
-        <div class="nav-links">
-            <a href="#features">Features</a>
-            <a href="#pricing">Pricing</a>
-            <a href="/pricing">Compare Plans</a>
-            <a href="/login" class="btn-outline">Sign In</a>
-            <a href="/signup" class="btn-outline">Sign Up</a>
-            <a href="/login" class="btn-primary">Get Started Free</a>
-        </div>
-    </nav>
-
-    <!-- ===== HERO ===== -->
-    <div class="hero">
-        <div class="hero-badge">✨ AI-Powered Automation</div>
-        <h1>Never miss a guest message again. <span class="text-gradient">Reply in seconds.</span></h1>
-        <p class="subtext">Automated AI that handles 95% of guest questions instantly. Available 24/7 across Email, WhatsApp, Airbnb, and SMS.</p>
-
-        <div class="hero-benefits">
-            <div class="benefit-item">95% Automated</div>
-            <div class="benefit-item">2 Second Response</div>
-            <div class="benefit-item">24/7 Coverage</div>
-        </div>
-
-        <div class="hero-btns">
-            <a href="/login" class="btn-primary">Start Free Trial (No CC)</a>
-            <a href="#features" class="btn-outline">See How It Works</a>
-        </div>
-
-        <div style="margin: 4rem auto 0; max-width: 900px; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden; background: var(--surface);">
-            <div style="background:#1E293B; height: 40px; border-bottom:1px solid #334155; display:flex; align-items:center; padding:0 1rem; gap:0.5rem;">
-                <div style="width:12px; height:12px; border-radius:50%; background:#EF4444;"></div>
-                <div style="width:12px; height:12px; border-radius:50%; background:#EAB308;"></div>
-                <div style="width:12px; height:12px; border-radius:50%; background:#22C55E;"></div>
+{%- extends "base.html" %}
+{%- block title %}HostAI | AI Guest Support for Airbnb & Vacation Rentals{%- endblock %}
+
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-high": "#292930",
+              "on-tertiary-fixed-variant": "#653e00",
+              "tertiary-container": "#ca8103",
+              "primary": "#aec6ff",
+              "surface-container-highest": "#34343b",
+              "primary-container": "#5d8ef1",
+              "error-container": "#93000a",
+              "secondary": "#bdf4ff",
+              "secondary-fixed": "#9cf0ff",
+              "on-tertiary-fixed": "#2a1700",
+              "inverse-surface": "#e3e1eb",
+              "on-secondary-fixed": "#001f24",
+              "on-primary-fixed": "#001a43",
+              "tertiary-fixed-dim": "#ffb960",
+              "outline-variant": "#424752",
+              "on-error": "#690005",
+              "on-surface-variant": "#c3c6d4",
+              "surface-container-lowest": "#0d0e14",
+              "surface": "#121319",
+              "primary-fixed-dim": "#aec6ff",
+              "on-primary": "#002e6b",
+              "surface-variant": "#34343b",
+              "surface-bright": "#383940",
+              "on-tertiary-container": "#3e2400",
+              "on-primary-fixed-variant": "#004397",
+              "tertiary-fixed": "#ffddb8",
+              "background": "#08090F",
+              "on-secondary": "#00363d",
+              "tertiary": "#ffb960",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-secondary-container": "#00616d",
+              "inverse-primary": "#1e5bba",
+              "inverse-on-surface": "#2f3037",
+              "on-primary-container": "#00275e",
+              "surface-tint": "#aec6ff",
+              "surface-container-low": "#1a1b22",
+              "on-background": "#e3e1eb",
+              "surface-dim": "#121319",
+              "secondary-fixed-dim": "#00daf3",
+              "secondary-container": "#00e3fd",
+              "on-tertiary": "#472a00",
+              "primary-fixed": "#d8e2ff",
+              "error": "#ffb4ab",
+              "on-surface": "#e3e1eb",
+              "on-error-container": "#ffdad6",
+              "outline": "#8d909e",
+              "surface-container": "#1e1f26"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+</script>
+<style>
+.material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
+        }
+        .hero-glow {
+            background: radial-gradient(circle at 50% 50%, rgba(93, 142, 241, 0.15) 0%, rgba(8, 9, 15, 0) 70%);
+        }
+</style>
+{%- endblock %}
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#121319]/60 backdrop-blur-xl border-b border-white/10 shadow-[0_0_20px_rgba(91,141,239,0.1)]">
+<div class="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
+<div class="flex items-center gap-2 text-xl font-extrabold text-white tracking-tight">
+<span class="material-symbols-outlined text-[#5B8DEF]" data-icon="hub">hub</span>
+                HostAI
             </div>
-            <div style="padding: 2rem; text-align:left; background:#0F172A; min-height:300px;">
-                <h3 style="margin-top:0; color:#F8FAFC; margin-bottom:1.5rem; font-weight:600;">Incoming Inquiries Filtered by AI</h3>
-
-                <div style="background:#1E293B; border:1px solid #334155; padding:1.25rem; border-radius:8px; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="color:#94A3B8; font-size:0.85rem; margin-bottom:0.25rem;">WhatsApp • 2 mins ago</div>
-                        <div style="color:#F1F5F9; font-weight:500;">"Can I get an early check-in at 1PM?"</div>
-                    </div>
-                    <div style="background:rgba(34,197,94,0.1); color:#22C55E; border:1px solid rgba(34,197,94,0.2); padding:4px 10px; border-radius:99px; font-size:0.75rem; font-weight:700;">✓ Auto-Replied</div>
+<div class="hidden md:flex items-center gap-8 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<a class="text-[#5B8DEF] font-bold border-b-2 border-[#5B8DEF] pb-1" href="#">Features</a>
+<a class="text-slate-400 hover:text-white transition-colors" href="#">Pricing</a>
+<a class="text-slate-400 hover:text-white transition-colors" href="#">Compare Plans</a>
+</div>
+<div class="flex items-center gap-4">
+<a href="/login" class="text-slate-400 hover:text-white text-sm font-medium transition-colors">Sign In</a>
+<a href="/signup" class="bg-[#5B8DEF] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_15px_rgba(91,141,239,0.4)] active:scale-95 transition-all">Get Started Free</a>
+</div>
+</div>
+</nav>
+<main class="relative pt-32 overflow-hidden">
+<!-- Background Orbs -->
+<div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary-container/10 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="absolute bottom-[20%] right-[-5%] w-[40%] h-[40%] bg-secondary-container/5 rounded-full blur-[100px] pointer-events-none"></div>
+<!-- Hero Section -->
+<section class="max-w-7xl mx-auto px-8 text-center relative z-10">
+<div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container-low border border-outline-variant/20 mb-8">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed-dim animate-pulse"></span>
+<span class="text-label-sm font-bold tracking-widest uppercase text-on-surface-variant text-[10px]">v2.0 Now Live</span>
+</div>
+<h1 class="font-headline font-extrabold text-5xl md:text-[80px] leading-[1.1] text-white mb-6 tracking-tight">
+                Never miss a guest <br/>
+<span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container">message again.</span>
+</h1>
+<p class="max-w-2xl mx-auto text-on-surface-variant text-lg md:text-xl leading-relaxed mb-10">
+                Automated AI that handles 95% of guest questions instantly. Available 24/7 across Email, WhatsApp, Airbnb, and SMS.
+            </p>
+<!-- Checkmarks -->
+<div class="flex flex-wrap justify-center items-center gap-8 mb-12">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary-fixed-dim text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm font-semibold text-on-surface">95% Automated</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary-fixed-dim text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm font-semibold text-on-surface">2 Second Response</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary-fixed-dim text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm font-semibold text-on-surface">24/7 Coverage</span>
+</div>
+</div>
+<!-- Hero CTAs -->
+<div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-24">
+<a href="/signup" class="w-full sm:w-auto px-8 py-4 bg-gradient-to-br from-primary to-primary-container rounded-xl font-bold text-on-primary shadow-[0_0_25px_rgba(93,142,241,0.3)] hover:shadow-[0_0_40px_rgba(93,142,241,0.4)] transition-all active:scale-95 text-center">Start Free Trial</a>
+<button class="w-full sm:w-auto px-8 py-4 text-primary font-bold hover:bg-surface-container-high/40 rounded-xl transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="play_circle">play_circle</span>
+                    Watch Demo
+                </button>
+</div>
+<!-- Product Mockup Container -->
+<div class="relative max-w-5xl mx-auto">
+<div class="absolute -inset-10 bg-primary-container/20 blur-[100px] rounded-full pointer-events-none"></div>
+<div class="glass-card rounded-2xl p-4 shadow-2xl relative overflow-hidden">
+<div class="flex items-center gap-2 mb-4 px-2">
+<div class="flex gap-1.5">
+<div class="w-3 h-3 rounded-full bg-red-500/30"></div>
+<div class="w-3 h-3 rounded-full bg-yellow-500/30"></div>
+<div class="w-3 h-3 rounded-full bg-green-500/30"></div>
+</div>
+<div class="mx-auto bg-surface-container-highest/50 px-4 py-1 rounded-full text-[10px] text-on-surface-variant font-medium">hostai.app/dashboard</div>
+</div>
+<img alt="HostAI Dashboard Mockup" class="rounded-xl w-full border border-white/5 shadow-inner" data-alt="dark mode software dashboard with glowing blue data visualizations, analytics charts, and clean minimalist user interface for real estate management" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEEP3N5W8uxDqBb14QBzWzS-QjkiZeXJebTvT1XHUhr4qWmwXeETlc8EviCftMfh5oqBq8Dy8RwsxoBj3BdhGnK-PzVEXpHS6BhyCwaGg3wf9HR9Lz-4UyvwfY3roqlZCF0tHUBRdj-P-e_xHcOplWnD1RK5FWy_wVS4KepGXw39OY8ZMu9aZ8IBeMUIafLuNXRIKD8GA1LFv8G54_OKpTk7Jh5aHvOc5Qi5oD-ibrlLs94wTqTxDbgC2_nw77ysh-whh17AvqWezM"/>
+</div>
+</div>
+</section>
+<!-- Social Proof -->
+<section class="py-24 max-w-7xl mx-auto px-8">
+<div class="flex flex-col items-center">
+<div class="flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-tertiary" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-tertiary" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-tertiary" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-tertiary" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-tertiary" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="ml-2 text-on-surface font-bold">4.9/5</span>
+<span class="text-on-surface-variant ml-1">from 1,200+ hosts</span>
+</div>
+<div class="flex flex-wrap justify-center items-center gap-12 opacity-40 grayscale hover:grayscale-0 transition-all">
+<span class="text-2xl font-bold tracking-tighter text-white">Airbnb</span>
+<span class="text-2xl font-bold tracking-tighter text-white">Booking.com</span>
+<span class="text-2xl font-bold tracking-tighter text-white">Vrbo</span>
+<span class="text-2xl font-bold tracking-tighter text-white">Expedia</span>
+</div>
+</div>
+</section>
+<!-- Features Section -->
+<section class="py-32 max-w-7xl mx-auto px-8">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Feature 1 -->
+<div class="glass-card p-10 rounded-2xl group hover:bg-surface-container-low transition-all">
+<div class="w-14 h-14 rounded-xl bg-primary-container/20 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div class="flex items-center gap-3 mb-4">
+<h3 class="text-xl font-bold text-white">AI Drafts</h3>
+<span class="bg-tertiary-container/20 text-tertiary text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest border border-tertiary/20">AI</span>
+</div>
+<p class="text-on-surface-variant leading-relaxed">
+                        Intelligent responses generated in real-time based on your specific house rules, local guides, and previous guest interactions.
+                    </p>
+</div>
+<!-- Feature 2 -->
+<div class="glass-card p-10 rounded-2xl group hover:bg-surface-container-low transition-all">
+<div class="w-14 h-14 rounded-xl bg-secondary-container/20 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-secondary-fixed-dim text-3xl" data-icon="dynamic_feed">dynamic_feed</span>
+</div>
+<h3 class="text-xl font-bold text-white mb-4">Multi-Channel</h3>
+<p class="text-on-surface-variant leading-relaxed">
+                        One unified inbox for all your listings. Manage WhatsApp, Airbnb, SMS, and Email conversations without switching tabs.
+                    </p>
+</div>
+<!-- Feature 3 -->
+<div class="glass-card p-10 rounded-2xl group hover:bg-surface-container-low transition-all">
+<div class="w-14 h-14 rounded-xl bg-primary-container/20 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="psychology_alt">psychology_alt</span>
+</div>
+<h3 class="text-xl font-bold text-white mb-4">Smart Context</h3>
+<p class="text-on-surface-variant leading-relaxed">
+                        The AI understands check-in times, Wi-Fi passwords, and parking instructions to provide accurate, helpful answers every time.
+                    </p>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="py-32 relative">
+<div class="max-w-5xl mx-auto px-8">
+<div class="glass-card rounded-[2rem] p-16 text-center overflow-hidden relative">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[80px] -mr-32 -mt-32"></div>
+<h2 class="text-4xl font-headline font-extrabold text-white mb-6">Ready to automate your hosting?</h2>
+<p class="text-on-surface-variant text-lg mb-10 max-w-xl mx-auto">
+                        Join 1,200+ hosts who save an average of 15 hours per week on guest communication.
+                    </p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-6">
+<button class="px-10 py-4 bg-white text-surface font-bold rounded-xl hover:bg-primary-fixed transition-colors">
+                            Start Your 14-Day Free Trial
+                        </button>
+<span class="text-on-surface-variant text-sm font-medium">No credit card required.</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-[#08090F] w-full py-16 px-8 border-t border-white/5">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-12 max-w-7xl mx-auto font-['Plus_Jakarta_Sans'] text-sm leading-relaxed">
+<div class="col-span-2 md:col-span-1">
+<div class="text-lg font-bold text-white mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-[#5B8DEF]" data-icon="hub">hub</span>
+                    HostAI
                 </div>
-
-                <div style="background:#1E293B; border:1px solid #334155; padding:1.25rem; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="color:#94A3B8; font-size:0.85rem; margin-bottom:0.25rem;">Airbnb • 10 mins ago</div>
-                        <div style="color:#F1F5F9; font-weight:500;">"The wifi router isn't working."</div>
-                    </div>
-                    <div style="background:rgba(79,142,247,0.1); color:var(--accent); border:1px solid rgba(79,142,247,0.2); padding:4px 10px; border-radius:99px; font-size:0.75rem; font-weight:700;">⚠ Review First</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== PROBLEM SECTION ===== -->
-    <section class="problem-section">
-        <h2 style="text-align: center; font-size: 2rem; margin-bottom: 2rem;">The Cost of Manual Guest Support</h2>
-
-        <div class="comparison">
-            <div class="comparison-col bad">
-                <h3>❌ Without HostAI</h3>
-                <ul>
-                    <li>Spending 4-8 hours/day on messages</li>
-                    <li>Missing messages = upset guests</li>
-                    <li>Slow replies = lower satisfaction</li>
-                    <li>Human errors in responses</li>
-                    <li>Can't scale (can't manage more properties)</li>
-                    <li>Burning $500-1000/month on support</li>
-                </ul>
-            </div>
-            <div class="comparison-col good">
-                <h3>✓ With HostAI</h3>
-                <ul>
-                    <li>95% of questions answered in seconds</li>
-                    <li>Never miss a guest message</li>
-                    <li>24/7 instant responses</li>
-                    <li>AI follows your rules perfectly</li>
-                    <li>Scale to 50+ properties solo</li>
-                    <li>Save $300-800/month per property</li>
-                </ul>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== INTEGRATIONS ===== -->
-    <section style="text-align: center;">
-        <h2 class="section-title">Works With Everything You Use</h2>
-        <div class="integrations">
-            <div class="integration">
-                <div class="integration-logo"></div> Airbnb
-            </div>
-            <div class="integration">
-                <div class="integration-logo"></div> Vrbo
-            </div>
-            <div class="integration">
-                <div class="integration-logo"></div> Booking.com
-            </div>
-            <div class="integration">
-                <div class="integration-logo"></div> WhatsApp
-            </div>
-            <div class="integration">
-                <div class="integration-logo"></div> SMS/Twilio
-            </div>
-            <div class="integration">
-                <div class="integration-logo"></div> Email
-            </div>
-            <div class="integration">
-                <div class="integration-logo"></div> iCal
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== PROOF SECTION ===== -->
-    <section class="proof-section">
-        <h2 class="section-title">Trusted by Property Managers Everywhere</h2>
-        <div class="stats-grid">
-            <div class="stat-item">
-                <div class="stat-value">5,000+</div>
-                <div class="stat-label">Active Hosts</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">50,000+</div>
-                <div class="stat-label">Properties Managed</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">95%</div>
-                <div class="stat-label">Automated Questions</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">2s</div>
-                <div class="stat-label">Avg Response Time</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">40%</div>
-                <div class="stat-label">Guest Satisfaction ↑</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">$3K+</div>
-                <div class="stat-label">Saved Per Property/Year</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== FEATURES ===== -->
-    <section id="features">
-        <h2 class="section-title">Everything You Need to Scale Your Properties</h2>
-
-        <div class="grid">
-            <div class="card">
-                <div class="card-icon">🤖</div>
-                <h3>Smart AI Routing</h3>
-                <p>We use intelligent routing to save you money. Routine queries go to cost-effective models like Llama 3, while complex escalations are handled by Claude 3.5 Sonnet. You control the rules.</p>
-            </div>
-
-            <div class="card">
-                <div class="card-icon">💬</div>
-                <h3>Omnichannel Inbox</h3>
-                <p>Connect Email, Airbnb, WhatsApp, SMS, and iCal. View all guest communications and reservations in one unified dashboard. Never switch between 5 apps again.</p>
-            </div>
-
-            <div class="card">
-                <div class="card-icon">📊</div>
-                <h3>Sentiment Analysis</h3>
-                <p>Our AI instantly tags incoming messages. If a guest is frustrated or escalating, the message bypasses AI and alerts you immediately for human intervention. You stay in control.</p>
-            </div>
-
-            <div class="card">
-                <div class="card-icon">🛠️</div>
-                <h3>Vendor & Maintenance</h3>
-                <p>Automatically detect maintenance issues from guest messages and generate one-click dispatch messages to your cleaners or maintenance staff. Issues get handled fast.</p>
-            </div>
-
-            <div class="card">
-                <div class="card-icon">🏠</div>
-                <h3>Multi-Property Support</h3>
-                <p>Manage 50+ properties with per-property custom rules, FAQs, and house rules. Each property has its own personality, and HostAI respects that automatically.</p>
-            </div>
-
-            <div class="card">
-                <div class="card-icon">🔒</div>
-                <h3>Stay in Control</h3>
-                <p>You always review complex or policy-sensitive messages before sending. AI drafts the reply, you approve it. Full transparency, zero surprises. You make the final call.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== TESTIMONIALS ===== -->
-    <section>
-        <h2 class="section-title">What Hosts Are Saying</h2>
-
-        <div class="grid">
-            <div class="testimonial">
-                <div class="stars">⭐⭐⭐⭐⭐</div>
-                <div class="testimonial-quote">
-                    "HostAI saved me 30 hours per week. I went from managing 5 properties to 20 without hiring anyone. The AI understands my house rules perfectly. Game changer."
-                </div>
-                <div class="testimonial-author">
-                    <div class="author-avatar">SM</div>
-                    <div class="author-info">
-                        <h4>Sarah Martinez</h4>
-                        <p>Property Manager, Austin TX</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="testimonial">
-                <div class="stars">⭐⭐⭐⭐⭐</div>
-                <div class="testimonial-quote">
-                    "The AI has never sent a reply that violated my policies. It's learned my exact guidelines. No more worried about a bad review from a poorly worded message. Highly recommend."
-                </div>
-                <div class="testimonial-author">
-                    <div class="author-avatar">JK</div>
-                    <div class="author-info">
-                        <h4>James Kim</h4>
-                        <p>Airbnb Superhero, Miami FL</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="testimonial">
-                <div class="stars">⭐⭐⭐⭐⭐</div>
-                <div class="testimonial-quote">
-                    "Finally, a guest support system built for rental hosts, not corporate hotels. This is how property management should work. Worth every penny and saves way more than it costs."
-                </div>
-                <div class="testimonial-author">
-                    <div class="author-avatar">RC</div>
-                    <div class="author-info">
-                        <h4>Rachel Chen</h4>
-                        <p>Vacation Rental Owner, Seattle WA</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== USE CASES ===== -->
-    <section>
-        <h2 class="section-title">Built for Your Use Case</h2>
-
-        <div class="grid">
-            <div class="use-case">
-                <div class="use-case-icon">🏠</div>
-                <h3>Airbnb Superhosts</h3>
-                <p>Manage multiple listings, keep guest satisfaction high, and scale without adding staff. AI learns your specific property rules and messaging style.</p>
-            </div>
-
-            <div class="use-case">
-                <div class="use-case-icon">🏢</div>
-                <h3>Property Managers</h3>
-                <p>Handle 20+ properties with different owners, rules, and guidelines. HostAI manages the complexity so you manage the relationships.</p>
-            </div>
-
-            <div class="use-case">
-                <div class="use-case-icon">🏨</div>
-                <h3>Boutique Hotels</h3>
-                <p>Provide 24/7 guest support in multiple languages without hiring night staff. Keep the personal touch while saving on labor.</p>
-            </div>
-
-            <div class="use-case">
-                <div class="use-case-icon">🌍</div>
-                <h3>Vacation Rental Services</h3>
-                <p>Manage guest communications at scale across your entire portfolio. One AI, multiple properties, unified support experience.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== TRUST SECTION ===== -->
-    <section>
-        <div class="trust-section">
-            <div class="trust-item">
-                <div class="trust-icon">🔐</div>
-                <p><strong>GDPR & SOC2 Compliant</strong></p>
-            </div>
-            <div class="trust-item">
-                <div class="trust-icon">✓</div>
-                <p><strong>99.9% Uptime Guaranteed</strong></p>
-            </div>
-            <div class="trust-item">
-                <div class="trust-icon">💳</div>
-                <p><strong>No Credit Card Required</strong></p>
-            </div>
-            <div class="trust-item">
-                <div class="trust-icon">↩️</div>
-                <p><strong>30-Day Money Back Guarantee</strong></p>
-            </div>
-            <div class="trust-item">
-                <div class="trust-icon">🔒</div>
-                <p><strong>Encrypted Guest Data</strong></p>
-            </div>
-            <div class="trust-item">
-                <div class="trust-icon">❌</div>
-                <p><strong>Never Sold to 3rd Parties</strong></p>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== PRICING ===== -->
-    <section id="pricing">
-        <h2 class="section-title">Unit-Based Pricing</h2>
-        <p class="section-subtitle">Scale from 1 to 50+ properties. All plans include all messaging channels — WhatsApp, SMS, Email, AI drafts, and automations.</p>
-
-        <div class="pricing-grid">
-            <div class="pricing-card">
-                <div class="pricing-name">Starter</div>
-                <div class="pricing-price">$20<span>/month</span></div>
-                <p class="pricing-desc">1–5 properties</p>
-                <ul class="pricing-features">
-                    <li>$10 per additional property</li>
-                    <li>All messaging channels included</li>
-                    <li>AI-powered response drafts</li>
-                    <li>Guest contact management</li>
-                    <li>Message automation & scheduling</li>
-                </ul>
-                <a href="/login" class="btn-outline">Get Started</a>
-            </div>
-
-            <div class="pricing-card popular">
-                <div class="pricing-name">Growth</div>
-                <div class="pricing-price">$30<span>/month</span></div>
-                <p class="pricing-desc">6–10 properties</p>
-                <ul class="pricing-features">
-                    <li>$9 per additional property</li>
-                    <li>Everything in Starter</li>
-                    <li>PMS integrations (Airbnb, VRBO)</li>
-                    <li>Team member accounts</li>
-                    <li>Analytics & insights</li>
-                </ul>
-                <a href="/login" class="btn-primary">Start Free Trial</a>
-            </div>
-
-            <div class="pricing-card">
-                <div class="pricing-name">Pro</div>
-                <div class="pricing-price">$50<span>/month</span></div>
-                <p class="pricing-desc">11–50+ properties</p>
-                <ul class="pricing-features">
-                    <li>$8 per additional property</li>
-                    <li>Everything in Growth</li>
-                    <li>Advanced automation rules</li>
-                    <li>Conversation history & memory</li>
-                    <li>Priority email & chat support</li>
-                </ul>
-                <a href="/login" class="btn-outline">Start Free Trial</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== FAQ ===== -->
-    <section class="faq-section">
-        <h2 class="section-title">Questions? We Have Answers</h2>
-
-        <div class="faq-item">
-            <div class="faq-question">Will the AI mess up and say something that violates my policies?</div>
-            <div class="faq-answer">No. You teach HostAI your exact house rules, refund policies, and house guidelines. The AI learns them and never violates them. You always review complex messages before sending.</div>
-        </div>
-
-        <div class="faq-item">
-            <div class="faq-question">Which platforms does HostAI work with?</div>
-            <div class="faq-answer">HostAI works with Airbnb, Vrbo, Booking.com, direct reservations, and iCal imports. We also support WhatsApp, SMS (via Twilio), and email. Any platform you use, we integrate with.</div>
-        </div>
-
-        <div class="faq-item">
-            <div class="faq-question">Is my guest data safe? Is it encrypted?</div>
-            <div class="faq-answer">Yes. All data is encrypted at rest and in transit. We're GDPR compliant, SOC2 audited, and we never sell guest data to third parties. Your data is yours only.</div>
-        </div>
-
-        <div class="faq-item">
-            <div class="faq-question">What if I want to cancel?</div>
-            <div class="faq-answer">Cancel anytime, no lock-in. We offer a 30-day money-back guarantee. If you're not happy, you get your money back. We only keep customers who love us.</div>
-        </div>
-
-        <div class="faq-item">
-            <div class="faq-question">How does the free trial work?</div>
-            <div class="faq-answer">Start for free, no credit card required. Manage 3 properties and 50 messages per month forever free. Upgrade to Pro or Growth whenever you need more.</div>
-        </div>
-
-        <div class="faq-item">
-            <div class="faq-question">What if I have a technical issue?</div>
-            <div class="faq-answer">Free tier users get community support. Pro+ customers get priority email support and guaranteed 1-hour response times. Enterprise gets dedicated account manager.</div>
-        </div>
-    </section>
-
-    <!-- ===== FINAL CTA ===== -->
-    <section>
-        <div class="cta-section">
-            <h2>Ready to Reclaim Your Time?</h2>
-            <p>Join 5,000+ hosts who are already using HostAI to scale their properties. Start free, no credit card needed.</p>
-            <div class="cta-buttons">
-                <a href="/login" class="btn-primary">Start Free Trial</a>
-                <a href="/pricing" class="btn-outline">Compare Plans</a>
-                <a href="/login" class="btn-outline">Schedule a Demo</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== FOOTER ===== -->
-    <footer>
-        <div class="logo">
-            <div class="logo-icon"></div>
-            HostAI
-        </div>
-        <p>Intelligent guest support for property managers and Airbnb hosts.</p>
-        <div style="margin: 2rem 0; display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
-            <a href="/pricing">Pricing</a>
-            <a href="#features">Features</a>
-            <a href="/login">Sign In</a>
-            <a href="mailto:support@hostai.local">Contact</a>
-        </div>
-        <p style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem; font-size: 0.9rem;">
-            © 2024 HostAI. All rights reserved. |
-            <a href="#">Privacy Policy</a> |
-            <a href="#">Terms of Service</a> |
-            <a href="#">Security</a>
-        </p>
-    </footer>
-
-    <script nonce="{{ request.state.csp_nonce }}">
-        // FAQ Toggle
-        document.querySelectorAll('.faq-item').forEach(item => {
-            item.querySelector('.faq-question').addEventListener('click', () => {
-                item.classList.toggle('open');
-            });
-        });
-    </script>
-
-</body>
-</html>
+<p class="text-slate-500 mb-6 max-w-xs">
+                    Automating guest experiences with cutting-edge AI for the modern property manager.
+                </p>
+</div>
+<div>
+<h4 class="text-white font-bold mb-6">Product</h4>
+<ul class="space-y-4">
+<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">Features</a></li>
+<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">Pricing</a></li>
+<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">Integrations</a></li>
+<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">Changelog</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-white font-bold mb-6">Company</h4>
+<ul class="space-y-4">
+<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">About</a></li>
+<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">Careers</a></li>
+<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">Contact</a></li>
+<li><a class="text-slate-500 hover:text-[#5B8DEF] transition-colors" href="#">Privacy</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-white font-bold mb-6">Stay Updated</h4>
+<div class="flex gap-2 mb-6">
+<input class="bg-surface-container-lowest border-0 rounded-lg text-sm w-full focus:ring-1 focus:ring-primary/40" placeholder="Email address" type="email"/>
+<button class="bg-surface-container-highest p-2 rounded-lg text-white">
+<span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<p class="text-slate-500 text-xs">© 2024 HostAI Inc. All rights reserved.</p>
+</div>
+</div>
+</footer>
+{%- endblock %}

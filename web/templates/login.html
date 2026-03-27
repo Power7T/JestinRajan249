@@ -1,548 +1,176 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0, user-scalable=yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Sign in — HostAI</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg:      #060911;
-      --bg-2:    #0C1018;
-      --surface: #0D1220;
-      --border:  rgba(80,120,220,0.1);
-      --border-2:rgba(80,120,220,0.2);
-      --accent:  #4F8EF7;
-      --accent-2:#93BEFF;
-      --accent-glow: rgba(79,142,247,0.22);
-      --rose:    #9B7FE8;
-      --text-1:  #EEF2FF;
-      --text-2:  #8898BB;
-      --text-3:  #445070;
-      --danger:  #FF6B8A;
-      --danger-bg: rgba(248,113,113,0.08);
-      --danger-border: rgba(248,113,113,0.2);
-      --success: #34D399;
-      --success-bg: rgba(52,211,153,0.08);
-      --success-border: rgba(52,211,153,0.2);
-      --radius:  10px;
-      --radius-sm: 6px;
-      --t: 150ms ease;
-    }
-    [data-theme="light"] {
-      --bg: #F8FAFF; --bg-2: #EFF3FB; --surface: #FFFFFF;
-      --border: rgba(60,90,180,0.1); --border-2: rgba(60,90,180,0.18);
-      --text-1: #0D1629; --text-2: #475A82; --text-3: #8A99BB;
-    }
+{%- extends "base.html" %}
+{%- block title %}Sign In — HostAI{%- endblock %}
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Figtree', -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text-1);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-      -webkit-font-smoothing: antialiased;
-      position: relative;
-      overflow-x: hidden;
-      flex-direction: column;
-    }
-
-    @media (max-width: 480px) {
-      body {
-        padding: 0.75rem;
-        padding-top: 3rem;
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary": "#002e6b",
+              "inverse-on-surface": "#2f3037",
+              "surface-container": "#1e1f26",
+              "on-error-container": "#ffdad6",
+              "tertiary-container": "#ca8103",
+              "surface-tint": "#aec6ff",
+              "on-secondary-fixed-variant": "#004f58",
+              "surface-variant": "#34343b",
+              "secondary-fixed": "#9cf0ff",
+              "inverse-surface": "#e3e1eb",
+              "on-secondary": "#00363d",
+              "on-primary-container": "#00275e",
+              "on-surface-variant": "#c3c6d4",
+              "surface-container-lowest": "#0d0e14",
+              "on-error": "#690005",
+              "secondary-fixed-dim": "#00daf3",
+              "error-container": "#93000a",
+              "tertiary-fixed-dim": "#ffb960",
+              "inverse-primary": "#1e5bba",
+              "outline": "#8d909e",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-tertiary-fixed": "#2a1700",
+              "primary": "#aec6ff",
+              "surface-container-high": "#292930",
+              "secondary": "#bdf4ff",
+              "on-secondary-container": "#00616d",
+              "tertiary": "#ffb960",
+              "surface-dim": "#121319",
+              "primary-container": "#5d8ef1",
+              "outline-variant": "#424752",
+              "tertiary-fixed": "#ffddb8",
+              "background": "#121319",
+              "on-secondary-fixed": "#001f24",
+              "on-primary-fixed-variant": "#004397",
+              "surface-container-highest": "#34343b",
+              "surface-container-low": "#1a1b22",
+              "primary-fixed": "#d8e2ff",
+              "on-surface": "#e3e1eb",
+              "on-tertiary-container": "#3e2400",
+              "on-primary-fixed": "#001a43",
+              "error": "#ffb4ab",
+              "primary-fixed-dim": "#aec6ff",
+              "surface-bright": "#383940",
+              "secondary-container": "#00e3fd",
+              "on-tertiary": "#472a00",
+              "on-background": "#e3e1eb",
+              "surface": "#121319"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
       }
-    }
+</script>
+<style>
+body {
+            background-color: #08090F;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(174, 198, 255, 0.1);
+        }
+        .glow-orb {
+            filter: blur(120px);
+            opacity: 0.15;
+            z-index: 0;
+        }
+</style>
+{%- endblock %}
+{%- endblock %}
 
-    /* Ambient glow background */
-    body::before {
-      content: '';
-      position: fixed;
-      top: -20%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 80vw;
-      height: 60vh;
-      background: radial-gradient(ellipse at 40% 50%,
-        rgba(245,166,35,0.12) 0%,
-        rgba(124,111,255,0.08) 40%,
-        transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-    /* Second glow */
-    body::after {
-      content: '';
-      position: fixed;
-      bottom: -10%;
-      right: -10%;
-      width: 50vw;
-      height: 50vh;
-      background: radial-gradient(ellipse, rgba(255,107,138,0.07) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
+{%- block nav %}{%- endblock %}
 
-    /* Grain texture */
-    body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 9999;
-      opacity: 0.025;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-    }
-
-    .login-wrap {
-      width: 100%;
-      max-width: 420px;
-      position: relative;
-      z-index: 1;
-      animation: fadeUp 0.4s ease both;
-    }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    @media (max-width: 480px) {
-      .login-wrap {
-        max-width: 100%;
-      }
-    }
-
-    .brand {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .brand-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 56px;
-      height: 56px;
-      background: linear-gradient(135deg, var(--accent), var(--rose));
-      border-radius: 16px;
-      font-size: 26px;
-      margin-bottom: 0.85rem;
-      box-shadow: 0 8px 36px var(--accent-glow), 0 0 0 1px rgba(79,142,247,0.2);
-    }
-    .brand h1 {
-      font-family: 'Bricolage Grotesque', sans-serif;
-      font-size: 1.65rem;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      color: var(--text-1);
-    }
-    .brand p {
-      font-size: 0.82rem;
-      color: var(--text-3);
-      margin-top: 0.3rem;
-      line-height: 1.6;
-    }
-
-    @media (max-width: 480px) {
-      .brand {
-        margin-bottom: 1.5rem;
-      }
-      .brand-icon {
-        width: 44px;
-        height: 44px;
-        font-size: 20px;
-        margin-bottom: 0.5rem;
-      }
-      .brand h1 {
-        font-size: 1.25rem;
-      }
-      .brand p {
-        font-size: 0.75rem;
-      }
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 2rem;
-      box-shadow: 0 8px 48px rgba(0,0,0,0.6), 0 0 80px rgba(245,166,35,0.05), 0 0 0 1px rgba(160,140,220,0.08);
-      position: relative;
-      overflow: hidden;
-    }
-
-    @media (max-width: 480px) {
-      .card {
-        padding: 1.25rem;
-        border-radius: 12px;
-      }
-    }
-    .card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(245,166,35,0.05) 0%, rgba(124,111,255,0.03) 100%);
-      pointer-events: none;
-    }
-
-    .section-title {
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.09em;
-      color: var(--text-3);
-      margin-bottom: 1.1rem;
-    }
-
-    @media (max-width: 480px) {
-      .section-title {
-        font-size: 0.68rem;
-        margin-bottom: 0.95rem;
-      }
-    }
-
-    label {
-      display: block;
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--text-2);
-      margin-bottom: 5px;
-    }
-    input {
-      width: 100%;
-      padding: 10px 13px;
-      background: var(--bg-2);
-      border: 1px solid var(--border-2);
-      border-radius: var(--radius-sm);
-      font-size: 0.875rem;
-      font-family: inherit;
-      color: var(--text-1);
-      margin-bottom: 1rem;
-      outline: none;
-      transition: border-color var(--t), box-shadow var(--t);
-      min-height: 44px;
-    }
-    input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-glow);
-    }
-
-    @media (max-width: 480px) {
-      label {
-        font-size: 0.75rem;
-        margin-bottom: 4px;
-      }
-      input {
-        font-size: 16px;
-        padding: 12px 11px;
-        margin-bottom: 0.9rem;
-      }
-    }
-
-    .btn {
-      width: 100%;
-      padding: 10px 16px;
-      border-radius: var(--radius-sm);
-      font-size: 0.875rem;
-      font-weight: 700;
-      cursor: pointer;
-      border: none;
-      font-family: inherit;
-      transition: all var(--t);
-      letter-spacing: 0.01em;
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .btn:hover { transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent), #2B5FC8);
-      color: #060911;
-      font-weight: 700;
-      margin-bottom: 0.75rem;
-      box-shadow: 0 4px 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15);
-    }
-    .btn-primary:hover { box-shadow: 0 6px 30px var(--accent-glow); color: #060911; }
-
-    .btn-secondary {
-      background: var(--bg-2);
-      color: var(--text-2);
-      border: 1px solid var(--border-2);
-    }
-    .btn-secondary:hover { background: var(--bg); color: var(--text-1); }
-
-    @media (max-width: 480px) {
-      .btn {
-        font-size: 0.8rem;
-        padding: 12px 14px;
-      }
-    }
-
-    .alert {
-      padding: 0.65rem 0.9rem;
-      border-radius: var(--radius-sm);
-      font-size: 0.8rem;
-      margin-bottom: 1rem;
-      background: var(--danger-bg);
-      color: var(--danger);
-      border: 1px solid var(--danger-border);
-    }
-
-    .success-alert {
-      padding: 0.65rem 0.9rem;
-      border-radius: var(--radius-sm);
-      font-size: 0.8rem;
-      margin-bottom: 1rem;
-      background: var(--success-bg);
-      color: var(--success);
-      border: 1px solid var(--success-border);
-    }
-
-    @media (max-width: 480px) {
-      .alert, .success-alert {
-        padding: 0.6rem 0.8rem;
-        font-size: 0.75rem;
-        margin-bottom: 0.9rem;
-      }
-    }
-
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin: 1.4rem 0;
-      color: var(--text-3);
-      font-size: 0.75rem;
-    }
-    .divider::before, .divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
-
-    @media (max-width: 480px) {
-      .divider {
-        margin: 1.2rem 0;
-        font-size: 0.7rem;
-        gap: 0.6rem;
-      }
-    }
-
-    .forgot-link {
-      display: block;
-      text-align: right;
-      font-size: 0.76rem;
-      color: var(--text-3);
-      margin-top: -0.6rem;
-      margin-bottom: 1rem;
-      transition: color var(--t);
-    }
-    .forgot-link:hover { color: var(--accent-2); }
-
-    @media (max-width: 480px) {
-      .forgot-link {
-        font-size: 0.72rem;
-        margin-top: -0.5rem;
-        margin-bottom: 0.9rem;
-      }
-    }
-
-    .note {
-      font-size: 0.75rem;
-      color: var(--text-3);
-      text-align: center;
-      margin-top: 1.25rem;
-      line-height: 1.6;
-    }
-
-    @media (max-width: 480px) {
-      .note {
-        font-size: 0.7rem;
-        margin-top: 1rem;
-      }
-    }
-
-    .theme-toggle {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      border: 1px solid var(--border-2);
-      background: var(--surface);
-      color: var(--text-2);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      z-index: 10;
-      transition: all var(--t);
-    }
-    .theme-toggle:hover { background: var(--bg-2); }
-
-    @media (max-width: 480px) {
-      .theme-toggle {
-        width: 32px;
-        height: 32px;
-        font-size: 14px;
-        top: 0.75rem;
-        right: 0.75rem;
-      }
-    }
-
-    .tabs {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 0;
-    }
-    .tab-btn {
-      padding: 0.6rem 0;
-      margin-bottom: -1px;
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: var(--text-3);
-      cursor: pointer;
-      transition: all var(--t);
-      flex: 1;
-      text-align: center;
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .tab-btn:hover { color: var(--text-2); }
-    .tab-btn.active {
-      color: var(--accent-2);
-      border-bottom-color: var(--accent);
-    }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-    @media (max-width: 480px) {
-      .tabs {
-        margin-bottom: 1.25rem;
-        gap: 0.3rem;
-      }
-      .tab-btn {
-        font-size: 0.8rem;
-        padding: 0.5rem 0;
-      }
-    }
-  </style>
-</head>
-<body>
-  <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme"><span id="theme-icon">☀️</span></button>
-
-  <div class="login-wrap">
-    <div class="brand">
-      <div class="brand-icon">🏠</div>
-      <h1>HostAI</h1>
-      <p>AI-powered guest communication for Airbnb hosts.<br>Fast setup — no inbox password required.</p>
-    </div>
-
-    <div class="card">
-      {% if error %}
-      <div class="alert">{{ error }}</div>
-      {% endif %}
-      {% if success %}
-      <div class="success-alert">{{ success }}</div>
-      {% endif %}
-
-      {% if show_team_tab %}
-      <div class="tabs">
-        <button type="button" class="tab-btn active" data-tab="tenant">Account Owner</button>
-        <button type="button" class="tab-btn" data-tab="team">Team Member</button>
-      </div>
-      {% endif %}
-
-      <div class="{% if show_team_tab %}tab-content active{% endif %}" id="tenant-tab">
-        <p class="section-title">Sign in</p>
-
-        <form method="post" action="/login">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <label>Email address</label>
-        <input type="email" name="email" id="login-email" placeholder="you@example.com" required autocomplete="email">
-        <label>Password</label>
-        <input type="password" name="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
-        <a href="/forgot-password" class="forgot-link">Forgot password?</a>
-        <button type="submit" class="btn btn-primary">Sign in →</button>
-      </form>
-
-        <p style="text-align:center;margin-top:1.5rem;font-size:0.9rem;color:var(--text-2)">
-          Don't have an account? <a href="/signup" style="color:var(--accent);text-decoration:none;font-weight:600">Create one →</a>
-        </p>
-      </div>
-
-      {% if show_team_tab %}
-      <div class="tab-content" id="team-tab">
-        <p class="section-title">Team Member Login</p>
-
-        <form method="post" action="/team/login">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-          <label>Email address</label>
-          <input type="email" name="email" id="team-email" placeholder="your@email.com" required autocomplete="email">
-          <label>Password</label>
-          <input type="password" name="password" id="team-password" placeholder="••••••••" required autocomplete="current-password">
-          <button type="submit" class="btn btn-primary">Sign in →</button>
-        </form>
-
-        <p class="note" style="margin-top: 1rem;">Don't have an account yet? Ask your property manager for an invite link.</p>
-      </div>
-      {% endif %}
-    </div>
-
-    <p class="note">By continuing, you agree to our terms of service.</p>
-  </div>
-
-  <script nonce="{{ request.state.csp_nonce }}">
-    const THEME_KEY = 'hostai-theme';
-    function applyTheme(t) {
-      document.documentElement.setAttribute('data-theme', t);
-      const icon = document.getElementById('theme-icon');
-      if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
-      localStorage.setItem(THEME_KEY, t);
-    }
-    function toggleTheme() {
-      const cur = document.documentElement.getAttribute('data-theme');
-      applyTheme(cur === 'dark' ? 'light' : 'dark');
-    }
-    (function() {
-      const saved = localStorage.getItem(THEME_KEY);
-      if (saved) applyTheme(saved);
-
-      const btn = document.getElementById('theme-toggle-btn');
-      if (btn) btn.addEventListener('click', toggleTheme);
-    })();
-
-    // Tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const tab = this.getAttribute('data-tab');
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById(tab + '-tab').classList.add('active');
-        this.classList.add('active');
-      });
-    });
-  </script>
-</body>
-</html>
+{%- block main_wrapper %}
+{%- block content %}
+{% if error %}
+<div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-[#ffb4ab]/10 border border-[#ffb4ab]/30 text-[#ffb4ab] text-sm px-6 py-3 rounded-xl backdrop-blur-lg">
+  {{ error }}
+</div>
+{%- endif %}
+<form method="post" action="/login">
+<input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+<!-- Ambient Background Orbs -->
+<div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none">
+<div class="absolute top-[20%] left-[30%] w-96 h-96 bg-primary-container glow-orb rounded-full"></div>
+<div class="absolute bottom-[20%] right-[30%] w-80 h-80 bg-secondary-container glow-orb rounded-full"></div>
+</div>
+<!-- Main Content Container -->
+<main class="relative z-10 w-full max-w-md px-6">
+<!-- Center Card -->
+<div class="glass-card backdrop-blur-2xl rounded-xl p-8 md:p-10 flex flex-col items-center">
+<!-- Branding -->
+<div class="flex flex-col items-center gap-3 mb-8">
+<div class="w-12 h-12 bg-gradient-to-br from-primary-container to-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary-container/20">
+<span class="material-symbols-outlined text-on-primary-container text-3xl" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<h1 class="text-on-surface font-headline font-extrabold text-2xl tracking-tight">HostAI</h1>
+<p class="text-on-surface-variant text-sm text-center leading-relaxed">
+                    AI-powered guest communication for Airbnb hosts.
+                </p>
+</div>
+<!-- Form Header -->
+<div class="w-full mb-6">
+<span class="text-on-surface-variant/60 font-label font-bold text-[10px] tracking-[0.15rem] uppercase block mb-6 border-b border-outline-variant/10 pb-2">Sign In</span>
+</div>
+<!-- Login Form -->
+<!-- inner form removed --><div class="w-full space-y-5">
+<!-- Email Input -->
+<div class="space-y-1.5">
+<div class="relative group">
+<input name="email" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Email address" type="email" required/>
+</div>
+</div>
+<!-- Password Input -->
+<div class="space-y-1.5">
+<div class="relative group">
+<input name="password" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Password" type="password" required/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 group/btn" type="button">
+<span class="material-symbols-outlined text-on-surface-variant/50 text-lg group-hover/btn:text-primary transition-colors">visibility</span>
+<span class="text-[10px] font-label font-bold uppercase tracking-wider text-on-surface-variant/50 group-hover/btn:text-primary transition-colors">Show</span>
+</button>
+</div>
+</div>
+<!-- Forgot Password -->
+<div class="flex justify-end">
+<a class="text-primary text-[11px] font-medium hover:text-primary-fixed-dim transition-colors" href="/forgot-password">Forgot password?</a>
+</div>
+<!-- Submit Button -->
+<button class="group relative w-full bg-gradient-to-r from-primary-container to-primary-fixed-dim py-3.5 rounded-lg flex items-center justify-center gap-2 overflow-hidden transition-all hover:shadow-[0_0_20px_rgba(174,198,255,0.3)] active:scale-[0.98]" type="submit">
+<span class="text-on-primary-container font-headline font-bold text-sm">Sign in</span>
+<span class="material-symbols-outlined text-on-primary-container text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
+</button>
+</div>
+<!-- Bottom Links -->
+<div class="mt-8 flex flex-col items-center gap-4">
+<a class="text-on-surface-variant text-sm hover:text-on-surface transition-colors flex items-center gap-1.5 group" href="/signup">
+                    Don't have an account? <span class="text-primary font-semibold group-hover:underline underline-offset-4 decoration-primary/30">Create one →</span>
+</a>
+</div>
+<!-- Legal Footer -->
+<footer class="mt-10 pt-6 border-t border-outline-variant/5 w-full">
+<p class="text-[10px] text-on-surface-variant/40 text-center leading-relaxed max-w-[240px] mx-auto">
+                    By continuing you agree to our <a class="hover:text-on-surface-variant transition-colors underline decoration-outline-variant/20" href="#">terms of service</a> and <a class="hover:text-on-surface-variant transition-colors underline decoration-outline-variant/20" href="#">privacy policy</a>.
+                </p>
+</footer>
+</div>
+</main>
+<!-- Visual Polish: Top Navigation Ghost (If needed for brand identity, though suppressed per task logic, included as simple subtle mark) -->
+<div class="fixed top-8 left-0 w-full flex justify-center px-6 pointer-events-none opacity-20">
+<div class="flex items-center gap-2">
+<span class="text-xs font-label font-bold tracking-[0.2em] text-on-surface-variant">HOSTAI SYSTEMS INC.</span>
+</div>
+</div>
+</form>
+{%- endblock %}
