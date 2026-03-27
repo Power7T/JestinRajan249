@@ -943,8 +943,14 @@ def privacy_page(request: Request):
 
 
 @app.get("/login", response_class=HTMLResponse)
-def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+def login_page(request: Request, db: Session = Depends(get_db)):
+    tenant = None
+    try:
+        tenant_id = get_current_tenant_id(request)
+        tenant = _get_tenant(tenant_id, db)
+    except Exception:
+        pass
+    return templates.TemplateResponse("login.html", {"request": request, "error": None, "tenant": tenant})
 
 
 @app.post("/login", response_class=HTMLResponse)
@@ -979,9 +985,15 @@ def login_post(
 
 
 @app.get("/signup", response_class=HTMLResponse)
-def signup_get(request: Request):
+def signup_get(request: Request, db: Session = Depends(get_db)):
     """Display signup page."""
-    return templates.TemplateResponse("signup.html", {"request": request})
+    tenant = None
+    try:
+        tenant_id = get_current_tenant_id(request)
+        tenant = _get_tenant(tenant_id, db)
+    except Exception:
+        pass
+    return templates.TemplateResponse("signup.html", {"request": request, "tenant": tenant})
 
 
 @app.post("/signup", response_class=HTMLResponse)
