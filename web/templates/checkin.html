@@ -6,30 +6,30 @@
   <title>Check-in Info — {{ cfg.property_names or 'Your Stay' }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0D0B10; --bg-2: #131118; --bg-3: #1C1A22;
-      --surface: #161420; --surface-2: #1E1C2A;
-      --border: rgba(160,140,220,0.1); --border-2: rgba(160,140,220,0.18);
-      --accent: #F5A623; --accent-2: #FFD166; --accent-glow: rgba(245,166,35,0.3);
-      --success: #10D9A8; --success-bg: rgba(16,217,168,0.08); --success-border: rgba(16,217,168,0.2);
-      --text-1: #F0EDF8; --text-2: #9B94B8; --text-3: #5E5875;
+      --bg: #0C0A08; --bg-2: #141210; --bg-3: #1C1917;
+      --surface: #181512; --surface-2: #211E1B;
+      --border: rgba(210,185,140,0.09); --border-2: rgba(210,185,140,0.17);
+      --accent: #C9A96E; --accent-2: #E8D4A4; --accent-glow: rgba(201,169,110,0.28);
+      --success: #6FCFB4; --success-bg: rgba(16,217,168,0.08); --success-border: rgba(16,217,168,0.2);
+      --text-1: #F2EDE4; --text-2: #A89880; --text-3: #6A5D4D;
     }
     [data-theme="light"] {
-      --bg: #F4F2FA; --bg-2: #EAE8F5; --bg-3: #E0DDF0; --surface: #FFFFFF; --surface-2: #F8F7FF;
-      --border: rgba(80,60,120,0.1); --border-2: rgba(80,60,120,0.18);
-      --text-1: #1A1828; --text-2: #54506A; --text-3: #9590A8;
+      --bg: #F5F1EA; --bg-2: #EDE7DC; --bg-3: #E0DDF0; --surface: #FDFAF5; --surface-2: #F8F7FF;
+      --border: rgba(120,90,50,0.1); --border-2: rgba(80,60,120,0.18);
+      --text-1: #1E1812; --text-2: #5C4E3A; --text-3: #9B8A72;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'DM Sans', -apple-system, sans-serif;
+      font-family: 'Outfit', -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text-1);
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
     }
-    h1, h2, h3 { font-family: 'Syne', sans-serif; }
+    h1, h2, h3 { font-family: 'Cormorant Garamond', serif; }
 
     .header {
       background: var(--surface);
@@ -47,14 +47,14 @@
       display: flex;
       align-items: center;
       gap: 0.6rem;
-      font-family: 'Syne', sans-serif;
+      font-family: 'Cormorant Garamond', serif;
       font-weight: 800;
       font-size: 1rem;
       color: var(--text-1);
     }
     .header-brand-icon {
       width: 28px; height: 28px;
-      background: linear-gradient(135deg, var(--accent), #C8780A);
+      background: linear-gradient(135deg, var(--accent), #8C6828);
       border-radius: 7px;
       display: flex; align-items: center; justify-content: center;
       font-size: 14px;
@@ -150,7 +150,7 @@
       text-align: center;
     }
     .date-card .date-label { font-size: 0.68rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.3rem; }
-    .date-card .date-val { font-size: 1.05rem; font-weight: 700; color: var(--text-1); font-family: 'Syne', sans-serif; }
+    .date-card .date-val { font-size: 1.05rem; font-weight: 700; color: var(--text-1); font-family: 'Cormorant Garamond', serif; }
     .date-card .time-val { font-size: 0.78rem; color: var(--accent); margin-top: 0.2rem; font-weight: 600; }
 
     pre.rules {
