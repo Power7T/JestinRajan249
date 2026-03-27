@@ -1,185 +1,384 @@
-{% extends "base.html" %}
-{% block title %}AI Engine — Admin{% endblock %}
+{%- extends "base.html" %}
+{%- block title %}Admin Ai — HostAI{%- endblock %}
 
-{% block head %}
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <style>
-  .admin-nav { display:flex; gap:1rem; margin-bottom:1.5rem; }
-  .admin-nav a { padding:6px 14px; border-radius:var(--radius-sm); font-size:0.85rem; font-weight:600; background:var(--bg-2); border:1px solid var(--border); color:var(--text-2); transition:all var(--t); }
-  .admin-nav a.active, .admin-nav a:hover { background:var(--bg-3); color:var(--text-1); border-color:var(--border-2); text-decoration:none; }
-  
-  .stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem; }
-  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; text-align:center; transition:all var(--t); }
-  .stat-value { font-size:2rem; font-weight:800; color:var(--accent); line-height:1.1; letter-spacing:-0.03em; margin-bottom:0.25rem; }
-  .stat-label { font-size:0.8rem; color:var(--text-3); font-weight:500; text-transform:uppercase; letter-spacing:0.05em; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #08090F;
+        }
+        .glass-card {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'WHT' 200;
+        }
+    </style>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container": "#1e1f26",
+                        "outline": "#8d909e",
+                        "on-secondary-fixed": "#001f24",
+                        "inverse-primary": "#1e5bba",
+                        "on-primary-fixed-variant": "#004397",
+                        "on-primary-container": "#00275e",
+                        "error": "#ffb4ab",
+                        "secondary-fixed": "#9cf0ff",
+                        "on-background": "#e3e1eb",
+                        "surface-container-high": "#292930",
+                        "secondary-fixed-dim": "#00daf3",
+                        "on-primary": "#002e6b",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#2a1700",
+                        "secondary": "#bdf4ff",
+                        "outline-variant": "#424752",
+                        "inverse-surface": "#e3e1eb",
+                        "tertiary": "#ffb960",
+                        "surface-variant": "#34343b",
+                        "surface-dim": "#121319",
+                        "inverse-on-surface": "#2f3037",
+                        "background": "#121319",
+                        "primary-container": "#5d8ef1",
+                        "primary": "#aec6ff",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "surface-bright": "#383940",
+                        "on-tertiary-container": "#3e2400",
+                        "surface-tint": "#aec6ff",
+                        "tertiary-fixed-dim": "#ffb960",
+                        "on-tertiary": "#472a00",
+                        "on-surface-variant": "#c3c6d4",
+                        "surface-container-highest": "#34343b",
+                        "primary-fixed": "#d8e2ff",
+                        "secondary-container": "#00e3fd",
+                        "on-primary-fixed": "#001a43",
+                        "surface-container-low": "#1a1b22",
+                        "surface-container-lowest": "#0d0e14",
+                        "surface": "#121319",
+                        "on-secondary-container": "#00616d",
+                        "on-secondary-fixed-variant": "#004f58",
+                        "primary-fixed-dim": "#aec6ff",
+                        "error-container": "#93000a",
+                        "on-secondary": "#00363d",
+                        "tertiary-fixed": "#ffddb8",
+                        "on-surface": "#e3e1eb",
+                        "tertiary-container": "#ca8103"
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+{%- endblock %}
 
-  .settings-form { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; margin-bottom:2rem; }
-  .form-group { margin-bottom:1.25rem; }
-  .form-group label { display:block; margin-bottom:0.5rem; font-weight:600; color:var(--text-2); font-size:0.9rem; }
-  .form-control { width:100%; padding:0.6rem 0.8rem; border-radius:var(--radius-sm); border:1px solid var(--border-2); background:var(--bg-1); color:var(--text-1); font-family:inherit; transition:border-color var(--t); }
-  .form-control:focus { outline:none; border-color:var(--accent); }
-  .form-desc { font-size:0.8rem; color:var(--text-3); margin-top:0.4rem; }
+{%- block nav %}{%- endblock %}
 
-  .btn-submit { background:var(--accent); color:#fff; border:none; padding:0.6rem 1.2rem; border-radius:var(--radius-sm); font-weight:600; cursor:pointer; transition:background var(--t); }
-  .btn-submit:hover { background:var(--accent-hover); }
-
-  .logs-table { width:100%; border-collapse:collapse; margin-top:1rem; font-size:0.85rem; text-align:left; }
-  .logs-table th { padding:0.75rem 1rem; border-bottom:1px solid var(--border-2); color:var(--text-3); font-weight:600; }
-  .logs-table td { padding:0.75rem 1rem; border-bottom:1px solid var(--border); color:var(--text-2); }
-  .logs-table tr:last-child td { border-bottom:none; }
-  .model-badge { display:inline-block; padding:2px 8px; border-radius:999px; background:var(--bg-3); border:1px solid var(--border-2); font-size:0.75rem; font-family:monospace; }
-</style>
-{% endblock %}
-
-{% block content %}
-<h1>AI Engine Configuration</h1>
-
-<div class="admin-nav" style="flex-wrap:wrap;">
-  <a href="/admin">Overview</a>
-  <a href="/admin/system">System Health</a>
-  <a href="/admin/ai" class="active">AI Engine</a>
-  <a href="/admin/costs">Overall Costs</a>
-  <a href="/admin/host-profitability">Host Profitability</a>
-  <a href="/admin/health_api">API Health</a>
+{%- block main_wrapper %}
+{%- block content %}
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-8 h-screen w-64 border-r border-[#424752]/15 bg-[#121319]/60 backdrop-blur-xl shadow-[0px_0px_40px_rgba(174,198,255,0.08)] z-[60]">
+<div class="px-8 mb-12">
+<h1 class="text-xl font-extrabold text-[#aec6ff] tracking-tighter">HostAI</h1>
+<p class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Admin Console</p>
 </div>
-
-{% if request.query_params.get("msg") == "saved" %}
-<div style="background:var(--success-bg); color:var(--success); padding:0.75rem; border-radius:var(--radius-sm); margin-bottom:1.5rem; border:1px solid var(--success-border);">
-  <strong>Success!</strong> AI routing settings hot-swapped and saved.
+<nav class="flex-1 space-y-2">
+<div class="group cursor-pointer py-3 transition-all duration-300 hover:bg-[#292930]/40 text-slate-400 hover:text-slate-200 transition-colors duration-200 pl-4">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-xl">domain</span>
+<span class="text-sm font-medium">Tenants</span>
 </div>
-{% endif %}
-
-<div class="stat-grid">
-  <div class="stat-card">
-    <div class="stat-value">${{ "%.4f"|format(total_cost) }}</div>
-    <div class="stat-label">Total API Spend</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value">{{ logs|length }}</div>
-    <div class="stat-label">Recent Generations</div>
-  </div>
 </div>
-
-<div class="priority-models" style="margin-bottom:2rem;">
-  <h2 style="margin-top:0; margin-bottom:1rem; font-size:1.2rem; padding-bottom:0.5rem; border-bottom:1px solid var(--border);">Recommended Priority Models</h2>
-  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1rem;">
-    
-    <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; transition:all var(--t);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-        <span class="model-badge" style="background:var(--info-bg); color:var(--info); border-color:var(--info-border);">Primary</span>
-        <span style="font-size:0.75rem; font-weight:600; color:var(--text-3);">$3.00 / 1M in</span>
-      </div>
-      <div style="font-weight:700; color:var(--text-1); margin-bottom:0.25rem;">anthropic/claude-3.5-sonnet</div>
-      <div style="font-size:0.85rem; color:var(--text-2); line-height:1.4;">
-        <strong>Why:</strong> Excels at tone matching, empathy, and following strict property FAQs without hallucinating details. Perfect for guest replies. (Est. ~$0.003 - $0.006 per draft)
-      </div>
-    </div>
-
-    <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; transition:all var(--t);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-        <span class="model-badge" style="background:#e0f2fe; color:#0369a1; border-color:#bae6fd;">Routine</span>
-        <span style="font-size:0.75rem; font-weight:600; color:var(--text-3);">$0.08 / 1M in</span>
-      </div>
-      <div style="font-weight:700; color:var(--text-1); margin-bottom:0.25rem;">google/gemini-2.5-flash</div>
-      <div style="font-size:0.85rem; color:var(--text-2); line-height:1.4;">
-        <strong>Why:</strong> Ultra-cheap and fast. Perfect for WiFi passwords, check-in times, parking info, and other simple routine responses. 44% cheaper than Llama. (Est. ~$0.00016 per draft)
-      </div>
-    </div>
-
-    <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; transition:all var(--t);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-        <span class="model-badge" style="background:var(--warn-bg); color:var(--warn); border-color:var(--warn-border);">Fallback</span>
-        <span style="font-size:0.75rem; font-weight:600; color:var(--text-3);">$0.40 / 1M in</span>
-      </div>
-      <div style="font-weight:700; color:var(--text-1); margin-bottom:0.25rem;">meta-llama/llama-3.1-70b-instruct</div>
-      <div style="font-size:0.85rem; color:var(--text-2); line-height:1.4;">
-        <strong>Why:</strong> Reliable backup when routine model is unavailable. Excellent fallback during API outages. (Est. ~$0.001 per draft)
-      </div>
-    </div>
-
-    <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; transition:all var(--t);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-        <span class="model-badge" style="background:var(--success-bg); color:var(--success); border-color:var(--success-border);">Sentiment</span>
-        <span style="font-size:0.75rem; font-weight:600; color:var(--text-3);">$0.15 / 1M in</span>
-      </div>
-      <div style="font-weight:700; color:var(--text-1); margin-bottom:0.25rem;">openai/gpt-4o-mini</div>
-      <div style="font-size:0.85rem; color:var(--text-2); line-height:1.4;">
-        <strong>Why:</strong> Lightning fast and cheap for structured JSON tasks. Perfect for orchestration like classifying or extracting sentiment. (Est. fractions of a penny)
-      </div>
-    </div>
-
-  </div>
+<!-- Active Tab: AI Metrics -->
+<div class="group cursor-pointer py-3 transition-all duration-300 bg-[#292930]/40 text-[#aec6ff] font-bold border-l-2 border-[#aec6ff] pl-4">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-xl">analytics</span>
+<span class="text-sm font-medium">AI Metrics</span>
 </div>
-
-<div class="settings-form">
-  <h2 style="margin-top:0; margin-bottom:1.5rem; font-size:1.2rem; border-bottom:1px solid var(--border); padding-bottom:0.75rem;">Global OpenRouter Settings</h2>
-  <form method="POST" action="/admin/ai/save">
-    <div class="form-group">
-      <label for="openrouter_api_key_enc">OpenRouter API Key</label>
-      <input type="password" id="openrouter_api_key_enc" name="openrouter_api_key_enc" class="form-control" 
-             value="{{ '********' if sys_conf.openrouter_api_key_enc else '' }}" 
-             placeholder="sk-or-v1-...">
-      <div class="form-desc">Leave blank or as ******** to keep current key. AI will be disabled if empty.</div>
-    </div>
-    
-    <div class="form-group">
-      <label for="primary_model">Primary Routine Model</label>
-      <input type="text" id="primary_model" name="primary_model" class="form-control" value="{{ sys_conf.primary_model }}">
-      <div class="form-desc">e.g. <code>anthropic/claude-3.5-sonnet</code></div>
-    </div>
-    
-    <div class="form-group">
-      <label for="routine_model">Routine Messages Model (WiFi, Check-in, Parking, etc.)</label>
-      <input type="text" id="routine_model" name="routine_model" class="form-control" value="{{ sys_conf.routine_model }}">
-      <div class="form-desc">e.g. <code>google/gemini-2.5-flash</code> — optimized for simple, low-cost responses (44% cheaper than Llama)</div>
-    </div>
-
-    <div class="form-group">
-      <label for="fallback_model">Fallback Model (Outages & API Failures)</label>
-      <input type="text" id="fallback_model" name="fallback_model" class="form-control" value="{{ sys_conf.fallback_model }}">
-      <div class="form-desc">e.g. <code>meta-llama/llama-3.1-70b-instruct</code> — used when routine model is unavailable</div>
-    </div>
-
-    <div class="form-group">
-      <label for="sentiment_model">Sentiment & Scoring Model</label>
-      <input type="text" id="sentiment_model" name="sentiment_model" class="form-control" value="{{ sys_conf.sentiment_model }}">
-      <div class="form-desc">e.g. <code>openai/gpt-4o-mini</code></div>
-    </div>
-    
-    <button type="submit" class="btn-submit">Save & Hot-Swap Models</button>
-  </form>
 </div>
-
-<div class="card">
-  <h2>Live API Cost Logging (Recent 100)</h2>
-  <div style="overflow-x:auto;">
-    <table class="logs-table">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Model</th>
-          <th>Provider</th>
-          <th>Feature</th>
-          <th>Tokens (In/Out)</th>
-          <th>Cost</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for log in logs %}
-        <tr>
-          <td style="white-space:nowrap;">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-          <td><span class="model-badge">{{ log.model }}</span></td>
-          <td style="text-transform:capitalize;">{{ log.provider }}</td>
-          <td>{{ log.feature }}</td>
-          <td>{{ log.input_tokens }} / {{ log.output_tokens }}</td>
-          <td style="font-weight:600; color:var(--text-1);">${{ "%.5f"|format(log.cost_usd) }}</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="6" style="text-align:center; padding:2rem; color:var(--text-3);">No API usage recorded yet.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<div class="group cursor-pointer py-3 transition-all duration-300 hover:bg-[#292930]/40 text-slate-400 hover:text-slate-200 transition-colors duration-200 pl-4">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-xl">health_and_safety</span>
+<span class="text-sm font-medium">System Health</span>
 </div>
-{% endblock %}
+</div>
+</nav>
+<div class="px-6 mb-8">
+<button class="w-full py-3 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-on-primary-fixed font-bold rounded-xl text-sm shadow-[0px_0px_12px_rgba(174,198,255,0.3)] active:scale-95 duration-150 ease-in-out">
+                New Instance
+            </button>
+</div>
+<div class="mt-auto space-y-2 border-t border-[#424752]/15 pt-6">
+<div class="flex items-center gap-4 px-8 py-3 text-slate-400 hover:text-slate-200 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-xl">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</div>
+<div class="flex items-center gap-4 px-8 py-3 text-slate-400 hover:text-slate-200 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-xl">logout</span>
+<span class="text-sm font-medium">Logout</span>
+</div>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 flex justify-between items-center px-8 h-16 w-[calc(100%-16rem)] ml-64 bg-[#121319]/60 backdrop-blur-xl border-b border-[#424752]/15">
+<div class="flex items-center gap-8">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
+<input class="bg-surface-container-lowest border-none rounded-full py-1.5 pl-10 pr-4 text-sm w-64 focus:ring-1 focus:ring-primary/40 placeholder:text-slate-600 transition-all" placeholder="Search parameters..." type="text"/>
+</div>
+<nav class="hidden md:flex gap-6 items-center">
+<a class="text-slate-400 hover:text-slate-200 text-[0.6875rem] font-bold uppercase tracking-wider" href="#">Dashboard</a>
+<a class="text-slate-400 hover:text-slate-200 text-[0.6875rem] font-bold uppercase tracking-wider" href="#">Logs</a>
+<a class="text-[#aec6ff] border-b-2 border-[#aec6ff] pb-1 text-[0.6875rem] font-bold uppercase tracking-wider" href="#">Reports</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="hover:bg-white/5 p-2 rounded-full transition-all flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">notifications</span>
+</button>
+<button class="hover:bg-white/5 p-2 rounded-full transition-all flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">help_outline</span>
+</button>
+<button class="px-4 py-1.5 text-xs font-bold text-primary border border-primary/30 rounded-full hover:bg-primary/10 transition-all">
+                Deploy Update
+            </button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/20">
+<img alt="Admin Profile" class="w-full h-full object-cover" data-alt="Close up portrait of a professional system administrator in a high-tech environment with blue ambient lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvn8ir2V9FVopL3BKu4yfjLE_g90oJI-ybmIQUtk3W9JBjWmQ2SAbOGgOTeGij9wRUkSIRXgZecZIAD-gC3CZ9nbzt4eUn9Wa9DP7LbOOSQnFoMYXe1bbpsCD2q9GUt2E0CHMcc2evZPnksL1lo5h0MJqsFmy08IhJhN8r-b11mX7QYAlRxhJJGwHysTBa_j1Tz7OgMI6UBy5belroVbqto7uG5sKUYiuWLpi8Ld2d9HFAQiBbeJTExjsjguVcxJFBCxpNSkIpaPiL"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 p-10 min-h-screen">
+<div class="max-w-7xl mx-auto">
+<!-- Header Section -->
+<div class="mb-12">
+<span class="text-[0.6875rem] font-bold uppercase tracking-[0.2em] text-primary mb-2 block">Global Insights</span>
+<h2 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">AI Performance Metrics</h2>
+<p class="text-slate-400 max-w-2xl">Real-time visualization of neural processing, safety filters, and platform-wide anomaly detection.</p>
+</div>
+<!-- Stats Grid (Bento Style) -->
+<div class="grid grid-cols-12 gap-6 mb-12">
+<!-- Total Tokens Used (High Contrast) -->
+<div class="col-span-12 lg:col-span-7 glass-card rounded-xl p-8 flex flex-col justify-between group overflow-hidden relative">
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500 mb-1">Total Tokens Processed</h3>
+<p class="text-5xl font-extrabold text-on-surface tracking-tighter">142.8M</p>
+</div>
+<div class="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+                                +12.4%
+                            </div>
+</div>
+<div class="h-32 w-full mt-4 flex items-end gap-1">
+<!-- Visual Trend Line Mockup -->
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[40%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[35%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[50%]"></div>
+<div class="flex-1 bg-primary/30 rounded-t-sm h-[65%]"></div>
+<div class="flex-1 bg-primary/40 rounded-t-sm h-[45%]"></div>
+<div class="flex-1 bg-primary/50 rounded-t-sm h-[75%]"></div>
+<div class="flex-1 bg-gradient-to-t from-primary/40 to-primary rounded-t-sm h-[90%]"></div>
+</div>
+</div>
+<div class="absolute -right-20 -bottom-20 w-64 h-64 bg-primary/5 rounded-full blur-[80px]"></div>
+</div>
+<!-- Spam Blocked (Donut Chart) -->
+<div class="col-span-12 lg:col-span-5 glass-card rounded-xl p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
+<h3 class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500 mb-6 w-full text-left">Spam Messages Blocked</h3>
+<div class="relative w-48 h-48 mb-6">
+<svg class="w-full h-full transform -rotate-90">
+<circle cx="96" cy="96" fill="transparent" r="80" stroke="#1e1f26" stroke-width="12"></circle>
+<circle class="transition-all duration-1000" cx="96" cy="96" fill="transparent" r="80" stroke="#00e3fd" stroke-dasharray="502.4" stroke-dashoffset="125.6" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-3xl font-extrabold text-on-surface tracking-tighter">75%</span>
+<span class="text-[0.6875rem] font-bold uppercase text-slate-500">Efficiency</span>
+</div>
+</div>
+<div class="w-full flex justify-between items-center pt-4 border-t border-outline-variant/10">
+<div class="text-left">
+<p class="text-2xl font-bold text-on-surface tracking-tighter">4.2M</p>
+<p class="text-[0.6875rem] text-slate-500 uppercase font-bold">Total Blocked</p>
+</div>
+<span class="material-symbols-outlined text-secondary-container text-4xl" data-weight="fill">security</span>
+</div>
+</div>
+<!-- Threat Blockades (Bar Chart) -->
+<div class="col-span-12 lg:col-span-8 glass-card rounded-xl p-8">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h3 class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500">Threat Blockades</h3>
+<p class="text-sm text-slate-400">Hourly analysis of blocked malicious requests</p>
+</div>
+<select class="bg-surface-container-lowest border-none text-xs font-bold text-slate-400 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-primary/40">
+<option>Last 24 Hours</option>
+<option>Last 7 Days</option>
+</select>
+</div>
+<div class="flex items-end justify-between h-64 gap-3 px-4">
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[20%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[45%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[30%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[60%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-primary/60 rounded-t-lg h-[85%] transition-all hover:bg-primary"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[40%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[55%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[25%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[70%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[50%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[35%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[65%] transition-all hover:bg-primary/40"></div>
+</div>
+</div>
+<!-- Recent Anomalies Feed -->
+<div class="col-span-12 lg:col-span-4 glass-card rounded-xl p-8 flex flex-col">
+<h3 class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500 mb-6">Recent Anomalies</h3>
+<div class="space-y-6 flex-1">
+<div class="flex gap-4 group cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-error text-xl">warning</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-on-surface">Spike in Token Usage</h4>
+<p class="text-xs text-slate-500">Instance-449 showing 400% increase</p>
+<span class="text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-1 block">2m ago</span>
+</div>
+</div>
+<div class="flex gap-4 group cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-secondary-container/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-secondary-container text-xl">shield_person</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-on-surface">Safety Filter Triggered</h4>
+<p class="text-xs text-slate-500">Critical policy violation blocked</p>
+<span class="text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-1 block">15m ago</span>
+</div>
+</div>
+<div class="flex gap-4 group cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">speed</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-on-surface">Latency Variance</h4>
+<p class="text-xs text-slate-500">EU-West nodes reporting 200ms lag</p>
+<span class="text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-1 block">1h ago</span>
+</div>
+</div>
+<div class="flex gap-4 group cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-tertiary text-xl">robot</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-on-surface">Agent Recursive Loop</h4>
+<p class="text-xs text-slate-500">Process halted to prevent resource drain</p>
+<span class="text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-1 block">3h ago</span>
+</div>
+</div>
+</div>
+<button class="mt-8 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-primary hover:text-white transition-colors text-center w-full">View All Incidents</button>
+</div>
+</div>
+<!-- Deep Metrics Table (Asymmetric Layout) -->
+<div class="glass-card rounded-xl overflow-hidden mb-12">
+<div class="px-8 py-6 border-b border-outline-variant/10 flex justify-between items-center">
+<h3 class="text-lg font-bold text-on-surface">Active Deployment Performance</h3>
+<div class="flex gap-4">
+<button class="flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">filter_list</span> Filter
+                        </button>
+<button class="flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">download</span> Export
+                        </button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-lowest">
+<th class="px-8 py-4 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">Instance ID</th>
+<th class="px-8 py-4 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">Status</th>
+<th class="px-8 py-4 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">Avg Latency</th>
+<th class="px-8 py-4 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">Token Cost</th>
+<th class="px-8 py-4 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500 text-right">Uptime</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<tr class="hover:bg-white/[0.02] transition-colors">
+<td class="px-8 py-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold text-on-surface">ALPHA-7712</span>
+<span class="text-xs text-slate-500">Production Tier</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary-container"></div>
+<span class="text-xs font-bold text-secondary-container uppercase">Optimal</span>
+</div>
+</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">142ms</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">$12,402.00</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300 text-right">99.98%</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors">
+<td class="px-8 py-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold text-on-surface">BETA-1994</span>
+<span class="text-xs text-slate-500">Developer Tier</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="text-xs font-bold text-primary uppercase">Syncing</span>
+</div>
+</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">415ms</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">$2,118.45</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300 text-right">98.40%</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors">
+<td class="px-8 py-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold text-on-surface">GAMMA-003</span>
+<span class="text-xs text-slate-500">Legacy Tier</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-error"></div>
+<span class="text-xs font-bold text-error uppercase">Overloaded</span>
+</div>
+</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">1.2s</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">$45,102.10</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300 text-right">94.12%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- Background Decorative Element -->
+<div class="fixed top-0 right-0 -z-10 w-[800px] h-[800px] bg-primary-container/10 rounded-full blur-[150px] translate-x-1/2 -translate-y-1/2 opacity-30 pointer-events-none"></div>
+<div class="fixed bottom-0 left-0 -z-10 w-[600px] h-[600px] bg-secondary-container/5 rounded-full blur-[120px] -translate-x-1/2 translate-y-1/2 opacity-20 pointer-events-none"></div>
+{%- endblock %}
+{%- endblock %}
