@@ -305,7 +305,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 function openAddContactModal() {
   document.getElementById('addContactModal').classList.add('active');
   // Auto-fill check-in to now

@@ -114,7 +114,7 @@
       border: none;
       cursor: pointer;
     }
-    .btn-primary { background: linear-gradient(135deg, var(--accent), #2B5FC8); color: #0C0A08; box-shadow: 0 4px 18px var(--accent-glow); }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #2B5FC8); color: #060911; box-shadow: 0 4px 18px var(--accent-glow); }
     .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--accent-glow); }
     .btn-secondary { background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border-2); }
     .btn-secondary:hover { background: var(--bg); }
@@ -163,7 +163,7 @@
     </div>
   </div>
 
-  <script>
+  <script nonce="{{ request.state.csp_nonce }}">
     const THEME_KEY = 'hostai-theme';
     function applyTheme(t) {
       document.documentElement.setAttribute('data-theme', t);

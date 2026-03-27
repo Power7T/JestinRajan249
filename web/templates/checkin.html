@@ -359,7 +359,7 @@
   Link expires after check-out. For issues, contact your host directly.
 </div>
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
   const THEME_KEY = 'hostai-checkin-theme';
   function applyTheme(t) {
     document.documentElement.setAttribute('data-theme', t);

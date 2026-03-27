@@ -31,8 +31,8 @@
     border-radius: 50%;
     background: linear-gradient(135deg, var(--accent), var(--rose));
     display: inline-flex; align-items: center; justify-content: center;
-    font-family: 'Cormorant Garamond', serif; font-size: 0.7rem; font-weight: 800;
-    color: #0D0B10; flex-shrink: 0;
+    font-family: 'Bricolage Grotesque', sans-serif; font-size: 0.7rem; font-weight: 800;
+    color: #060911; flex-shrink: 0;
   }
 </style>
 {% endblock %}
@@ -257,7 +257,7 @@
         <span id="extract-status" style="font-size:0.82rem;color:var(--text-3);margin-left:0.5rem"></span>
       </form>
     </details>
-    <script>
+    <script nonce="{{ request.state.csp_nonce }}">
     document.getElementById('prefill-form').addEventListener('submit', async function(e) {
       e.preventDefault();
 

@@ -34,3 +34,4 @@ Thumbs.db
 # Local dev
 *.sqlite
 *.db
+.dev_fernet_key

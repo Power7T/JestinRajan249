@@ -226,13 +226,14 @@ def _startup_checks() -> None:
     warnings: list[str] = []
 
     # Redis is required for cross-worker rate limiting and Stripe idempotency.
-    # With multiple workers and no Redis, rate limits are per-process only.
+    # Without it, multiple workers can process the same Stripe event multiple times
+    # (duplicate subscription creation / double charges).
     workers = int(os.getenv("WORKERS", "2"))
     if workers > 1 and not os.getenv("REDIS_URL", ""):
-        warnings.append(
-            f"REDIS_URL is not set but WORKERS={workers}. Rate limits and Stripe "
-            "webhook idempotency are per-process only — set REDIS_URL to share state "
-            "across workers."
+        raise RuntimeError(
+            f"REDIS_URL must be set when WORKERS={workers}. Without Redis, Stripe webhook "
+            "idempotency is per-process only, which can cause duplicate subscription charges "
+            "or events. Set REDIS_URL or reduce WORKERS=1."
         )
 
     # STRIPE_SECRET_KEY must be set for any billing operation.
