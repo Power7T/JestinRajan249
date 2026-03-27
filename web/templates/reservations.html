@@ -166,8 +166,6 @@
 {%- block main_wrapper %}
 {%- block content %}
 <!-- SideNavBar Shell -->
-<!-- SideNavBar Shell -->
-<!-- SideNavBar Shell -->
 <aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
 <div class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8">
 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
@@ -231,8 +229,6 @@
 </div>
 </aside>
 
-<!-- TopAppBar Shell -->
-<!-- TopNavBar Shell -->
 <!-- TopNavBar Shell -->
 <header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
 <div class="flex items-center flex-1 max-w-md">
@@ -280,24 +276,6 @@
   {% endif %}
 </form>
 
-<!-- Upload frequency recommendation -->
-<div style="display:flex;gap:0.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center">
-  <div class="freq-badge">
-    <div class="freq-dot" style="background:#28a745"></div>
-    Recommended: upload CSV <strong>twice daily</strong>
-  </div>
-  <div class="freq-badge">
-    <div class="freq-dot" style="background:#ffc107"></div>
-    Morning (7–8am) + Evening (8–9pm)
-  </div>
-  {% if sync_log %}
-  <div class="freq-badge">
-    <div class="freq-dot" style="background:{% if csv_stale %}#dc3545{% else %}#28a745{% endif %}"></div>
-    Last synced: {{ sync_log.last_synced.strftime('%b %d, %H:%M UTC') }}
-    {% if csv_stale %} — <span style="color:#dc3545;font-weight:600">overdue</span>{% endif %}
-  </div>
-  {% endif %}
-</div>
 
 <!-- Analytics -->
 {% if total > 0 %}
@@ -333,20 +311,6 @@
 </div>
 {% endif %}
 
-<div class="workflow-grid" style="margin-bottom:1rem">
-  <div class="workflow-card">
-    <h3>Arrival activations</h3>
-    <p>{{ activation_count }} stays are currently active or pending. This is the explicit handoff from booking intake to guest-facing bot behavior.</p>
-  </div>
-  <div class="workflow-card">
-    <h3>Intake fallbacks</h3>
-    <p>CSV stays first-class for hosts without a PMS. Manual booking is the final fallback when CSV or PMS is not available. Review data from CSV now feeds sentiment and rating analytics too.</p>
-  </div>
-  <div class="workflow-card">
-    <h3>Ops coverage</h3>
-    <p>{{ team_members|length }} team member role{% if team_members|length != 1 %}s{% endif %} are configured for reservation activation, issue follow-up, and vendor dispatch.</p>
-  </div>
-</div>
 
 {% if recent_batches %}
 <div class="card" style="margin-bottom:1rem">
@@ -370,38 +334,6 @@
 </div>
 {% endif %}
 
-{% if recent_batches or team_members %}
-<div class="workflow-grid" style="margin-bottom:1.25rem">
-  <div class="workflow-card">
-    <h3>Fallback intake sources</h3>
-    {% if recent_batches %}
-    <div class="timeline">
-      {% for batch in recent_batches %}
-      <div class="timeline-item">
-        <div class="timeline-meta">{{ batch.source_kind|upper }} · {{ batch.status }}</div>
-        <div class="timeline-title">{{ batch.source_name or 'Reservation intake batch' }}</div>
-        <div class="timeline-text">{{ batch.rows_imported or 0 }} imported / {{ batch.rows_total or 0 }} total</div>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p style="color:var(--text-3);font-size:0.84rem">No intake batches yet. CSV, PMS sync, and manual entry all land here.</p>
-    {% endif %}
-  </div>
-  <div class="workflow-card">
-    <h3>Ops roster for arrivals</h3>
-    {% if team_members %}
-    <div class="chip-row">
-      {% for member in team_members %}
-      <span class="chip">{{ member.role|replace('_', ' ') }} · {{ member.display_name }}</span>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p style="color:var(--text-3);font-size:0.84rem">No team members configured yet. Add front desk or maintenance contacts in Settings.</p>
-    {% endif %}
-  </div>
-</div>
-{% endif %}
 
 {% if request.query_params.get('imported') %}
 <div class="alert alert-success">
@@ -489,101 +421,7 @@
   </form>
 </div>
 
-<div class="card" style="margin-bottom:1.25rem">
-  <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap;justify-content:space-between">
-    <div style="max-width:760px">
-      <h3 style="margin-bottom:0.4rem;font-size:1rem">Guest context mapping</h3>
-      <p style="margin:0;color:var(--text-2);font-size:0.86rem;line-height:1.7">
-        Add the guest phone number and room / unit / property number to a reservation. When the guest messages from that number, HostAI matches the reservation, injects the room context into the AI prompt, and replies more naturally.
-      </p>
-    </div>
-    <div style="font-size:0.82rem;color:var(--text-3);line-height:1.7;min-width:240px">
-      Examples:
-      <div>• "Unit 12A" for a suite</div>
-      <div>• "Room 204" for a hotel room</div>
-      <div>• "+91 98765 43210" for the guest phone</div>
-    </div>
-  </div>
-</div>
 
-<div class="card" id="arrival" style="margin-bottom:1.25rem">
-  <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start">
-    <div style="max-width:720px">
-      <h3 style="margin-bottom:0.35rem;font-size:1rem">Arrival activation workflow</h3>
-      <p style="margin:0;color:var(--text-2);font-size:0.86rem;line-height:1.7">
-        The cleanest host flow is simple: booking imported, guest phone saved, room or unit mapped, then the bot can answer in the context of the stay. That makes guest chat feel personal instead of generic.
-      </p>
-    </div>
-    <div class="chip-row" style="margin-top:0">
-      <span class="chip">Arrival ready</span>
-      <span class="chip">CSV fallback</span>
-      <span class="chip">Room-aware chat</span>
-      <span class="chip">Manual booking fallback</span>
-    </div>
-  </div>
-
-  <div class="stepper" style="margin-top:1rem">
-    <div class="step">
-      <div class="num">1</div>
-      <div class="body">
-        <h4>Import the stay</h4>
-        <p>Use CSV if the host has no PMS. If a PMS exists, keep it as the primary source of truth and CSV as backup.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="num">2</div>
-      <div class="body">
-        <h4>Map guest phone and room</h4>
-        <p>Save the guest phone plus room, unit, or property number. That lets HostAI match the right reservation when the guest writes in.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="num">3</div>
-      <div class="body">
-        <h4>Activate the guest channel</h4>
-        <p>Forward the guest's messages into HostAI. The system should answer using the stay context, house rules, and check-in details.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="num">4</div>
-      <div class="body">
-        <h4>Review exceptions only</h4>
-        <p>Complaints, refunds, maintenance, and missing booking context should be the only things that need deliberate host attention.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="workflow-grid" style="margin-top:1rem">
-    <div class="workflow-card">
-      <h3>What guests can ask</h3>
-      <p>Wi-Fi, parking, towels, early check-in, late checkout, local recommendations, lost keys, and maintenance requests are all fair game for the bot.</p>
-      <div class="chip-row">
-        <span class="chip">Wi-Fi</span>
-        <span class="chip">Parking</span>
-        <span class="chip">Towels</span>
-        <span class="chip">Late checkout</span>
-      </div>
-    </div>
-    <div class="workflow-card">
-      <h3>How the bot behaves</h3>
-      <p>It should answer with room-aware context, use house rules and FAQs, and escalate only if the message is sensitive, ambiguous, or high-risk.</p>
-      <div class="chip-row">
-        <span class="chip">Context aware</span>
-        <span class="chip">Escalates risk</span>
-        <span class="chip">Stay-specific</span>
-      </div>
-    </div>
-    <div class="workflow-card">
-      <h3>Fallback intake</h3>
-      <p>CSV remains the fallback for hosts without a PMS, while manual booking entry covers the few cases where CSV or PMS intake misses a stay.</p>
-      <div class="chip-row">
-        <span class="chip">CSV</span>
-        <span class="chip">PMS</span>
-        <span class="chip">Manual</span>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- What happens after upload -->
 <details style="margin-bottom:1.5rem">
