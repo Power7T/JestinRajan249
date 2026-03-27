@@ -84,16 +84,41 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     <span>HostAI</span>
   </div>
   <nav class="flex-1 px-4 space-y-1">
-    <a href="/dashboard" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">dashboard</span>Dashboard</a>
-<a href="/conversations" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">forum</span>Conversations</a>
-<a href="/reservations" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">event_available</span>Reservations</a>
-<a href="/activity" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">history</span>Activity</a>
-<a href="/analytics" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-[#aec6ff] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]"><span class="material-symbols-outlined text-lg">analytics</span>Analytics</a>
-<a href="/workflow" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">hub</span>Workflow</a>
-<a href="/settings" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">settings</span>Settings</a>
-<a href="/billing" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-slate-400 hover:text-white hover:bg-white/5"><span class="material-symbols-outlined text-lg">receipt_long</span>Billing</a>
-
-  </nav>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+                Conversations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+                Reservations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Activity
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+                Workflow Center
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+                Admin
+            </a>
+{% endif %}
+</nav>
   <div class="p-6 border-t border-white/5">
     <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
       <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">

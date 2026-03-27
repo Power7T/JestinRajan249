@@ -7585,16 +7585,28 @@ def conversations_page(
     conversations = {}
     for draft in all_drafts:
         key = (draft.thread_key, draft.reply_to, draft.guest_name)
+        
+        # Ensure created_at is a datetime object in case SQLite mapped it as string
+        d_created = draft.created_at
+        if isinstance(d_created, str):
+            try:
+                # Basic string parsing fallback
+                d_created = datetime.strptime(d_created.split(".")[0], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                d_created = datetime.utcnow()
+        elif d_created is None:
+            d_created = datetime.utcnow()
+            
         if key not in conversations:
             conversations[key] = {
                 "thread_key": draft.thread_key,
                 "guest_phone": draft.reply_to,
                 "guest_name": draft.guest_name,
                 "message_count": 0,
-                "last_at": draft.created_at,
+                "last_at": d_created,
             }
         conversations[key]["message_count"] += 1
-        conversations[key]["last_at"] = max(conversations[key]["last_at"], draft.created_at)
+        conversations[key]["last_at"] = max(conversations[key]["last_at"], d_created)
 
     # Convert to list and sort by last activity
     conv_list = sorted(conversations.values(), key=lambda x: x["last_at"], reverse=True)
