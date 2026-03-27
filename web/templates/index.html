@@ -90,20 +90,23 @@ tailwind.config = {
 {%- block main_wrapper %}
 {%- block content %}
 <!-- TopNavBar -->
-<nav class="fixed top-0 w-full z-50 bg-[#121319]/60 backdrop-blur-xl border-b border-white/10 shadow-[0_0_20px_rgba(91,141,239,0.1)]">
-<div class="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
-<div class="flex items-center gap-2 text-xl font-extrabold text-white tracking-tight">
-<span class="material-symbols-outlined text-[#5B8DEF]" data-icon="hub">hub</span>
+<nav class="fixed top-0 w-full z-50 bg-[#121319]/80 backdrop-blur-xl border-b border-white/10 shadow-[0_4px_30px_rgba(91,141,239,0.15)] flex h-20 items-center">
+<div class="flex justify-between items-center w-full px-8 max-w-7xl mx-auto">
+<div class="flex items-center gap-2 text-2xl font-extrabold text-white tracking-tight">
+<span class="material-symbols-outlined text-[#5B8DEF] text-3xl" data-icon="hub">hub</span>
                 HostAI
             </div>
-<div class="hidden md:flex items-center gap-8 font-['Plus_Jakarta_Sans'] font-medium text-sm">
-<a class="text-[#5B8DEF] font-bold border-b-2 border-[#5B8DEF] pb-1" href="#features">Features</a>
+<div class="hidden md:flex items-center gap-10 font-['Plus_Jakarta_Sans'] font-semibold text-sm">
+<a class="text-white hover:text-[#5B8DEF] transition-colors" href="/#features">Features</a>
 <a class="text-slate-400 hover:text-white transition-colors" href="/pricing">Pricing</a>
-<a class="text-slate-400 hover:text-white transition-colors" href="/pricing">Compare Plans</a>
 </div>
-<div class="flex items-center gap-4">
-<a href="/login" class="text-slate-400 hover:text-white text-sm font-medium transition-colors">Sign In</a>
-<a href="/signup" class="bg-[#5B8DEF] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_15px_rgba(91,141,239,0.4)] active:scale-95 transition-all">Get Started Free</a>
+<div class="flex items-center gap-5">
+{% if request.cookies.get("session") %}
+<a href="/dashboard" class="bg-[#5B8DEF] hover:bg-[#3B6DDF] text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(91,141,239,0.5)] hover:scale-105 transition-all outline-none">Go to Dashboard &rarr;</a>
+{% else %}
+<a href="/login" class="text-slate-300 hover:text-white text-sm font-semibold transition-colors hidden sm:block">Sign In</a>
+<a href="/signup" class="bg-[#5B8DEF] text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(91,141,239,0.4)] hover:scale-105 transition-all outline-none">Get Started</a>
+{% endif %}
 </div>
 </div>
 </nav>
@@ -113,13 +116,13 @@ tailwind.config = {
 <div class="absolute bottom-[20%] right-[-5%] w-[40%] h-[40%] bg-secondary-container/5 rounded-full blur-[100px] pointer-events-none"></div>
 <!-- Hero Section -->
 <section class="max-w-7xl mx-auto px-8 text-center relative z-10">
-<div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container-low border border-outline-variant/20 mb-8">
-<span class="w-2 h-2 rounded-full bg-secondary-fixed-dim animate-pulse"></span>
+<div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container-low border border-outline-variant/20 mb-8 shadow-lg">
+<span class="w-2 h-2 rounded-full bg-[#5B8DEF] animate-pulse shadow-[0_0_8px_#5B8DEF]"></span>
 <span class="text-label-sm font-bold tracking-widest uppercase text-on-surface-variant text-[10px]">v2.0 Now Live</span>
 </div>
 <h1 class="font-headline font-extrabold text-5xl md:text-[80px] leading-[1.1] text-white mb-6 tracking-tight">
                 Never miss a guest <br/>
-<span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container">message again.</span>
+<span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container drop-shadow-lg">message again.</span>
 </h1>
 <p class="max-w-2xl mx-auto text-on-surface-variant text-lg md:text-xl leading-relaxed mb-10">
                 Automated AI that handles 95% of guest questions instantly. Available 24/7 across Email, WhatsApp, Airbnb, and SMS.
@@ -127,39 +130,42 @@ tailwind.config = {
 <!-- Checkmarks -->
 <div class="flex flex-wrap justify-center items-center gap-8 mb-12">
 <div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-secondary-fixed-dim text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="material-symbols-outlined text-[#5B8DEF] text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
 <span class="text-sm font-semibold text-on-surface">95% Automated</span>
 </div>
 <div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-secondary-fixed-dim text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="material-symbols-outlined text-[#5B8DEF] text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
 <span class="text-sm font-semibold text-on-surface">2 Second Response</span>
 </div>
 <div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-secondary-fixed-dim text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="material-symbols-outlined text-[#5B8DEF] text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
 <span class="text-sm font-semibold text-on-surface">24/7 Coverage</span>
 </div>
 </div>
 <!-- Hero CTAs -->
-<div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-24">
-<a href="/pricing" class="w-full sm:w-auto px-8 py-4 bg-gradient-to-br from-primary to-primary-container rounded-xl font-bold text-on-primary shadow-[0_0_25px_rgba(93,142,241,0.3)] hover:shadow-[0_0_40px_rgba(93,142,241,0.4)] transition-all active:scale-95 text-center">View Pricing Plans</a>
-<button onclick="window.location.href='/login'" class="w-full sm:w-auto px-8 py-4 text-primary font-bold hover:bg-surface-container-high/40 rounded-xl transition-all flex items-center justify-center gap-2">
-<span class="material-symbols-outlined" data-icon="play_circle">play_circle</span>
-                    Watch Demo
+<div class="flex flex-col sm:flex-row items-center justify-center gap-5 mb-24">
+{% if request.cookies.get("session") %}
+<a href="/dashboard" class="w-full sm:w-auto px-8 py-4 bg-[#5B8DEF] rounded-xl font-bold text-white shadow-[0_0_25px_rgba(91,141,239,0.3)] hover:shadow-[0_0_40px_rgba(91,141,239,0.5)] transition-all active:scale-95 text-center">Go to Dashboard</a>
+{% else %}
+<a href="/signup" class="w-full sm:w-auto px-8 py-4 bg-[#5B8DEF] rounded-xl font-bold text-white shadow-[0_0_25px_rgba(91,141,239,0.3)] hover:shadow-[0_0_40px_rgba(91,141,239,0.5)] hover:bg-[#3B6DDF] transition-all active:scale-95 text-center">Start Free Trial</a>
+{% endif %}
+<button onclick="window.location.href='/pricing'" class="w-full sm:w-auto px-8 py-4 text-white font-bold bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg backdrop-blur-sm">
+                    View Pricing
                 </button>
 </div>
 <!-- Product Mockup Container -->
-<div class="relative max-w-5xl mx-auto">
-<div class="absolute -inset-10 bg-primary-container/20 blur-[100px] rounded-full pointer-events-none"></div>
-<div class="glass-card rounded-2xl p-4 shadow-2xl relative overflow-hidden">
+<div class="relative max-w-5xl mx-auto mt-6">
+<div class="absolute -inset-10 bg-[#5B8DEF]/10 blur-[100px] rounded-full pointer-events-none"></div>
+<div class="glass-card rounded-2xl p-4 shadow-[0_0_50px_rgba(91,141,239,0.3)] relative overflow-hidden border border-[#5B8DEF]/20">
 <div class="flex items-center gap-2 mb-4 px-2">
-<div class="flex gap-1.5">
-<div class="w-3 h-3 rounded-full bg-red-500/30"></div>
-<div class="w-3 h-3 rounded-full bg-yellow-500/30"></div>
-<div class="w-3 h-3 rounded-full bg-green-500/30"></div>
+<div class="flex gap-2">
+<div class="w-3 h-3 rounded-full bg-[#ff5f56] shadow-[0_0_8px_rgba(255,95,86,0.6)]"></div>
+<div class="w-3 h-3 rounded-full bg-[#ffbd2e] shadow-[0_0_8px_rgba(255,189,46,0.6)]"></div>
+<div class="w-3 h-3 rounded-full bg-[#27c93f] shadow-[0_0_8px_rgba(39,201,63,0.6)]"></div>
 </div>
-<div class="mx-auto bg-surface-container-highest/50 px-4 py-1 rounded-full text-[10px] text-on-surface-variant font-medium">hostai.app/dashboard</div>
+<div class="mx-auto bg-white/5 px-6 py-1.5 rounded-full text-[11px] text-white/50 font-medium tracking-wide shadow-inner border border-white/5">hostai.app/dashboard</div>
 </div>
-<img alt="HostAI Dashboard Mockup" class="rounded-xl w-full border border-white/5 shadow-inner" data-alt="dark mode software dashboard with glowing blue data visualizations, analytics charts, and clean minimalist user interface for real estate management" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEEP3N5W8uxDqBb14QBzWzS-QjkiZeXJebTvT1XHUhr4qWmwXeETlc8EviCftMfh5oqBq8Dy8RwsxoBj3BdhGnK-PzVEXpHS6BhyCwaGg3wf9HR9Lz-4UyvwfY3roqlZCF0tHUBRdj-P-e_xHcOplWnD1RK5FWy_wVS4KepGXw39OY8ZMu9aZ8IBeMUIafLuNXRIKD8GA1LFv8G54_OKpTk7Jh5aHvOc5Qi5oD-ibrlLs94wTqTxDbgC2_nw77ysh-whh17AvqWezM"/>
+<img alt="HostAI Master Dashboard Interface" class="rounded-xl w-full border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.8)] object-cover transform hover:scale-[1.01] transition-transform duration-700 ease-out" src="/static/img/mockup.png"/>
 </div>
 </div>
 </section>
