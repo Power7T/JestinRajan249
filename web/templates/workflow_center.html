@@ -254,20 +254,20 @@
     <p>Define what gets answered automatically, what gets queued for review, and what should always escalate.</p>
     <div class="chip-row">
       {% for rule in automation_rules[:4] %}
-      <span class="chip {% if (rule.actions_json or {}).get('mode', 'auto_send') == 'auto_send' %}good{% elif (rule.actions_json or {}).get('mode') == 'escalate' %}bad{% else %}warn{% endif %}">
+      <span class="chip">
         {{ rule.name }}
       </span>
       {% endfor %}
-      {% if not automation_rules %}<span class="chip warn">No rules configured yet</span>{% endif %}
+      {% if not automation_rules %}<span class="chip">No rules configured yet</span>{% endif %}
     </div>
   </div>
   <div class="workflow-card">
     <h3>Arrival activation</h3>
     <p>Host enters guest phone and room number once. The bot can then answer with room-aware context for the rest of the stay.</p>
     <div class="chip-row">
-      <span class="chip {% if kpis.reservations.context_complete %}good{% else %}warn{% endif %}">Context ready {{ kpis.reservations.context_complete }}</span>
-      <span class="chip {% if cfg.ical_urls %}good{% else %}warn{% endif %}">Calendar</span>
-      <span class="chip {% if cfg.email_ingest_mode == 'forwarding' %}good{% else %}warn{% endif %}">Email intake</span>
+      <span class="chip">Context ready {{ kpis.reservations.context_complete }}</span>
+      <span class="chip">Calendar</span>
+      <span class="chip">Email intake</span>
     </div>
   </div>
   <div class="workflow-card">
@@ -285,7 +285,7 @@
       {% for batch in recent_batches[:3] %}
       <span class="chip">{{ batch.source_kind|upper }}</span>
       {% endfor %}
-      {% if not recent_batches %}<span class="chip warn">No intake batches yet</span>{% endif %}
+      {% if not recent_batches %}<span class="chip">No intake batches yet</span>{% endif %}
     </div>
   </div>
 </div>
