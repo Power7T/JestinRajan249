@@ -4,21 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HostAI | AI Guest Support for Airbnb & Vacation Rentals</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0B0E14;
-            --surface: #151A22;
-            --surface-hover: #1A202A;
-            --accent: #3B82F6;
-            --accent-glow: rgba(59, 130, 246, 0.4);
-            --success: #10B981;
-            --success-bg: rgba(16, 185, 129, 0.1);
-            --warn: #F59E0B;
-            --text-main: #FFFFFF;
-            --text-muted: #94A3B8;
-            --text-light: #CBD5E1;
-            --border: rgba(255, 255, 255, 0.08);
+            --bg: #0C0A08;
+            --surface: #171410;
+            --surface-hover: #1E1B17;
+            --accent: #E8A020;
+            --accent-glow: rgba(232, 160, 32, 0.32);
+            --success: #4ADE80;
+            --success-bg: rgba(74, 222, 128, 0.1);
+            --warn: #FB923C;
+            --text-main: #F7F0E6;
+            --text-muted: #A89880;
+            --text-light: #D4C8B8;
+            --border: rgba(255, 210, 140, 0.09);
             --radius-lg: 16px;
             --radius: 8px;
             --t: 0.2s ease;
@@ -27,7 +27,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'DM Sans', sans-serif;
             background-color: var(--bg);
             color: var(--text-main);
             line-height: 1.6;
@@ -78,22 +78,22 @@
         .nav-links a:hover { color: var(--text-main); }
 
         .btn-primary {
-            background: var(--accent);
-            color: #fff;
+            background: linear-gradient(135deg, var(--accent), #C87A10);
+            color: #0C0A08;
             padding: 0.6rem 1.25rem;
             border-radius: var(--radius);
             text-decoration: none;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 0.95rem;
             transition: all var(--t);
             border: 1px solid transparent;
-            box-shadow: 0 4px 14px var(--accent-glow);
+            box-shadow: 0 4px 16px var(--accent-glow);
             cursor: pointer;
         }
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px var(--accent-glow);
-            filter: brightness(1.1);
+            box-shadow: 0 6px 24px var(--accent-glow);
+            color: #0C0A08;
         }
 
         .btn-outline {
@@ -140,9 +140,9 @@
             display: inline-block;
             padding: 6px 16px;
             border-radius: 99px;
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(232, 160, 32, 0.1);
             color: var(--accent);
-            border: 1px solid rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(232, 160, 32, 0.2);
             font-size: 0.85rem;
             font-weight: 600;
             margin-bottom: 1.5rem;
@@ -151,6 +151,7 @@
         }
 
         .hero h1 {
+            font-family: 'Syne', sans-serif;
             font-size: 4.5rem;
             font-weight: 800;
             line-height: 1.1;
@@ -158,8 +159,10 @@
             margin-bottom: 1rem;
         }
 
+        h1, h2, h3 { font-family: 'Syne', sans-serif; }
+
         .text-gradient {
-            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            background: linear-gradient(135deg, #F7F0E6 0%, #F5B944 60%, #E8A020 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -341,7 +344,7 @@
 
         /* ===== STATS/PROOF ===== */
         .proof-section {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+            background: linear-gradient(135deg, rgba(232, 160, 32, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
             padding: 3rem;
@@ -395,7 +398,7 @@
         .card-icon {
             width: 50px;
             height: 50px;
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(232, 160, 32, 0.1);
             color: var(--accent);
             border-radius: 12px;
             display: flex;
@@ -663,7 +666,7 @@
 
         /* ===== CTA SECTION ===== */
         .cta-section {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+            background: linear-gradient(135deg, rgba(232, 160, 32, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
             padding: 4rem;
@@ -798,7 +801,7 @@
                         <div style="color:#94A3B8; font-size:0.85rem; margin-bottom:0.25rem;">Airbnb • 10 mins ago</div>
                         <div style="color:#F1F5F9; font-weight:500;">"The wifi router isn't working."</div>
                     </div>
-                    <div style="background:rgba(59,130,246,0.1); color:#3B82F6; border:1px solid rgba(59,130,246,0.2); padding:4px 10px; border-radius:99px; font-size:0.75rem; font-weight:700;">⚠ Review First</div>
+                    <div style="background:rgba(232,160,32,0.1); color:#E8A020; border:1px solid rgba(232,160,32,0.2); padding:4px 10px; border-radius:99px; font-size:0.75rem; font-weight:700;">⚠ Review First</div>
                 </div>
             </div>
         </div>

@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up - HostAI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0B0E14;
-            --surface: #151A22;
-            --surface-hover: #1A202A;
-            --accent: #3B82F6;
-            --accent-glow: rgba(59, 130, 246, 0.4);
-            --text-main: #FFFFFF;
-            --text-muted: #94A3B8;
-            --text-light: #E2E8F0;
-            --border: rgba(255, 255, 255, 0.08);
+            --bg: #0C0A08;
+            --surface: #171410;
+            --surface-hover: #1E1B17;
+            --accent: #E8A020;
+            --accent-glow: rgba(232, 160, 32, 0.3);
+            --text-main: #F7F0E6;
+            --text-muted: #A89880;
+            --text-light: #F0E8DC;
+            --border: rgba(255, 210, 140, 0.09);
             --radius: 8px;
             --radius-lg: 16px;
             --t: 0.2s ease;
@@ -24,8 +24,8 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0B0E14 0%, #1A1F2E 100%);
+            font-family: 'DM Sans', sans-serif;
+            background: linear-gradient(135deg, #0C0A08 0%, #1C1510 100%);
             color: var(--text-main);
             line-height: 1.6;
             min-height: 100vh;
@@ -62,9 +62,9 @@
         .logo-icon {
             width: 24px;
             height: 24px;
-            background: var(--accent);
+            background: linear-gradient(135deg, var(--accent), #C87A10);
             border-radius: 4px;
-            box-shadow: 0 0 15px var(--accent-glow);
+            box-shadow: 0 0 18px var(--accent-glow);
         }
 
         nav a {
@@ -122,6 +122,7 @@
         }
 
         .auth-card h1 {
+            font-family: 'Syne', sans-serif;
             font-size: 1.8rem;
             margin-bottom: 0.5rem;
             font-weight: 800;
@@ -201,22 +202,22 @@
         .btn {
             width: 100%;
             padding: 0.8rem;
-            background: var(--accent);
-            color: white;
+            background: linear-gradient(135deg, var(--accent), #C87A10);
+            color: #0C0A08;
             border: none;
             border-radius: var(--radius);
-            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
             font-size: 0.95rem;
             cursor: pointer;
             transition: all var(--t);
-            box-shadow: 0 4px 14px var(--accent-glow);
+            box-shadow: 0 4px 16px var(--accent-glow);
             margin-top: 0.5rem;
         }
 
         .btn:hover {
-            background: #1E40AF;
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px var(--accent-glow);
+            box-shadow: 0 6px 24px var(--accent-glow);
         }
 
         .btn:disabled {
@@ -278,13 +279,13 @@
         }
 
         .auth-footer a {
-            color: var(--accent);
+            color: var(--accent-2, #F5B944);
             text-decoration: none;
             font-weight: 600;
         }
 
         .auth-footer a:hover {
-            color: #60A5FA;
+            color: var(--accent);
         }
 
         /* ===== RESPONSIVE ===== */
