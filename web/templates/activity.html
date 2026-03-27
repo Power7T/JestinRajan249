@@ -84,7 +84,7 @@
         <span class="chip">Human review</span>
       </div>
       {% if exceptions %}
-      <div style="margin-top:0.75rem;font-size:0.8rem;color:#495057">
+      <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-2)">
         {{ exceptions[0].title }}
       </div>
       {% endif %}
@@ -97,7 +97,7 @@
         <span class="chip">Arrival activation</span>
       </div>
       {% if exceptions|length > 1 %}
-      <div style="margin-top:0.75rem;font-size:0.8rem;color:#495057">
+      <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-2)">
         {{ exceptions[1].title }}
       </div>
       {% endif %}
@@ -110,7 +110,7 @@
         <span class="chip">Low risk</span>
       </div>
       {% if exceptions|length > 2 %}
-      <div style="margin-top:0.75rem;font-size:0.8rem;color:#495057">
+      <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-2)">
         {{ exceptions[2].title }}
       </div>
       {% endif %}
@@ -196,7 +196,7 @@
     {% endfor %}
   </div>
   {% else %}
-  <p style="color:#6c757d;font-size:0.84rem">No unresolved operational issues right now.</p>
+  <p style="color:var(--text-3);font-size:0.84rem">No unresolved operational issues right now.</p>
   {% endif %}
 </div>
 {% endif %}

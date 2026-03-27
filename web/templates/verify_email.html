@@ -1,46 +1,185 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verify Email — HostAI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #0D0B10; --bg-2: #131118; --surface: #161420;
+      --border: rgba(160,140,220,0.1); --border-2: rgba(160,140,220,0.18);
+      --accent: #F5A623; --accent-2: #FFD166; --accent-glow: rgba(245,166,35,0.35);
+      --rose: #FF6B8A;
+      --text-1: #F0EDF8; --text-2: #9B94B8; --text-3: #5E5875;
+      --danger: #FF6B8A; --danger-bg: rgba(255,107,138,0.1); --danger-border: rgba(255,107,138,0.25);
+      --success: #10D9A8; --success-bg: rgba(16,217,168,0.1); --success-border: rgba(16,217,168,0.22);
+      --radius: 10px; --radius-sm: 6px; --t: 150ms ease;
+    }
+    [data-theme="light"] {
+      --bg: #F4F2FA; --bg-2: #EAE8F5; --surface: #FFFFFF;
+      --border: rgba(80,60,120,0.1); --border-2: rgba(80,60,120,0.16);
+      --text-1: #1A1828; --text-2: #54506A; --text-3: #9590A8;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #212529; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-    .card { background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 2rem; width: 100%; max-width: 440px; text-align: center; }
-    .brand { font-size: 1.4rem; font-weight: 700; color: #e00b27; margin-bottom: 1.5rem; }
-    .icon { font-size: 3rem; margin-bottom: 1rem; }
-    h2 { font-size: 1.2rem; margin-bottom: 0.75rem; }
-    p { color: #6c757d; font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem; }
-    .alert-success { background: #d1e7dd; color: #0a3622; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.88rem; }
-    .alert-error   { background: #f8d7da; color: #721c24; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.88rem; }
-    .btn { display: inline-block; padding: 10px 24px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; text-decoration: none; background: #e00b27; color: #fff; margin-top: 0.5rem; }
-    .btn:hover { opacity: 0.88; }
-    .btn-secondary { background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; }
+    body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80vw;
+      height: 60vh;
+      background: radial-gradient(ellipse at 40% 50%, rgba(245,166,35,0.1) 0%, rgba(124,111,255,0.06) 45%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 440px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+      animation: fadeUp 0.4s ease both;
+    }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+    .brand { margin-bottom: 1.75rem; }
+    .brand-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--accent), var(--rose));
+      border-radius: 14px;
+      font-size: 22px;
+      margin-bottom: 0.7rem;
+      box-shadow: 0 8px 28px var(--accent-glow);
+    }
+    .brand h1 { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.45);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(232,160,32,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .status-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    h2 { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 0.75rem; letter-spacing: -0.02em; }
+    p { color: var(--text-2); font-size: 0.875rem; line-height: 1.6; margin-bottom: 1rem; }
+
+    .alert {
+      padding: 0.65rem 0.9rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      margin-bottom: 1.25rem;
+      text-align: left;
+    }
+    .alert-success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+    .alert-error { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+
+    .btn {
+      display: inline-block;
+      padding: 10px 24px;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-decoration: none;
+      font-family: inherit;
+      transition: all var(--t);
+      border: none;
+      cursor: pointer;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #C87A10); color: #0C0A08; box-shadow: 0 4px 18px var(--accent-glow); }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--accent-glow); }
+    .btn-secondary { background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border-2); }
+    .btn-secondary:hover { background: var(--bg); }
+
+    .theme-toggle {
+      position: fixed; top: 1rem; right: 1rem;
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      border: 1px solid var(--border-2);
+      background: var(--surface);
+      color: var(--text-2);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; z-index: 10;
+    }
   </style>
 </head>
 <body>
-<div class="card">
-  <div class="brand">🏠 HostAI</div>
+  <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme"><span id="theme-icon">☀️</span></button>
 
-  {% if success %}
-    <div class="icon">✅</div>
-    <h2>Email verified!</h2>
-    <div class="alert-success">Your email address has been confirmed. Your account is fully active.</div>
-    <a href="/dashboard" class="btn">Go to Dashboard</a>
-  {% elif expired %}
-    <div class="icon">⏰</div>
-    <h2>Link expired</h2>
-    <div class="alert-error">This verification link has expired (links are valid for 24 hours).</div>
-    <p>Sign in and we'll send you a new verification email from your account settings.</p>
-    <a href="/login" class="btn btn-secondary">Sign in</a>
-  {% else %}
-    <div class="icon">❌</div>
-    <h2>Invalid link</h2>
-    <div class="alert-error">This verification link is invalid or has already been used.</div>
-    <p>If you need help, contact support.</p>
-    <a href="/login" class="btn btn-secondary">Back to login</a>
-  {% endif %}
-</div>
+  <div class="wrap">
+    <div class="brand">
+      <div class="brand-icon">🏠</div>
+      <h1>HostAI</h1>
+    </div>
+
+    <div class="card">
+      {% if success %}
+        <div class="status-icon">✅</div>
+        <h2>Email verified!</h2>
+        <div class="alert alert-success">Your email address has been confirmed. Your account is fully active.</div>
+        <a href="/dashboard" class="btn btn-primary">Go to Dashboard →</a>
+      {% elif expired %}
+        <div class="status-icon">⏰</div>
+        <h2>Link expired</h2>
+        <div class="alert alert-error">This verification link has expired (links are valid for 24 hours).</div>
+        <p>Sign in and we'll send you a new verification email from your account settings.</p>
+        <a href="/login" class="btn btn-secondary">Sign in</a>
+      {% else %}
+        <div class="status-icon">❌</div>
+        <h2>Invalid link</h2>
+        <div class="alert alert-error">This verification link is invalid or has already been used.</div>
+        <p>If you need help, contact support.</p>
+        <a href="/login" class="btn btn-secondary">Back to login</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    const THEME_KEY = 'hostai-theme';
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      const icon = document.getElementById('theme-icon');
+      if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
+      localStorage.setItem(THEME_KEY, t);
+    }
+    (function() {
+      const saved = localStorage.getItem(THEME_KEY);
+      if (saved) applyTheme(saved);
+      const btn = document.getElementById('theme-toggle-btn');
+      if (btn) btn.addEventListener('click', function() {
+        const cur = document.documentElement.getAttribute('data-theme');
+        applyTheme(cur === 'dark' ? 'light' : 'dark');
+      });
+    })();
+  </script>
 </body>
 </html>

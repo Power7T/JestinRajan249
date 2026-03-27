@@ -11,32 +11,32 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg:      #0C0A08;
-      --bg-2:    #131210;
-      --surface: #171410;
-      --border:  rgba(255,210,140,0.08);
-      --border-2:rgba(255,210,140,0.14);
-      --accent:  #E8A020;
-      --accent-2:#F5B944;
-      --accent-glow: rgba(232,160,32,0.28);
-      --rose:    #F06060;
-      --text-1:  #F7F0E6;
-      --text-2:  #A89880;
-      --text-3:  #6E5E4A;
-      --danger:  #F06060;
-      --danger-bg: rgba(240,96,96,0.1);
-      --danger-border: rgba(240,96,96,0.25);
-      --success: #4ADE80;
-      --success-bg: rgba(74,222,128,0.1);
-      --success-border: rgba(74,222,128,0.22);
+      --bg:      #0D0B10;
+      --bg-2:    #131118;
+      --surface: #161420;
+      --border:  rgba(160,140,220,0.1);
+      --border-2:rgba(160,140,220,0.18);
+      --accent:  #F5A623;
+      --accent-2:#FFD166;
+      --accent-glow: rgba(245,166,35,0.35);
+      --rose:    #FF6B8A;
+      --text-1:  #F0EDF8;
+      --text-2:  #9B94B8;
+      --text-3:  #5E5875;
+      --danger:  #FF6B8A;
+      --danger-bg: rgba(255,107,138,0.1);
+      --danger-border: rgba(255,107,138,0.25);
+      --success: #10D9A8;
+      --success-bg: rgba(16,217,168,0.1);
+      --success-border: rgba(16,217,168,0.22);
       --radius:  10px;
       --radius-sm: 6px;
       --t: 150ms ease;
     }
     [data-theme="light"] {
-      --bg: #F5EFE6; --bg-2: #EDE5DA; --surface: #FFFFFF;
-      --border: rgba(80,55,20,0.09); --border-2: rgba(80,55,20,0.15);
-      --text-1: #1A1510; --text-2: #5A5248; --text-3: #9A9288;
+      --bg: #F4F2FA; --bg-2: #EAE8F5; --surface: #FFFFFF;
+      --border: rgba(80,60,120,0.1); --border-2: rgba(80,60,120,0.16);
+      --text-1: #1A1828; --text-2: #54506A; --text-3: #9590A8;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -72,10 +72,22 @@
       transform: translateX(-50%);
       width: 80vw;
       height: 60vh;
-      background: radial-gradient(ellipse at center,
-        rgba(232,160,32,0.1) 0%,
-        rgba(240,96,96,0.05) 50%,
+      background: radial-gradient(ellipse at 40% 50%,
+        rgba(245,166,35,0.12) 0%,
+        rgba(124,111,255,0.08) 40%,
         transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    /* Second glow */
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: -10%;
+      right: -10%;
+      width: 50vw;
+      height: 50vh;
+      background: radial-gradient(ellipse, rgba(255,107,138,0.07) 0%, transparent 70%);
       pointer-events: none;
       z-index: 0;
     }
@@ -160,9 +172,9 @@
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 20px;
       padding: 2rem;
-      box-shadow: 0 8px 48px rgba(0,0,0,0.5), 0 0 80px rgba(232,160,32,0.04);
+      box-shadow: 0 8px 48px rgba(0,0,0,0.6), 0 0 80px rgba(245,166,35,0.05), 0 0 0 1px rgba(160,140,220,0.08);
       position: relative;
       overflow: hidden;
     }
@@ -177,7 +189,7 @@
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(135deg, rgba(232,160,32,0.05) 0%, transparent 60%);
+      background: linear-gradient(135deg, rgba(245,166,35,0.05) 0%, rgba(124,111,255,0.03) 100%);
       pointer-events: none;
     }
 
@@ -255,13 +267,13 @@
     .btn:active { transform: translateY(0); }
 
     .btn-primary {
-      background: linear-gradient(135deg, var(--accent), #C87A10);
-      color: #0C0A08;
+      background: linear-gradient(135deg, var(--accent), #C8780A);
+      color: #0D0B10;
       font-weight: 700;
       margin-bottom: 0.75rem;
-      box-shadow: 0 4px 18px var(--accent-glow);
+      box-shadow: 0 4px 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15);
     }
-    .btn-primary:hover { box-shadow: 0 6px 28px var(--accent-glow); color: #0C0A08; }
+    .btn-primary:hover { box-shadow: 0 6px 30px var(--accent-glow); color: #0D0B10; }
 
     .btn-secondary {
       background: var(--bg-2);

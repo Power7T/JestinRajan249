@@ -3,11 +3,11 @@
 
 {% block content %}
 <div class="empty" style="padding: 5rem 1rem">
-  <div style="font-size: 3.5rem; font-weight: 800; color: #dee2e6; margin-bottom: 0.5rem">
+  <div style="font-size: 4rem; font-weight: 800; color: var(--border-2); margin-bottom: 0.5rem; font-family: 'Syne', sans-serif; letter-spacing: -0.04em">
     {{ code }}
   </div>
   <h1 style="margin-bottom: 0.75rem; font-size: 1.4rem">{{ title }}</h1>
-  <p style="max-width: 400px; margin: 0 auto 1.5rem; color: #6c757d; font-size: 0.9rem; line-height: 1.6">
+  <p style="max-width: 400px; margin: 0 auto 1.5rem; color: var(--text-2); font-size: 0.9rem; line-height: 1.6">
     {{ message }}
   </p>
   {% if is_admin(request.session.get("admin_email", "")) and debug_detail %}

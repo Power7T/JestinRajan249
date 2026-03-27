@@ -11,7 +11,7 @@
   <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start">
     <div>
       <h2 style="margin-bottom:0.3rem">Stay summary</h2>
-      <p style="margin:0;font-size:0.86rem;color:#495057;line-height:1.7">
+      <p style="margin:0;font-size:0.86rem;color:var(--text-2);line-height:1.7">
         Guest: <strong>{{ reservation.guest_name if reservation is defined and reservation else 'Guest name' }}</strong><br>
         Room / unit: <strong>{{ reservation.unit_identifier if reservation is defined and reservation and reservation.unit_identifier else 'Room 204' }}</strong><br>
         Booking ref: <strong>{{ reservation.confirmation_code if reservation is defined and reservation and reservation.confirmation_code else 'ABC123' }}</strong>
@@ -138,7 +138,7 @@
       {% endfor %}
     </div>
   {% else %}
-    <p style="font-size:0.85rem;color:#6c757d">No unresolved issues for this stay.</p>
+    <p style="font-size:0.85rem;color:var(--text-3)">No unresolved issues for this stay.</p>
   {% endif %}
 
   <form method="post" action="/reservations/{{ reservation.id }}/issues" style="margin-top:1rem">

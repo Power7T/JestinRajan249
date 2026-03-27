@@ -47,7 +47,7 @@
 <h1>Reservations</h1>
 
 <form method="get" action="/reservations" style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin:0.75rem 0 1.25rem">
-  <label style="margin:0;font-size:0.82rem;color:#6c757d">Property view</label>
+  <label style="margin:0;font-size:0.82rem;color:var(--text-3)">Property view</label>
   <select name="property" style="max-width:320px;margin-bottom:0">
     <option value="">All properties</option>
     {% for property_name in property_options or [] %}
@@ -166,7 +166,7 @@
       {% endfor %}
     </div>
     {% else %}
-    <p style="color:#6c757d;font-size:0.84rem">No intake batches yet. CSV, PMS sync, and manual entry all land here.</p>
+    <p style="color:var(--text-3);font-size:0.84rem">No intake batches yet. CSV, PMS sync, and manual entry all land here.</p>
     {% endif %}
   </div>
   <div class="workflow-card">
@@ -178,7 +178,7 @@
       {% endfor %}
     </div>
     {% else %}
-    <p style="color:#6c757d;font-size:0.84rem">No team members configured yet. Add front desk or maintenance contacts in Settings.</p>
+    <p style="color:var(--text-3);font-size:0.84rem">No team members configured yet. Add front desk or maintenance contacts in Settings.</p>
     {% endif %}
   </div>
 </div>
@@ -212,7 +212,7 @@
     <input type="file" name="csv_file" accept=".csv" required style="width:auto;margin:0">
     <button type="submit" class="btn btn-primary">Upload CSV</button>
   </form>
-  <p style="font-size:0.75rem;color:#6c757d;margin-top:0.75rem;margin-bottom:0">
+  <p style="font-size:0.75rem;color:var(--text-3);margin-top:0.75rem;margin-bottom:0">
     Existing reservations are updated (not duplicated). Cancelled bookings are flagged automatically.
   </p>
 </div>
@@ -274,11 +274,11 @@
   <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap;justify-content:space-between">
     <div style="max-width:760px">
       <h3 style="margin-bottom:0.4rem;font-size:1rem">Guest context mapping</h3>
-      <p style="margin:0;color:#495057;font-size:0.86rem;line-height:1.7">
+      <p style="margin:0;color:var(--text-2);font-size:0.86rem;line-height:1.7">
         Add the guest phone number and room / unit / property number to a reservation. When the guest messages from that number, HostAI matches the reservation, injects the room context into the AI prompt, and replies more naturally.
       </p>
     </div>
-    <div style="font-size:0.82rem;color:#6c757d;line-height:1.7;min-width:240px">
+    <div style="font-size:0.82rem;color:var(--text-3);line-height:1.7;min-width:240px">
       Examples:
       <div>• "Unit 12A" for a suite</div>
       <div>• "Room 204" for a hotel room</div>
@@ -291,7 +291,7 @@
   <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start">
     <div style="max-width:720px">
       <h3 style="margin-bottom:0.35rem;font-size:1rem">Arrival activation workflow</h3>
-      <p style="margin:0;color:#495057;font-size:0.86rem;line-height:1.7">
+      <p style="margin:0;color:var(--text-2);font-size:0.86rem;line-height:1.7">
         The cleanest host flow is simple: booking imported, guest phone saved, room or unit mapped, then the bot can answer in the context of the stay. That makes guest chat feel personal instead of generic.
       </p>
     </div>
@@ -368,10 +368,10 @@
 
 <!-- What happens after upload -->
 <details style="margin-bottom:1.5rem">
-  <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;color:#e00b27;padding:4px 0">
+  <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;color:var(--accent);padding:4px 0">
     ▶ What HostAI does with your reservations
   </summary>
-  <div style="background:#f8f9fa;border-radius:6px;padding:1rem;margin-top:0.5rem;font-size:0.82rem;line-height:1.9;color:#495057">
+  <div style="background:var(--bg-2);border-radius:6px;padding:1rem;margin-top:0.5rem;font-size:0.82rem;line-height:1.9;color:var(--text-2)">
     <strong>Guest context enrichment</strong> — When a guest emails you, HostAI matches them to their reservation and includes room/unit, check-in date, checkout date, and nights stayed in the AI prompt. Replies become far more personal.<br>
     <strong>Pre-arrival message</strong> — 7 days before check-in, a warm welcome draft is auto-generated for your approval.<br>
     <strong>Check-out thank-you</strong> — On checkout day, a thank-you message with a review request is drafted.<br>
@@ -419,7 +419,7 @@
     <tr class="{% if is_today_checkout %}checkout-today{% elif is_soon %}checkin-soon{% endif %}">
       <td>
         <strong>{{ r.guest_name }}</strong>
-        <div style="font-size:0.72rem;color:#6c757d;font-family:monospace">{{ r.confirmation_code }}</div>
+        <div style="font-size:0.72rem;color:var(--text-3);font-family:monospace">{{ r.confirmation_code }}</div>
       </td>
       <td style="font-size:0.82rem">{{ r.listing_name or '—' }}</td>
       <td style="font-size:0.82rem;white-space:nowrap">
@@ -443,7 +443,7 @@
       <td style="font-size:0.78rem;min-width:120px">
         {% if r.review_rating is not none %}
         <div><strong>{{ "%.1f"|format(r.review_rating) }}</strong> stars</div>
-        {% if r.review_sentiment %}<div style="color:#6c757d">{{ r.review_sentiment }}</div>{% endif %}
+        {% if r.review_sentiment %}<div style="color:var(--text-3)">{{ r.review_sentiment }}</div>{% endif %}
         {% else %}
         <span style="color:#adb5bd">No review yet</span>
         {% endif %}
@@ -471,7 +471,7 @@
           <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-start">Activate guest bot</button>
         </form>
       </td>
-      <td style="font-size:0.72rem;color:#6c757d;white-space:nowrap">
+      <td style="font-size:0.72rem;color:var(--text-3);white-space:nowrap">
         {% if r.pre_arrival_sent %}✓ pre-arrival<br>{% endif %}
         {% if r.cleaner_brief_sent %}✓ cleaner<br>{% endif %}
         {% if r.checkout_msg_sent %}✓ checkout<br>{% endif %}

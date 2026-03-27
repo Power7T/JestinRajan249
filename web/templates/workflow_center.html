@@ -62,7 +62,7 @@
   <div class="checklist-item">
     <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
     <span>{{ item.label }}</span>
-    <span style="color:#6c757d;font-size:0.8rem">{{ item.detail }}</span>
+    <span style="color:var(--text-3);font-size:0.8rem">{{ item.detail }}</span>
     {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
   </div>
   {% endfor %}
@@ -79,7 +79,7 @@
         <div class="timeline-text">{{ event.detail or event.status or '' }}</div>
       </div>
       {% endfor %}
-      {% if not timeline_events %}<p style="font-size:0.85rem;color:#6c757d">No timeline events yet.</p>{% endif %}
+      {% if not timeline_events %}<p style="font-size:0.85rem;color:var(--text-3)">No timeline events yet.</p>{% endif %}
     </div>
   </div>
   <div class="workflow-card">
@@ -87,30 +87,30 @@
     {% for item in exception_queue[:5] %}
     <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
       <div style="font-size:0.84rem;font-weight:600">{{ item.title }}</div>
-      <div style="font-size:0.78rem;color:#6c757d">{{ item.detail }}</div>
+      <div style="font-size:0.78rem;color:var(--text-3)">{{ item.detail }}</div>
     </div>
     {% endfor %}
-    {% if not exception_queue %}<p style="font-size:0.85rem;color:#6c757d">No exceptions right now.</p>{% endif %}
+    {% if not exception_queue %}<p style="font-size:0.85rem;color:var(--text-3)">No exceptions right now.</p>{% endif %}
   </div>
   <div class="workflow-card">
     <h3>Open issues</h3>
     {% for issue in open_issues[:5] %}
     <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
       <div style="font-size:0.84rem;font-weight:600">{{ issue.title }}</div>
-      <div style="font-size:0.78rem;color:#6c757d">{{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}</div>
+      <div style="font-size:0.78rem;color:var(--text-3)">{{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}</div>
     </div>
     {% endfor %}
-    {% if not open_issues %}<p style="font-size:0.85rem;color:#6c757d">No open issues.</p>{% endif %}
+    {% if not open_issues %}<p style="font-size:0.85rem;color:var(--text-3)">No open issues.</p>{% endif %}
   </div>
   <div class="workflow-card">
     <h3>Recent intake</h3>
     {% for batch in recent_batches[:5] %}
     <div style="padding:0.55rem 0;border-bottom:1px solid #f1f3f5">
       <div style="font-size:0.84rem;font-weight:600">{{ batch.source_name or batch.source_kind|upper }}</div>
-      <div style="font-size:0.78rem;color:#6c757d">{{ batch.source_kind|upper }} · {{ batch.rows_imported }}/{{ batch.rows_total }} rows</div>
+      <div style="font-size:0.78rem;color:var(--text-3)">{{ batch.source_kind|upper }} · {{ batch.rows_imported }}/{{ batch.rows_total }} rows</div>
     </div>
     {% endfor %}
-    {% if not recent_batches %}<p style="font-size:0.85rem;color:#6c757d">No reservation intake yet.</p>{% endif %}
+    {% if not recent_batches %}<p style="font-size:0.85rem;color:var(--text-3)">No reservation intake yet.</p>{% endif %}
   </div>
 </div>
 

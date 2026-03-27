@@ -52,7 +52,7 @@
     </div>
 
     {% if cfg.subscription_expires_at %}
-    <p style="font-size:0.8rem;color:#6c757d">
+    <p style="font-size:0.8rem;color:var(--text-2)">
       Renews: {{ cfg.subscription_expires_at.strftime('%b %d, %Y') }}
     </p>
     {% endif %}
@@ -67,7 +67,7 @@
 
   <div class="card">
     <div class="card-header"><span class="card-title">Change plan</span></div>
-    <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1rem">Upgrade or switch your messaging channel.</p>
+    <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">Upgrade or switch your messaging channel.</p>
 
     <div style="display:flex;flex-direction:column;gap:0.5rem">
       {% if cfg.subscription_plan != 'baileys' %}
@@ -107,7 +107,7 @@
       {% endif %}
     </div>
 
-    <p style="margin-top:1rem;font-size:0.78rem;color:#6c757d">
+    <p style="margin-top:1rem;font-size:0.78rem;color:var(--text-2)">
       <a href="/pricing">See full plan comparison →</a>
     </p>
   </div>
@@ -116,7 +116,7 @@
 <!-- Included in all plans -->
 <div class="card">
   <div class="card-header"><span class="card-title">What's always included</span></div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.5rem;font-size:0.85rem;color:#495057">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.5rem;font-size:0.85rem;color:var(--text-2)">
     <div>✓ Web dashboard</div>
     <div>✓ AI draft generation (System managed)</div>
     <div>✓ iCal calendar sync</div>

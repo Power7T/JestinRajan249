@@ -3,53 +3,64 @@
 
 {% block head %}
 <style>
-  /* Setup checklist */
-  .checklist-card { background:var(--surface);border:1px solid var(--accent);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem; }
-  .checklist-card h2 { font-size:1rem;margin-bottom:1rem; }
-  .checklist-item { display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.84rem; }
-  .checklist-item:last-child { border-bottom:none;padding-bottom:0; }
-  .check-icon { font-size:0.9rem;width:1.5rem;text-align:center;flex-shrink:0; }
-  .check-icon.done  { color:var(--success); }
-  .check-icon.todo  { color:var(--bg-4); }
-  .checklist-action { margin-left:auto;font-size:0.76rem; }
+  /* Setup checklist card */
+  .checklist-card {
+    background: var(--surface);
+    border: 1px solid rgba(245,166,35,0.3);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .checklist-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), transparent 70%);
+  }
+  .checklist-card h2 { font-size: 1rem; margin-bottom: 1rem; }
 
-  /* Escalation draft */
-  .draft-escalation { border-left:3px solid var(--danger) !important; }
+  /* Feedback row */
+  .feedback-row { display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.75rem; }
 
-  /* Analytics widgets */
-  .analytics-row { display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0.85rem;margin-bottom:1.4rem; }
-  .analytics-widget { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;text-align:center;transition:all var(--t); }
-  .analytics-widget:hover { border-color:var(--border-2);box-shadow:var(--glow); }
-  .analytics-widget .widget-value { font-size:1.5rem;font-weight:800;color:var(--text-1);line-height:1.2;letter-spacing:-0.03em; }
-  .analytics-widget .widget-label { font-size:0.69rem;color:var(--text-3);margin-top:0.25rem;text-transform:uppercase;letter-spacing:0.06em; }
-  .analytics-widget .widget-sub   { font-size:0.66rem;color:var(--text-3);opacity:0.65;margin-top:0.1rem; }
-
-  /* CSV stale banner */
-  .csv-banner { background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:var(--radius-sm);padding:0.65rem 1rem;
-                font-size:0.8rem;color:var(--warn);display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem; }
-  .csv-banner a { color:var(--warn);font-weight:600;text-decoration:underline; }
-  .filter-bar { display:flex;gap:0.65rem;align-items:center;flex-wrap:wrap;margin:0.5rem 0 1.25rem; }
-  .feedback-row { display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.65rem; }
+  /* Guest avatar */
+  .guest-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--rose));
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-size: 0.7rem; font-weight: 800;
+    color: #0D0B10; flex-shrink: 0;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1>Dashboard</h1>
-
-<form method="get" action="/dashboard" class="filter-bar">
-  <label style="margin:0;font-size:0.82rem;color:#6c757d">Property view</label>
-  <select name="property" style="max-width:320px;margin-bottom:0">
-    <option value="">All properties</option>
-    {% for property_name in property_options or [] %}
-    <option value="{{ property_name }}" {% if property_name == selected_property %}selected{% endif %}>{{ property_name }}</option>
-    {% endfor %}
-  </select>
-  <button type="submit" class="btn btn-outline btn-sm">Apply</button>
-  {% if selected_property %}
-  <a href="/dashboard" class="btn btn-outline btn-sm">Clear</a>
-  <span class="chip good">Scoped to {{ selected_property }}</span>
-  {% endif %}
-</form>
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Dashboard</h1>
+    <p class="page-subtitle">Your property overview at a glance</p>
+  </div>
+  <div class="page-actions">
+    <form method="get" action="/dashboard" style="display:flex;gap:0.5rem;align-items:center;">
+      <select name="property" style="max-width:240px;margin-bottom:0;font-size:0.82rem;padding:7px 12px;">
+        <option value="">All properties</option>
+        {% for property_name in property_options or [] %}
+        <option value="{{ property_name }}" {% if property_name == selected_property %}selected{% endif %}>{{ property_name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-outline btn-sm">Apply</button>
+      {% if selected_property %}
+      <a href="/dashboard" class="btn btn-ghost btn-sm">✕ Clear</a>
+      {% endif %}
+    </form>
+    {% if selected_property %}
+    <span class="chip accent">📍 {{ selected_property }}</span>
+    {% endif %}
+  </div>
+</div>
 
 
 <!-- CSV stale warning -->
@@ -59,7 +70,7 @@
   {% set hours_ago = ((today | string | length) and ((now - sync_log.last_synced).total_seconds() // 3600) | int) %}
   over 12 hours ago.
   <a href="/reservations">Upload fresh CSV →</a>
-  <span style="margin-left:auto;font-size:0.75rem;color:#adb5bd">Recommended: twice daily (morning + evening)</span>
+  <span style="margin-left:auto;font-size:0.75rem;color:var(--text-3)">Recommended: twice daily (morning + evening)</span>
 </div>
 {% elif not sync_log %}
 <div class="csv-banner">
@@ -155,7 +166,7 @@
   <div class="checklist-item">
     <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
     <span>{{ item.label }}</span>
-    <span style="color:#6c757d;font-size:0.8rem">{{ item.detail }}</span>
+    <span style="color:var(--text-3);font-size:0.8rem">{{ item.detail }}</span>
     {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
   </div>
   {% endfor %}
@@ -243,7 +254,7 @@
         <input type="text" id="listing_url" name="listing_url" placeholder="https://www.airbnb.com/rooms/12345678"
                style="font-size:0.82rem;padding:5px 10px;border:1px solid #ced4da;border-radius:6px;flex:1;min-width:200px">
         <button type="submit" id="extract-btn" class="btn btn-primary btn-sm">Extract iCal →</button>
-        <span id="extract-status" style="font-size:0.82rem;color:#6c757d;margin-left:0.5rem"></span>
+        <span id="extract-status" style="font-size:0.82rem;color:var(--text-3);margin-left:0.5rem"></span>
       </form>
     </details>
     <script>
@@ -300,9 +311,9 @@
   </div>
   <div class="checklist-item">
     <span class="check-icon todo">○</span>
-    <span style="color:#6c757d">First draft approved (waiting for a guest message)</span>
+    <span style="color:var(--text-3)">First draft approved (waiting for a guest message)</span>
   </div>
-  <p style="font-size:0.78rem;color:#6c757d;margin-top:1rem">
+  <p style="font-size:0.78rem;color:var(--text-3);margin-top:1rem">
     <a href="/onboarding">Resume setup wizard →</a>
   </p>
 </div>
@@ -314,7 +325,7 @@
     <div class="card-title" style="color:#fd7e14">⚠️ Guest policies not configured</div>
     <a href="/settings#policies" class="btn btn-outline btn-sm">Configure now →</a>
   </div>
-  <p style="font-size:0.84rem;color:#495057;margin:0.5rem 0 0">
+  <p style="font-size:0.84rem;color:var(--text-2);margin:0.5rem 0 0">
     Without pet, refund, check-in/out, parking, and smoking policies, HostAI cannot detect policy conflicts in AI-generated replies.<br>
     Add policies in <a href="/settings#policies"><strong>Settings → Guest Policies</strong></a> to enable conflict detection and protect against inappropriate auto-sends.
   </p>
@@ -343,7 +354,7 @@
 {% else %}
 <!-- Bulk action bar -->
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem">
-  <p style="font-size:0.85rem;color:#6c757d;margin:0">
+  <p style="font-size:0.85rem;color:var(--text-3);margin:0">
     {% if conversations is defined and conversations %}
       {{ conversations|length }} conversation{% if conversations|length != 1 %}s{% endif %}
       ({{ drafts|length }} draft{% if drafts|length != 1 %}s{% endif %}) waiting for review
@@ -373,13 +384,13 @@
       {% if conv.reservation %}<span class="chip" style="margin-left:0.4rem;font-size:0.75rem">{{ conv.reservation.listing_name }}</span>{% endif %}
     </div>
     <div style="display:flex;align-items:center;gap:0.6rem">
-      <span style="font-size:0.75rem;color:#6c757d">{{ conv.drafts|length }} messages in thread</span>
+      <span style="font-size:0.75rem;color:var(--text-3)">{{ conv.drafts|length }} messages in thread</span>
       {% if conv.thread_key %}
       <button style="font-size:0.72rem;background:none;border:1px solid var(--border,#dee2e6);border-radius:4px;padding:2px 8px;cursor:pointer;color:#0d6efd"
               hx-get="/api/conversation/{{ conv.thread_key }}"
               hx-target="#conv-hist-{{ loop.index }}"
               hx-swap="innerHTML">Load history</button>
-      <div id="conv-hist-{{ loop.index }}" style="font-size:0.78rem;color:#6c757d"></div>
+      <div id="conv-hist-{{ loop.index }}" style="font-size:0.78rem;color:var(--text-3)"></div>
       {% endif %}
     </div>
   </div>
@@ -399,7 +410,7 @@
       <span title="AI confidence score" style="font-size:0.7rem;padding:2px 7px;border-radius:12px;background:{{ conf_color }};color:#fff;font-weight:600">{{ conf_pct }}% confident</span>
       {% if draft.context_sources %}
       <button type="button" class="toggle-why" data-id="{{ draft.id }}"
-              style="font-size:0.7rem;padding:2px 7px;border:1px solid #ced4da;border-radius:12px;background:transparent;cursor:pointer;color:#6c757d">why?</button>
+              style="font-size:0.7rem;padding:2px 7px;border:1px solid #ced4da;border-radius:12px;background:transparent;cursor:pointer;color:var(--text-3)">why?</button>
       {% endif %}
       {% endif %}
       {% if draft.vendor_type %}
@@ -410,7 +421,7 @@
   </div>
 
   {% if draft.message and draft.source != 'calendar' %}
-  <div style="font-size:0.8rem;color:#6c757d;margin-bottom:0.5rem">
+  <div style="font-size:0.8rem;color:var(--text-3);margin-bottom:0.5rem">
     <strong>Guest message:</strong> {{ draft.message[:200] }}{% if draft.message|length > 200 %}…{% endif %}
   </div>
   {% endif %}
@@ -429,7 +440,7 @@
     <span class="chip warn">Thread msg {{ draft.guest_message_index }}
       {% if draft.thread_key %}
       <button type="button" class="toggle-thread" data-id="{{ draft.id }}"
-              style="background:none;border:none;color:#6c757d;cursor:pointer;font-size:0.7rem;padding:0 2px;margin-left:2px">▾</button>
+              style="background:none;border:none;color:var(--text-3);cursor:pointer;font-size:0.7rem;padding:0 2px;margin-left:2px">▾</button>
       {% endif %}
     </span>
     {% endif %}
@@ -446,7 +457,7 @@
 
   {% if draft.policy_conflicts_json %}
   {% set conflicts = draft.policy_conflicts_json | from_json if draft.policy_conflicts_json else [] %}
-  <div style="font-size:0.78rem;color:#856404;background:#fff3cd;border:1px solid #ffe69c;border-radius:6px;padding:0.55rem 0.7rem;margin-bottom:0.6rem">
+  <div style="font-size:0.78rem;color:var(--warn);background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;padding:0.55rem 0.7rem;margin-bottom:0.6rem">
     ⚠️ <strong>Policy review required</strong> — this reply may conflict with your configured policies:
     {% if conflicts %}
     <ul style="margin:0.25rem 0 0 1rem;padding:0">
@@ -457,7 +468,7 @@
   {% endif %}
 
   {% if draft.thread_key and draft.guest_message_index and draft.guest_message_index > 1 %}
-  <div id="thread-{{ draft.id }}" style="display:none;margin-bottom:0.6rem;font-size:0.78rem;color:#495057;
+  <div id="thread-{{ draft.id }}" style="display:none;margin-bottom:0.6rem;font-size:0.78rem;color:var(--text-2);
        background:#f0f4ff;border:1px solid #c5d4f0;border-radius:6px;padding:0.5rem 0.75rem">
     <strong>Thread context ({{ draft.guest_message_index - 1 }} earlier message{% if draft.guest_message_index > 2 %}s{% endif %}):</strong>
     This is message #{{ draft.guest_message_index }} in thread <code style="font-size:0.7rem">{{ draft.thread_key[-16:] }}…</code>.<br>
@@ -499,7 +510,7 @@
 
   <!-- "Why" confidence tooltip panel -->
   {% if draft.context_sources %}
-  <div id="why-{{ draft.id }}" style="display:none;margin-top:0.5rem;font-size:0.78rem;color:#495057;background:#f8f9fa;border-radius:6px;padding:0.5rem 0.75rem">
+  <div id="why-{{ draft.id }}" style="display:none;margin-top:0.5rem;font-size:0.78rem;color:var(--text-2);background:#f8f9fa;border-radius:6px;padding:0.5rem 0.75rem">
     <strong>AI used:</strong>
     {% set sources = draft.context_sources | tojson %}
     {{ draft.context_sources | replace('[', '') | replace(']', '') | replace('"', '') | replace(',', ' ·') }}
@@ -518,10 +529,10 @@
              style="width:auto;margin-bottom:0;font-size:0.82rem"
              {% if draft.scheduled_at %}value="{{ draft.scheduled_at.strftime('%Y-%m-%dT%H:%M') }}"{% endif %}>
       <button type="submit" class="btn btn-primary btn-sm">Set schedule</button>
-      <span style="font-size:0.78rem;color:#6c757d">Draft auto-sends when the scheduled time arrives.</span>
+      <span style="font-size:0.78rem;color:var(--text-3)">Draft auto-sends when the scheduled time arrives.</span>
     </form>
     {% if draft.scheduled_at %}
-    <p style="font-size:0.78rem;color:#6c757d;margin-top:0.3rem">
+    <p style="font-size:0.78rem;color:var(--text-3);margin-top:0.3rem">
       ⏰ Scheduled: <strong>{{ draft.scheduled_at.strftime('%b %d, %H:%M UTC') }}</strong>
     </p>
     {% endif %}
@@ -574,9 +585,9 @@
         <span class="badge badge-{{ draft.source }}">{{ draft.source }}</span>
         {% if draft.property_name_snapshot %}<span class="chip">{{ draft.property_name_snapshot }}</span>{% endif %}
       </div>
-      <span style="font-size:0.78rem;color:#6c757d">{{ draft.approved_at.strftime('%b %d, %H:%M') if draft.approved_at else '' }}</span>
+      <span style="font-size:0.78rem;color:var(--text-3)">{{ draft.approved_at.strftime('%b %d, %H:%M') if draft.approved_at else '' }}</span>
     </div>
-    <div style="font-size:0.8rem;color:#6c757d;margin-top:0.35rem">{{ draft.final_text or draft.draft }}</div>
+    <div style="font-size:0.8rem;color:var(--text-3);margin-top:0.35rem">{{ draft.final_text or draft.draft }}</div>
     <div class="feedback-row">
       {% if draft.host_feedback_score is not none %}
       <span class="chip {% if draft.host_feedback_score > 0 %}good{% else %}bad{% endif %}">

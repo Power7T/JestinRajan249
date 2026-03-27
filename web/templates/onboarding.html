@@ -119,7 +119,7 @@
 {% if step == 1 %}
 <div class="card">
   <h2>Step 1 — About your property</h2>
-  <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1.5rem">
+  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
     This information is given to the AI so it can answer guest questions accurately.
   </p>
 
@@ -144,7 +144,7 @@
       <button type="button" class="btn btn-outline" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem"
               id="import-listing-btn">Import</button>
     </div>
-    <div id="import-spinner" style="display:none;font-size:0.8rem;color:#6c757d;margin-top:6px">
+    <div id="import-spinner" style="display:none;font-size:0.8rem;color:var(--text-3);margin-top:6px">
       <span style="animation:spin 1s linear infinite;display:inline-block">⟳</span>
       Fetching listing details...
     </div>
@@ -208,7 +208,7 @@
 {% if step == 2 %}
 <div class="card">
   <h2>Step 2 — House rules & amenities</h2>
-  <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1.5rem">
+  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
     The AI uses these to answer rule-related questions and set guest expectations correctly.
   </p>
 
@@ -250,7 +250,7 @@
     </div>
 
     <div class="step-nav">
-      <a href="/onboarding?step=1" style="color:#6c757d;font-size:0.85rem">← Back</a>
+      <a href="/onboarding?step=1" style="color:var(--text-3);font-size:0.85rem">← Back</a>
       <div style="display:flex;gap:0.75rem;align-items:center">
         <button type="submit" name="skip" value="1" class="skip-link">Skip this step</button>
         <button type="submit" class="btn btn-primary">Continue →</button>
@@ -266,7 +266,7 @@
 {% if step == 3 %}
 <div class="card">
   <h2>Step 3 — Food & services</h2>
-  <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1.5rem">
+  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
     If you have a restaurant or breakfast service, paste or upload your menu — the AI will
     describe it to guests accurately when asked.
   </p>
@@ -306,7 +306,7 @@
     </div>
 
     <div class="step-nav">
-      <a href="/onboarding?step=2" style="color:#6c757d;font-size:0.85rem">← Back</a>
+      <a href="/onboarding?step=2" style="color:var(--text-3);font-size:0.85rem">← Back</a>
       <div style="display:flex;gap:0.75rem;align-items:center">
         <button type="submit" name="skip" value="1" class="skip-link">Skip this step</button>
         <button type="submit" class="btn btn-primary">Continue →</button>
@@ -322,7 +322,7 @@
 {% if step == 4 %}
 <div class="card">
   <h2>Step 4 — FAQ & custom instructions</h2>
-  <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1.5rem">
+  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
     Give the AI answers to your most common questions and any special instructions.
   </p>
 
@@ -356,7 +356,7 @@
     </p>
 
     <div class="step-nav">
-      <a href="/onboarding?step=3" style="color:#6c757d;font-size:0.85rem">← Back</a>
+      <a href="/onboarding?step=3" style="color:var(--text-3);font-size:0.85rem">← Back</a>
       <div style="display:flex;gap:0.75rem;align-items:center">
         <button type="submit" name="skip" value="1" class="skip-link">Skip this step</button>
         <button type="submit" class="btn btn-primary">Continue →</button>
@@ -372,7 +372,7 @@
 {% if step == 5 %}
 <div class="card">
   <h2>Step 5 — Connect your channels</h2>
-  <p style="font-size:0.85rem;color:#6c757d;margin-bottom:1.5rem">
+  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
     Preferred setup: forward Airbnb guest emails to your private HostAI inbox below. IMAP remains available as a fallback if you want direct mailbox polling.
   </p>
 
@@ -467,7 +467,7 @@
           </div>
           <label>Email address</label>
           <input type="email" name="email_address" value="{{ cfg.email_address or '' }}" placeholder="yourhost@gmail.com">
-          <label>App password <span style="color:#6c757d;font-weight:400">(leave blank to keep existing)</span></label>
+          <label>App password <span style="color:var(--text-3);font-weight:400">(leave blank to keep existing)</span></label>
           <input type="password" name="email_password" id="email-password" placeholder="xxxx xxxx xxxx xxxx">
           <details>
             <summary>How to create a Gmail App Password</summary>
@@ -493,7 +493,7 @@
           </button>
 
           <details style="margin-top:0.5rem">
-            <summary style="cursor:pointer;font-size:0.85rem;color:#6c757d">Having trouble? Connection troubleshooting tips →</summary>
+            <summary style="cursor:pointer;font-size:0.85rem;color:var(--text-3)">Having trouble? Connection troubleshooting tips →</summary>
             <div class="accordion-body" style="margin-top:0.75rem">
               <ul style="padding-left:1.25rem;font-size:0.85rem;line-height:1.8">
                 <li><strong>Gmail:</strong> Enable IMAP in Gmail Settings → See All Settings → Forwarding and POP/IMAP → IMAP Access → Enable IMAP</li>
@@ -569,7 +569,7 @@
 
 
     <div class="step-nav">
-      <a href="/onboarding?step=4" style="color:#6c757d;font-size:0.85rem">← Back</a>
+      <a href="/onboarding?step=4" style="color:var(--text-3);font-size:0.85rem">← Back</a>
       <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
         <button type="submit" class="btn btn-primary" style="font-size:1rem;padding:10px 28px">
           Finish setup →
@@ -587,7 +587,7 @@
 <div class="card" style="text-align:center;padding:2.5rem">
   <div style="font-size:3rem;margin-bottom:1rem">🎉</div>
   <h2 style="font-size:1.4rem;margin-bottom:0.5rem">HostAI is live for {{ cfg.property_names or 'your property' }}!</h2>
-  <p style="color:#6c757d;margin-bottom:2rem">
+  <p style="color:var(--text-3);margin-bottom:2rem">
     Your AI will draft replies to guest messages automatically.<br>
     Want to see it in action with your own property data?
   </p>
@@ -596,12 +596,12 @@
           id="run-demo-btn">
     See how your AI responds →
   </button>
-  <p style="font-size:0.8rem;color:#6c757d;margin-bottom:2rem">Generates a live demo reply using your actual property info.</p>
+  <p style="font-size:0.8rem;color:var(--text-3);margin-bottom:2rem">Generates a live demo reply using your actual property info.</p>
 
   <div id="demo-result">
     <p style="font-weight:600;color:#155724;margin-bottom:0.5rem">Here's how your AI would reply to a typical guest question:</p>
     <div class="demo-draft" id="demo-draft-text"></div>
-    <p style="font-size:0.78rem;color:#6c757d;margin-top:0.75rem">This is a live AI response using your actual property details.</p>
+    <p style="font-size:0.78rem;color:var(--text-3);margin-top:0.75rem">This is a live AI response using your actual property details.</p>
   </div>
 
   <div style="margin-top:2rem">
@@ -617,7 +617,7 @@
   <div class="checklist-item">
     <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
     <span>{{ item.label }}</span>
-    <span style="color:#6c757d;font-size:0.8rem">{{ item.detail }}</span>
+    <span style="color:var(--text-3);font-size:0.8rem">{{ item.detail }}</span>
     {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
   </div>
   {% endfor %}
