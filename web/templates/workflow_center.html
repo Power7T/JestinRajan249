@@ -148,53 +148,91 @@
 {%- block main_wrapper %}
 {%- block content %}
 <!-- SideNavBar -->
-<aside class="fixed left-0 top-0 h-screen w-[260px] border-r border-[#424752]/15 bg-[#08090F]/60 backdrop-blur-xl flex flex-col py-8 px-4 z-50 shadow-[0_0_40px_rgba(174,198,255,0.08)]">
-<div class="mb-10 px-4">
-<h1 class="text-xl font-extrabold tracking-tight text-white">HostAI</h1>
-<p class="text-[11px] font-medium tracking-wider uppercase text-slate-400 mt-1">Enterprise</p>
+<aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
+<div class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
 </div>
-<button class="mb-8 mx-2 py-3 px-4 bg-gradient-to-br from-primary to-primary-container text-on-primary-container rounded-xl flex items-center justify-center gap-2 font-bold shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-95 active:scale-90 transition-transform duration-200">
-<span class="material-symbols-outlined" style="font-variation-settings: 'wght' 600">add</span>
-            New Workflow
-        </button>
-<nav class="flex-1 space-y-1">
-<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-[#AEC6FF] font-bold border-r-2 border-[#5B8DEF] bg-[#5B8DEF]/10 transition-all" href="/workflow">
-<span class="material-symbols-outlined">hub</span>
-<span class="text-sm">Workflow Center</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 font-medium hover:text-white hover:bg-[#292930]/40 transition-all duration-300" href="#">
-<span class="material-symbols-outlined">queue_play_next</span>
-<span class="text-sm">Ops Queue</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 font-medium hover:text-white hover:bg-[#292930]/40 transition-all duration-300" href="#">
-<span class="material-symbols-outlined">inventory_2</span>
-<span class="text-sm">Inventory</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 font-medium hover:text-white hover:bg-[#292930]/40 transition-all duration-300" href="#">
-<span class="material-symbols-outlined">payments</span>
-<span class="text-sm">Billing</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 font-medium hover:text-white hover:bg-[#292930]/40 transition-all duration-300" href="#">
-<span class="material-symbols-outlined">insights</span>
-<span class="text-sm">Insights</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 font-medium hover:text-white hover:bg-[#292930]/40 transition-all duration-300" href="#">
-<span class="material-symbols-outlined">group</span>
-<span class="text-sm">Team</span>
-</a>
+<span>HostAI</span>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<!-- Dashboard Active -->
+<a class="flex items-center gap-3 px-6 py-3 text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF] transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+                Conversations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+                Reservations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Activity
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+                Workflow Center
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 text-rose-400 hover:text-rose-300 hover:bg-white/5 transition-all duration-200 font-bold" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+                Admin
+            </a>
+{% endif %}
 </nav>
-<div class="mt-auto pt-8 border-t border-[#424752]/15 space-y-1">
-<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 font-medium hover:text-white hover:bg-[#292930]/40 transition-all" href="/settings">
-<span class="material-symbols-outlined">settings</span>
-<span class="text-sm">Settings</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 font-medium hover:text-white hover:bg-[#292930]/40 transition-all" href="#">
-<span class="material-symbols-outlined">help_outline</span>
-<span class="text-sm">Support</span>
-</a>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+  {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ current_user.name if current_user else "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+</div>
+</div>
+<form method="post" action="/logout">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+    <span class="material-symbols-outlined text-sm">logout</span>
+    Sign Out
+  </button>
+</form>
 </div>
 </aside>
 <!-- Main Content Area -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts, or analytics..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
+</button>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+  {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
+</div>
+</div>
+</header>
 <main class="ml-[260px] pt-24 pb-12 px-8 min-h-screen">
 <div class="mb-8">
   <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Workflow Center</h1>

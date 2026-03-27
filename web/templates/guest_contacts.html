@@ -150,78 +150,88 @@
 {%- block main_wrapper %}
 {%- block content %}
 <!-- SideNavBar Component -->
-<aside class="h-screen w-64 fixed left-0 top-0 border-r border-[#424752]/15 bg-[#08090F] dark:bg-[#08090F]/60 backdrop-blur-xl flex flex-col py-8 px-4 z-50">
-<div class="mb-10 px-2 flex items-center gap-3">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shadow-[0_0_15px_rgba(174,198,255,0.4)]">
-<span class="material-symbols-outlined text-on-primary text-xl" data-icon="hub">hub</span>
+<aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
+<div class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
 </div>
-<div>
-<h1 class="text-xl font-extrabold text-[#aec6ff] tracking-tighter">HostAI</h1>
-<p class="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">Internal Tools</p>
+<span>HostAI</span>
 </div>
-</div>
-<nav class="flex-1 space-y-1">
-<!-- Dashboard -->
-<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-300 group scale-98 active:scale-95 transition-transform" href="/dashboard">
+<nav class="flex-1 px-4 space-y-1">
+<!-- Dashboard Active -->
+<a class="flex items-center gap-3 px-6 py-3 text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF] transition-all duration-200 active:scale-[0.98]" href="/dashboard">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Dashboard</span>
-</a>
-<!-- Conversations -->
-<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-300 group scale-98 active:scale-95 transition-transform" href="#">
-<span class="material-symbols-outlined" data-icon="chat">chat</span>
-<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Conversations</span>
-</a>
-<!-- Reservations -->
-<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-300 group scale-98 active:scale-95 transition-transform" href="/reservations">
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+                Conversations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
 <span class="material-symbols-outlined" data-icon="event_available">event_available</span>
-<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Reservations</span>
-</a>
-<!-- Guests (ACTIVE) -->
-<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-[#aec6ff] bg-[#1a1b22] font-bold border-l-2 border-[#5b8def] scale-98 active:scale-95 transition-transform" href="/settings">
-<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
-<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Guests</span>
-</a>
-<!-- Analytics -->
-<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-300 group scale-98 active:scale-95 transition-transform" href="#">
-<span class="material-symbols-outlined" data-icon="insights">insights</span>
-<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Analytics</span>
-</a>
-<!-- Settings -->
-<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:text-slate-200 transition-colors hover:bg-[#292930]/40 transition-all duration-300 group scale-98 active:scale-95 transition-transform" href="/settings">
+                Reservations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Activity
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+                Workflow Center
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
-<span class="font-['Plus_Jakarta_Sans'] font-medium text-sm tracking-tight">Settings</span>
-</a>
+                Settings
+            </a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 text-rose-400 hover:text-rose-300 hover:bg-white/5 transition-all duration-200 font-bold" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+                Admin
+            </a>
+{% endif %}
 </nav>
-<div class="mt-auto pt-8 border-t border-[#424752]/15">
-<div class="flex items-center gap-3 px-2">
-<img alt="HostAI Logo" class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/30" data-alt="minimalist tech logo with abstract geometric shape in blue and silver neon lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCN7hZXpuU3eF0rrHjr-HwbuterRTEdbUOe-TxfJ0qXeBOsSq5LmJNcwe9pyg79-HcAceUzJyB7Dy14VZeJps4i6y4IaNLdVpFC-L9bH8msHEgmlzRTEoQE9MEDkx7WR8mSOAtNjFdpL4JdBZq2tKTN1uOdvsWhYNtj35-Y-xkhZG8GEe76aA9f8Yib0cntc1httk9HGJnWBzsYnpioqwO9V4qp3icxVCt9QRmTSscqGn9-uKA8sBqH232rFjNP4_sq3c0tEtQufL0n"/>
-<div class="overflow-hidden">
-<p class="text-sm font-bold text-on-surface truncate">Admin Terminal</p>
-<p class="text-[10px] text-slate-500 truncate">v2.4.0-stable</p>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+  {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ current_user.name if current_user else "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
 </div>
 </div>
+<form method="post" action="/logout">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+    <span class="material-symbols-outlined text-sm">logout</span>
+    Sign Out
+  </button>
+</form>
 </div>
 </aside>
 <!-- TopNavBar Component -->
-<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 border-b border-[#424752]/15 bg-[#08090F] dark:bg-[#08090F]/60 backdrop-blur-xl flex justify-between items-center px-8 z-40">
-<div class="flex items-center gap-6 flex-1">
-<div class="relative w-full max-w-md group">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-<input class="w-full bg-surface-container-lowest border-none rounded-xl py-2 pl-10 pr-4 text-sm text-on-surface focus:ring-1 focus:ring-[#5b8def]/40 placeholder:text-slate-600 transition-all" placeholder="Search guest database..." type="text"/>
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts, or analytics..." type="text"/>
 </div>
 </div>
 <div class="flex items-center gap-6">
-<button class="relative text-slate-400 hover:text-white transition-colors">
-<span class="material-symbols-outlined">notifications</span>
-<span class="absolute top-0 right-0 w-2 h-2 bg-secondary-container rounded-full border-2 border-[#08090F]"></span>
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
 </button>
-<button class="text-slate-400 hover:text-white transition-colors">
-<span class="material-symbols-outlined">help_outline</span>
-</button>
-<div class="h-8 w-[1px] bg-outline-variant/20 mx-2"></div>
-<div class="flex items-center gap-3 pl-2">
-<span class="text-sm font-medium text-slate-300">Alex Rivers</span>
-<img alt="User Profile" class="w-8 h-8 rounded-full border border-primary/20 shadow-[0_0_10px_rgba(174,198,255,0.1)]" data-alt="professional headshot of a young male property manager with a clean modern aesthetic and soft blue ambient lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAK1XKguX9u3kt1_bfrvKxhRiuu-_URjShUd79CqUtBgJpGvl2MQp1nMD8rs9WwT7ye8F5h-z4av7uxrIne4AxEwoFwGWprEZKO29HQUILrWtZrJ30ejdMpr2D28f7QcL5tFUpbEXgvMdx_otoKqjuR2Di9lc906p69FAHJpiMW-eK-7lpu4MV3KlIgYpJU1B5Wl5mgJYU7hQMa8ZDbPHO99oXRRkhg8xhcIRkdmeyOqkPxOOcgeb1ZTalv24hgnfoQ1qRAjt3SCfGU"/>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+  {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
 </div>
 </div>
 </header>
