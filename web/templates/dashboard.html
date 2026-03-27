@@ -109,19 +109,19 @@ body {
 <span class="material-symbols-outlined" data-icon="forum">forum</span>
                 Conversations
             </a>
-<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
 <span class="material-symbols-outlined" data-icon="event_available">event_available</span>
                 Reservations
             </a>
-<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
 <span class="material-symbols-outlined" data-icon="history">history</span>
                 Activity
             </a>
-<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
 <span class="material-symbols-outlined" data-icon="analytics">analytics</span>
                 Analytics
             </a>
-<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
 <span class="material-symbols-outlined" data-icon="hub">hub</span>
                 Workflow Center
             </a>
@@ -129,6 +129,12 @@ body {
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
                 Settings
             </a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 text-rose-400 hover:text-rose-300 hover:bg-white/5 transition-all duration-200 font-bold" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+                Admin
+            </a>
+{% endif %}
 </nav>
 <div class="mt-auto p-6 space-y-4">
 <div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
@@ -138,10 +144,13 @@ body {
 <p class="text-slate-500 text-xs truncate">Host Administrator</p>
 </div>
 </div>
-<a href="/logout" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
-<span class="material-symbols-outlined text-sm">logout</span>
-                Sign Out
-            </a>
+<form method="post" action="/logout">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+    <span class="material-symbols-outlined text-sm">logout</span>
+    Sign Out
+  </button>
+</form>
 </div>
 </aside>
 <!-- TopNavBar Shell -->
@@ -172,7 +181,7 @@ body {
 <div class="mb-12 relative">
 <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
 <h1 class="text-5xl font-extrabold tracking-tight text-white mb-2 font-headline">Dashboard</h1>
-<p class="text-slate-400 font-medium">Welcome back, Alex. Your AI agents have drafted 14 new responses today.</p>
+<p class="text-slate-400 font-medium">Welcome back{% if tenant %}, {{ tenant.name or tenant.email.split('@')[0] | title }}{% endif %}. {% if drafts %}Your AI agents have drafted {{ drafts|length }} response{{ 's' if drafts|length != 1 else '' }} awaiting review.{% else %}All caught up — no pending drafts.{% endif %}</p>
 </div>
 <!-- KPI Row -->
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
@@ -182,8 +191,8 @@ body {
 <span class="material-symbols-outlined text-primary text-xl">pending_actions</span>
 </div>
 <div class="flex items-baseline gap-2">
-<span class="text-4xl font-extrabold text-white">14</span>
-<span class="text-primary text-xs font-bold">+3 today</span>
+<span class="text-4xl font-extrabold text-white">{{ drafts|length }}</span>
+<span class="text-primary text-xs font-bold">Waiting</span>
 </div>
 </div>
 <div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
@@ -192,7 +201,7 @@ body {
 <span class="material-symbols-outlined text-secondary-fixed-dim text-xl">flight_land</span>
 </div>
 <div class="flex items-baseline gap-2">
-<span class="text-4xl font-extrabold text-white">28</span>
+<span class="text-4xl font-extrabold text-white">{{ upcoming_count }}</span>
 <span class="text-secondary-fixed-dim text-xs font-bold">Next 48h</span>
 </div>
 </div>
@@ -202,8 +211,8 @@ body {
 <span class="material-symbols-outlined text-tertiary text-xl">bedroom_parent</span>
 </div>
 <div class="flex items-baseline gap-2">
-<span class="text-4xl font-extrabold text-white">94%</span>
-<span class="text-tertiary text-xs font-bold">Peak Season</span>
+<span class="text-4xl font-extrabold text-white">{{ occupancy_pct }}%</span>
+<span class="text-tertiary text-xs font-bold">This Month</span>
 </div>
 </div>
 <div class="glass-card p-6 rounded-2xl border-primary/20 bg-primary/5 relative overflow-hidden">
@@ -215,8 +224,8 @@ body {
 <span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
 </div>
 <div class="flex items-baseline gap-2 relative z-10">
-<span class="text-4xl font-extrabold text-white">12</span>
-<span class="text-primary text-xs font-bold">Day streak</span>
+<span class="text-4xl font-extrabold text-white">{% if approval_streak >= 3 %}🔥{% endif %}{{ approval_streak }}</span>
+<span class="text-primary text-xs font-bold">Approval streak</span>
 </div>
 </div>
 </div>
@@ -224,18 +233,18 @@ body {
 <div class="glass-card rounded-2xl p-1 mb-12 flex flex-wrap items-center justify-between divide-x divide-white/5">
 <div class="px-8 py-6 flex flex-col gap-1">
 <span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">Revenue This Month</span>
-<span class="text-xl font-bold text-white">$42,910.00</span>
+<span class="text-xl font-bold text-white">${{ "%.0f"|format(month_revenue) }}</span>
 </div>
 <div class="px-8 py-6 flex flex-col gap-1">
 <span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">AI Approval Rate</span>
-<span class="text-xl font-bold text-secondary-fixed-dim">98.2%</span>
+<span class="text-xl font-bold text-secondary-fixed-dim">{{ kpis.drafts.approval_rate if kpis else '—' }}%</span>
 </div>
 <div class="px-8 py-6 flex flex-col gap-1">
 <span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">Context Coverage</span>
-<span class="text-xl font-bold text-primary">84/100</span>
+<span class="text-xl font-bold text-primary">{{ kpis.reservations.context_completion_rate if kpis else '—' }}%</span>
 </div>
 <div class="px-8 py-6 flex flex-col gap-1 flex-1 text-right border-none">
-<a class="text-primary font-bold hover:underline inline-flex items-center gap-2 group" href="#">
+<a class="text-primary font-bold hover:underline inline-flex items-center gap-2 group" href="/reservations">
                     All Reservations 
                     <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
 </a>
@@ -247,85 +256,76 @@ body {
 <div class="lg:col-span-2 space-y-8">
 <div class="flex items-center justify-between mb-2">
 <h2 class="text-2xl font-extrabold text-white tracking-tight">Pending AI Drafts</h2>
-<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">14 NEW</span>
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">{{ drafts|length }} PENDING</span>
 </div>
-<!-- Draft Card 1 -->
-<div class="glass-card rounded-3xl p-8 group hover:bg-white/[0.03] transition-colors border-l-4 border-l-tertiary">
+<!-- Real Draft Loop -->
+{% if drafts %}
+{% for draft in drafts %}
+<div class="glass-card rounded-3xl p-8 group hover:bg-white/[0.03] transition-colors border-l-4 {% if draft.msg_type == 'escalation' %}border-l-error{% elif draft.msg_type == 'calendar' %}border-l-secondary-fixed-dim{% else %}border-l-primary{% endif %} mb-4" id="draft-{{ draft.id }}">
 <div class="flex items-start justify-between mb-6">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center border border-white/10">
-<img alt="Guest" class="w-full h-full object-cover rounded-2xl" data-alt="close-up portrait of a smiling young man in casual attire with bright natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAR2OBWHvij4HpPswep6b79eiQjICvWhmjKd7ynjhonYE5n6gLI4obx5xOrWGh7z-p7hwX3xZBbvEDtowDrlnolildk0QhUxt2buWIuSBcdfH3F4J3KSTOtPkTOhNQmXMJ0EBskF8xAvljKydg95dsx3gSlVXqGQuJ7wXv4kYPFYznFpwmAzdm2_4wWAzUv3Vaf6S9H9fTxemYC91nlPrLlc385ZiRQ-HbOcBGkZiTq7o7Ptfbbn1p49Mct0wR8hY87GsVkFAYvY7sq"/>
+  <div class="flex items-center gap-4">
+    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary text-xl font-extrabold shadow-lg">
+      {{ (draft.guest_name or '?')[0] | upper }}
+    </div>
+    <div>
+      <h3 class="font-bold text-lg text-white">{{ draft.guest_name }}</h3>
+      <p class="text-slate-400 text-sm">{{ draft.property_name_snapshot or (draft.reservation.listing_name if draft.reservation else '—') }} &bull; {{ draft.source }}</p>
+    </div>
+  </div>
+  <div class="text-right">
+    <span class="bg-primary/10 text-primary px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-widest mb-2 block">{{ draft.msg_type }}</span>
+    {% if draft.confidence is not none %}
+    <div class="flex items-center gap-1 text-secondary-fixed-dim justify-end">
+      <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
+      <span class="text-sm font-bold">{{ (draft.confidence * 100)|int }}% Confident</span>
+    </div>
+    {% endif %}
+  </div>
 </div>
-<div>
-<h3 class="font-bold text-lg text-white">Julian Marco</h3>
-<p class="text-slate-400 text-sm">Ocean View Villa • Check-in: Friday</p>
-</div>
-</div>
-<div class="text-right">
-<span class="bg-tertiary/20 text-tertiary px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-widest mb-2 block">Complex Query</span>
-<div class="flex items-center gap-1 text-secondary-fixed-dim">
-<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
-<span class="text-sm font-bold">94% Confidence</span>
-</div>
-</div>
-</div>
+{% if draft.message and draft.source != 'calendar' %}
 <div class="mb-6 bg-surface-container-lowest/50 p-4 rounded-2xl italic text-slate-300 text-sm border-l-2 border-white/10">
-                        "Hey Alex, we're really excited for the stay! Does the kitchen have an espresso machine or should we bring ours? Also, can we drop bags 2 hours early?"
-                    </div>
+  &ldquo;{{ draft.message[:300] }}{% if draft.message|length > 300 %}&hellip;{% endif %}&rdquo;
+</div>
+{% endif %}
 <div class="mb-8 p-6 bg-primary/5 rounded-2xl border border-primary/20 relative">
-<div class="absolute top-4 right-4 text-primary opacity-40">
-<span class="material-symbols-outlined">auto_awesome</span>
+  <div class="absolute top-4 right-4 text-primary opacity-40">
+    <span class="material-symbols-outlined">auto_awesome</span>
+  </div>
+  <p class="text-primary-fixed-dim text-sm leading-relaxed whitespace-pre-wrap">{{ draft.draft }}</p>
 </div>
-<p class="text-primary-fixed-dim text-sm leading-relaxed">
-                            Hi Julian! We can't wait to host you. The kitchen is fully equipped with a Nespresso Vertuo machine and a French Press, so no need to bring yours! Regarding the early bag drop, that won't be a problem at all. You can leave them in the secure locker by the entrance starting at 1 PM. See you Friday!
-                        </p>
+<div class="flex items-center gap-4 flex-wrap">
+  <form method="post" action="/drafts/{{ draft.id }}/approve" style="flex:1;min-width:120px">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button type="submit" class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-extrabold py-3 rounded-xl shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+      ✓ Approve &amp; Send
+    </button>
+  </form>
+  <button class="px-6 py-3 text-white border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all"
+    hx-get="/drafts/{{ draft.id }}/edit-form"
+    hx-target="#edit-area-{{ draft.id }}"
+    hx-swap="innerHTML">
+    ✎ Edit
+  </button>
+  <form method="post" action="/drafts/{{ draft.id }}/skip">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button type="submit" class="px-4 py-3 text-slate-400 hover:text-error border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all text-sm">
+      Skip
+    </button>
+  </form>
 </div>
-<div class="flex items-center gap-4">
-<button class="flex-1 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-extrabold py-3 rounded-xl shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
-                            Approve &amp; Send
-                        </button>
-<button class="px-6 py-3 text-white border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all">
-                            Edit
-                        </button>
+<div id="edit-area-{{ draft.id }}" class="mt-4"></div>
 </div>
+{% endfor %}
+{% else %}
+<div class="glass-card rounded-3xl p-16 flex flex-col items-center justify-center text-center border border-dashed border-white/10">
+  <span class="material-symbols-outlined text-5xl text-primary mb-4" style="font-variation-settings: 'FILL' 1;">task_alt</span>
+  <h3 class="text-xl font-bold text-white mb-2">Inbox Zero!</h3>
+  <p class="text-slate-400 text-sm mb-6">{% if cfg and cfg.onboarding_complete %}No pending drafts — all caught up!{% else %}Complete your setup to start receiving AI drafts.{% endif %}</p>
+  {% if cfg and not cfg.onboarding_complete %}
+  <a href="/onboarding" class="bg-primary text-on-primary font-bold px-6 py-3 rounded-xl text-sm hover:scale-105 transition-all">Complete Setup →</a>
+  {% endif %}
 </div>
-<!-- Draft Card 2 -->
-<div class="glass-card rounded-3xl p-8 group hover:bg-white/[0.03] transition-colors border-l-4 border-l-primary">
-<div class="flex items-start justify-between mb-6">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center border border-white/10">
-<img alt="Guest" class="w-full h-full object-cover rounded-2xl" data-alt="professional woman looking thoughtfully into distance, minimal office background, high key lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN_RTeSTjcV_LyXSqZiflSjFi9OrMfxe97965uPK4z9sXcGTas5ruVoGirkzLyrFuFbqmeao2SBJLc-o1LjhYVRwsiQLwlGZ7eQXGVhXo9G29g5W5SJpplqftGTovgCuaDRqOb5llf9xq_DHs4pqAY3IexEQ1E-OH769gpEQ0QyUhE7y_DqID8Ay77ogNno4-jQz4j57LEKGapRFjYmGyCCCpxVBBDtWUcJ6UcVYK1ifJ-IKkaYvvsrI8HneO7eeqhDQMV8Zywtmnc"/>
-</div>
-<div>
-<h3 class="font-bold text-lg text-white">Sarah Jenkins</h3>
-<p class="text-slate-400 text-sm">Downtown Loft • Check-out: Today</p>
-</div>
-</div>
-<div class="text-right">
-<span class="bg-primary/20 text-primary px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-widest mb-2 block">Routine Inquiry</span>
-<div class="flex items-center gap-1 text-secondary-fixed-dim">
-<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
-<span class="text-sm font-bold">99% Confidence</span>
-</div>
-</div>
-</div>
-<div class="mb-6 bg-surface-container-lowest/50 p-4 rounded-2xl italic text-slate-300 text-sm border-l-2 border-white/10">
-                        "What is the checkout code for the trash room again? Thanks!"
-                    </div>
-<div class="mb-8 p-6 bg-primary/5 rounded-2xl border border-primary/20 relative">
-<p class="text-primary-fixed-dim text-sm leading-relaxed">
-                            Hi Sarah! The trash room code is 5582#. It's located just to the right of the elevator bank on the ground floor. Have a safe trip home!
-                        </p>
-</div>
-<div class="flex items-center gap-4">
-<button class="flex-1 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-extrabold py-3 rounded-xl shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
-                            Approve &amp; Send
-                        </button>
-<button class="px-6 py-3 text-white border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all">
-                            Edit
-                        </button>
-</div>
-</div>
+{% endif %}
 </div>
 <!-- Recent Activity Sidebar -->
 <div class="space-y-12">
@@ -335,42 +335,35 @@ body {
                         <span class="material-symbols-outlined text-primary text-sm">auto_graph</span>
 </h2>
 <div class="space-y-6">
-<!-- Activity Item -->
+{% if timeline_events %}
+{% for ev in timeline_events[:6] %}
 <div class="flex gap-4 relative">
-<div class="absolute left-[11px] top-6 bottom-0 w-[2px] bg-white/5"></div>
-<div class="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center z-10">
-<span class="material-symbols-outlined text-primary text-[10px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+  {% if not loop.last %}<div class="absolute left-[11px] top-6 bottom-0 w-[2px] bg-white/5"></div>{% endif %}
+  <div class="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center z-10 flex-shrink-0">
+    <span class="material-symbols-outlined text-primary text-[10px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+  </div>
+  <div class="flex-1 pb-6">
+    <p class="text-white text-sm font-bold">{{ ev.event_type|replace('_',' ')|title }}</p>
+    <p class="text-slate-500 text-xs">{{ ev.guest_name or '' }}{% if ev.created_at %} &bull; {{ ev.created_at.strftime('%b %d, %H:%M') }}{% endif %}</p>
+  </div>
 </div>
-<div class="flex-1 pb-6">
-<p class="text-white text-sm font-bold">Draft sent to Marco P.</p>
-<p class="text-slate-500 text-xs">2 minutes ago • Auto-approved</p>
-<div class="mt-2 flex gap-1">
-<span class="material-symbols-outlined text-secondary-fixed-dim text-xs">sentiment_satisfied</span>
-<span class="text-[10px] text-slate-400">High Sentiment</span>
-</div>
-</div>
-</div>
-<!-- Activity Item -->
+{% endfor %}
+{% elif recent_sent_drafts %}
+{% for draft in recent_sent_drafts[:5] %}
 <div class="flex gap-4 relative">
-<div class="absolute left-[11px] top-6 bottom-0 w-[2px] bg-white/5"></div>
-<div class="w-6 h-6 rounded-full bg-tertiary/20 flex items-center justify-center z-10">
-<span class="material-symbols-outlined text-tertiary text-[10px]" style="font-variation-settings: 'FILL' 1;">edit_note</span>
+  {% if not loop.last %}<div class="absolute left-[11px] top-6 bottom-0 w-[2px] bg-white/5"></div>{% endif %}
+  <div class="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center z-10 flex-shrink-0">
+    <span class="material-symbols-outlined text-primary text-[10px]" style="font-variation-settings: 'FILL' 1;">send</span>
+  </div>
+  <div class="flex-1 pb-5">
+    <p class="text-white text-sm font-bold">Sent to {{ draft.guest_name }}</p>
+    <p class="text-slate-500 text-xs">{{ draft.source }} &bull; {{ draft.approved_at.strftime('%b %d, %H:%M') if draft.approved_at else '' }}</p>
+  </div>
 </div>
-<div class="flex-1 pb-6">
-<p class="text-white text-sm font-bold">Draft modified: Elena S.</p>
-<p class="text-slate-500 text-xs">1 hour ago • By Alex</p>
-</div>
-</div>
-<!-- Activity Item -->
-<div class="flex gap-4 relative">
-<div class="w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center z-10">
-<span class="material-symbols-outlined text-secondary text-[10px]" style="font-variation-settings: 'FILL' 1;">add_circle</span>
-</div>
-<div class="flex-1">
-<p class="text-white text-sm font-bold">New Booking: Loft 4</p>
-<p class="text-slate-500 text-xs">3 hours ago • 4 nights</p>
-</div>
-</div>
+{% endfor %}
+{% else %}
+<p class="text-slate-500 text-sm">No recent activity yet.</p>
+{% endif %}
 </div>
 </div>
 <!-- AI Context Map -->
