@@ -96,7 +96,7 @@ class FlagRegistry:
     def CONVERSATION_VIEW(self) -> Flag:
         """Group dashboard drafts into conversation threads."""
         return self._flags.get("CONVERSATION_VIEW") or self._register(
-            "CONVERSATION_VIEW", default=False,
+            "CONVERSATION_VIEW", default=True,
             description="Conversation-grouped draft view on dashboard"
         )
 
