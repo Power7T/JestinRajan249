@@ -972,11 +972,10 @@ def login_post(
     # Resume onboarding if not yet complete
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant.id).first()
     
-    # If admin, redirect to /admin
     if tenant.email.lower().strip() in _ADMIN_EMAILS:
         redirect_to = "/admin"
     else:
-        redirect_to = "/dashboard" if (cfg and cfg.onboarding_complete) else "/onboarding"
+        redirect_to = "/dashboard"
         
     resp = RedirectResponse(redirect_to, status_code=303)
     resp.set_cookie("session", token, httponly=True,

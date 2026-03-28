@@ -184,6 +184,19 @@ body {
 <h1 class="text-5xl font-extrabold tracking-tight text-white mb-2 font-headline">Dashboard</h1>
 <p class="text-slate-400 font-medium">Welcome back{% if tenant %}, {{ tenant.name or tenant.email.split('@')[0] | title }}{% endif %}. {% if drafts %}Your AI agents have drafted {{ drafts|length }} response{{ 's' if drafts|length != 1 else '' }} awaiting review.{% else %}All caught up — no pending drafts.{% endif %}</p>
 </div>
+
+{% if cfg and not cfg.onboarding_complete %}
+<!-- Setup Progress Soft Gate Widget -->
+<div class="glass-card mb-12 p-6 rounded-2xl border-l-[6px] border-[#5B8DEF] bg-[#1a1b22]/80 flex items-center justify-between">
+  <div>
+    <h3 class="text-white font-bold text-lg mb-1">Your HostAI setup is incomplete</h3>
+    <p class="text-slate-400 text-sm">To start receiving AI drafts and automations, you need to finish connecting your property data.</p>
+  </div>
+  <a href="/onboarding" class="bg-gradient-to-r from-[#5B8DEF] to-[#aec6ff] text-[#002e6b] font-bold px-6 py-3 rounded-xl text-sm shadow-[0_4px_16px_rgba(91,141,239,0.3)] hover:scale-105 transition-all whitespace-nowrap hidden sm:inline-flex flex-shrink-0 items-center gap-2">
+    Resume Setup →
+  </a>
+</div>
+{% endif %}
 <!-- KPI Row -->
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
 <div class="glass-card p-6 rounded-2xl flex flex-col gap-4">

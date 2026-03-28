@@ -133,7 +133,7 @@
 .settings-compat h3{font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;color:#c3c6d4}
 .settings-compat .card,.settings-compat .form-section,.settings-compat .channel-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
 .settings-compat label{display:block;font-size:0.78rem;font-weight:600;color:#8d909e;margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.06em}
-.settings-compat input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.settings-compat select,.settings-compat textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.6rem 0.85rem;color:#e3e1eb;font-size:0.85rem;margin-bottom:1rem;outline:none;transition:border-color 0.15s}
+.settings-compat input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.settings-compat select,.settings-compat textarea{width:100%;background:#0d0e14 !important;border:1px solid rgba(66,71,82,0.4) !important;border-radius:0.5rem;padding:0.6rem 0.85rem;color:#e3e1eb !important;font-size:0.85rem;margin-bottom:1rem;outline:none;transition:border-color 0.15s}
 .settings-compat input:focus,.settings-compat select:focus,.settings-compat textarea:focus{border-color:#5B8DEF}
 .settings-compat textarea{min-height:4rem;resize:vertical}
 .settings-compat .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1.1rem;border-radius:0.5rem;font-size:0.84rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none}
@@ -173,7 +173,7 @@
 .settings-compat .workflow-card h3{font-size:0.88rem;margin-bottom:0.4rem;color:#e3e1eb;text-transform:none;letter-spacing:0}
 .settings-compat .workflow-card p{font-size:0.8rem;color:#8d909e;line-height:1.6}
 .settings-compat select[multiple]{height:auto;min-height:80px}
-.settings-compat input[type=checkbox]{width:auto;margin-bottom:0;margin-right:0.4rem}
+.settings-compat input[type=checkbox]{width:1.25rem !important;height:1.25rem !important;margin-bottom:0;margin-right:0.4rem;border-radius:0.25rem;accent-color:#5B8DEF}
 .settings-compat details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
 .settings-compat .accordion-body{margin-top:1rem;padding:1rem;background:#0d0e14;border-radius:0.5rem;border:1px solid rgba(66,71,82,0.3)}
 </style>
@@ -318,11 +318,11 @@
     <div class="form-row">
       <div>
         <label>Check-in time</label>
-        <input type="text" name="check_in_time" value="{{ cfg.check_in_time or '' }}" placeholder="15:00">
+        <input type="time" name="check_in_time" class="time-field" data-initial="{{ cfg.check_in_time or '' }}">
       </div>
       <div>
         <label>Check-out time</label>
-        <input type="text" name="check_out_time" value="{{ cfg.check_out_time or '' }}" placeholder="11:00">
+        <input type="time" name="check_out_time" class="time-field" data-initial="{{ cfg.check_out_time or '' }}">
       </div>
     </div>
     <div class="form-row">
@@ -332,7 +332,12 @@
       </div>
       <div>
         <label>Quiet hours</label>
-        <input type="text" name="quiet_hours" value="{{ cfg.quiet_hours or '' }}" placeholder="10pm-7am">
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <input type="time" id="q-start" class="time-field" data-initial="" style="margin:0;">
+          <span style="color:var(--text-3);font-size:0.85rem">to</span>
+          <input type="time" id="q-end" class="time-field" data-initial="" style="margin:0;">
+          <input type="hidden" name="quiet_hours" id="quiet-hours-val" data-initial="{{ cfg.quiet_hours or '' }}" value="{{ cfg.quiet_hours or '' }}">
+        </div>
       </div>
     </div>
 
@@ -1123,6 +1128,57 @@ document.addEventListener('submit', (e) => {
         if (!confirm(msg)) e.preventDefault();
     }
 });
+
+// Format 'time' inputs to ensure "HH:MM" (24hr)
+document.querySelectorAll('.time-field').forEach(el => {
+    const val = el.getAttribute('data-initial');
+    if(val && val.includes('M')) {
+        const isPM = val.toUpperCase().includes('PM');
+        const parts = val.replace(/[^0-9:]/g, '').split(':');
+        if(parts.length >= 2) {
+            let h = parseInt(parts[0]) || 0;
+            const m = parts[1];
+            if(isPM && h < 12) h += 12;
+            if(!isPM && h === 12) h = 0;
+            el.value = h.toString().padStart(2,'0') + ':' + m;
+        } else {
+            el.value = val;
+        }
+    } else if(val) {
+        el.value = val;
+    }
+    
+    if(el.id === 'q-start' || el.id === 'q-end') {
+        el.addEventListener('change', () => {
+            const s = document.getElementById('q-start').value;
+            const e = document.getElementById('q-end').value;
+            const qVal = document.getElementById('quiet-hours-val');
+            if(qVal) {
+                if(s && e) qVal.value = s + " to " + e;
+                else if(s) qVal.value = s + " onwards";
+                else qVal.value = "";
+            }
+        });
+    }
+});
+
+// Set quiet hours initial vals
+const qVal = document.getElementById('quiet-hours-val');
+if (qVal) {
+    const raw = qVal.getAttribute('data-initial') || '';
+    const startEl = document.getElementById('q-start');
+    const endEl = document.getElementById('q-end');
+    const parts = raw.split(/ to | - | – /i);
+    if (parts.length === 2 && startEl && endEl) {
+        startEl.setAttribute('data-initial', parts[0]);
+        endEl.setAttribute('data-initial', parts[1]);
+        startEl.value = parts[0];
+        endEl.value = parts[1];
+    } else if (parts.length === 1 && startEl) {
+        startEl.setAttribute('data-initial', parts[0]);
+        startEl.value = parts[0];
+    }
+}
 
 // PMS type change
 const pmsTypeSelect = document.getElementById('pmsType');
