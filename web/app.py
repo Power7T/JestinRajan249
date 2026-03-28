@@ -5963,16 +5963,6 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
     thirty_days_ago  = now_utc - timedelta(days=30)
     fourteen_days_ago = now_utc - timedelta(days=14)
 
-    # Fetch last activity per tenant (N+1 fix: batch fetch)
-    last_activity_per_tenant = {}
-    try:
-        all_activity_logs = db.query(ActivityLog).all()
-        for log in all_activity_logs:
-            if log.tenant_id not in last_activity_per_tenant or log.created_at > last_activity_per_tenant[log.tenant_id]:
-                last_activity_per_tenant[log.tenant_id] = log.created_at
-    except Exception:
-        pass  # If ActivityLog table doesn't exist yet, continue without it
-
     tenant_rows = []
     plan_counts: dict = {}
     mrr = 0
@@ -5991,7 +5981,13 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
         email_conf = bool(cfg and cfg.imap_host and cfg.email_address)
         worker_dead = email_conf and not ws["email_running"]
 
-        last_active  = last_activity_per_tenant.get(t.id, t.created_at)
+        last_log = (
+            db.query(ActivityLog)
+            .filter_by(tenant_id=t.id)
+            .order_by(ActivityLog.created_at.desc())
+            .first()
+        )
+        last_active  = last_log.created_at if last_log else t.created_at
         inactive_14d = last_active < fourteen_days_ago
 
         tenant_rows.append({
