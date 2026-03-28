@@ -636,58 +636,21 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
      COMPLETE — Simulate a Guest
 ────────────────────────────────────────────────────────── -->
 {% if step == 6 %}
-<div class="card" style="text-align:center;padding:2.5rem">
-  <div style="font-size:3rem;margin-bottom:1rem">🎉</div>
-  <h2 style="font-size:1.4rem;margin-bottom:0.5rem">HostAI is live for {{ cfg.property_names or 'your property' }}!</h2>
-  <p style="color:var(--text-3);margin-bottom:2rem">
-    Your AI will draft replies to guest messages automatically.<br>
-    Want to see it in action with your own property data?
+<div class="card" style="text-align:center;padding:4rem 2rem;max-width:600px;margin:0 auto;">
+  <div style="font-size:4rem;margin-bottom:1.5rem">🎉</div>
+  <h2 style="font-size:1.8rem;margin-bottom:1rem;color:#FFF;letter-spacing:-0.5px;">HostAI is live!</h2>
+  <p style="color:#8d909e;margin-bottom:2.5rem;font-size:1.05rem;line-height:1.6;max-width:400px;margin-left:auto;margin-right:auto;">
+    Your property is successfully configured. You are ready to start routing messages and generating drafts.
   </p>
-
-  <button type="button" class="btn btn-primary" style="font-size:1rem;padding:10px 24px;margin-bottom:1rem"
-          id="run-demo-btn">
-    See how your AI responds →
-  </button>
-  <p style="font-size:0.8rem;color:var(--text-3);margin-bottom:2rem">Generates a live demo reply using your actual property info.</p>
-
-  <div id="demo-result">
-    <p style="font-weight:600;color:#155724;margin-bottom:0.5rem">Here's how your AI would reply to a typical guest question:</p>
-    <div class="demo-draft" id="demo-draft-text"></div>
-    <p style="font-size:0.78rem;color:var(--text-3);margin-top:0.75rem">This is a live AI response using your actual property details.</p>
+  <div style="display:flex;gap:1.5rem;justify-content:center;align-items:center;">
+    <a href="/dashboard" class="btn btn-primary" style="font-size:1.1rem;padding:14px 36px;border-radius:0.75rem;box-shadow:0 8px 24px rgba(91,141,239,0.25);">
+      Go to Dashboard →
+    </a>
   </div>
-
   <div style="margin-top:2rem">
-    <a href="/dashboard" class="btn btn-outline" style="margin-right:0.5rem">Go to Dashboard</a>
-    <a href="/settings" class="btn btn-outline">Full Settings</a>
-  </div>
-</div>
-
-{% if activation_checklist %}
-<div class="card" style="margin-top:1rem">
-  <h2>Activation checklist</h2>
-  {% for item in activation_checklist %}
-  <div class="checklist-item">
-    <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
-    <span>{{ item.label }}</span>
-    <span style="color:var(--text-3);font-size:0.8rem">{{ item.detail }}</span>
-    {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
-<div class="workflow-grid" style="margin-top:1rem">
-  <div class="workflow-card">
-    <h3>Best next step</h3>
-    <p>Import one stay, add the guest phone, map the room or unit, then activate the guest bot. That is the shortest path to a real end-to-end test.</p>
-  </div>
-  <div class="workflow-card">
-    <h3>What guests can ask</h3>
-    <p>Guests can ask for Wi-Fi, parking, check-in help, towels, breakfast info, local recommendations, late checkout, and maintenance support.</p>
-  </div>
-  <div class="workflow-card">
-    <h3>How HostAI handles it</h3>
-    <p>Once the stay is mapped, replies use the property context, FAQ, room number, and recent timeline so the guest gets a stay-specific answer instead of a generic one.</p>
+    <a href="/settings" class="btn btn-outline btn-sm" style="border:none;color:var(--text-3);background:transparent;">
+      Review full settings
+    </a>
   </div>
 </div>
 {% endif %}
@@ -774,39 +737,12 @@ function importListing() {
     stat.textContent = '✗ Could not reach that URL. Please fill in manually.';
   });
 }
-// Demo draft generation
-function runDemo(btn) {
-  if (!btn) return;
-  btn.textContent = 'Generating…';
-  btn.disabled = true;
-  fetch('/onboarding/demo', {method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({csrf_token:'{{ request.state.csrf_token }}'})})
-  .then(r => r.json())
-  .then(d => {
-    btn.textContent = 'Regenerate';
-    btn.disabled = false;
-    if (d.draft) {
-      document.getElementById('demo-draft-text').textContent = d.draft;
-      document.getElementById('demo-result').style.display = 'block';
-    } else {
-      document.getElementById('demo-draft-text').textContent = d.error || 'Could not generate — please contact the administrator to verify the AI engine configuration.';
-      document.getElementById('demo-result').style.display = 'block';
-    }
-  })
-  .catch(() => {
-    btn.textContent = 'Regenerate';
-    btn.disabled = false;
-  });
-}
-
 // ── Event Listeners ──────────────────────────────────────────
 document.addEventListener('click', (e) => {
     if (e.target.id === 'import-listing-btn') {
         importListing();
     }
-    if (e.target.id === 'run-demo-btn') {
-        runDemo(e.target);
-    }
+
     if (e.target.classList.contains('copy-btn')) {
         const targetId = e.target.getAttribute('data-target');
         const el = document.getElementById(targetId);
