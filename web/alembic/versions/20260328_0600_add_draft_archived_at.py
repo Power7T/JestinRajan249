@@ -9,25 +9,54 @@ from alembic import op
 import sqlalchemy as sa
 
 
-def upgrade():
-    # Add archived_at column to drafts table
-    op.add_column(
-        'drafts',
-        sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True)
-    )
+# revision identifiers, used by Alembic.
+revision = '20260328_0600'
+down_revision = '20260326_0530'
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+
+    # Get existing columns in drafts table
+    existing_columns = [col['name'] for col in inspector.get_columns('drafts')]
+
+    # Add archived_at column if it doesn't exist
+    if 'archived_at' not in existing_columns:
+        op.add_column(
+            'drafts',
+            sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True)
+        )
 
     # Create composite index on api_usage_logs for tenant_id + created_at
-    op.create_index(
-        'idx_api_usage_tenant_created',
-        'api_usage_logs',
-        ['tenant_id', 'created_at'],
-        unique=False
-    )
+    try:
+        op.create_index(
+            'idx_api_usage_tenant_created',
+            'api_usage_logs',
+            ['tenant_id', 'created_at'],
+            unique=False
+        )
+    except Exception:
+        # Index may already exist
+        pass
 
 
-def downgrade():
+def downgrade() -> None:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+
+    # Get existing columns in drafts table
+    existing_columns = [col['name'] for col in inspector.get_columns('drafts')]
+
+    # Remove archived_at column if it exists
+    if 'archived_at' in existing_columns:
+        op.drop_column('drafts', 'archived_at')
+
     # Remove the index
-    op.drop_index('idx_api_usage_tenant_created', table_name='api_usage_logs')
-
-    # Remove archived_at column
-    op.drop_column('drafts', 'archived_at')
+    try:
+        op.drop_index('idx_api_usage_tenant_created', table_name='api_usage_logs')
+    except Exception:
+        # Index may not exist
+        pass
