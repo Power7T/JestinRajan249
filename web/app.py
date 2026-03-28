@@ -5963,21 +5963,15 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
     thirty_days_ago  = now_utc - timedelta(days=30)
     fourteen_days_ago = now_utc - timedelta(days=14)
 
-    # Fetch last activity per tenant (N+1 fix: single query)
+    # Fetch last activity per tenant (N+1 fix: batch fetch)
     last_activity_per_tenant = {}
-    from sqlalchemy import func
-    subq = (
-        db.query(ActivityLog.tenant_id, func.max(ActivityLog.created_at).label("max_created_at"))
-        .group_by(ActivityLog.tenant_id)
-        .subquery()
-    )
-    last_logs = (
-        db.query(ActivityLog)
-        .join(subq, (ActivityLog.tenant_id == subq.c.tenant_id) & (ActivityLog.created_at == subq.c.max_created_at))
-        .all()
-    )
-    for log in last_logs:
-        last_activity_per_tenant[log.tenant_id] = log.created_at
+    try:
+        all_activity_logs = db.query(ActivityLog).all()
+        for log in all_activity_logs:
+            if log.tenant_id not in last_activity_per_tenant or log.created_at > last_activity_per_tenant[log.tenant_id]:
+                last_activity_per_tenant[log.tenant_id] = log.created_at
+    except Exception:
+        pass  # If ActivityLog table doesn't exist yet, continue without it
 
     tenant_rows = []
     plan_counts: dict = {}
