@@ -113,6 +113,24 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-6 mb-8">
     <!-- Top Level Margins -->
     <div class="flex flex-col gap-6">
+      <!-- Cost Forecast -->
+      <div class="glass-card rounded-3xl p-6 border border-amber-500/30 bg-amber-500/5">
+        <h3 class="text-sm font-bold text-amber-500 mb-3">Cost Forecast</h3>
+        <div class="space-y-2">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-400">This month (projected)</span>
+            <span class="font-bold text-white">${{ "%.2f"|format(forecast_this_month) }}</span>
+          </div>
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-400">Next month (estimate)</span>
+            <span class="font-bold text-white">${{ "%.2f"|format(forecast_next_month) }}</span>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-amber-500/20">
+          <div class="text-[0.65rem] text-slate-500">Based on current usage trend</div>
+        </div>
+      </div>
+
       <div class="glass-card rounded-3xl p-6">
         <div class="flex items-center gap-1 mb-1">
           <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Profit Margin</p>

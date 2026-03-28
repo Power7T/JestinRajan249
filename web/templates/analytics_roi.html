@@ -1,0 +1,191 @@
+{%- extends "base.html" %}
+{%- block title %}ROI Dashboard — HostAI{%- endblock %}
+
+{%- block head %}
+<script src="https://cdn.js.mux.ai/v1/chart.js" nonce="{{ request.state.csp_nonce }}"></script>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+{%- endblock %}
+
+{%- block main_wrapper %}
+<div class="glass-container min-h-screen pt-12 pb-16">
+  <!-- Sidebar navigation (same as dashboard.html) -->
+  {% include 'components/sidebar.html' %}
+
+  <!-- Main content -->
+  <main class="ml-[260px] pt-8 pb-12 px-8 min-h-screen">
+    <div class="mb-10">
+      <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">ROI Dashboard</h1>
+      <p class="text-slate-400 text-sm">Value delivered by your AI assistant</p>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <!-- Hours Saved -->
+      <div class="glass-card rounded-3xl p-8">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Hours Saved</p>
+          <span class="material-symbols-outlined text-primary text-2xl">schedule</span>
+        </div>
+        <p class="text-4xl font-extrabold text-white mb-2">{{ total_hours_saved }}</p>
+        <p class="text-slate-400 text-xs">In the last {{ range_days }} days</p>
+      </div>
+
+      <!-- Messages Handled -->
+      <div class="glass-card rounded-3xl p-8">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Messages Handled</p>
+          <span class="material-symbols-outlined text-secondary-fixed-dim text-2xl">mail</span>
+        </div>
+        <p class="text-4xl font-extrabold text-white mb-2">{{ total_messages_handled }}</p>
+        <p class="text-slate-400 text-xs">AI-generated responses</p>
+      </div>
+
+      <!-- Automation Rate -->
+      <div class="glass-card rounded-3xl p-8">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Automation Rate</p>
+          <span class="material-symbols-outlined text-tertiary text-2xl">trending_up</span>
+        </div>
+        <p class="text-4xl font-extrabold text-white mb-2">{{ automation_rate }}%</p>
+        <p class="text-slate-400 text-xs">Messages auto-approved</p>
+      </div>
+
+      <!-- Estimated Value -->
+      <div class="glass-card rounded-3xl p-8 border border-primary/30 bg-primary/5">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-[0.65rem] font-bold text-primary uppercase tracking-widest">Est. Value</p>
+          <span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1;">verified</span>
+        </div>
+        <p class="text-4xl font-extrabold text-primary mb-2">${{ estimated_value }}</p>
+        <p class="text-slate-400 text-xs">At ${{ hourly_rate }}/hr saved labor</p>
+      </div>
+    </div>
+
+    <!-- Weekly Trend Chart -->
+    <div class="glass-card rounded-3xl p-8 mb-8">
+      <h2 class="text-lg font-bold text-white mb-6">Weekly Trend</h2>
+      <canvas id="roi-chart" class="h-64"></canvas>
+    </div>
+
+    <!-- Breakdown -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Value Breakdown -->
+      <div class="glass-card rounded-3xl p-6">
+        <h3 class="text-lg font-bold text-white mb-4">Value Sources</h3>
+        <ul class="space-y-3 text-sm">
+          <li class="flex justify-between items-center">
+            <span class="text-slate-400">Time savings</span>
+            <span class="font-bold text-white">{{ total_hours_saved }}h</span>
+          </li>
+          <li class="flex justify-between items-center">
+            <span class="text-slate-400">Messages automated</span>
+            <span class="font-bold text-primary">{{ total_approvals }}</span>
+          </li>
+          <li class="flex justify-between items-center">
+            <span class="text-slate-400">Total messages</span>
+            <span class="font-bold text-white">{{ total_messages_handled }}</span>
+          </li>
+          <li class="pt-2 border-t border-white/10 flex justify-between items-center">
+            <span class="text-slate-300">Estimated value</span>
+            <span class="font-extrabold text-primary text-lg">${{ estimated_value }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Recommendations -->
+      <div class="glass-card rounded-3xl p-6 border border-primary/20 bg-primary/5">
+        <h3 class="text-lg font-bold text-primary mb-4">💡 Tips to Maximize ROI</h3>
+        <ul class="space-y-2 text-sm text-slate-400">
+          <li class="flex gap-2">
+            <span class="text-primary font-bold">•</span>
+            <span>Enable <strong>auto-send</strong> for routine messages to increase automation rate</span>
+          </li>
+          <li class="flex gap-2">
+            <span class="text-primary font-bold">•</span>
+            <span>Use <strong>automation rules</strong> to escalate complex messages automatically</span>
+          </li>
+          <li class="flex gap-2">
+            <span class="text-primary font-bold">•</span>
+            <span>Complete your <strong>knowledge base</strong> for better AI understanding</span>
+          </li>
+          <li class="flex gap-2">
+            <span class="text-primary font-bold">•</span>
+            <span>Check <strong>Analytics</strong> for detailed performance insights</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script nonce="{{ request.state.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  const ctx = document.getElementById('roi-chart');
+  if (!ctx) return;
+
+  const snapshots = {{ snapshots_data | tojson }};
+  const labels = snapshots.map(s => new Date(s.period_start).toLocaleDateString());
+  const hours = snapshots.map(s => s.saved_hours);
+  const messages = snapshots.map(s => s.messages);
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Hours Saved',
+          data: hours,
+          borderColor: '#aec6ff',
+          backgroundColor: 'rgba(174, 198, 255, 0.1)',
+          tension: 0.4,
+          fill: true,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Messages Handled',
+          data: messages,
+          borderColor: '#ffb960',
+          backgroundColor: 'rgba(255, 185, 96, 0.1)',
+          tension: 0.4,
+          fill: true,
+          yAxisID: 'y1',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          ticks: { color: '#8d909e' },
+          grid: { color: 'rgba(255, 255, 255, 0.05)' }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          ticks: { color: '#8d909e' },
+          grid: { color: 'rgba(255, 255, 255, 0)' }
+        },
+        x: {
+          ticks: { color: '#8d909e' },
+          grid: { color: 'rgba(255, 255, 255, 0.05)' }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: { color: '#e0e0e0', usePointStyle: true }
+        }
+      }
+    }
+  });
+});
+</script>
+{%- endblock %}

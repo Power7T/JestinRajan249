@@ -705,6 +705,35 @@ def _average_response_seconds(drafts: list[Draft]) -> Optional[float]:
     return round(sum(durations) / len(durations), 1)
 
 
+def _percentile(data: list[float], p: float) -> Optional[float]:
+    """Calculate percentile of response times. p=50 for p50, p=95 for p95."""
+    if not data:
+        return None
+    sorted_data = sorted(data)
+    idx = (p / 100.0) * (len(sorted_data) - 1)
+    lower = int(idx)
+    upper = min(lower + 1, len(sorted_data) - 1)
+    weight = idx - lower
+    return round(sorted_data[lower] * (1 - weight) + sorted_data[upper] * weight, 1)
+
+
+def _response_time_stats(drafts: list[Draft]) -> dict:
+    """Compute avg, p50, p95 response times from drafts."""
+    durations: list[float] = []
+    for draft in drafts:
+        if draft.created_at and draft.approved_at and draft.approved_at >= draft.created_at:
+            durations.append((draft.approved_at - draft.created_at).total_seconds())
+
+    if not durations:
+        return {"avg": 0, "p50": 0, "p95": 0, "count": 0}
+
+    avg = round(sum(durations) / len(durations), 1)
+    p50 = _percentile(durations, 50) or 0
+    p95 = _percentile(durations, 95) or 0
+
+    return {"avg": avg, "p50": p50, "p95": p95, "count": len(durations)}
+
+
 def _sentiment_summary(drafts: list[Draft], reservations: list[Reservation]) -> dict[str, object]:
     scores = [float(draft.sentiment_score) for draft in drafts if draft.sentiment_score is not None]
     review_scores = [float(res.review_sentiment_score) for res in reservations if res.review_sentiment_score is not None]
@@ -4885,6 +4914,66 @@ def analytics_page(request: Request,
     })
 
 
+@app.get("/analytics/roi", response_class=HTMLResponse)
+def roi_dashboard(request: Request,
+                  range_days: int = 30,
+                  db: Session = Depends(get_db),
+                  rdb: Session = Depends(get_read_db)):
+    """ROI dashboard for users — show value delivered by the AI."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    tenant = _get_tenant(tenant_id, db)
+    cfg = _get_or_create_config(tenant_id, db)
+
+    # Fetch KPI snapshots for date range
+    cutoff = datetime.now(timezone.utc) - timedelta(days=range_days)
+    snapshots = db.query(TenantKpiSnapshot).filter(
+        TenantKpiSnapshot.tenant_id == tenant_id,
+        TenantKpiSnapshot.period_start >= cutoff,
+    ).order_by(TenantKpiSnapshot.period_start).all()
+
+    # Aggregate metrics
+    total_hours_saved = sum(s.saved_hours or 0 for s in snapshots)
+    total_messages_handled = sum(s.messages_total or 0 for s in snapshots)
+    total_approvals = sum(s.approvals_total or 0 for s in snapshots)
+
+    # Get latest automation rate
+    latest_snapshot = snapshots[-1] if snapshots else None
+    automation_rate = latest_snapshot.automation_rate_pct if latest_snapshot else 0
+
+    # Calculate estimated value (hours × $25/hr)
+    hourly_rate = 25.0
+    estimated_value = total_hours_saved * hourly_rate
+
+    # Serialize for chart
+    snapshots_data = [
+        {
+            "period_start": s.period_start.isoformat(),
+            "saved_hours": s.saved_hours or 0,
+            "messages": s.messages_total or 0,
+            "approvals": s.approvals_total or 0,
+        }
+        for s in snapshots
+    ]
+
+    return templates.TemplateResponse("analytics_roi.html", {
+        "request": request,
+        "tenant": tenant,
+        "cfg": cfg,
+        "total_hours_saved": round(total_hours_saved, 1),
+        "total_messages_handled": total_messages_handled,
+        "total_approvals": total_approvals,
+        "automation_rate": round(automation_rate, 1),
+        "estimated_value": round(estimated_value, 2),
+        "hourly_rate": hourly_rate,
+        "range_days": range_days,
+        "snapshots_data": snapshots_data,
+    })
+
+
 @app.get("/workflow", response_class=HTMLResponse)
 def workflow_center(request: Request,
                     db: Session = Depends(get_db),
@@ -5937,6 +6026,12 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
         "approval_rate": round(approved_d / total_d * 100, 1) if total_d else 0,
     }
 
+    # Response time analytics per tenant (last 30 days)
+    response_time_by_tenant = {}
+    for row in tenant_rows:
+        tenant_drafts = [d for d in drafts_30d if d.tenant_id == row["tenant"].id]
+        response_time_by_tenant[row["tenant"].id] = _response_time_stats(tenant_drafts)
+
     # Churn signals
     churn_signals = [r for r in tenant_rows if r["worker_dead"] or r["inactive_14d"]]
 
@@ -5962,6 +6057,7 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
         "plan_breakdown": plan_breakdown,
         "funnel":        funnel,
         "draft_stats":   draft_stats,
+        "response_time_by_tenant": response_time_by_tenant,
         "churn_signals": churn_signals,
         "now":           now_utc,
     })
@@ -6411,7 +6507,62 @@ def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
     total_cost = sum(m["cost"] for m in metrics.values())
     total_margin = total_rev - total_cost
     margin_pct = (total_margin / total_rev * 100) if total_rev > 0 else 0
-    
+
+    # Cost forecasting for this month
+    now = datetime.now(timezone.utc)
+    start_of_month = now.replace(day=1)
+    days_in_month = 30 if now.month != 2 else (29 if now.year % 4 == 0 else 28)
+    days_passed = (now - start_of_month).days + 1
+    days_remaining = days_in_month - days_passed
+
+    # Query last 3 months of costs
+    try:
+        costs_by_date = {}
+        for i in range(90):
+            date = (now - timedelta(days=i)).date()
+            daily_cost = (
+                db.query(func.sum(ApiUsageLog.cost_usd))
+                .filter(
+                    func.date(ApiUsageLog.created_at) == date,
+                )
+                .scalar() or 0
+            )
+            costs_by_date[date] = float(daily_cost)
+
+        # Simple linear regression: forecast based on average daily cost
+        recent_daily_avg = sum(list(costs_by_date.values())[:7]) / 7 if len(costs_by_date) >= 7 else (total_cost / max(days_passed, 1))
+        forecast_this_month = (total_cost / max(days_passed, 1)) * days_in_month
+        forecast_next_month = recent_daily_avg * 30
+
+        # Also compute month-over-month costs
+        costs_last_month = (
+            db.query(func.sum(ApiUsageLog.cost_usd))
+            .filter(
+                ApiUsageLog.created_at >= start_of_month - timedelta(days=30),
+                ApiUsageLog.created_at < start_of_month
+            )
+            .scalar() or 0
+        )
+        costs_two_months_ago = (
+            db.query(func.sum(ApiUsageLog.cost_usd))
+            .filter(
+                ApiUsageLog.created_at >= start_of_month - timedelta(days=60),
+                ApiUsageLog.created_at < start_of_month - timedelta(days=30)
+            )
+            .scalar() or 0
+        )
+
+        cost_history = [
+            {"month": "2 months ago", "cost": round(float(costs_two_months_ago), 2)},
+            {"month": "Last month", "cost": round(float(costs_last_month), 2)},
+            {"month": "This month (so far)", "cost": round(total_cost, 2)},
+            {"month": "Forecast (end of month)", "cost": round(forecast_this_month, 2)},
+        ]
+    except Exception:
+        forecast_this_month = 0
+        forecast_next_month = 0
+        cost_history = []
+
     return templates.TemplateResponse("admin_costs.html", {
         "request": request,
         "admin": admin,
@@ -6420,6 +6571,9 @@ def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
         "total_cost": total_cost,
         "total_margin": total_margin,
         "margin_pct": margin_pct,
+        "forecast_this_month": round(forecast_this_month, 2),
+        "forecast_next_month": round(forecast_next_month, 2),
+        "cost_history": cost_history,
     })
 
 

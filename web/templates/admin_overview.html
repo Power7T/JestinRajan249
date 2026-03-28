@@ -185,6 +185,32 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
         <span class="font-extrabold text-2xl text-[#27c93f]">{{ draft_stats.approval_rate }}%</span>
       </div>
     </div>
+
+    <!-- Response Time Analytics -->
+    <div class="glass-card p-6 rounded-3xl flex flex-col justify-between">
+      <h2 class="text-lg font-bold text-white mb-4">Response Time (30d)</h2>
+      <div class="flex flex-col gap-3">
+        {% set total_drafts_approved = drafts | selectattr('status', 'equalto', 'approved') | list | length %}
+        {% set total_response_time = 0 %}
+        {% set total_count = 0 %}
+        {% for tid, stats in response_time_by_tenant.items() %}
+          {% set total_response_time = total_response_time + stats.avg * stats.count %}
+          {% set total_count = total_count + stats.count %}
+        {% endfor %}
+        {% set global_avg = (total_response_time / total_count) | round(1) if total_count > 0 else 0 %}
+        {% set p50_vals = response_time_by_tenant.values() | map(attribute='p50') | list %}
+        {% set p95_vals = response_time_by_tenant.values() | map(attribute='p95') | list %}
+        {% set global_p50 = (p50_vals | sum / p50_vals | length) | round(1) if p50_vals | length > 0 else 0 %}
+        {% set global_p95 = (p95_vals | sum / p95_vals | length) | round(1) if p95_vals | length > 0 else 0 %}
+
+        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Average time</span><span class="font-bold text-[#5B8DEF]">{{ global_avg }}s</span></div>
+        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Median (p50)</span><span class="font-bold text-white">{{ global_p50 }}s</span></div>
+        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">95th percentile (p95)</span><span class="font-bold text-amber-500">{{ global_p95 }}s</span></div>
+      </div>
+      <div class="mt-6 p-4 rounded-xl bg-white/5 text-xs text-slate-400 border border-white/10">
+        Time from draft creation to host approval across all tenants
+      </div>
+    </div>
   </div>
 
   <!-- Churn Signals -->
