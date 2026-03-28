@@ -1,7 +1,7 @@
 """Add Draft.archived_at column and API usage index.
 
 Revision ID: 20260328_0600
-Revises: (auto-detect previous)
+Revises: 20260326_0530
 Create Date: 2026-03-28 06:00:00.000000
 
 """
