@@ -6,7 +6,6 @@ Create Date: 2026-03-26 05:20:00.000000
 
 """
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
@@ -17,62 +16,42 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create system_config and api_usage_logs tables if they don't exist
-    conn = op.get_bind()
-    inspector = sa.inspect(conn)
-
-    # Check if system_config table exists
-    if 'system_config' not in inspector.get_table_names():
-        # Create the system_config table
-        op.create_table(
-            'system_config',
-            sa.Column('id', sa.String(length=36), nullable=False),
-            sa.Column('openrouter_api_key_enc', sa.String(length=255), nullable=True),
-            sa.Column('primary_model', sa.String(length=100), nullable=False, server_default='anthropic/claude-3.5-sonnet'),
-            sa.Column('fallback_model', sa.String(length=100), nullable=False, server_default='meta-llama/llama-3.1-70b-instruct'),
-            sa.Column('routine_model', sa.String(length=100), nullable=False, server_default='google/gemini-2.5-flash'),
-            sa.Column('sentiment_model', sa.String(length=100), nullable=False, server_default='openai/gpt-4o-mini'),
-            sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
-            sa.PrimaryKeyConstraint('id')
-        )
-    else:
-        # Table exists, just add the column if it doesn't exist
-        if 'routine_model' not in [col['name'] for col in inspector.get_columns('system_config')]:
-            op.add_column('system_config', sa.Column(
-                'routine_model',
-                sa.String(length=100),
-                nullable=False,
-                server_default='google/gemini-2.5-flash'
-            ))
+    # Add routine_model column to system_config if it doesn't exist
+    op.execute(
+        """ALTER TABLE system_config ADD COLUMN IF NOT EXISTS routine_model
+           VARCHAR(100) NOT NULL DEFAULT 'google/gemini-2.5-flash'"""
+    )
 
     # Create api_usage_logs table if it doesn't exist
-    if 'api_usage_logs' not in inspector.get_table_names():
-        op.create_table(
-            'api_usage_logs',
-            sa.Column('id', sa.Integer(), nullable=False, autoincrement=True),
-            sa.Column('tenant_id', sa.String(length=36), nullable=True),
-            sa.Column('model', sa.String(length=100), nullable=False),
-            sa.Column('provider', sa.String(length=50), nullable=False),
-            sa.Column('input_tokens', sa.Integer(), nullable=False, server_default='0'),
-            sa.Column('output_tokens', sa.Integer(), nullable=False, server_default='0'),
-            sa.Column('cost_usd', sa.Float(), nullable=False, server_default='0.0'),
-            sa.Column('feature', sa.String(length=50), nullable=False),
-            sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-            sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
-            sa.PrimaryKeyConstraint('id'),
-            sa.Index('ix_api_usage_logs_tenant_id', 'tenant_id')
-        )
+    op.execute(
+        """CREATE TABLE IF NOT EXISTS api_usage_logs (
+            id SERIAL PRIMARY KEY,
+            tenant_id VARCHAR(36),
+            model VARCHAR(100) NOT NULL,
+            provider VARCHAR(50) NOT NULL,
+            input_tokens INTEGER NOT NULL DEFAULT 0,
+            output_tokens INTEGER NOT NULL DEFAULT 0,
+            cost_usd FLOAT NOT NULL DEFAULT 0.0,
+            feature VARCHAR(50) NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+        )"""
+    )
+
+    # Create index if it doesn't exist (PostgreSQL will error silently if it exists)
+    op.execute(
+        """CREATE INDEX IF NOT EXISTS ix_api_usage_logs_tenant_id
+           ON api_usage_logs(tenant_id)"""
+    )
 
 
 def downgrade() -> None:
-    conn = op.get_bind()
-    inspector = sa.inspect(conn)
-
-    # Only drop the column if it exists
-    if 'system_config' in inspector.get_table_names():
-        if 'routine_model' in [col['name'] for col in inspector.get_columns('system_config')]:
-            op.drop_column('system_config', 'routine_model')
+    # Drop routine_model column from system_config if it exists
+    op.execute(
+        """ALTER TABLE system_config DROP COLUMN IF EXISTS routine_model"""
+    )
 
     # Drop api_usage_logs table if it exists
-    if 'api_usage_logs' in inspector.get_table_names():
-        op.drop_table('api_usage_logs')
+    op.execute(
+        """DROP TABLE IF EXISTS api_usage_logs"""
+    )
