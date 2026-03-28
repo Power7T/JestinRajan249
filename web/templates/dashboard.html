@@ -161,10 +161,12 @@ body {
 <!-- TopNavBar Shell -->
 <header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
 <div class="flex items-center flex-1 max-w-md">
+<form class="w-full" method="get" action="/dashboard">
 <div class="relative w-full">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
-<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts, or analytics..." type="text"/>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts..." type="text" name="q" value="{{ search_query or '' }}" />
 </div>
+</form>
 </div>
 <div class="flex items-center gap-6">
 <button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">

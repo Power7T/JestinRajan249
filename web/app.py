@@ -1304,9 +1304,21 @@ def dashboard(request: Request,
     tenant = _get_tenant(tenant_id, db)
     cfg = _get_or_create_config(tenant_id, db)
     selected_property = request.query_params.get("property", "").strip()
+    search_query = request.query_params.get("q", "").strip().lower()
+
+    # Build base query
+    query = rdb.query(Draft).filter_by(tenant_id=tenant_id)
+
+    # Apply search filter
+    if search_query:
+        # Search by guest name or thread_key
+        query = query.filter(
+            (Draft.guest_name.ilike(f"%{search_query}%")) |
+            (Draft.thread_key.ilike(f"%{search_query}%"))
+        )
+
     draft_rows_all = (
-        rdb.query(Draft)
-        .filter_by(tenant_id=tenant_id)
+        query
         .order_by(Draft.created_at.desc())
         .limit(500)
         .all()
@@ -1473,6 +1485,7 @@ def dashboard(request: Request,
         "review_benchmark": review_benchmark,
         "selected_property": selected_property,
         "property_options": property_options,
+        "search_query": search_query,
         "active_arrivals": db.query(ArrivalActivation).filter(
             ArrivalActivation.tenant_id == tenant_id,
             ArrivalActivation.status.in_(["active", "pending"]),
@@ -4133,9 +4146,20 @@ def reservations_page(request: Request,
     tenant = _get_tenant(tenant_id, db)
     cfg = _get_or_create_config(tenant_id, db)
     selected_property = request.query_params.get("property", "").strip()
+    search_query = request.query_params.get("q", "").strip().lower()
+
+    # Build base query
+    query = db.query(Reservation).filter_by(tenant_id=tenant_id)
+
+    # Apply search filter
+    if search_query:
+        query = query.filter(
+            (Reservation.guest_name.ilike(f"%{search_query}%")) |
+            (Reservation.listing_name.ilike(f"%{search_query}%"))
+        )
+
     all_rows = (
-        db.query(Reservation)
-        .filter_by(tenant_id=tenant_id)
+        query
         .order_by(Reservation.checkin.desc())
         .all()
     )
@@ -4234,6 +4258,7 @@ def reservations_page(request: Request,
         "sentiment_summary": sentiment_summary,
         "selected_property": selected_property,
         "property_options": property_options,
+        "search_query": search_query,
     })
 
 
