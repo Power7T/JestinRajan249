@@ -244,8 +244,30 @@
 
 
 <div class="analytics-row" style="margin-bottom:1.25rem">
-  <div class="analytics-widget"><div class="widget-value">{{ kpis.ops.automation_ready_ratio }}%</div><div class="widget-label">Automation-ready</div></div>
-  <div class="analytics-widget"><div class="widget-value">{{ exception_queue|length }}</div><div class="widget-label">Open exceptions</div></div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ kpis.ops.automation_ready_ratio }}%</div>
+    <div class="widget-label" style="display:inline-flex;align-items:center;justify-content:center;gap:0.3rem">
+      Automation-ready
+      <div class="tooltip-container">
+        <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+          <span style="font-size:0.6rem">ⓘ</span>
+        </button>
+        <div class="tooltip-content">Percentage of active reservations with complete guest contact info + room mapping + PMS integration active</div>
+      </div>
+    </div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ exception_queue|length }}</div>
+    <div class="widget-label" style="display:inline-flex;align-items:center;justify-content:center;gap:0.3rem">
+      Open exceptions
+      <div class="tooltip-container">
+        <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+          <span style="font-size:0.6rem">ⓘ</span>
+        </button>
+        <div class="tooltip-content">Messages that triggered escalation rules (refunds, safety concerns, complaints, property damage)</div>
+      </div>
+    </div>
+  </div>
   <div class="analytics-widget"><div class="widget-value">{{ kpis.reservations.context_complete }}</div><div class="widget-label">Contexts ready</div></div>
   <div class="analytics-widget"><div class="widget-value">{{ automation_rules|length }}</div><div class="widget-label">Active rules</div></div>
 </div>

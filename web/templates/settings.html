@@ -341,7 +341,17 @@
       </div>
     </div>
 
-    <h3 id="policies" style="font-size:0.95rem;margin-top:1.25rem">Structured stay policies</h3>
+    <h3 id="policies" style="font-size:0.95rem;margin-top:1.25rem">
+      <span style="display:inline-flex;align-items:center;gap:0.4rem">
+        Structured stay policies
+        <div class="tooltip-container">
+          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+            <span style="font-size:0.85rem">ⓘ</span>
+          </button>
+          <div class="tooltip-content">AI uses these rules to validate draft messages—ensures it never contradicts house rules (e.g., 'no pets')</div>
+        </div>
+      </span>
+    </h3>
     <p class="help-text">These fields are used to validate drafts so HostAI does not promise something that conflicts with house policy.</p>
     <label>Pet policy</label>
     <textarea name="pet_policy" placeholder="No pets allowed, or dogs under 20kg with a $25 cleaning fee.">{{ cfg.pet_policy or '' }}</textarea>
@@ -436,7 +446,17 @@
         </div>
         <label>Email address</label>
         <input type="email" name="email_address" value="{{ cfg.email_address or '' }}" placeholder="yourhost@gmail.com">
-        <label>App password <span style="color:var(--text-3);font-weight:400">(leave blank to keep existing)</span></label>
+        <label>
+          <span style="display:inline-flex;align-items:center;gap:0.3rem">
+            App password <span style="color:var(--text-3);font-weight:400">(leave blank to keep existing)</span>
+            <div class="tooltip-container">
+              <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+                <span style="font-size:0.75rem">ⓘ</span>
+              </button>
+              <div class="tooltip-content">Google requires app-specific passwords for third-party apps (regular password won't work). Get it at: myaccount.google.com/apppasswords</div>
+            </div>
+          </span>
+        </label>
         <input type="password" name="email_password" placeholder="xxxx xxxx xxxx xxxx">
         <p class="help-text">
           Gmail: <a href="https://myaccount.google.com/apppasswords" target="_blank">Create an App Password</a> →

@@ -123,7 +123,15 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <p class="text-3xl font-extrabold {% if redis_ok %}text-[#27c93f]{% else %}text-amber-500{% endif %}">{% if redis_ok %}OK{% else %}OFF{% endif %}</p>
     </div>
     <div class="glass-card p-5 rounded-2xl {% if watchdog_ok %}border-b-4 border-[#27c93f]{% else %}border-b-4 border-rose-500 bg-rose-500/5{% endif %}">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Watchdog</p>
+      <div class="flex items-center gap-1">
+        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Watchdog</p>
+        <div class="tooltip-container">
+          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+            <span style="font-size:0.7rem">ⓘ</span>
+          </button>
+          <div class="tooltip-content">Automatic background process that monitors tenant email/calendar workers and restarts them if they fail</div>
+        </div>
+      </div>
       <p class="text-3xl font-extrabold {% if watchdog_ok %}text-[#27c93f]{% else %}text-rose-500{% endif %}">{% if watchdog_ok %}OK{% else %}DEAD{% endif %}</p>
     </div>
     <div class="glass-card p-5 rounded-2xl border-b-4 border-white/10">
@@ -131,11 +139,27 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <p class="text-3xl font-extrabold text-white">{{ thread_count }}</p>
     </div>
     <div class="glass-card p-5 rounded-2xl border-b-4 border-[#27c93f]">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Active Workers</p>
+      <div class="flex items-center gap-1">
+        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Email Worker</p>
+        <div class="tooltip-container">
+          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+            <span style="font-size:0.7rem">ⓘ</span>
+          </button>
+          <div class="tooltip-content">Background process that processes incoming/outgoing guest messages (email, SMS, WhatsApp)</div>
+        </div>
+      </div>
       <p class="text-3xl font-extrabold text-[#27c93f]">{{ active_workers }}</p>
     </div>
     <div class="glass-card p-5 rounded-2xl {% if dead_workers > 0 %}border-b-4 border-rose-500 bg-rose-500/5{% else %}border-b-4 border-white/10{% endif %}">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Dead Workers</p>
+      <div class="flex items-center gap-1">
+        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Cal Worker</p>
+        <div class="tooltip-container">
+          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+            <span style="font-size:0.7rem">ⓘ</span>
+          </button>
+          <div class="tooltip-content">Background process that syncs calendar availability and reservation data</div>
+        </div>
+      </div>
       <p class="text-3xl font-extrabold {% if dead_workers > 0 %}text-rose-500{% else %}text-white{% endif %}">{{ dead_workers }}</p>
     </div>
     <div class="glass-card p-5 rounded-2xl border-b-4 border-[#5B8DEF]">

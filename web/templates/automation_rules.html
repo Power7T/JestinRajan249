@@ -173,17 +173,17 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 
 <div class="workflow-grid" style="margin-bottom:1rem">
   <div class="workflow-card">
-    <h3>Trigger</h3>
+    <h3><span style="display:inline-flex;align-items:center;gap:0.4rem">Trigger<div class="tooltip-container"><button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e;font-size:0.85rem"><span>ⓘ</span></button><div class="tooltip-content">Events that cause a rule to fire (Inbound message, Arrival reminder, Checkout follow-up, Vendor update)</div></div></span></h3>
     <p>What happened: guest message, arrival reminder, checkout follow-up, or vendor request.</p>
     <div class="chip-row"><span class="chip">Guest message</span><span class="chip">Calendar event</span><span class="chip">Vendor issue</span></div>
   </div>
   <div class="workflow-card">
-    <h3>Condition</h3>
+    <h3><span style="display:inline-flex;align-items:center;gap:0.4rem">Condition<div class="tooltip-container"><button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e;font-size:0.85rem"><span>ⓘ</span></button><div class="tooltip-content">Rules that must be true for the trigger to execute (e.g., only if routine intent, only if confidence &lt; 0.6)</div></div></span></h3>
     <p>When the rule should apply: routine intent, confidence threshold, property scope, or channel-specific behavior.</p>
     <div class="chip-row"><span class="chip">Routine</span><span class="chip">Low confidence</span><span class="chip">Property scope</span></div>
   </div>
   <div class="workflow-card">
-    <h3>Action</h3>
+    <h3><span style="display:inline-flex;align-items:center;gap:0.4rem">Action<div class="tooltip-container"><button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e;font-size:0.85rem"><span>ⓘ</span></button><div class="tooltip-content">What happens when rule fires: Auto-send = send immediately; Draft = require approval; Escalate = flag for ops; Maintenance = create task</div></div></span></h3>
     <p>What HostAI should do: auto-send, draft only, escalate, schedule, or create a maintenance ticket.</p>
     <div class="chip-row"><span class="chip">Auto-send</span><span class="chip">Draft</span><span class="chip">Escalate</span></div>
   </div>
@@ -232,11 +232,11 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 
 <div class="workflow-grid">
   <div class="workflow-card">
-    <h3>Sample rules</h3>
+    <h3><span style="display:inline-flex;align-items:center;gap:0.4rem">Routine<div class="tooltip-container"><button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e;font-size:0.85rem"><span>ⓘ</span></button><div class="tooltip-content">Non-critical guest requests like Wi-Fi, towels, parking, checkout extension, local recommendations</div></div></span></h3>
     <p>Reply to Wi-Fi requests automatically. Escalate refunds and complaints. Create maintenance tasks from "AC is broken" or "leak" messages.</p>
   </div>
   <div class="workflow-card">
-    <h3>Default policy</h3>
+    <h3><span style="display:inline-flex;align-items:center;gap:0.4rem">Confidence Threshold<div class="tooltip-container"><button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e;font-size:0.85rem"><span>ⓘ</span></button><div class="tooltip-content">AI confidence score (0-100) that it understood the request. Lower = require manual review. Recommended: 0.75+</div></div></span></h3>
     <p>Prefer automation for routine asks, draft for ambiguity, and escalation for anything involving money, safety, or property damage.</p>
   </div>
   <div class="workflow-card">

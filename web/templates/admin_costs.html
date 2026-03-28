@@ -110,7 +110,15 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     <!-- Top Level Margins -->
     <div class="flex flex-col gap-6">
       <div class="glass-card rounded-3xl p-6">
-        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Profit Margin</p>
+        <div class="flex items-center gap-1 mb-1">
+          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Profit Margin</p>
+          <div class="tooltip-container">
+            <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+              <span style="font-size:0.7rem">ⓘ</span>
+            </button>
+            <div class="tooltip-content">Margin = Monthly Revenue - API Costs. Does NOT include infrastructure/team salaries (internal metric only)</div>
+          </div>
+        </div>
         <p class="text-4xl font-extrabold {% if margin_pct > 0 %}text-[#27c93f]{% else %}text-rose-500{% endif %}">${{ "%.2f"|format(total_margin) }}</p>
         <p class="text-slate-500 text-sm font-medium mb-6">({{ "%.1f"|format(margin_pct) }}% margin)</p>
         

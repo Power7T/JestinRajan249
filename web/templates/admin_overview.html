@@ -125,11 +125,27 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <p class="text-3xl font-extrabold text-[#27c93f]">${{ mrr }}</p>
     </div>
     <div class="glass-card p-5 rounded-2xl">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Drafts (30d)</p>
+      <div class="flex items-center gap-1">
+        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Drafts (30d)</p>
+        <div class="tooltip-container">
+          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+            <span style="font-size:0.8rem">ⓘ</span>
+          </button>
+          <div class="tooltip-content">AI-generated message drafts pending host review from the last 30 days</div>
+        </div>
+      </div>
       <p class="text-3xl font-extrabold text-white">{{ draft_stats.total }}</p>
     </div>
     <div class="glass-card p-5 rounded-2xl">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Approval</p>
+      <div class="flex items-center gap-1">
+        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Approval</p>
+        <div class="tooltip-container">
+          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+            <span style="font-size:0.8rem">ⓘ</span>
+          </button>
+          <div class="tooltip-content">Percentage of drafted messages the host approved to send (higher = more trust in automation)</div>
+        </div>
+      </div>
       <p class="text-3xl font-extrabold text-[#27c93f]">{{ draft_stats.approval_rate }}%</p>
     </div>
   </div>
@@ -172,7 +188,16 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   <div class="glass-card rounded-3xl p-6 mb-8 border border-rose-500/30 bg-rose-500/5 relative overflow-hidden">
     <div class="absolute top-0 right-0 w-32 h-32 bg-rose-500/20 rounded-full blur-[50px] pointer-events-none"></div>
     <h2 class="text-lg font-bold text-rose-400 mb-4 flex items-center gap-2">
-      <span class="material-symbols-outlined">warning</span> Churn Signals ({{ churn_signals | length }})
+      <span class="material-symbols-outlined">warning</span>
+      <span style="display:inline-flex;align-items:center;gap:0.4rem">
+        Churn Signals ({{ churn_signals | length }})
+        <div class="tooltip-container">
+          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#f87171">
+            <span style="font-size:0.8rem">ⓘ</span>
+          </button>
+          <div class="tooltip-content">Indicators that a tenant may be inactive: no activity, dead workers, failed syncs</div>
+        </div>
+      </span>
     </h2>
     <div class="flex flex-col gap-3 relative z-10">
       {% for row in churn_signals %}
