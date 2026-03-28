@@ -383,30 +383,6 @@ const channelInfo = {
   email: { badge: 'Email', icon: '📧', class: 'channel-email' }
 };
 
-// Sound effects (simple beep using Web Audio API)
-function playSound(type) {
-  try {
-    const ac = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ac.createOscillator();
-    const gain = ac.createGain();
-    osc.connect(gain);
-    gain.connect(ac.destination);
-
-    if (type === 'message') {
-      osc.frequency.value = 800;
-      gain.gain.setValueAtTime(0.3, ac.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.08);
-      osc.start(ac.currentTime);
-      osc.stop(ac.currentTime + 0.08);
-    } else if (type === 'sent') {
-      osc.frequency.value = 1200;
-      gain.gain.setValueAtTime(0.2, ac.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.12);
-      osc.start(ac.currentTime);
-      osc.stop(ac.currentTime + 0.12);
-    }
-  } catch(e) {}
-}
 
 // Animate counter numbers
 function animateCounter(id, startVal, endVal, duration) {
@@ -460,7 +436,6 @@ function renderChat(s) {
   typingEl.innerHTML = '<div class="demo-dot"></div><div class="demo-dot"></div><div class="demo-dot"></div>';
   chat.appendChild(typingEl);
 
-  playSound('message');
 }
 
 function typeReply(s) {
@@ -513,7 +488,6 @@ function runDemoScene() {
 
 function approveDemo() {
   if (!demoRunning) return;
-  playSound('sent');
 
   document.getElementById('demo-approvebtn').textContent = '✓ Sending...';
   demoTimeout = setTimeout(() => {
