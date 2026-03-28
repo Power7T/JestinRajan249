@@ -16,7 +16,7 @@ from web.db import Base
 
 # Subscription plans (old channel-based — kept for backward compat with Alembic)
 PLAN_FREE       = "free"
-# PLAN_BAILEYS removed (Baileys integration discontinued)
+PLAN_BAILEYS    = "baileys"  # kept for backward compat with billing.py (integration discontinued)
 PLAN_META_CLOUD = "meta_cloud"
 PLAN_SMS        = "sms"
 PLAN_PRO        = "pro"   # all three channels
