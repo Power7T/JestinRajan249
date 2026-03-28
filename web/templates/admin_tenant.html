@@ -206,22 +206,22 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
             {% if cfg.onboarding_complete %}Complete{% else %}Step {{ cfg.onboarding_step }}/5{% endif %}
           </span>
         </div>
-        <div class="flex justify-between items-center pb-3 border-b border-white/5">
+        {% if cfg.property_names %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
           <span class="text-sm font-bold text-slate-400">Property</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.property_names or "—" }}</span>
-        </div>
-        <div class="flex justify-between items-center pb-3 border-b border-white/5">
+          <span class="text-sm font-medium text-slate-300">{{ cfg.property_names }}</span>
+        </div>{% endif %}
+        {% if cfg.property_city %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
           <span class="text-sm font-bold text-slate-400">City</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.property_city or "—" }}</span>
-        </div>
-        <div class="flex justify-between items-center pb-3 border-b border-white/5">
+          <span class="text-sm font-medium text-slate-300">{{ cfg.property_city }}</span>
+        </div>{% endif %}
+        {% if cfg.email_address %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
           <span class="text-sm font-bold text-slate-400">Email (IMAP)</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.email_address or "—" }}</span>
-        </div>
-        <div class="flex justify-between items-center pb-3 border-b border-white/5">
+          <span class="text-sm font-medium text-slate-300">{{ cfg.email_address }}</span>
+        </div>{% endif %}
+        {% if cfg.imap_host %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
           <span class="text-sm font-bold text-slate-400">IMAP host</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.imap_host or "—" }}</span>
-        </div>
+          <span class="text-sm font-medium text-slate-300">{{ cfg.imap_host }}</span>
+        </div>{% endif %}
         <div class="flex justify-between items-center pb-3 border-b border-white/5">
           <span class="text-sm font-bold text-slate-400">WhatsApp mode</span>
           <span class="text-sm font-medium text-slate-300">{{ cfg.wa_mode }}</span>
@@ -230,14 +230,14 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           <span class="text-sm font-bold text-slate-400">SMS mode</span>
           <span class="text-sm font-medium text-slate-300">{{ cfg.sms_mode }}</span>
         </div>
-        <div class="flex justify-between items-center pb-3 border-b border-white/5">
+        {% if cfg.ical_urls %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
           <span class="text-sm font-bold text-slate-400">iCal URLs</span>
-          <span class="text-sm font-medium text-slate-300">{{ "Configured" if cfg.ical_urls else "—" }}</span>
-        </div>
-        <div class="flex justify-between items-center pb-3 border-b border-transparent">
+          <span class="text-sm font-medium text-slate-300">Configured</span>
+        </div>{% endif %}
+        {% if cfg.escalation_email %}<div class="flex justify-between items-center pb-3 border-b border-transparent">
           <span class="text-sm font-bold text-slate-400">Escalation email</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.escalation_email or "—" }}</span>
-        </div>
+          <span class="text-sm font-medium text-slate-300">{{ cfg.escalation_email }}</span>
+        </div>{% endif %}
       </div>
       {% else %}
       <p class="text-slate-500 text-sm">No config record yet.</p>
@@ -247,17 +247,9 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     <div class="space-y-6">
       <!-- Billing + Worker status -->
       <div class="glass-card rounded-3xl p-6">
-        <h2 class="text-lg font-bold text-white mb-6">Billing</h2>
+        <h2 class="text-lg font-bold text-white mb-6">Subscription</h2>
         {% if cfg %}
         <div class="space-y-4">
-          <div class="flex justify-between items-center pb-3 border-b border-white/5">
-            <span class="text-sm font-bold text-slate-400">Stripe customer</span>
-            <span class="text-xs font-mono font-medium text-slate-300">{{ cfg.stripe_customer_id or "—" }}</span>
-          </div>
-          <div class="flex justify-between items-center pb-3 border-b border-white/5">
-            <span class="text-sm font-bold text-slate-400">Stripe subscription</span>
-            <span class="text-xs font-mono font-medium text-slate-300">{{ cfg.stripe_subscription_id or "—" }}</span>
-          </div>
           <div class="flex justify-between items-center pb-3 border-b border-transparent">
             <span class="text-sm font-bold text-slate-400">Expires at</span>
             <span class="text-sm font-medium text-slate-300">{{ cfg.subscription_expires_at.strftime("%Y-%m-%d") if cfg.subscription_expires_at else "—" }}</span>
@@ -269,28 +261,14 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       </div>
 
       <div class="glass-card rounded-3xl p-6">
-        <h2 class="text-lg font-bold text-white mb-6">Workers</h2>
-        <div class="space-y-4">
-          <div class="flex justify-between items-center pb-3 border-b border-white/5">
-            <span class="text-sm font-bold text-slate-400">Email worker</span>
-            <div class="flex items-center gap-2">
-              <span class="w-1.5 h-1.5 rounded-full {% if ws.email_running %}bg-[#27c93f]{% else %}bg-rose-500{% endif %}"></span>
-              <span class="text-xs font-bold uppercase tracking-wider {% if ws.email_running %}text-[#27c93f]{% else %}text-rose-500{% endif %}">{{ "Running" if ws.email_running else "Stopped" }}</span>
+        <h2 class="text-lg font-bold text-white mb-6">System Health</h2>
+        <div class="flex items-center gap-4">
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="w-2.5 h-2.5 rounded-full {% if ws.email_running and ws.cal_running and ws.sched_running %}bg-[#27c93f]{% else %}bg-rose-500{% endif %}"></span>
+              <span class="text-xs font-bold uppercase tracking-wider {% if ws.email_running and ws.cal_running and ws.sched_running %}text-[#27c93f]{% else %}text-rose-500{% endif %}">{{ "All Systems Running" if ws.email_running and ws.cal_running and ws.sched_running else "Issues Detected" }}</span>
             </div>
-          </div>
-          <div class="flex justify-between items-center pb-3 border-b border-white/5">
-            <span class="text-sm font-bold text-slate-400">Calendar worker</span>
-            <div class="flex items-center gap-2">
-              <span class="w-1.5 h-1.5 rounded-full {% if ws.cal_running %}bg-[#27c93f]{% else %}bg-slate-500{% endif %}"></span>
-              <span class="text-xs font-bold uppercase tracking-wider {% if ws.cal_running %}text-[#27c93f]{% else %}text-slate-500{% endif %}">{{ "Running" if ws.cal_running else "Not Running" }}</span>
-            </div>
-          </div>
-          <div class="flex justify-between items-center pb-3 border-b border-transparent">
-            <span class="text-sm font-bold text-slate-400">Scheduler</span>
-            <div class="flex items-center gap-2">
-              <span class="w-1.5 h-1.5 rounded-full {% if ws.sched_running %}bg-[#27c93f]{% else %}bg-slate-500{% endif %}"></span>
-              <span class="text-xs font-bold uppercase tracking-wider {% if ws.sched_running %}text-[#27c93f]{% else %}text-slate-500{% endif %}">{{ "Running" if ws.sched_running else "Not Running" }}</span>
-            </div>
+            <p class="text-xs text-slate-500">Email · Calendar · Scheduler</p>
           </div>
         </div>
       </div>

@@ -121,7 +121,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
     <div class="glass-card p-5 rounded-2xl">
       <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total API Spend</p>
-      <p class="text-3xl font-extrabold text-[#5B8DEF]">${{ "%.4f"|format(total_cost) }}</p>
+      <p class="text-3xl font-extrabold text-[#5B8DEF]">${{ "%.2f"|format(total_cost) }}</p>
     </div>
     <div class="glass-card p-5 rounded-2xl">
       <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Recent Generations</p>
@@ -140,24 +140,24 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
             <p class="text-[10px] text-slate-500 font-medium">Leave blank or as ******** to keep current key.</p>
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Primary Routine Model</label>
-            <input type="text" name="primary_model" class="compat-input" value="{{ sys_conf.primary_model }}">
-            <p class="text-[10px] text-slate-500 font-medium font-mono text-primary">anthropic/claude-3.5-sonnet</p>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Primary Model</label>
+            <input type="text" name="primary_model" class="compat-input" value="{{ sys_conf.primary_model }}" title="Technical ID: anthropic/claude-3.5-sonnet">
+            <p class="text-[10px] text-slate-500 font-medium">Claude 3.5 Sonnet <span class="text-slate-600 font-mono text-xs">(anthropic/claude-3.5-sonnet)</span></p>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Routine Model</label>
-            <input type="text" name="routine_model" class="compat-input" value="{{ sys_conf.routine_model }}">
-            <p class="text-[10px] text-slate-500 font-medium font-mono text-primary">google/gemini-2.5-flash</p>
+            <input type="text" name="routine_model" class="compat-input" value="{{ sys_conf.routine_model }}" title="Technical ID: google/gemini-2.5-flash">
+            <p class="text-[10px] text-slate-500 font-medium">Gemini 2.5 Flash <span class="text-slate-600 font-mono text-xs">(google/gemini-2.5-flash)</span></p>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Fallback Model</label>
-            <input type="text" name="fallback_model" class="compat-input" value="{{ sys_conf.fallback_model }}">
-            <p class="text-[10px] text-slate-500 font-medium font-mono text-primary">meta-llama/llama-3.1-70b-instruct</p>
+            <input type="text" name="fallback_model" class="compat-input" value="{{ sys_conf.fallback_model }}" title="Technical ID: meta-llama/llama-3.1-70b-instruct">
+            <p class="text-[10px] text-slate-500 font-medium">Llama 3.1 70B <span class="text-slate-600 font-mono text-xs">(meta-llama/llama-3.1-70b-instruct)</span></p>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Sentiment Model</label>
-            <input type="text" name="sentiment_model" class="compat-input" value="{{ sys_conf.sentiment_model }}">
-            <p class="text-[10px] text-slate-500 font-medium font-mono text-primary">openai/gpt-4o-mini</p>
+            <input type="text" name="sentiment_model" class="compat-input" value="{{ sys_conf.sentiment_model }}" title="Technical ID: openai/gpt-4o-mini">
+            <p class="text-[10px] text-slate-500 font-medium">GPT-4o Mini <span class="text-slate-600 font-mono text-xs">(openai/gpt-4o-mini)</span></p>
           </div>
           <button type="submit" class="w-full mt-2 py-3 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-[#002e6b] text-sm font-extrabold rounded-xl shadow-[0_0_20px_rgba(174,198,255,0.2)] hover:shadow-[0_0_30px_rgba(174,198,255,0.4)] transition-all">
             Save & Hot-Swap
@@ -185,13 +185,20 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
               <tr class="hover:bg-white/5 transition-colors">
                 <td class="px-5 py-3 text-xs text-slate-400">{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                 <td class="px-5 py-3">
-                  <span class="px-2 py-1 bg-white/5 rounded-md text-[0.65rem] font-mono text-[#aec6ff]">{{ log.model }}</span>
+                  <span class="px-2 py-1 bg-white/5 rounded-md text-[0.65rem] text-[#aec6ff] whitespace-nowrap" title="{{ log.model }}">
+                    {% if 'claude-3.5-sonnet' in log.model %}Claude 3.5 Sonnet
+                    {% elif 'gemini-2.5-flash' in log.model %}Gemini 2.5 Flash
+                    {% elif 'llama-3.1-70b' in log.model %}Llama 3.1 70B
+                    {% elif 'gpt-4o-mini' in log.model %}GPT-4o Mini
+                    {% elif 'gpt-4' in log.model %}GPT-4
+                    {% else %}{{ log.model }}{% endif %}
+                  </span>
                 </td>
                 <td class="px-5 py-3 text-xs text-slate-300">{{ log.feature }}</td>
                 <td class="px-5 py-3 text-xs font-mono text-slate-400">
                   <span class="text-emerald-400">{{ log.input_tokens }}</span> / <span class="text-amber-400">{{ log.output_tokens }}</span>
                 </td>
-                <td class="px-5 py-3 text-xs font-medium text-right text-emerald-400">${{ "%.5f"|format(log.cost_usd) }}</td>
+                <td class="px-5 py-3 text-xs font-medium text-right text-emerald-400">${{ "%.3f"|format(log.cost_usd) }}</td>
               </tr>
               {% else %}
               <tr>
