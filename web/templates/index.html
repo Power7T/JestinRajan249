@@ -111,6 +111,48 @@ tailwind.config = {
             0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
             40% { transform: translateY(-5px); opacity: 1; }
         }
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .counter { animation: countUp 0.4s ease-out; }
+        .chat-bubble {
+            border-radius: 18px;
+            word-wrap: break-word;
+            max-width: 85%;
+        }
+        .guest-bubble { background: #5B8DEF; color: white; border-bottom-left-radius: 4px; }
+        .ai-bubble { background: #aec6ff/15; color: #aec6ff; border-bottom-right-radius: 4px; border: 1px solid #aec6ff/25; }
+        #demo-play-pause {
+            width: 32px; height: 32px;
+            background: #5B8DEF;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        #demo-play-pause:hover { background: #3B6DDF; transform: scale(1.1); }
+        #demo-play-pause:active { transform: scale(0.95); }
+        .channel-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .channel-airbnb { background: #ff5a5f/20; color: #ff5a5f; }
+        .channel-whatsapp { background: #25d366/20; color: #25d366; }
+        .channel-sms { background: #00daf3/20; color: #00daf3; }
+        .channel-email { background: #ffb960/20; color: #ffb960; }
 </style>
 {%- endblock %}
 
@@ -237,23 +279,23 @@ tailwind.config = {
 
   <!-- Dashboard app content -->
   <div class="rounded-xl overflow-hidden bg-[#0d0e14] border border-white/5 flex flex-col" style="height: 420px;">
-    <!-- Top KPI stats bar -->
+    <!-- Top KPI stats bar with animated counters -->
     <div class="flex items-center gap-0 border-b border-white/5 flex-shrink-0 bg-[#08090F]">
       <div class="px-4 py-3 flex flex-col gap-0.5 border-r border-white/5 flex-1 text-center">
         <span class="text-[8px] font-bold text-slate-500 uppercase tracking-wider">Pending</span>
-        <span class="text-lg font-extrabold text-white" id="demo-pending">3</span>
+        <span class="text-lg font-extrabold text-white counter" id="demo-pending">3</span>
       </div>
       <div class="px-4 py-3 flex flex-col gap-0.5 border-r border-white/5 flex-1 text-center">
         <span class="text-[8px] font-bold text-slate-500 uppercase tracking-wider">Rate</span>
-        <span class="text-lg font-extrabold text-[#aec6ff]">96%</span>
+        <span class="text-lg font-extrabold text-[#aec6ff] counter" id="demo-rate">96<span>%</span></span>
       </div>
       <div class="px-4 py-3 flex flex-col gap-0.5 border-r border-white/5 flex-1 text-center">
         <span class="text-[8px] font-bold text-slate-500 uppercase tracking-wider">Saved</span>
-        <span class="text-lg font-extrabold text-[#ffb960]">14h</span>
+        <span class="text-lg font-extrabold text-[#ffb960] counter" id="demo-saved">14<span>h</span></span>
       </div>
       <div class="px-4 py-3 flex flex-col gap-0.5 flex-1 text-center">
         <span class="text-[8px] font-bold text-slate-500 uppercase tracking-wider">Today</span>
-        <span class="text-lg font-extrabold text-[#00daf3]">127</span>
+        <span class="text-lg font-extrabold text-[#00daf3] counter" id="demo-handled">127</span>
       </div>
     </div>
 
@@ -272,50 +314,31 @@ tailwind.config = {
         </div>
       </div>
 
-      <!-- Main content — drafts -->
-      <div class="flex-1 overflow-hidden p-4 relative">
-        <div class="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest mb-3">Pending AI Drafts</div>
-
-        <!-- Animated draft card container -->
-        <div id="demo-card" class="rounded-2xl p-4 border bg-gradient-to-br from-[#aec6ff]/8 to-[#5B8DEF]/3 border-[#aec6ff]/25 space-y-3 transition-all duration-300" style="height: 330px; display: flex; flex-direction: column;">
-          <!-- Card header -->
-          <div class="flex items-center justify-between pb-2 border-b border-white/5">
-            <div class="flex items-center gap-2.5">
-              <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#5B8DEF] to-[#aec6ff] flex items-center justify-center text-[#002e6b] font-extrabold text-sm flex-shrink-0" id="demo-avatar">S</div>
-              <div class="min-w-0">
-                <div class="text-white font-bold text-sm truncate" id="demo-guestname">Sarah K.</div>
-                <div class="text-slate-500 text-[9px] truncate" id="demo-property">Ocean View Villa · Airbnb</div>
-              </div>
-            </div>
-            <span class="text-[8px] font-extrabold uppercase tracking-widest text-[#aec6ff] bg-[#aec6ff]/10 px-2 py-0.5 rounded-lg border border-[#aec6ff]/20 flex-shrink-0" id="demo-msgtype">CHECK-IN</span>
-          </div>
-
-          <!-- Guest message -->
-          <div class="bg-[#08090F] rounded-xl p-3 border-l-2 border-white/10">
-            <p class="italic text-slate-300 text-[11px] leading-relaxed" id="demo-guestmsg">"Hi! What's the WiFi password?"</p>
-          </div>
-
-          <!-- AI reply with typing indicator -->
-          <div class="bg-[#5B8DEF]/10 rounded-xl p-3 border border-[#5B8DEF]/25 flex-1 flex flex-col justify-start relative overflow-hidden">
-            <div class="absolute top-2 right-2 opacity-20">
-              <span class="material-symbols-outlined text-[#aec6ff] text-sm">auto_awesome</span>
-            </div>
-            <p class="text-[#aec6ff] text-[11px] leading-relaxed" id="demo-reply" style="word-break: break-word;"></p>
-            <div id="demo-typing" class="flex gap-1 items-center mt-1 hidden">
-              <div class="demo-dot"></div>
-              <div class="demo-dot"></div>
-              <div class="demo-dot"></div>
+      <!-- Main content — chat UI -->
+      <div class="flex-1 overflow-hidden p-4 relative flex flex-col">
+        <!-- Header with play/pause -->
+        <div class="flex items-center justify-between pb-3 border-b border-white/5 mb-3 flex-shrink-0">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#5B8DEF] to-[#aec6ff] flex items-center justify-center text-[#002e6b] font-extrabold text-xs flex-shrink-0" id="demo-avatar">S</div>
+            <div class="min-w-0">
+              <div class="text-white font-bold text-sm truncate" id="demo-guestname">Sarah K.</div>
+              <div class="text-slate-500 text-[8px] truncate" id="demo-property">Ocean View Villa</div>
             </div>
           </div>
+          <button id="demo-play-pause" title="Pause/Resume" onclick="toggleDemoPlay()">▶</button>
+        </div>
 
-          <!-- Action buttons -->
-          <div class="flex gap-2 pt-2 border-t border-white/5">
-            <button id="demo-approvebtn" onclick="approveDemo()" class="flex-1 py-2 px-3 rounded-xl font-bold text-[10px] text-[#002e6b] bg-gradient-to-r from-[#5B8DEF] to-[#aec6ff] shadow-[0_0_12px_rgba(174,198,255,0.3)] whitespace-nowrap">
-              ✓ Approve
-            </button>
-            <button class="px-3 py-2 rounded-xl border border-white/10 text-slate-500 text-[10px] font-bold hover:bg-white/5 transition-colors">Edit</button>
-            <button class="px-3 py-2 rounded-xl border border-white/10 text-slate-500 text-[10px] font-bold hover:bg-white/5 transition-colors">Skip</button>
-          </div>
+        <!-- Chat area -->
+        <div id="demo-chat" class="flex-1 overflow-y-auto space-y-2 mb-3 flex flex-col justify-start" style="font-size: 11px; line-height: 1.4;">
+          <!-- Will be populated by JS -->
+        </div>
+
+        <!-- Action buttons at bottom -->
+        <div class="flex gap-2 pt-3 border-t border-white/5 flex-shrink-0">
+          <button id="demo-approvebtn" onclick="approveDemo()" class="flex-1 py-2 px-3 rounded-xl font-bold text-[10px] text-[#002e6b] bg-gradient-to-r from-[#5B8DEF] to-[#aec6ff] shadow-[0_0_12px_rgba(174,198,255,0.3)] whitespace-nowrap hover:scale-[1.02] transition-transform">
+            ✓ Approve
+          </button>
+          <button onclick="skipDemo()" class="px-3 py-2 rounded-xl border border-white/10 text-slate-500 text-[10px] font-bold hover:bg-white/5 transition-colors">Skip</button>
         </div>
 
         <!-- "Sent!" success overlay -->
@@ -331,92 +354,223 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- Animation script -->
+<!-- Animation script with chat UI, channels, sounds, and counters -->
 <script nonce="{{ request.state.csp_nonce }}">
 const demoScenarios = [
   {
-    avatar: 'S', guest: 'Sarah K.', property: 'Ocean View Villa · Airbnb', type: 'CHECK-IN',
+    avatar: 'S', guest: 'Sarah K.', property: 'Ocean View Villa', channel: 'airbnb',
     message: '"Hi! What\'s the WiFi password? Just arrived 😊"',
-    reply: 'Hey Sarah! Welcome 🎉 The WiFi is "OceanView_5G" — password: welcome2024. The router is by the TV. Enjoy!'
+    reply: 'Hey Sarah! Welcome 🎉 The WiFi is "OceanView_5G" — password is welcome2024. The router is by the TV!'
   },
   {
-    avatar: 'M', guest: 'Marco T.', property: 'Downtown Loft · Booking.com', type: 'QUESTION',
+    avatar: 'M', guest: 'Marco T.', property: 'Downtown Loft', channel: 'whatsapp',
     message: '"Is early check-in possible? We arrive at 10am"',
-    reply: 'Hi Marco! The loft will be ready by 11am. I\'ve left the key in the lockbox — code 4821. Welcome! 🗝️'
+    reply: 'Hi Marco! The loft will be ready by 11am. I\'ve left the key in the lockbox — code is 4821. 🗝️'
   },
   {
-    avatar: 'P', guest: 'Priya S.', property: 'Mountain Cabin · VRBO', type: 'ISSUE',
+    avatar: 'P', guest: 'Priya S.', property: 'Mountain Cabin', channel: 'sms',
     message: '"The heating isn\'t working, it\'s quite cold 🥶"',
-    reply: 'Hi Priya! Press the reset button on the thermostat (left panel). If it doesn\'t work in 5 mins, I\'ll send help!'
+    reply: 'Hi Priya! Press the reset button on the thermostat (left wall panel). If it doesn\'t work in 5 mins, I\'ll send help!'
   }
 ];
 
-let demoIdx = 0, demoReplyIdx = 0, demoPhase = 'idle';
+let demoIdx = 0, demoReplyIdx = 0, demoRunning = true, demoTimeout;
+
+const channelInfo = {
+  airbnb: { badge: 'Airbnb', icon: '🏠', class: 'channel-airbnb' },
+  whatsapp: { badge: 'WhatsApp', icon: '💬', class: 'channel-whatsapp' },
+  sms: { badge: 'SMS', icon: '✉️', class: 'channel-sms' },
+  email: { badge: 'Email', icon: '📧', class: 'channel-email' }
+};
+
+// Sound effects (simple beep using Web Audio API)
+function playSound(type) {
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain);
+    gain.connect(ac.destination);
+
+    if (type === 'message') {
+      osc.frequency.value = 800;
+      gain.gain.setValueAtTime(0.3, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.08);
+      osc.start(ac.currentTime);
+      osc.stop(ac.currentTime + 0.08);
+    } else if (type === 'sent') {
+      osc.frequency.value = 1200;
+      gain.gain.setValueAtTime(0.2, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.12);
+      osc.start(ac.currentTime);
+      osc.stop(ac.currentTime + 0.12);
+    }
+  } catch(e) {}
+}
+
+// Animate counter numbers
+function animateCounter(id, startVal, endVal, duration) {
+  const el = document.getElementById(id);
+  const start = Date.now();
+  const span = el.querySelector('span');
+
+  const tick = () => {
+    const now = Date.now();
+    const progress = Math.min((now - start) / duration, 1);
+    const current = Math.floor(startVal + (endVal - startVal) * progress);
+
+    if (span) {
+      el.textContent = current;
+      el.appendChild(span);
+    } else {
+      el.textContent = current;
+    }
+
+    if (progress < 1) requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+function renderChat(s) {
+  const chat = document.getElementById('demo-chat');
+  chat.innerHTML = '';
+
+  // Guest message bubble
+  const guestBubble = document.createElement('div');
+  guestBubble.className = 'flex justify-end mb-2';
+  guestBubble.innerHTML = `
+    <div class="chat-bubble guest-bubble px-3 py-2 rounded-lg text-sm text-white max-w-xs">
+      ${s.message}
+    </div>
+  `;
+  guestBubble.style.opacity = '0';
+  guestBubble.style.animation = 'countUp 0.3s ease-out forwards';
+  chat.appendChild(guestBubble);
+
+  // Channel badge
+  const channel = channelInfo[s.channel] || channelInfo.email;
+  const badgeEl = document.createElement('div');
+  badgeEl.className = 'flex justify-end mb-3 mt-1';
+  badgeEl.innerHTML = `<span class="channel-badge ${channel.class}">${channel.badge}</span>`;
+  chat.appendChild(badgeEl);
+
+  // AI typing indicator
+  const typingEl = document.createElement('div');
+  typingEl.className = 'flex gap-1 mb-2';
+  typingEl.innerHTML = '<div class="demo-dot"></div><div class="demo-dot"></div><div class="demo-dot"></div>';
+  chat.appendChild(typingEl);
+
+  playSound('message');
+}
+
+function typeReply(s) {
+  const chat = document.getElementById('demo-chat');
+
+  // Remove typing indicator and add AI bubble
+  chat.querySelectorAll('.demo-dot').forEach(d => d.remove());
+
+  const aiBubble = document.createElement('div');
+  aiBubble.className = 'flex justify-start mb-2';
+  aiBubble.id = 'demo-ai-bubble';
+  aiBubble.innerHTML = `
+    <div class="chat-bubble ai-bubble px-3 py-2 rounded-lg text-sm max-w-xs" id="demo-reply-text"></div>
+  `;
+  chat.appendChild(aiBubble);
+
+  // Type out reply character by character
+  let idx = 0;
+  const textEl = document.getElementById('demo-reply-text');
+
+  const typeChar = () => {
+    if (!demoRunning) return;
+    if (idx < s.reply.length) {
+      textEl.textContent = s.reply.slice(0, idx + 1);
+      idx++;
+      setTimeout(typeChar, 18);
+    } else {
+      // Done typing
+      document.getElementById('demo-approvebtn').style.boxShadow = '0 0 24px rgba(174,198,255,0.7)';
+      if (demoRunning) demoTimeout = setTimeout(approveDemo, 1500);
+    }
+  };
+  typeChar();
+}
 
 function runDemoScene() {
+  if (!demoRunning) return;
+
   const s = demoScenarios[demoIdx];
   document.getElementById('demo-avatar').textContent = s.avatar;
   document.getElementById('demo-guestname').textContent = s.guest;
   document.getElementById('demo-property').textContent = s.property;
-  document.getElementById('demo-msgtype').textContent = s.type;
-  document.getElementById('demo-guestmsg').innerHTML = s.message;
-  document.getElementById('demo-reply').textContent = '';
-  document.getElementById('demo-typing').classList.remove('hidden');
-  document.getElementById('demo-sent').classList.add('hidden');
-  document.getElementById('demo-card').style.opacity = '1';
   document.getElementById('demo-approvebtn').textContent = '✓ Approve';
-  document.getElementById('demo-approvebtn').disabled = false;
+  document.getElementById('demo-approvebtn').style.boxShadow = '';
 
-  demoReplyIdx = 0;
-  demoPhase = 'typing';
+  renderChat(s);
 
-  // Show typing indicator for 1.2s, then type reply
-  setTimeout(() => {
-    document.getElementById('demo-typing').classList.add('hidden');
-    typeReplyChar();
-  }, 1200);
-}
-
-function typeReplyChar() {
-  const s = demoScenarios[demoIdx];
-  if (demoReplyIdx < s.reply.length) {
-    document.getElementById('demo-reply').textContent = s.reply.slice(0, demoReplyIdx + 1);
-    demoReplyIdx++;
-    setTimeout(typeReplyChar, 16);
-  } else {
-    demoPhase = 'typed';
-    document.getElementById('demo-approvebtn').style.boxShadow = '0 0 24px rgba(174,198,255,0.7)';
-    setTimeout(approveDemo, 1500);
-  }
+  demoTimeout = setTimeout(() => typeReply(s), 1200);
 }
 
 function approveDemo() {
+  if (!demoRunning) return;
+  playSound('sent');
+
   document.getElementById('demo-approvebtn').textContent = '✓ Sending...';
-  setTimeout(() => {
-    document.getElementById('demo-card').style.opacity = '0';
-    setTimeout(() => {
+  demoTimeout = setTimeout(() => {
+    document.getElementById('demo-chat').style.opacity = '0';
+    demoTimeout = setTimeout(() => {
       document.getElementById('demo-sent').classList.remove('hidden');
 
-      // Decrement pending
-      const p = document.getElementById('demo-pending');
-      let v = parseInt(p.textContent);
-      if (v > 1) {
-        p.textContent = v - 1;
-      } else {
-        p.textContent = demoScenarios.length;
-      }
+      // Decrement pending, increment rate & saved
+      const pEl = document.getElementById('demo-pending');
+      let p = parseInt(pEl.textContent);
+      if (p > 1) p--;
+      else p = demoScenarios.length;
+      animateCounter('demo-pending', parseInt(pEl.textContent), p, 400);
 
-      setTimeout(() => {
+      // Increment rate
+      const rEl = document.getElementById('demo-rate');
+      let rateVal = parseInt(rEl.textContent);
+      if (rateVal < 98) animateCounter('demo-rate', rateVal, rateVal + 1, 400);
+
+      demoTimeout = setTimeout(() => {
         document.getElementById('demo-sent').classList.add('hidden');
+        document.getElementById('demo-chat').style.opacity = '1';
         demoIdx = (demoIdx + 1) % demoScenarios.length;
         runDemoScene();
       }, 1400);
-    }, 300);
+    }, 200);
   }, 500);
 }
 
-// Start animation when page loads
-window.addEventListener('load', () => { setTimeout(runDemoScene, 600); });
+function skipDemo() {
+  if (!demoRunning) return;
+  demoIdx = (demoIdx + 1) % demoScenarios.length;
+  clearTimeout(demoTimeout);
+  document.getElementById('demo-chat').style.opacity = '1';
+  runDemoScene();
+}
+
+function toggleDemoPlay() {
+  demoRunning = !demoRunning;
+  const btn = document.getElementById('demo-play-pause');
+  btn.textContent = demoRunning ? '⏸' : '▶';
+  if (demoRunning) {
+    btn.style.background = '#5B8DEF';
+    runDemoScene();
+  }
+}
+
+// Start when page loads
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    animateCounter('demo-pending', 0, 3, 800);
+    animateCounter('demo-rate', 0, 96, 1000);
+    animateCounter('demo-saved', 0, 14, 900);
+    animateCounter('demo-handled', 0, 127, 950);
+    setTimeout(runDemoScene, 400);
+  }, 200);
+});
 </script>
 </section>
 <!-- Social Proof -->
