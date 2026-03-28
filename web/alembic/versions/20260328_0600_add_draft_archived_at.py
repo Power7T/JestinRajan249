@@ -17,18 +17,15 @@ depends_on = None
 
 
 def upgrade() -> None:
-    conn = op.get_bind()
-    inspector = sa.inspect(conn)
-
-    # Get existing columns in drafts table
-    existing_columns = [col['name'] for col in inspector.get_columns('drafts')]
-
     # Add archived_at column if it doesn't exist
-    if 'archived_at' not in existing_columns:
+    try:
         op.add_column(
             'drafts',
             sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True)
         )
+    except Exception:
+        # Column may already exist
+        pass
 
     # Create composite index on api_usage_logs for tenant_id + created_at
     try:
@@ -44,15 +41,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    conn = op.get_bind()
-    inspector = sa.inspect(conn)
-
-    # Get existing columns in drafts table
-    existing_columns = [col['name'] for col in inspector.get_columns('drafts')]
-
     # Remove archived_at column if it exists
-    if 'archived_at' in existing_columns:
+    try:
         op.drop_column('drafts', 'archived_at')
+    except Exception:
+        # Column may not exist
+        pass
 
     # Remove the index
     try:
