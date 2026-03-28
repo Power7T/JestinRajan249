@@ -272,12 +272,34 @@ body {
 <h2 class="text-2xl font-extrabold text-white tracking-tight">Pending AI Drafts</h2>
 <span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">{{ drafts|length }} PENDING</span>
 </div>
+
+<!-- Bulk Actions Toolbar (hidden by default) -->
+{% if drafts %}
+<div id="bulk-toolbar" class="hidden mb-6 p-4 bg-primary/10 border border-primary/30 rounded-xl flex items-center justify-between">
+  <div class="text-sm text-white">
+    <span id="selected-count">0</span> draft<span id="plural">s</span> selected
+  </div>
+  <div class="flex gap-3">
+    <button id="bulk-approve-btn" onclick="bulkApprove()" class="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold rounded-lg text-sm hover:scale-105 transition-all">
+      ✓ Approve All
+    </button>
+    <button id="bulk-skip-btn" onclick="bulkSkip()" class="px-4 py-2 bg-slate-700 text-white font-bold rounded-lg text-sm hover:bg-slate-600 transition-all">
+      ⊘ Skip All
+    </button>
+    <button onclick="clearSelection()" class="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-lg text-sm hover:bg-slate-700 transition-all">
+      Clear
+    </button>
+  </div>
+</div>
+{% endif %}
+
 <!-- Real Draft Loop -->
 {% if drafts %}
 {% for draft in drafts %}
-<div class="glass-card rounded-3xl p-8 group hover:bg-white/[0.03] transition-colors border-l-4 {% if draft.msg_type == 'escalation' %}border-l-error{% elif draft.msg_type == 'calendar' %}border-l-secondary-fixed-dim{% else %}border-l-primary{% endif %} mb-4" id="draft-{{ draft.id }}">
+<div class="glass-card rounded-3xl p-8 group hover:bg-white/[0.03] transition-colors border-l-4 {% if draft.msg_type == 'escalation' %}border-l-error{% elif draft.msg_type == 'calendar' %}border-l-secondary-fixed-dim{% else %}border-l-primary{% endif %} mb-4" id="draft-{{ draft.id }}" data-draft-id="{{ draft.id }}">
 <div class="flex items-start justify-between mb-6">
   <div class="flex items-center gap-4">
+    <input type="checkbox" class="draft-checkbox w-5 h-5 rounded accent-primary" value="{{ draft.id }}" onchange="updateBulkToolbar()">
     <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary text-xl font-extrabold shadow-lg">
       {{ (draft.guest_name or '?')[0] | upper }}
     </div>
@@ -314,12 +336,14 @@ body {
       ✓ Approve &amp; Send
     </button>
   </form>
-  <button class="px-6 py-3 text-white border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all"
+  <button class="px-6 py-3 text-white border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all htmx-request:opacity-50 htmx-request:cursor-wait"
     hx-get="/drafts/{{ draft.id }}/edit-form"
     hx-target="#edit-area-{{ draft.id }}"
-    hx-swap="innerHTML">
+    hx-swap="innerHTML"
+    hx-indicator="#edit-loading-{{ draft.id }}">
     ✎ Edit
   </button>
+  <div id="edit-loading-{{ draft.id }}" class="spinner hidden" style="width:1rem;height:1rem;border-width:2px"></div>
   <form method="post" action="/drafts/{{ draft.id }}/skip">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <button type="submit" class="px-4 py-3 text-slate-400 hover:text-error border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all text-sm">
@@ -376,7 +400,10 @@ body {
 </div>
 {% endfor %}
 {% else %}
-<p class="text-slate-500 text-sm">No recent activity yet.</p>
+<div class="text-center py-8 px-4">
+  <span class="material-symbols-outlined text-4xl text-slate-600 mb-4 inline-block">history</span>
+  <p class="text-slate-400 text-sm">No activity yet — your AI hasn't approved any messages.</p>
+</div>
 {% endif %}
 </div>
 </div>

@@ -67,6 +67,136 @@
       opacity: 1;
     }
   </style>
+  <!-- Global toast notification styles -->
+  <style>
+    #global-toast {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      max-width: 400px;
+      padding: 1rem 1.5rem;
+      border-radius: 0.75rem;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      border: 1px solid rgba(174, 198, 255, 0.2);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      z-index: 9999;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      transform: translateY(-10px);
+    }
+    #global-toast.show {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #global-toast.success { border-left: 4px solid #10b981; }
+    #global-toast.error { border-left: 4px solid #ef4444; }
+    #global-toast.info { border-left: 4px solid #3b82f6; }
+    #global-toast.warning { border-left: 4px solid #f59e0b; }
+
+    /* Confirm dialog styles */
+    #confirm-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #1a1a1a;
+      border: 1px solid rgba(174, 198, 255, 0.2);
+      border-radius: 0.75rem;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      z-index: 10000;
+      display: none;
+      min-width: 320px;
+      max-width: 500px;
+    }
+    #confirm-dialog.show { display: block; }
+    #confirm-dialog-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9998;
+      display: none;
+    }
+    #confirm-dialog-overlay.show { display: block; }
+    #confirm-dialog-message {
+      margin-bottom: 1.5rem;
+      color: #e0e0e0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    #confirm-dialog-buttons {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+    }
+    #confirm-dialog-buttons button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #confirm-dialog-buttons .confirm-btn {
+      background: #ef4444;
+      color: white;
+    }
+    #confirm-dialog-buttons .confirm-btn:hover {
+      background: #dc2626;
+    }
+    #confirm-dialog-buttons .cancel-btn {
+      background: #374151;
+      color: #e0e0e0;
+    }
+    #confirm-dialog-buttons .cancel-btn:hover {
+      background: #4b5563;
+    }
+
+    /* Spinner overlay */
+    #spinner-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9997;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    #spinner-overlay.show { display: flex; }
+    .spinner {
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 3px solid rgba(174, 198, 255, 0.2);
+      border-top-color: #aec6ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 640px) {
+      #global-toast {
+        top: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: none;
+      }
+      #confirm-dialog {
+        min-width: 280px;
+        max-width: calc(100vw - 2rem);
+      }
+    }
+  </style>
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -99,6 +229,24 @@
 </div>
 {% endblock %}
 
+<!-- Global toast notification -->
+<div id="global-toast"></div>
+
+<!-- Confirm dialog -->
+<div id="confirm-dialog-overlay"></div>
+<div id="confirm-dialog">
+  <div id="confirm-dialog-message"></div>
+  <div id="confirm-dialog-buttons">
+    <button class="cancel-btn">Cancel</button>
+    <button class="confirm-btn">OK</button>
+  </div>
+</div>
+
+<!-- Spinner overlay -->
+<div id="spinner-overlay">
+  <div class="spinner"></div>
+</div>
+
 <script nonce="{{ request.state.csp_nonce }}">
 // ── Theme toggle ────────────────────────────────────────────
 const THEME_KEY = 'hostai-theme';
@@ -121,6 +269,214 @@ function toggleTheme() {
   const btn = document.getElementById('theme-toggle-btn');
   if (btn) btn.addEventListener('click', toggleTheme);
 })();
+
+// ── Global Toast Notification ────────────────────────────────────────
+function showToast(message, type = 'info') {
+  const toast = document.getElementById('global-toast');
+  toast.textContent = message;
+  toast.className = 'show ' + type;
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3500);
+}
+
+// ── Confirm Dialog ────────────────────────────────────────────────────
+function showConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('confirm-dialog-overlay');
+    const dialog = document.getElementById('confirm-dialog');
+    const msgEl = document.getElementById('confirm-dialog-message');
+    const cancelBtn = dialog.querySelector('.cancel-btn');
+    const confirmBtn = dialog.querySelector('.confirm-btn');
+
+    msgEl.textContent = message;
+    overlay.classList.add('show');
+    dialog.classList.add('show');
+
+    const cleanup = () => {
+      overlay.classList.remove('show');
+      dialog.classList.remove('show');
+      cancelBtn.removeEventListener('click', onCancel);
+      confirmBtn.removeEventListener('click', onConfirm);
+    };
+
+    const onConfirm = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    cancelBtn.addEventListener('click', onCancel);
+    confirmBtn.addEventListener('click', onConfirm);
+    confirmBtn.focus();
+  });
+}
+
+// ── Spinner Overlay ──────────────────────────────────────────────────
+function showSpinner() {
+  document.getElementById('spinner-overlay').classList.add('show');
+}
+
+function hideSpinner() {
+  document.getElementById('spinner-overlay').classList.remove('show');
+}
+
+// ── Keyboard Shortcuts ───────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  // Cmd+K / Ctrl+K: focus search
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    const searchInput = document.querySelector('input[type="text"][placeholder*="Search"], input[name="q"]');
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.select();
+    }
+  }
+
+  // Enter on focused draft: approve it (if there's an approve button in focus context)
+  if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+    const activeEl = document.activeElement;
+    if (activeEl && activeEl.dataset.draftId) {
+      const approveBtn = activeEl.closest('[data-draft-id]')?.querySelector('[data-action="approve"]');
+      if (approveBtn) {
+        e.preventDefault();
+        approveBtn.click();
+      }
+    }
+  }
+
+  // Arrow keys: navigate drafts
+  if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && document.querySelector('[data-draft-id]')) {
+    const drafts = Array.from(document.querySelectorAll('[data-draft-id]'));
+    if (drafts.length === 0) return;
+
+    const currentDraft = drafts.find(d => d.contains(document.activeElement));
+    const currentIndex = currentDraft ? drafts.indexOf(currentDraft) : -1;
+    const nextIndex = e.key === 'ArrowDown' ? currentIndex + 1 : currentIndex - 1;
+
+    if (nextIndex >= 0 && nextIndex < drafts.length) {
+      e.preventDefault();
+      const focusEl = drafts[nextIndex].querySelector('button') || drafts[nextIndex];
+      focusEl.focus();
+    }
+  }
+});
+
+// ── SSE Real-time Notifications ──────────────────────────────────────
+(function() {
+  // Only connect to SSE on authenticated pages (when tenant is defined)
+  if (typeof tenant !== 'undefined' && tenant) {
+    const eventSource = new EventSource('/api/sse/drafts');
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        showToast(`New draft from ${data.guest_name} (${data.source})`, 'info');
+      } catch (e) {
+        console.error('SSE parse error:', e);
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      // Reconnect after 5 seconds
+      setTimeout(() => {
+        location.reload();
+      }, 5000);
+    };
+  }
+})();
+
+// ── Bulk Actions ─────────────────────────────────────────────────────
+function updateBulkToolbar() {
+  const checkboxes = document.querySelectorAll('.draft-checkbox:checked');
+  const toolbar = document.getElementById('bulk-toolbar');
+  const count = checkboxes.length;
+
+  if (count > 0) {
+    toolbar.classList.remove('hidden');
+    document.getElementById('selected-count').textContent = count;
+    document.getElementById('plural').textContent = count === 1 ? '' : 's';
+  } else {
+    toolbar.classList.add('hidden');
+  }
+}
+
+async function bulkApprove() {
+  const checkboxes = document.querySelectorAll('.draft-checkbox:checked');
+  const draftIds = Array.from(checkboxes).map(cb => cb.value);
+
+  if (draftIds.length === 0) return;
+
+  const confirmed = await showConfirm(`Approve ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}?`);
+  if (!confirmed) return;
+
+  showSpinner();
+  try {
+    const response = await fetch('/drafts/bulk-approve', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf_token"]')?.value || ''
+      },
+      body: JSON.stringify({ draft_ids: draftIds })
+    });
+
+    if (response.ok) {
+      showToast(`Approved ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}`, 'success');
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      showToast('Failed to approve drafts', 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    hideSpinner();
+  }
+}
+
+async function bulkSkip() {
+  const checkboxes = document.querySelectorAll('.draft-checkbox:checked');
+  const draftIds = Array.from(checkboxes).map(cb => cb.value);
+
+  if (draftIds.length === 0) return;
+
+  const confirmed = await showConfirm(`Skip ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}?`);
+  if (!confirmed) return;
+
+  showSpinner();
+  try {
+    const response = await fetch('/drafts/bulk-skip', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf_token"]')?.value || ''
+      },
+      body: JSON.stringify({ draft_ids: draftIds })
+    });
+
+    if (response.ok) {
+      showToast(`Skipped ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}`, 'success');
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      showToast('Failed to skip drafts', 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    hideSpinner();
+  }
+}
+
+function clearSelection() {
+  document.querySelectorAll('.draft-checkbox').forEach(cb => cb.checked = false);
+  updateBulkToolbar();
+}
 </script>
 {% block scripts %}{% endblock %}
 </body>

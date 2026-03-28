@@ -272,7 +272,7 @@ def _gdpr_data_retention_job():
             # Note: BaileysOutbound table cleanup removed (Baileys integration discontinued)
             total_deleted += db.query(Draft).filter(Draft.tenant_id == tid, Draft.created_at < cutoff).delete(synchronize_session=False)
             total_deleted += db.query(ProcessedEmail).filter(ProcessedEmail.tenant_id == tid, ProcessedEmail.created_at < cutoff).delete(synchronize_session=False)
-            total_deleted += db.query(ActivityLog).filter(ActivityLog.tenant_id == tid, ActivityLog.timestamp < cutoff).delete(synchronize_session=False)
+            total_deleted += db.query(ActivityLog).filter(ActivityLog.tenant_id == tid, ActivityLog.created_at < cutoff).delete(synchronize_session=False)
             total_deleted += db.query(FailedDraftLog).filter(FailedDraftLog.tenant_id == tid, FailedDraftLog.created_at < cutoff).delete(synchronize_session=False)
             total_deleted += db.query(PMSProcessedMessage).filter(PMSProcessedMessage.tenant_id == tid, PMSProcessedMessage.created_at < cutoff).delete(synchronize_session=False)
 
@@ -5849,6 +5849,22 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
     thirty_days_ago  = now_utc - timedelta(days=30)
     fourteen_days_ago = now_utc - timedelta(days=14)
 
+    # Fetch last activity per tenant (N+1 fix: single query)
+    last_activity_per_tenant = {}
+    from sqlalchemy import func
+    subq = (
+        db.query(ActivityLog.tenant_id, func.max(ActivityLog.created_at).label("max_created_at"))
+        .group_by(ActivityLog.tenant_id)
+        .subquery()
+    )
+    last_logs = (
+        db.query(ActivityLog)
+        .join(subq, (ActivityLog.tenant_id == subq.c.tenant_id) & (ActivityLog.created_at == subq.c.max_created_at))
+        .all()
+    )
+    for log in last_logs:
+        last_activity_per_tenant[log.tenant_id] = log.created_at
+
     tenant_rows = []
     plan_counts: dict = {}
     mrr = 0
@@ -5867,13 +5883,7 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
         email_conf = bool(cfg and cfg.imap_host and cfg.email_address)
         worker_dead = email_conf and not ws["email_running"]
 
-        last_log = (
-            db.query(ActivityLog)
-            .filter_by(tenant_id=t.id)
-            .order_by(ActivityLog.created_at.desc())
-            .first()
-        )
-        last_active  = last_log.created_at if last_log else t.created_at
+        last_active  = last_activity_per_tenant.get(t.id, t.created_at)
         inactive_14d = last_active < fourteen_days_ago
 
         tenant_rows.append({
@@ -6235,8 +6245,10 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
     total_cost = 0.0
 
     try:
-        usage_logs = db.query(ApiUsageLog).order_by(ApiUsageLog.created_at.desc()).limit(100).all()
-        total_cost = sum(log.cost_usd for log in db.query(ApiUsageLog).all())
+        from datetime import timedelta
+        start_date = datetime.now(timezone.utc) - timedelta(days=30)
+        usage_logs = db.query(ApiUsageLog).filter(ApiUsageLog.created_at >= start_date).order_by(ApiUsageLog.created_at.desc()).limit(100).all()
+        total_cost = sum(log.cost_usd for log in db.query(ApiUsageLog).filter(ApiUsageLog.created_at >= start_date).all())
     except Exception:
         # api_usage_logs table may not exist yet if migrations haven't fully run
         pass
@@ -6364,9 +6376,16 @@ def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
     }
 
     from sqlalchemy.sql import func
+    from datetime import timedelta
     cost_dict = {}
     try:
-        costs = db.query(ApiUsageLog.tenant_id, func.sum(ApiUsageLog.cost_usd).label("total_cost")).group_by(ApiUsageLog.tenant_id).all()
+        start_date = datetime.now(timezone.utc) - timedelta(days=30)
+        costs = (
+            db.query(ApiUsageLog.tenant_id, func.sum(ApiUsageLog.cost_usd).label("total_cost"))
+            .filter(ApiUsageLog.created_at >= start_date)
+            .group_by(ApiUsageLog.tenant_id)
+            .all()
+        )
         cost_dict = {t_id: float(cost or 0) for t_id, cost in costs}
     except Exception:
         # api_usage_logs table may not exist yet if migrations haven't fully run

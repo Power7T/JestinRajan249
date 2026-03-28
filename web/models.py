@@ -259,6 +259,7 @@ class Draft(Base):
     host_feedback_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     host_feedback_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     context_sources: Mapped[Optional[str]]   = mapped_column(Text, nullable=True)   # JSON list of source labels
+    archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="drafts")
     reservation: Mapped[Optional["Reservation"]] = relationship("Reservation", back_populates="drafts")
