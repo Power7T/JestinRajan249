@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Admin — Host Profitability — HostAI{% endblock %}
+{% set tenant = admin %}
+{% block title %}Host Profitability — Admin{% endblock %}
 
 {% block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
@@ -20,54 +21,10 @@ tailwind.config = {
 <style>
 body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
 .glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
-.material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 200,'GRAD' 0,'opsz' 24; }
-/* Compat layer */
-:root{--surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;--border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);--text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;--accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);--success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);--danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);--warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.2);--radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;}
-.compat h1{font-size:1.6rem;font-weight:800;color:#e3e1eb;margin-bottom:0.25rem}.compat h2{font-size:1.05rem;font-weight:700;color:#e3e1eb;margin-bottom:0.65rem}.compat h3{font-size:0.9rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
-.compat .card,.compat .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
-.compat label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
-.compat input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.compat select,.compat textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
-.compat input:focus,.compat select:focus,.compat textarea:focus{border-color:#5B8DEF}
-.compat .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
-.compat .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
-.compat .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
-.compat .btn-outline:hover{background:rgba(174,198,255,0.08)}
-.compat .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
-.compat .btn-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
-.compat .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
-.compat .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
-.compat .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
-.compat .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
-.compat table{width:100%;border-collapse:collapse;font-size:0.84rem}
-.compat th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
-.compat td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
-.compat .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
-.compat .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
-.compat .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
-.compat .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
-.compat .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem}
-.compat .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
-.compat .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
-.compat .alert-error,.compat .alert-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
-.compat .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
-.compat .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
-.compat .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
-.compat .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
-.compat .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;background:rgba(174,198,255,0.08);color:#aec6ff;margin-left:0.2rem}
-.compat .timeline{display:flex;flex-direction:column}
-.compat .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
-.compat .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
-.compat .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
-.compat .timeline-text{font-size:0.8rem;color:#8d909e}
-.compat .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
-.compat .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
-.compat .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
-.compat .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
-.compat .card-meta{font-size:0.75rem;color:#8d909e}
-.compat .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-.compat code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
-.compat input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
-.compat details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
+.material-symbols-outlined { font-variation-settings:'FILL' 1,'wght' 300,'GRAD' 0,'opsz' 24; }
+.admin-tab { padding-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; transition: color 0.2s, border-bottom-color 0.2s; border-bottom: 2px solid transparent; color: #8d909e; }
+.admin-tab:hover { color: #e3e1eb; }
+.admin-tab.active { color: #5B8DEF; border-bottom-color: #5B8DEF; }
 </style>
 {%- endblock %}
 
@@ -79,54 +36,47 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 <aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col">
   <div class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7">
     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
-      <span class="material-symbols-outlined text-[#002e6b] text-lg">bolt</span>
+      <span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
     </div>
     <span>HostAI</span>
   </div>
   <nav class="flex-1 px-4 space-y-1">
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-                Dashboard
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
-<span class="material-symbols-outlined" data-icon="forum">forum</span>
-                Conversations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
-<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
-                Reservations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
-<span class="material-symbols-outlined" data-icon="history">history</span>
-                Activity
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
-<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
-                Analytics
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
-<span class="material-symbols-outlined" data-icon="hub">hub</span>
-                Workflow Center
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
-                Settings
-            </a>
-{% if tenant is defined and tenant and is_admin(tenant.email) %}
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
-<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
-                Admin
-            </a>
-{% endif %}
-</nav>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+      <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
+      <span class="material-symbols-outlined" data-icon="forum">forum</span> Conversations
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
+      <span class="material-symbols-outlined" data-icon="event_available">event_available</span> Reservations
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
+      <span class="material-symbols-outlined" data-icon="history">history</span> Activity
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
+      <span class="material-symbols-outlined" data-icon="analytics">analytics</span> Analytics
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
+      <span class="material-symbols-outlined" data-icon="hub">hub</span> Workflow Center
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
+      <span class="material-symbols-outlined" data-icon="settings">settings</span> Settings
+    </a>
+    {% if is_admin(admin.email) %}
+    <a class="flex items-center gap-3 px-6 py-3 text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold transition-all duration-200" href="/admin">
+      <span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span> Admin Panel
+    </a>
+    {% endif %}
+  </nav>
+
   <div class="p-6 border-t border-white/5">
     <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
       <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-        {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+        {{ (admin.name or admin.email or 'H')[0]|upper }}
       </div>
       <div class="flex-1 min-w-0">
-        <p class="text-white text-sm font-bold truncate">{{ tenant.name or tenant.email.split('@')[0]|title if tenant else 'Host' }}</p>
-        <p class="text-slate-500 text-xs truncate">Host Account</p>
+        <p class="text-white text-sm font-bold truncate">{{ admin.name or admin.email.split('@')[0]|title }}</p>
+        <p class="text-slate-500 text-xs truncate">Admin Account</p>
       </div>
     </div>
     <form method="post" action="/logout">
@@ -137,113 +87,124 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     </form>
   </div>
 </aside>
+
 <!-- Main -->
-<main class="ml-[260px] pt-8 pb-12 px-8 min-h-screen">
-  <div class="mb-8 pt-4">
-    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Admin — Host Profitability</h1>
-    <p class="text-slate-400 text-sm">Per-host revenue and profitability metrics</p>
-  </div>
-  <div class="compat">
-<h1>Host Profitability Analytics</h1>
-
-<div class="admin-nav">
-  <a href="/admin">Overview</a>
-  <a href="/admin/system">System Health</a>
-  <a href="/admin/ai">AI Engine</a>
-  <a href="/admin/costs">Overall Costs</a>
-  <a href="/admin/host-profitability" class="active">Host Profitability</a>
-</div>
-
-<!-- Summary Cards -->
-<div class="summary-grid">
-  <div class="summary-card">
-    <div class="summary-value">${{ "%.0f"|format(total_revenue) }}</div>
-    <div class="summary-label">Total Monthly Revenue</div>
-  </div>
-  <div class="summary-card">
-    <div class="summary-value">${{ "%.0f"|format(total_cost) }}</div>
-    <div class="summary-label">Total Monthly Costs</div>
-  </div>
-  <div class="summary-card">
-    <div class="summary-value {% if total_profit > 0 %}profit-pos{% else %}profit-neg{% endif %}">
-      ${{ "%.0f"|format(total_profit) }}
+<main class="ml-[260px] pt-8 pb-12 px-8 min-h-screen relative">
+  <div class="absolute -top-48 -right-48 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
+  
+  <div class="mb-10 pt-4">
+    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">Host Profitability</h1>
+    <p class="text-slate-400 text-sm">Per-tenant unit economics and margin analysis</p>
+    
+    <!-- Admin Subnav -->
+    <div class="flex items-center gap-6 mt-6 border-b border-white/10">
+      <a href="/admin" class="admin-tab">Overview</a>
+      <a href="/admin/system" class="admin-tab">System Health</a>
+      <a href="/admin/ai" class="admin-tab">AI Engine</a>
+      <a href="/admin/costs" class="admin-tab">Profitability</a>
+      <a href="/admin/host-profitability" class="admin-tab active">Host Profitability</a>
+      <a href="/admin/health_api" class="admin-tab">API Health</a>
     </div>
-    <div class="summary-label">Net Monthly Profit</div>
   </div>
-  <div class="summary-card">
-    <div class="summary-value" style="color:{% if total_margin_pct >= 70 %}var(--success){% elif total_margin_pct >= 50 %}var(--warn){% else %}var(--danger){% endif %}">
-      {{ "%.1f"|format(total_margin_pct) }}%
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="glass-card p-5 rounded-2xl border-b-4 border-[#5B8DEF]">
+      <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Monthly Revenue</div>
+      <div class="text-3xl font-extrabold text-[#5B8DEF]">${{ "%.0f"|format(total_revenue) }}</div>
     </div>
-    <div class="summary-label">Profit Margin</div>
+    <div class="glass-card p-5 rounded-2xl border-b-4 border-amber-500">
+      <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Monthly Costs</div>
+      <div class="text-3xl font-extrabold text-amber-500">${{ "%.0f"|format(total_cost) }}</div>
+    </div>
+    <div class="glass-card p-5 rounded-2xl {% if total_profit > 0 %}border-b-4 border-[#27c93f]{% else %}border-b-4 border-rose-500 bg-rose-500/5{% endif %}">
+      <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Net Monthly Profit</div>
+      <div class="text-3xl font-extrabold {% if total_profit > 0 %}text-[#27c93f]{% else %}text-rose-500{% endif %}">
+        ${{ "%.0f"|format(total_profit) }}
+      </div>
+    </div>
+    <div class="glass-card p-5 rounded-2xl border-b-4 {% if total_margin_pct >= 70 %}border-[#27c93f]{% elif total_margin_pct >= 50 %}border-amber-500{% else %}border-rose-500{% endif %}">
+      <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Profit Margin</div>
+      <div class="text-3xl font-extrabold" style="color:{% if total_margin_pct >= 70 %}#27c93f{% elif total_margin_pct >= 50 %}#fbbf24{% else %}#f43f5e{% endif %}">
+        {{ "%.1f"|format(total_margin_pct) }}%
+      </div>
+    </div>
   </div>
-</div>
 
-<!-- Per-Host Table -->
-<div style="overflow-x:auto;">
-  <table class="hosts-table">
-    <thead>
-      <tr>
-        <th>Email</th>
-        <th>Plan</th>
-        <th style="text-align:center;">Properties</th>
-        <th style="text-align:right;">Monthly Revenue</th>
-        <th style="text-align:right;">API Costs</th>
-        <th style="text-align:right;">Infra Costs</th>
-        <th style="text-align:right;">Total Cost</th>
-        <th style="text-align:right;">Profit</th>
-        <th style="text-align:right;">Margin %</th>
-        <th style="text-align:center;">Messages (30d)</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for host in hosts %}
-      <tr>
-        <td class="email-cell">{{ host.email }}</td>
-        <td>
-          <span class="plan-badge plan-{{ host.plan.lower() }}">{{ host.plan }}</span>
-        </td>
-        <td style="text-align:center;">{{ host.units }}</td>
-        <td class="metric-num">${{ "%.2f"|format(host.revenue) }}</td>
-        <td class="metric-num" style="color:var(--warn);">${{ "%.2f"|format(host.api_cost) }}</td>
-        <td class="metric-num">${{ "%.2f"|format(host.infra_cost) }}</td>
-        <td class="metric-num" style="color:var(--text-2);">${{ "%.2f"|format(host.total_cost) }}</td>
-        <td class="metric-num {% if host.profit > 0 %}profit-pos{% else %}profit-neg{% endif %}">
-          ${{ "%.2f"|format(host.profit) }}
-        </td>
-        <td class="metric-num {% if host.margin_pct >= 70 %}margin-good{% elif host.margin_pct >= 50 %}margin-warn{% else %}margin-bad{% endif %}">
-          {{ "%.1f"|format(host.margin_pct) }}%
-        </td>
-        <td style="text-align:center;">{{ host.messages_30d }}</td>
-        <td>{{ host.status }}</td>
-      </tr>
-      {% endfor %}
-      <tr class="footer-row">
-        <td colspan="3">TOTAL</td>
-        <td class="metric-num">${{ "%.0f"|format(total_revenue) }}</td>
-        <td class="metric-num"></td>
-        <td class="metric-num"></td>
-        <td class="metric-num">${{ "%.0f"|format(total_cost) }}</td>
-        <td class="metric-num {% if total_profit > 0 %}profit-pos{% else %}profit-neg{% endif %}">
-          ${{ "%.0f"|format(total_profit) }}
-        </td>
-        <td class="metric-num" style="color:var(--accent);">{{ "%.1f"|format(total_margin_pct) }}%</td>
-        <td colspan="2"></td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+  <!-- Per-Host Table -->
+  <div class="glass-card rounded-3xl overflow-hidden mb-8">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left whitespace-nowrap">
+        <thead class="text-[0.65rem] tracking-wider uppercase text-slate-500 bg-black/20 border-b border-white/5">
+          <tr>
+            <th class="px-6 py-4 font-bold">Email</th>
+            <th class="px-6 py-4 font-bold">Plan</th>
+            <th class="px-6 py-4 font-bold text-center">Properties</th>
+            <th class="px-6 py-4 font-bold text-right">Revenue</th>
+            <th class="px-6 py-4 font-bold text-right">API Cost</th>
+            <th class="px-6 py-4 font-bold text-right">Infra Cost</th>
+            <th class="px-6 py-4 font-bold text-right">Total Cost</th>
+            <th class="px-6 py-4 font-bold text-right">Profit</th>
+            <th class="px-6 py-4 font-bold text-right">Margin %</th>
+            <th class="px-6 py-4 font-bold text-center">Msgs (30d)</th>
+            <th class="px-6 py-4 font-bold">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5 text-sm">
+          {% for host in hosts %}
+          <tr class="hover:bg-white/5 transition-colors group">
+            <td class="px-6 py-3">
+              <span class="font-mono text-[0.85rem] text-slate-300 group-hover:text-white transition-colors">{{ host.email }}</span>
+            </td>
+            <td class="px-6 py-3">
+              <span class="px-2 py-1 rounded bg-white/10 text-slate-300 text-[0.7rem] font-bold uppercase tracking-wider">{{ host.plan }}</span>
+            </td>
+            <td class="px-6 py-3 text-center text-slate-400 font-bold">{{ host.units }}</td>
+            <td class="px-6 py-3 text-right font-mono text-white font-bold">${{ "%.2f"|format(host.revenue) }}</td>
+            <td class="px-6 py-3 text-right font-mono text-amber-500/80">${{ "%.2f"|format(host.api_cost) }}</td>
+            <td class="px-6 py-3 text-right font-mono text-slate-400">${{ "%.2f"|format(host.infra_cost) }}</td>
+            <td class="px-6 py-3 text-right font-mono text-amber-500 font-bold">${{ "%.2f"|format(host.total_cost) }}</td>
+            <td class="px-6 py-3 text-right font-mono font-bold {% if host.profit > 0 %}text-[#27c93f]{% else %}text-rose-500{% endif %}">
+              ${{ "%.2f"|format(host.profit) }}
+            </td>
+            <td class="px-6 py-3 text-right font-mono font-bold" style="color:{% if host.margin_pct >= 70 %}#27c93f{% elif host.margin_pct >= 50 %}#fbbf24{% else %}#f43f5e{% endif %}">
+              {{ "%.1f"|format(host.margin_pct) }}%
+            </td>
+            <td class="px-6 py-3 text-center">
+              <span class="inline-block px-2 py-0.5 rounded-full bg-black/40 border border-white/5 text-xs text-slate-300">{{ host.messages_30d }}</span>
+            </td>
+            <td class="px-6 py-3 text-xs text-slate-400 font-medium">{{ host.status }}</td>
+          </tr>
+          {% endfor %}
+          
+          <tr class="bg-black/40 border-t-2 border-white/10 text-xs text-slate-300 uppercase tracking-wider font-bold">
+            <td colspan="3" class="px-6 py-4">Total Platform Metrics</td>
+            <td class="px-6 py-4 text-right font-mono text-[#5B8DEF] text-sm">${{ "%.0f"|format(total_revenue) }}</td>
+            <td class="px-6 py-4"></td>
+            <td class="px-6 py-4"></td>
+            <td class="px-6 py-4 text-right font-mono text-amber-500 text-sm">${{ "%.0f"|format(total_cost) }}</td>
+            <td class="px-6 py-4 text-right font-mono text-sm {% if total_profit > 0 %}text-[#27c93f]{% else %}text-rose-500{% endif %}">
+              ${{ "%.0f"|format(total_profit) }}
+            </td>
+            <td class="px-6 py-4 text-right font-mono text-white text-sm">{{ "%.1f"|format(total_margin_pct) }}%</td>
+            <td colspan="2"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-<div style="margin-top:2rem; padding:1rem; background:var(--info-bg); border:1px solid var(--info-border); border-radius:var(--radius); color:var(--text-2);">
-  <strong>💡 Notes:</strong>
-  <ul style="margin:0.5rem 0 0 1.5rem; padding:0;">
-    <li>Revenue based on new unit-based pricing (Starter $20+$10/unit, Growth $30+$9/unit, Pro $50+$8/unit)</li>
-    <li>API Costs from last 30 days of actual usage</li>
-    <li>Infra Costs fixed at $3/property/month (hosting + operations)</li>
-    <li>Messages count all inbound messages in last 30 days</li>
-    <li>Data refreshes every 5 minutes</li>
-  </ul>
-</div>
+  <div class="glass-card p-6 rounded-3xl border border-[#aec6ff]/20 bg-[#aec6ff]/5">
+    <div class="flex items-center gap-2 text-[#aec6ff] font-bold text-sm mb-2">
+      <span class="material-symbols-outlined text-sm">info</span> Methodology Notes
+    </div>
+    <ul class="text-xs text-slate-400 font-medium space-y-2 list-disc pl-5">
+      <li>Revenue based on new unit-based pricing (Starter $20+$10/unit, Growth $30+$9/unit, Pro $50+$8/unit)</li>
+      <li>API Costs from last 30 days of actual usage</li>
+      <li>Infra Costs fixed at $3/property/month (hosting + operations)</li>
+      <li>Messages count all inbound messages in last 30 days</li>
+      <li>Data refreshes every 5 minutes</li>
+    </ul>
   </div>
 </main>
 {%- endblock %}

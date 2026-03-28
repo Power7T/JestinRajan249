@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% set tenant = admin %}
 {% block title %}Admin Overview — HostAI{% endblock %}
 
 {% block head %}
@@ -20,54 +21,10 @@ tailwind.config = {
 <style>
 body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
 .glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
-.material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 200,'GRAD' 0,'opsz' 24; }
-/* Compat layer */
-:root{--surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;--border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);--text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;--accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);--success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);--danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);--warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.2);--radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;}
-.compat h1{font-size:1.6rem;font-weight:800;color:#e3e1eb;margin-bottom:0.25rem}.compat h2{font-size:1.05rem;font-weight:700;color:#e3e1eb;margin-bottom:0.65rem}.compat h3{font-size:0.9rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
-.compat .card,.compat .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
-.compat label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
-.compat input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.compat select,.compat textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
-.compat input:focus,.compat select:focus,.compat textarea:focus{border-color:#5B8DEF}
-.compat .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
-.compat .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
-.compat .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
-.compat .btn-outline:hover{background:rgba(174,198,255,0.08)}
-.compat .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
-.compat .btn-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
-.compat .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
-.compat .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
-.compat .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
-.compat .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
-.compat table{width:100%;border-collapse:collapse;font-size:0.84rem}
-.compat th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
-.compat td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
-.compat .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
-.compat .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
-.compat .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
-.compat .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
-.compat .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem}
-.compat .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
-.compat .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
-.compat .alert-error,.compat .alert-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
-.compat .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
-.compat .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
-.compat .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
-.compat .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
-.compat .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;background:rgba(174,198,255,0.08);color:#aec6ff;margin-left:0.2rem}
-.compat .timeline{display:flex;flex-direction:column}
-.compat .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
-.compat .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
-.compat .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
-.compat .timeline-text{font-size:0.8rem;color:#8d909e}
-.compat .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
-.compat .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
-.compat .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
-.compat .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
-.compat .card-meta{font-size:0.75rem;color:#8d909e}
-.compat .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-.compat code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
-.compat input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
-.compat details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
+.material-symbols-outlined { font-variation-settings:'FILL' 1,'wght' 300,'GRAD' 0,'opsz' 24; }
+.admin-tab { padding-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; transition: color 0.2s, border-bottom-color 0.2s; border-bottom: 2px solid transparent; color: #8d909e; }
+.admin-tab:hover { color: #e3e1eb; }
+.admin-tab.active { color: #5B8DEF; border-bottom-color: #5B8DEF; }
 </style>
 {%- endblock %}
 
@@ -79,54 +36,47 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 <aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col">
   <div class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7">
     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
-      <span class="material-symbols-outlined text-[#002e6b] text-lg">bolt</span>
+      <span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
     </div>
     <span>HostAI</span>
   </div>
   <nav class="flex-1 px-4 space-y-1">
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-                Dashboard
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
-<span class="material-symbols-outlined" data-icon="forum">forum</span>
-                Conversations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
-<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
-                Reservations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
-<span class="material-symbols-outlined" data-icon="history">history</span>
-                Activity
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
-<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
-                Analytics
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
-<span class="material-symbols-outlined" data-icon="hub">hub</span>
-                Workflow Center
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
-                Settings
-            </a>
-{% if tenant is defined and tenant and is_admin(tenant.email) %}
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
-<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
-                Admin
-            </a>
-{% endif %}
-</nav>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+      <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
+      <span class="material-symbols-outlined" data-icon="forum">forum</span> Conversations
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
+      <span class="material-symbols-outlined" data-icon="event_available">event_available</span> Reservations
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
+      <span class="material-symbols-outlined" data-icon="history">history</span> Activity
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
+      <span class="material-symbols-outlined" data-icon="analytics">analytics</span> Analytics
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
+      <span class="material-symbols-outlined" data-icon="hub">hub</span> Workflow Center
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
+      <span class="material-symbols-outlined" data-icon="settings">settings</span> Settings
+    </a>
+    {% if is_admin(admin.email) %}
+    <a class="flex items-center gap-3 px-6 py-3 text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold transition-all duration-200" href="/admin">
+      <span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span> Admin Panel
+    </a>
+    {% endif %}
+  </nav>
+
   <div class="p-6 border-t border-white/5">
     <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
       <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-        {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+        {{ (admin.name or admin.email or 'H')[0]|upper }}
       </div>
       <div class="flex-1 min-w-0">
-        <p class="text-white text-sm font-bold truncate">{{ tenant.name or tenant.email.split('@')[0]|title if tenant else 'Host' }}</p>
-        <p class="text-slate-500 text-xs truncate">Host Account</p>
+        <p class="text-white text-sm font-bold truncate">{{ admin.name or admin.email.split('@')[0]|title }}</p>
+        <p class="text-slate-500 text-xs truncate">Admin Account</p>
       </div>
     </div>
     <form method="post" action="/logout">
@@ -137,196 +87,205 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     </form>
   </div>
 </aside>
+
 <!-- Main -->
-<main class="ml-[260px] pt-8 pb-12 px-8 min-h-screen">
-  <div class="mb-8 pt-4">
-    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Admin Overview</h1>
+<main class="ml-[260px] pt-8 pb-12 px-8 min-h-screen relative">
+  <div class="absolute -top-48 -right-48 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
+  
+  <div class="mb-10 pt-4">
+    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">Admin Overview</h1>
     <p class="text-slate-400 text-sm">Platform-wide metrics and tenant health</p>
-  </div>
-  <div class="compat">
-<h1>Admin Panel</h1>
-
-<!-- Admin sub-nav -->
-<div class="admin-nav" style="flex-wrap:wrap;">
-  <a href="/admin" class="active">Overview</a>
-  <a href="/admin/system">System Health</a>
-  <a href="/admin/ai">AI Engine</a>
-  <a href="/admin/costs">Profitability</a>
-  <a href="/admin/health_api">API Health</a>
-</div>
-
-<!-- ── Revenue Summary ─────────────────────────────────────────────────── -->
-<div class="stat-grid">
-  <div class="stat-card">
-    <div class="stat-value">{{ total_tenants }}</div>
-    <div class="stat-label">Total Tenants</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value">{{ paid_count }}</div>
-    <div class="stat-label">Paid Tenants</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value">{{ free_count }}</div>
-    <div class="stat-label">Free Plan</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value">${{ mrr }}</div>
-    <div class="stat-label">Est. MRR</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value">{{ draft_stats.total }}</div>
-    <div class="stat-label">Drafts (30d)</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value">{{ draft_stats.approval_rate }}%</div>
-    <div class="stat-label">Approval Rate (30d)</div>
-  </div>
-</div>
-
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem">
-
-  <!-- ── Plan Breakdown ──────────────────────────────────────────────────── -->
-  <div class="card">
-    <h2>Plan Breakdown</h2>
-    <table>
-      <thead><tr><th>Plan</th><th>Users</th><th>Price</th><th>MRR</th></tr></thead>
-      <tbody>
-        {% for pb in plan_breakdown %}
-        <tr>
-          <td><span class="plan-badge plan-{{ pb.plan }}">{{ pb.plan }}</span></td>
-          <td>{{ pb.count }}</td>
-          <td>{% if pb.price == 0 %}Free{% else %}${{ pb.price }}/mo{% endif %}</td>
-          <td>{% if pb.contribution %}${{ pb.contribution }}{% else %}—{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    
+    <!-- Admin Subnav -->
+    <div class="flex items-center gap-6 mt-6 border-b border-white/10">
+      <a href="/admin" class="admin-tab active">Overview</a>
+      <a href="/admin/system" class="admin-tab">System Health</a>
+      <a href="/admin/ai" class="admin-tab">AI Engine</a>
+      <a href="/admin/costs" class="admin-tab">Profitability</a>
+      <a href="/admin/health_api" class="admin-tab">API Health</a>
+    </div>
   </div>
 
-  <!-- ── Onboarding Funnel ───────────────────────────────────────────────── -->
-  <div class="card">
-    <h2>Onboarding Funnel</h2>
-    {% set max_funnel = [funnel["0"], funnel["1"], funnel["2"], funnel["3"], funnel["4"], funnel["5"], funnel["complete"]] | max %}
-    {% for step in ["0","1","2","3","4","5"] %}
-    {% set cnt = funnel[step] %}
-    <div class="funnel-bar">
-      <div class="funnel-label">Step {{ step }}</div>
-      <div class="funnel-track">
-        <div class="funnel-fill" style="width:{% if max_funnel > 0 %}{{ (cnt / max_funnel * 100) | int }}{% else %}0{% endif %}%"></div>
+  <!-- Key Metrics -->
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Tenants</p>
+      <p class="text-3xl font-extrabold text-white">{{ total_tenants }}</p>
+    </div>
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Paid Tenants</p>
+      <p class="text-3xl font-extrabold text-[#5B8DEF]">{{ paid_count }}</p>
+    </div>
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Free Plan</p>
+      <p class="text-3xl font-extrabold text-white">{{ free_count }}</p>
+    </div>
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Est. MRR</p>
+      <p class="text-3xl font-extrabold text-[#27c93f]">${{ mrr }}</p>
+    </div>
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Drafts (30d)</p>
+      <p class="text-3xl font-extrabold text-white">{{ draft_stats.total }}</p>
+    </div>
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Approval</p>
+      <p class="text-3xl font-extrabold text-[#27c93f]">{{ draft_stats.approval_rate }}%</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <!-- Plan Breakdown -->
+    <div class="glass-card rounded-3xl overflow-hidden flex flex-col">
+      <div class="p-6 border-b border-white/5">
+        <h2 class="text-lg font-bold text-white">Plan Breakdown</h2>
       </div>
-      <div class="funnel-count">{{ cnt }}</div>
-    </div>
-    {% endfor %}
-    <div class="funnel-bar">
-      <div class="funnel-label" style="color:#28a745;font-weight:600">Complete</div>
-      <div class="funnel-track">
-        <div class="funnel-fill" style="background:#28a745;width:{% if max_funnel > 0 %}{{ (funnel["complete"] / max_funnel * 100) | int }}{% else %}0{% endif %}%"></div>
+      <div class="flex-1 overflow-x-auto">
+        <table class="w-full text-left text-sm whitespace-nowrap">
+          <thead class="text-[0.65rem] uppercase text-slate-500 bg-black/20">
+            <tr><th class="px-6 py-3 font-bold tracking-wider">Plan</th><th class="px-6 py-3 font-bold tracking-wider">Users</th><th class="px-6 py-3 font-bold tracking-wider">MRR</th></tr>
+          </thead>
+          <tbody class="divide-y divide-white/5 text-[0.85rem]">
+            {% for pb in plan_breakdown %}
+            <tr class="hover:bg-white/5 transition-colors">
+              <td class="px-6 py-4"><span class="px-2.5 py-1 bg-white/10 text-white rounded-md text-[0.7rem] font-bold">{{ pb.plan }}</span></td>
+              <td class="px-6 py-4 font-medium text-slate-300">{{ pb.count }}</td>
+              <td class="px-6 py-4 font-medium text-emerald-400">{% if pb.contribution %}${{ pb.contribution }}{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
-      <div class="funnel-count" style="color:#28a745">{{ funnel["complete"] }}</div>
+    </div>
+
+    <!-- Onboarding Funnel -->
+    <div class="glass-card p-6 rounded-3xl flex flex-col gap-4">
+      <h2 class="text-lg font-bold text-white mb-2">Onboarding Funnel</h2>
+      {% set max_funnel = [funnel["0"], funnel["1"], funnel["2"], funnel["3"], funnel["4"], funnel["5"], funnel["complete"]] | max %}
+      {% for step in ["0","1","2","3","4","5"] %}
+      {% set cnt = funnel[step] %}
+      <div class="flex items-center gap-4">
+        <div class="w-16 text-sm font-bold text-slate-400">Step {{ step }}</div>
+        <div class="flex-1 h-1.5 bg-black/40 rounded-full overflow-hidden">
+          <div class="h-full bg-slate-500 rounded-full" style="width:{% if max_funnel > 0 %}{{ (cnt / max_funnel * 100) | int }}{% else %}0{% endif %}%"></div>
+        </div>
+        <div class="w-8 text-right text-sm font-bold text-white">{{ cnt }}</div>
+      </div>
+      {% endfor %}
+      <div class="flex items-center gap-4 mt-2">
+        <div class="w-16 text-sm font-bold text-[#27c93f]">Complete</div>
+        <div class="flex-1 h-2 bg-black/40 rounded-full overflow-hidden">
+          <div class="h-full bg-[#27c93f] rounded-full shadow-[0_0_12px_rgba(39,201,63,0.5)]" style="width:{% if max_funnel > 0 %}{{ (funnel["complete"] / max_funnel * 100) | int }}{% else %}0{% endif %}%"></div>
+        </div>
+        <div class="w-8 text-right text-sm font-bold text-[#27c93f]">{{ funnel["complete"] }}</div>
+      </div>
+    </div>
+
+    <!-- Draft Quality -->
+    <div class="glass-card p-6 rounded-3xl flex flex-col justify-between">
+      <h2 class="text-lg font-bold text-white mb-4">Draft Quality (30d)</h2>
+      <div class="flex flex-col gap-3">
+        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Total drafted</span><span class="font-bold text-white">{{ draft_stats.total }}</span></div>
+        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Approved</span><span class="font-bold text-[#27c93f]">{{ draft_stats.approved }}</span></div>
+        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Edited before send</span><span class="font-bold text-amber-500">{{ draft_stats.edited }}</span></div>
+        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Skipped</span><span class="font-bold text-rose-400">{{ draft_stats.skipped }}</span></div>
+        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Still pending</span><span class="font-bold text-slate-500">{{ draft_stats.pending }}</span></div>
+      </div>
+      <div class="mt-6 p-4 rounded-xl bg-white/5 flex items-center justify-between border border-white/10">
+        <span class="font-bold text-white text-sm">Approval rate</span>
+        <span class="font-extrabold text-2xl text-[#27c93f]">{{ draft_stats.approval_rate }}%</span>
+      </div>
     </div>
   </div>
 
-  <!-- ── Draft Quality ───────────────────────────────────────────────────── -->
-  <div class="card">
-    <h2>Draft Quality (30d)</h2>
-    <table>
-      <tbody>
-        <tr><td>Total drafted</td><td><strong>{{ draft_stats.total }}</strong></td></tr>
-        <tr><td>Approved</td><td style="color:#28a745"><strong>{{ draft_stats.approved }}</strong></td></tr>
-        <tr><td>Edited before send</td><td style="color:#fd7e14"><strong>{{ draft_stats.edited }}</strong></td></tr>
-        <tr><td>Skipped</td><td style="color:#dc3545"><strong>{{ draft_stats.skipped }}</strong></td></tr>
-        <tr><td>Still pending</td><td style="color:var(--text-3)"><strong>{{ draft_stats.pending }}</strong></td></tr>
-        <tr>
-          <td><strong>Approval rate</strong></td>
-          <td><strong style="font-size:1.1rem">{{ draft_stats.approval_rate }}%</strong></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-</div>
-
-<!-- ── Churn Signals ───────────────────────────────────────────────────── -->
-{% if churn_signals %}
-<div class="card" style="border-color:#fd7e14">
-  <div class="section-header">
-    <h2 style="color:#fd7e14">⚠ Churn Signals ({{ churn_signals | length }})</h2>
-  </div>
-  {% for row in churn_signals %}
-  <div class="churn-signal">
-    <a href="/admin/tenants/{{ row.tenant.id }}">{{ row.tenant.email }}</a>
-    <span class="plan-badge plan-{{ row.plan }}" style="margin-left:0.5rem">{{ row.plan }}</span>
-    <div class="reason">
-      {% if row.worker_dead %}Worker thread dead · {% endif %}
-      {% if row.inactive_14d %}No activity in 14+ days (last: {{ row.last_active.strftime("%Y-%m-%d") }}){% endif %}
+  <!-- Churn Signals -->
+  {% if churn_signals %}
+  <div class="glass-card rounded-3xl p-6 mb-8 border border-rose-500/30 bg-rose-500/5 relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-32 h-32 bg-rose-500/20 rounded-full blur-[50px] pointer-events-none"></div>
+    <h2 class="text-lg font-bold text-rose-400 mb-4 flex items-center gap-2">
+      <span class="material-symbols-outlined">warning</span> Churn Signals ({{ churn_signals | length }})
+    </h2>
+    <div class="flex flex-col gap-3 relative z-10">
+      {% for row in churn_signals %}
+      <div class="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5">
+        <div class="flex items-center gap-3">
+          <a href="/admin/tenants/{{ row.tenant.id }}" class="font-bold text-white hover:text-rose-300 transition-colors text-sm">{{ row.tenant.email }}</a>
+          <span class="px-2 py-0.5 bg-white/10 rounded text-[10px] font-bold uppercase tracking-wider text-slate-300">{{ row.plan }}</span>
+        </div>
+        <div class="text-xs text-rose-300 font-medium">
+          {% if row.worker_dead %}Worker thread dead · {% endif %}
+          {% if row.inactive_14d %}No activity 14+ days ({{ row.last_active.strftime("%b %d") }}){% endif %}
+        </div>
+      </div>
+      {% endfor %}
     </div>
   </div>
-  {% endfor %}
-</div>
-{% endif %}
+  {% endif %}
 
-<!-- ── Tenant Table ─────────────────────────────────────────────────────── -->
-<div class="card">
-  <div class="section-header">
-    <h2>All Tenants ({{ total_tenants }})</h2>
-  </div>
-  <div class="tenant-table-wrap">
-    <table class="tenant-table">
-      <thead>
-        <tr>
-          <th>Email</th>
-          <th>Plan</th>
-          <th>Sub Status</th>
-          <th>Onboarding</th>
-          <th>Worker</th>
-          <th>Active</th>
-          <th>Signed Up</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in tenant_rows %}
-        <tr {% if not row.tenant.is_active %}style="opacity:0.5"{% endif %}>
-          <td class="email-cell">
-            <a href="/admin/tenants/{{ row.tenant.id }}">{{ row.tenant.email }}</a>
-            {% if not row.tenant.is_active %}
-              <span class="badge badge-off" style="margin-left:4px">inactive</span>
-            {% endif %}
-            {% if not row.tenant.email_verified %}
-              <span style="font-size:0.7rem;color:#adb5bd;margin-left:4px">unverified</span>
-            {% endif %}
-          </td>
-          <td><span class="plan-badge plan-{{ row.plan }}">{{ row.plan }}</span></td>
-          <td>
-            <span class="sub-{{ row.sub_status }}">{{ row.sub_status }}</span>
-          </td>
-          <td>
-            {% if row.onboarding_complete %}
-              <span style="color:#28a745">✓ Complete</span>
-            {% else %}
-              Step {{ row.onboarding_step }}/5
-            {% endif %}
-          </td>
-          <td>
-            <span class="dot {% if row.ws.email_running %}dot-green{% elif not row.worker_dead %}dot-grey{% else %}dot-red{% endif %}"></span>
-            {% if row.ws.email_running %}running{% elif row.worker_dead %}dead{% else %}not configured{% endif %}
-          </td>
-          <td style="{% if row.inactive_14d %}color:#fd7e14{% endif %}">
-            {{ row.last_active.strftime("%Y-%m-%d") }}
-          </td>
-          <td>{{ row.tenant.created_at.strftime("%Y-%m-%d") }}</td>
-          <td>
-            <a href="/admin/tenants/{{ row.tenant.id }}" class="btn btn-outline btn-sm">View</a>
-          </td>
-        </tr>
-        {% endfor %}
-        {% if not tenant_rows %}
-        <tr><td colspan="8" class="empty">No tenants yet.</td></tr>
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
-</div>
+  <!-- Tenant Table -->
+  <div class="glass-card rounded-3xl overflow-hidden">
+    <div class="p-6 border-b border-white/5 flex justify-between items-center">
+      <h2 class="text-lg font-bold text-white">All Tenants ({{ total_tenants }})</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left whitespace-nowrap">
+        <thead class="text-[0.65rem] tracking-wider uppercase text-slate-500 bg-black/20 border-b border-white/5">
+          <tr>
+            <th class="px-6 py-3 font-bold">Email</th>
+            <th class="px-6 py-3 font-bold">Plan</th>
+            <th class="px-6 py-3 font-bold">Status</th>
+            <th class="px-6 py-3 font-bold">Onboarding</th>
+            <th class="px-6 py-3 font-bold">Worker</th>
+            <th class="px-6 py-3 font-bold">Active</th>
+            <th class="px-6 py-3 font-bold"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5 text-sm">
+          {% for row in tenant_rows %}
+          <tr class="hover:bg-white/5 transition-colors {% if not row.tenant.is_active %}opacity-50{% endif %}">
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-2">
+                <a href="/admin/tenants/{{ row.tenant.id }}" class="font-bold text-white hover:text-[#5B8DEF] transition-colors text-[0.85rem]">{{ row.tenant.email }}</a>
+                {% if not row.tenant.email_verified %}
+                  <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold tracking-wider uppercase">Unverified</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="px-6 py-4">
+              <span class="px-2 py-1 rounded-md bg-white/10 text-slate-300 text-[0.7rem] font-bold tracking-wide uppercase">{{ row.plan }}</span>
+            </td>
+            <td class="px-6 py-4">
+              <span class="text-xs font-medium text-slate-400">{{ row.sub_status }}</span>
+            </td>
+            <td class="px-6 py-4">
+              {% if row.onboarding_complete %}
+                <span class="text-[#27c93f] font-bold text-xs"><span class="mr-1">✓</span>Complete</span>
+              {% else %}
+                <span class="text-slate-400 font-medium text-xs">Step {{ row.onboarding_step }}/5</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-2 text-[0.7rem] uppercase tracking-wider font-bold text-slate-400">
+                <span class="w-1.5 h-1.5 rounded-full {% if row.ws.email_running %}bg-[#27c93f]{% elif row.worker_dead %}bg-rose-500{% else %}bg-slate-600{% endif %}"></span>
+                {% if row.ws.email_running %}Running{% elif row.worker_dead %}Dead{% else %}Not configured{% endif %}
+              </div>
+            </td>
+            <td class="px-6 py-4 text-[0.8rem] font-medium {% if row.inactive_14d %}text-amber-500{% else %}text-slate-400{% endif %}">
+              {{ row.last_active.strftime("%Y-%m-%d") }}
+            </td>
+            <td class="px-6 py-4 text-right">
+              <a href="/admin/tenants/{{ row.tenant.id }}" class="inline-flex items-center justify-center px-4 py-1.5 rounded-xl text-xs font-bold text-[#aec6ff] border border-[rgba(174,198,255,0.2)] hover:bg-[rgba(174,198,255,0.1)] transition-colors">
+                View
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not tenant_rows %}
+          <tr><td colspan="7" class="px-6 py-12 text-center text-slate-500 text-sm">No tenants yet.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </main>
 {%- endblock %}
