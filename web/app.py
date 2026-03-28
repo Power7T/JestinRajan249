@@ -3326,7 +3326,13 @@ async def wa_webhook_inbound(tenant_id: str, request: Request, db: Session = Dep
     raw_body = await request.body()
     if not _validate_meta_signature(raw_body, request.headers.get("X-Hub-Signature-256", "")):
         return JSONResponse({"status": "forbidden"}, status_code=403)
-    body = json.loads(raw_body.decode("utf-8"))
+
+    try:
+        body = json.loads(raw_body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        log.warning("[%s] Invalid Meta webhook JSON: %s", tenant_id, e)
+        return JSONResponse({"status": "ok"})
+
     from web.meta_sender import extract_inbound
     for msg in extract_inbound(body):
         _handle_inbound_wa(tenant_id, msg["from"], msg["text"], db)
@@ -3351,8 +3357,13 @@ async def sms_webhook_inbound(tenant_id: str, request: Request, db: Session = De
     except HTTPException:
         return HTMLResponse("<Response/>")
 
-    form = await request.form()
-    form_data = dict(form)
+    try:
+        form = await request.form()
+        form_data = dict(form)
+    except Exception as e:
+        log.warning("[%s] Twilio form parsing error: %s", tenant_id, e)
+        return HTMLResponse("<Response/>")
+
     if not _validate_twilio_signature(request, form_data, cfg):
         return HTMLResponse("<Response/>", status_code=403)
     from web.sms_sender import parse_twilio_inbound
