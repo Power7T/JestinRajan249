@@ -17,15 +17,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add archived_at column if it doesn't exist
-    try:
-        op.add_column(
-            'drafts',
-            sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True)
-        )
-    except Exception:
-        # Column may already exist
-        pass
+    # Add archived_at column using raw SQL (PostgreSQL supports IF NOT EXISTS)
+    op.execute(
+        'ALTER TABLE drafts ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP WITH TIME ZONE'
+    )
 
     # Create composite index on api_usage_logs for tenant_id + created_at
     try:
@@ -41,12 +36,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Remove archived_at column if it exists
-    try:
-        op.drop_column('drafts', 'archived_at')
-    except Exception:
-        # Column may not exist
-        pass
+    # Remove archived_at column using raw SQL (PostgreSQL supports IF EXISTS)
+    op.execute(
+        'ALTER TABLE drafts DROP COLUMN IF EXISTS archived_at'
+    )
 
     # Remove the index
     try:
