@@ -52,7 +52,7 @@ python-dotenv==1.0.1
 # DB migrations
 alembic>=1.13.0,<2.0.0
 
-# Background jobs (Baileys cleanup scheduler)
+# Background jobs (GDPR data retention cleanup)
 apscheduler>=3.10.0,<4.0.0
 
 # Metrics

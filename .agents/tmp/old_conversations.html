@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% block title %}Guest Messages — HostAI{% endblock %}
+
+{% block head %}
+<style>
+  /* ── Chat layout ── */
+  .chat-shell {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 0;
+    height: calc(100vh - var(--nav-h) - 6rem);
+    min-height: 500px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  /* ── Sidebar ── */
+  .chat-sidebar {
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-2);
+  }
+  .chat-sidebar-header {
+    padding: 1rem 1.1rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+    flex-shrink: 0;
+  }
+
+  .conv-item {
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background var(--t);
+    border-left: 3px solid transparent;
+    position: relative;
+  }
+  .conv-item:hover { background: var(--bg-3); }
+  .conv-item.active {
+    background: rgba(245,166,35,0.08);
+    border-left-color: var(--accent);
+  }
+  .conv-item.active .conv-name { color: var(--accent-2); }
+
+  .conv-name {
+    font-weight: 700;
+    font-size: 0.86rem;
+    color: var(--text-1);
+    margin-bottom: 0.2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .conv-phone {
+    font-size: 0.74rem;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 0.35rem;
+  }
+  .conv-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--text-3);
+  }
+  .conv-count {
+    background: var(--bg-4);
+    border: 1px solid var(--border);
+    color: var(--text-3);
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 999px;
+  }
+
+  /* ── Detail panel ── */
+  .chat-detail {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .chat-detail-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  .chat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #FF6B8A);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: #060911;
+    flex-shrink: 0;
+  }
+  .chat-detail-header h2 {
+    font-size: 0.95rem;
+    margin-bottom: 0.1rem;
+  }
+  .chat-detail-header p {
+    font-size: 0.76rem;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    margin: 0;
+  }
+
+  /* ── Message thread ── */
+  .msg-thread {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .msg-row {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-end;
+    max-width: 75%;
+  }
+  .msg-row.inbound  { align-self: flex-start; flex-direction: row; }
+  .msg-row.outbound { align-self: flex-end;   flex-direction: row-reverse; }
+
+  .msg-bubble {
+    padding: 0.65rem 0.95rem;
+    border-radius: 14px;
+    word-break: break-word;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    max-width: 100%;
+  }
+  .msg-row.inbound  .msg-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    border-bottom-left-radius: 4px;
+  }
+  .msg-row.outbound .msg-bubble {
+    background: linear-gradient(135deg, var(--accent), #2B5FC8);
+    color: #EEF2FF;
+    font-weight: 500;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 2px 12px var(--accent-glow);
+  }
+
+  .msg-meta {
+    font-size: 0.66rem;
+    color: var(--text-3);
+    padding: 0 0.3rem;
+    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    align-items: flex-end;
+  }
+  .msg-row.inbound .msg-meta { align-items: flex-start; }
+
+  /* Day separator */
+  .day-sep {
+    text-align: center;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .day-sep::before, .day-sep::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* Empty / loading */
+  .chat-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-3);
+    gap: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+  }
+  .chat-empty-icon { font-size: 2.5rem; opacity: 0.4; }
+  .chat-empty h3 { font-size: 0.95rem; color: var(--text-2); }
+  .chat-empty p  { font-size: 0.82rem; max-width: 30ch; line-height: 1.6; }
+
+  @media (max-width: 780px) {
+    .chat-shell { grid-template-columns: 1fr; height: auto; }
+    .chat-sidebar { max-height: 280px; border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Guest Messages</h1>
+    <p class="page-subtitle">View your full conversation history with guests</p>
+  </div>
+</div>
+
+<div class="chat-shell">
+  <!-- Sidebar -->
+  <div class="chat-sidebar">
+    <div class="chat-sidebar-header">
+      Conversations
+      {% if conversations %}
+        <span class="conv-count" style="margin-left:0.5rem;vertical-align:middle">{{ conversations|length }}</span>
+      {% endif %}
+    </div>
+
+    {% if conversations %}
+      {% for conv in conversations %}
+      <div class="conv-item {% if loop.first %}active{% endif %}"
+           data-thread="{{ conv.thread_key }}"
+           data-name="{{ conv.guest_name }}"
+           data-phone="{{ conv.guest_phone }}"
+           onclick="selectConversation(this, '{{ conv.thread_key }}', '{{ conv.guest_name }}', '{{ conv.guest_phone }}')">
+        <div class="conv-name">{{ conv.guest_name }}</div>
+        <div class="conv-phone">{{ conv.guest_phone }}</div>
+        <div class="conv-footer">
+          <span>{{ conv.last_at.strftime('%b %d, %Y') }}</span>
+          <span class="conv-count">{{ conv.message_count }} msgs</span>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="chat-empty" style="padding: 2.5rem 1.5rem;">
+      <div class="chat-empty-icon">📭</div>
+      <h3>No conversations yet</h3>
+      <p>Guest messages will appear here as they come in.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Detail Panel -->
+  <div class="chat-detail" id="detailPanel">
+    {% if conversations %}
+    <div class="chat-detail-header" id="detailHeader">
+      <div class="chat-avatar" id="detailAvatar">{{ conversations[0].guest_name[0] | upper }}</div>
+      <div>
+        <h2 id="detailGuestName">{{ conversations[0].guest_name }}</h2>
+        <p id="detailGuestPhone">{{ conversations[0].guest_phone }}</p>
+      </div>
+    </div>
+    <div class="msg-thread" id="messageThread"></div>
+    {% else %}
+    <div class="chat-empty">
+      <div class="chat-empty-icon">💬</div>
+      <h3>No conversations yet</h3>
+      <p>Once guests send messages, you'll find them here.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script nonce="{{ request.state.csp_nonce }}">
+async function selectConversation(element, threadKey, guestName, guestPhone) {
+  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+  element.classList.add('active');
+
+  const nameEl = document.getElementById('detailGuestName');
+  const phoneEl = document.getElementById('detailGuestPhone');
+  const avatarEl = document.getElementById('detailAvatar');
+  const threadEl = document.getElementById('messageThread');
+
+  if (nameEl) nameEl.textContent = guestName;
+  if (phoneEl) phoneEl.textContent = guestPhone;
+  if (avatarEl) avatarEl.textContent = guestName ? guestName[0].toUpperCase() : '?';
+
+  if (!threadEl) return;
+
+  threadEl.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon" style="animation: pulse 1s infinite">💬</div><p>Loading messages…</p></div>';
+
+  try {
+    const response = await fetch(`/api/conversation/${threadKey}`);
+    if (!response.ok) {
+      threadEl.innerHTML = '<div class="chat-empty"><p>Error loading messages. Please try again.</p></div>';
+      return;
+    }
+
+    const data = await response.json();
+    const messages = data.messages || [];
+
+    if (messages.length === 0) {
+      threadEl.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon">📭</div><h3>No messages</h3><p>No messages found in this conversation.</p></div>';
+      return;
+    }
+
+    let lastDate = null;
+    const html = messages.map(msg => {
+      const direction = msg.direction === 'outbound' ? 'outbound' : 'inbound';
+      const msgDate = new Date(msg.timestamp);
+      const time = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateStr = msgDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+
+      let sep = '';
+      if (dateStr !== lastDate) {
+        sep = `<div class="day-sep">${dateStr}</div>`;
+        lastDate = dateStr;
+      }
+
+      const channel = msg.channel ? `<span>${msg.channel.toUpperCase()}</span>` : '';
+      const badge = msg.badge ? `<span>${escapeHtml(msg.badge)}</span>` : '';
+
+      return `${sep}
+        <div class="msg-row ${direction}">
+          <div class="msg-bubble">${escapeHtml(msg.body)}</div>
+          <div class="msg-meta">
+            <span>${time}</span>
+            ${channel}${badge}
+          </div>
+        </div>`;
+    }).join('');
+
+    threadEl.innerHTML = html;
+    threadEl.scrollTop = threadEl.scrollHeight;
+  } catch (err) {
+    threadEl.innerHTML = `<div class="chat-empty"><p>Error: ${escapeHtml(err.message)}</p></div>`;
+  }
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const first = document.querySelector('.conv-item');
+  if (first) first.click();
+});
+</script>
+{% endblock %}

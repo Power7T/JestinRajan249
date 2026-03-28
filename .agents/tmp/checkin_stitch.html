@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-highest": "#34343b",
+              "surface-tint": "#aec6ff",
+              "secondary-container": "#00e3fd",
+              "on-tertiary-container": "#3e2400",
+              "background": "#08090F",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-tertiary-fixed": "#2a1700",
+              "surface-container-low": "#1a1b22",
+              "tertiary-fixed": "#ffddb8",
+              "outline": "#8d909e",
+              "on-secondary-container": "#00616d",
+              "error": "#ffb4ab",
+              "surface-container-lowest": "#0d0e14",
+              "primary-fixed-dim": "#aec6ff",
+              "surface-variant": "#34343b",
+              "secondary-fixed-dim": "#00daf3",
+              "primary-fixed": "#d8e2ff",
+              "on-error": "#690005",
+              "on-surface-variant": "#c3c6d4",
+              "tertiary-fixed-dim": "#ffb960",
+              "secondary-fixed": "#9cf0ff",
+              "on-background": "#e3e1eb",
+              "tertiary": "#ffb960",
+              "on-primary-fixed": "#001a43",
+              "secondary": "#bdf4ff",
+              "error-container": "#93000a",
+              "surface-container": "#1e1f26",
+              "on-surface": "#e3e1eb",
+              "tertiary-container": "#ca8103",
+              "outline-variant": "#424752",
+              "on-tertiary": "#472a00",
+              "on-error-container": "#ffdad6",
+              "inverse-surface": "#e3e1eb",
+              "surface-bright": "#383940",
+              "primary-container": "#5d8ef1",
+              "on-primary-fixed-variant": "#004397",
+              "on-primary-container": "#00275e",
+              "primary": "#aec6ff",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-secondary-fixed": "#001f24",
+              "on-primary": "#002e6b",
+              "surface-dim": "#08090F",
+              "on-secondary": "#00363d",
+              "inverse-primary": "#1e5bba",
+              "surface": "#08090F",
+              "surface-container-high": "#292930",
+              "inverse-on-surface": "#2f3037"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .glass-card {
+        background: rgba(26, 27, 34, 0.7);
+        backdrop-filter: blur(24px);
+        border-top: 1px solid rgba(174, 198, 255, 0.1);
+        border-left: 1px solid rgba(174, 198, 255, 0.1);
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+      }
+      .gradient-text {
+        background: linear-gradient(135deg, #aec6ff 0%, #5d8ef1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .pin-box {
+        background: rgba(13, 14, 20, 0.6);
+        box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+      }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen flex items-center justify-center relative overflow-hidden">
+<!-- Background Ambient Aura -->
+<div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary-container opacity-[0.05] blur-[120px] rounded-full"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-secondary-container opacity-[0.03] blur-[120px] rounded-full"></div>
+<main class="relative z-10 w-full max-w-2xl px-6 py-12">
+<!-- Logo/Brand Header -->
+<div class="flex flex-col items-center mb-12 space-y-2">
+<span class="material-symbols-outlined text-primary text-4xl mb-2" data-icon="key">key</span>
+<h1 class="text-label-sm font-bold tracking-[0.2em] text-primary uppercase">Guest Portal</h1>
+</div>
+<!-- Main Glass Card -->
+<div class="glass-card rounded-xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
+<!-- Property Information -->
+<div class="text-center mb-10">
+<h2 class="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter mb-4 text-on-surface">
+                    The Obsidian Heights
+                </h2>
+<div class="flex items-center justify-center space-x-6 text-slate-400">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-sm mr-2" data-icon="calendar_today">calendar_today</span>
+<span class="text-sm font-medium">Oct 24, 2023</span>
+</div>
+<div class="w-1 h-1 rounded-full bg-outline-variant"></div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-sm mr-2" data-icon="schedule">schedule</span>
+<span class="text-sm font-medium">15:00 PM</span>
+</div>
+</div>
+</div>
+<!-- PIN Display Section -->
+<div class="relative mb-10">
+<div class="pin-box rounded-xl p-10 flex flex-col items-center justify-center border border-outline-variant/15">
+<p class="text-label-sm font-bold tracking-widest text-slate-500 uppercase mb-6">Access Code</p>
+<div class="flex space-x-4 mb-6">
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+</div>
+<div class="flex items-center bg-primary/10 px-4 py-2 rounded-full border border-primary/20">
+<span class="material-symbols-outlined text-[16px] text-primary mr-2" data-icon="lock_clock">lock_clock</span>
+<span class="text-xs font-bold text-primary tracking-wide">AWAITING ACTIVATION</span>
+</div>
+</div>
+</div>
+<!-- Secondary Info Grid (Bento Style Lite) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+<div class="bg-surface-container-lowest/50 p-5 rounded-lg border border-outline-variant/10">
+<span class="material-symbols-outlined text-secondary text-xl mb-2" data-icon="wifi">wifi</span>
+<h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Network</h4>
+<p class="text-on-surface font-medium">Obsidian_Guest_5G</p>
+</div>
+<div class="bg-surface-container-lowest/50 p-5 rounded-lg border border-outline-variant/10">
+<span class="material-symbols-outlined text-secondary text-xl mb-2" data-icon="room_service">room_service</span>
+<h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Assistance</h4>
+<p class="text-on-surface font-medium">Concierge Active</p>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col space-y-4">
+<button class="w-full py-4 rounded-lg font-bold text-on-primary bg-gradient-to-br from-primary to-primary-container shadow-[0_0_20px_rgba(93,142,241,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span>Contact Host</span>
+</button>
+<button class="w-full py-4 rounded-lg font-bold text-slate-400 hover:text-on-surface hover:bg-surface-container-high/40 transition-all flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span>View Arrival Instructions</span>
+</button>
+</div>
+</div>
+<!-- Footer Help -->
+<p class="mt-8 text-center text-slate-500 text-sm font-medium">
+            Trouble checking in? <a class="text-primary hover:underline transition-all" href="#">Call Support</a>
+</p>
+</main>
+<!-- Decorative Elements -->
+<div class="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+<div class="fixed bottom-10 left-1/2 -translate-x-1/2 opacity-20">
+<img alt="HostAI Logo" class="h-6 grayscale contrast-125" data-alt="minimalist tech company logo with clean geometric lines and futuristic typography on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9IbqgDXR23tBTHc_R5pTX_itopaWEPD0ZsDPn2rHDtIDF1chHU7SaWz-W6HjQb6D086QEsNzUBLOhps5lb5h9BzQPgfM_6QyTsfWLvYyE5FGiF1ZftmfkKL92sNOqPf3EqYBstPe79s1TVhG5P5lwHlTjILUL7ynhxyv0lGCuJnhB54ucxGCZn5DboFyso-KJP6vBvRIfMcD4pQeZwjBXXmEevmwdjf74bFGrZu0vJgAF30qz6_UViVyNWm0DleQ0XXTHQnzWn6c6"/>
+</div>
+</body></html>

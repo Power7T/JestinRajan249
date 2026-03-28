@@ -1,0 +1,424 @@
+{%- extends "base.html" %}
+{%- block title %}Dashboard — HostAI{%- endblock %}
+
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#121319",
+              "inverse-surface": "#e3e1eb",
+              "surface-container-lowest": "#0d0e14",
+              "on-secondary": "#00363d",
+              "on-primary": "#002e6b",
+              "tertiary-fixed": "#ffddb8",
+              "primary-fixed": "#d8e2ff",
+              "on-primary-fixed-variant": "#004397",
+              "surface-container-low": "#1a1b22",
+              "secondary": "#bdf4ff",
+              "on-secondary-fixed-variant": "#004f58",
+              "tertiary-fixed-dim": "#ffb960",
+              "surface-variant": "#34343b",
+              "primary-fixed-dim": "#aec6ff",
+              "outline": "#8d909e",
+              "primary-container": "#5d8ef1",
+              "surface-tint": "#aec6ff",
+              "surface-container-highest": "#34343b",
+              "on-error": "#690005",
+              "on-background": "#e3e1eb",
+              "on-secondary-container": "#00616d",
+              "secondary-fixed": "#9cf0ff",
+              "on-tertiary-container": "#3e2400",
+              "background": "#121319",
+              "secondary-container": "#00e3fd",
+              "primary": "#aec6ff",
+              "on-primary-fixed": "#001a43",
+              "on-error-container": "#ffdad6",
+              "tertiary": "#ffb960",
+              "surface-container": "#1e1f26",
+              "surface": "#121319",
+              "surface-bright": "#383940",
+              "on-primary-container": "#00275e",
+              "outline-variant": "#424752",
+              "on-surface": "#e3e1eb",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-secondary-fixed": "#001f24",
+              "secondary-fixed-dim": "#00daf3",
+              "inverse-primary": "#1e5bba",
+              "on-tertiary-fixed": "#2a1700",
+              "error-container": "#93000a",
+              "error": "#ffb4ab",
+              "tertiary-container": "#ca8103",
+              "on-surface-variant": "#c3c6d4",
+              "on-tertiary": "#472a00",
+              "surface-container-high": "#292930",
+              "inverse-on-surface": "#2f3037"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+</script>
+<style>
+body {
+            background-color: #08090F;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #e3e1eb;
+        }
+        .glass-card {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
+<div class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
+</div>
+<span>HostAI</span>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<!-- Dashboard Active -->
+<a class="flex items-center gap-3 px-6 py-3 text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF] transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+                Conversations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+                Reservations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Activity
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+                Workflow Center
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+</nav>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<img alt="Profile" class="w-10 h-10 rounded-full object-cover" data-alt="professional portrait of a confident male executive in a modern workspace with natural soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhQJQQb7dxXRNRhJo6ozviZ-V5pVSCCyOhG7MaZyL0VO3bxiKJSrpPPQPLes_Vv32v5ygC22ZX7RMiPiLu9z6ToZ9hc9AU8elRKaOTmtGlPi9O2K5BK2ME6PGdXJ7wt9mp-9mGm325p9LYaK71yrwHEBpjCZ38F4IjQdXelI9QXSutOA9LKQTMufFMPO8qwFP9cihr6opv6kfMmRZeibEIPHZ9kVWB9dmW_ahXYeMG9mswyQQWubbm8iPrUe8ada1yjMo5G9gLU5Gu"/>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ current_user.name if current_user else "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+</div>
+</div>
+<a href="/logout" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+<span class="material-symbols-outlined text-sm">logout</span>
+                Sign Out
+            </a>
+</div>
+</aside>
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts, or analytics..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
+</button>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-white/10 overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="close-up profile photo of a modern entrepreneur with neutral background and cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuABW8Qelc6KTdNSDo0fYFx8C18_jPnQtWQJZQ8b18U_PZAdmsQrvB5UNPOqqpkFT9sxYA0QV6VD9dKLOGJ_6QFm_2CyaG0asg4qRNa5TVYr5kYXA8d5YNyER4XyY7GjiNoG5qIVCFj6WHywoXCu0G_ND8HMjOmWNGcff43TjsMyJlSYUZuieI2exmXE-_fr4OE3VZmcgvyDeCjtpW2hb_zBx6jbiXVpam6x8GPztvgsFvu03OhRZ1Lc3hPAdTCQx1i301PNae5H5YI6"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[260px] pt-24 pb-12 px-8 min-h-screen">
+<!-- Page Title Hero -->
+<div class="mb-12 relative">
+<div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
+<h1 class="text-5xl font-extrabold tracking-tight text-white mb-2 font-headline">Dashboard</h1>
+<p class="text-slate-400 font-medium">Welcome back, Alex. Your AI agents have drafted 14 new responses today.</p>
+</div>
+<!-- KPI Row -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="text-slate-400 text-xs font-bold uppercase tracking-wider">Pending Drafts</span>
+<span class="material-symbols-outlined text-primary text-xl">pending_actions</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold text-white">14</span>
+<span class="text-primary text-xs font-bold">+3 today</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="text-slate-400 text-xs font-bold uppercase tracking-wider">Upcoming Arrivals</span>
+<span class="material-symbols-outlined text-secondary-fixed-dim text-xl">flight_land</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold text-white">28</span>
+<span class="text-secondary-fixed-dim text-xs font-bold">Next 48h</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="text-slate-400 text-xs font-bold uppercase tracking-wider">Occupancy Rate</span>
+<span class="material-symbols-outlined text-tertiary text-xl">bedroom_parent</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold text-white">94%</span>
+<span class="text-tertiary text-xs font-bold">Peak Season</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl border-primary/20 bg-primary/5 relative overflow-hidden">
+<div class="absolute -right-4 -bottom-4 opacity-10">
+<span class="material-symbols-outlined text-8xl" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<div class="flex items-center justify-between relative z-10">
+<span class="text-slate-400 text-xs font-bold uppercase tracking-wider">AI Streak</span>
+<span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<div class="flex items-baseline gap-2 relative z-10">
+<span class="text-4xl font-extrabold text-white">12</span>
+<span class="text-primary text-xs font-bold">Day streak</span>
+</div>
+</div>
+</div>
+<!-- Wide Analytics Bar -->
+<div class="glass-card rounded-2xl p-1 mb-12 flex flex-wrap items-center justify-between divide-x divide-white/5">
+<div class="px-8 py-6 flex flex-col gap-1">
+<span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">Revenue This Month</span>
+<span class="text-xl font-bold text-white">$42,910.00</span>
+</div>
+<div class="px-8 py-6 flex flex-col gap-1">
+<span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">AI Approval Rate</span>
+<span class="text-xl font-bold text-secondary-fixed-dim">98.2%</span>
+</div>
+<div class="px-8 py-6 flex flex-col gap-1">
+<span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">Context Coverage</span>
+<span class="text-xl font-bold text-primary">84/100</span>
+</div>
+<div class="px-8 py-6 flex flex-col gap-1 flex-1 text-right border-none">
+<a class="text-primary font-bold hover:underline inline-flex items-center gap-2 group" href="#">
+                    All Reservations 
+                    <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Dashboard Main Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
+<!-- AI Drafts Section -->
+<div class="lg:col-span-2 space-y-8">
+<div class="flex items-center justify-between mb-2">
+<h2 class="text-2xl font-extrabold text-white tracking-tight">Pending AI Drafts</h2>
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">14 NEW</span>
+</div>
+<!-- Draft Card 1 -->
+<div class="glass-card rounded-3xl p-8 group hover:bg-white/[0.03] transition-colors border-l-4 border-l-tertiary">
+<div class="flex items-start justify-between mb-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center border border-white/10">
+<img alt="Guest" class="w-full h-full object-cover rounded-2xl" data-alt="close-up portrait of a smiling young man in casual attire with bright natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAR2OBWHvij4HpPswep6b79eiQjICvWhmjKd7ynjhonYE5n6gLI4obx5xOrWGh7z-p7hwX3xZBbvEDtowDrlnolildk0QhUxt2buWIuSBcdfH3F4J3KSTOtPkTOhNQmXMJ0EBskF8xAvljKydg95dsx3gSlVXqGQuJ7wXv4kYPFYznFpwmAzdm2_4wWAzUv3Vaf6S9H9fTxemYC91nlPrLlc385ZiRQ-HbOcBGkZiTq7o7Ptfbbn1p49Mct0wR8hY87GsVkFAYvY7sq"/>
+</div>
+<div>
+<h3 class="font-bold text-lg text-white">Julian Marco</h3>
+<p class="text-slate-400 text-sm">Ocean View Villa • Check-in: Friday</p>
+</div>
+</div>
+<div class="text-right">
+<span class="bg-tertiary/20 text-tertiary px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-widest mb-2 block">Complex Query</span>
+<div class="flex items-center gap-1 text-secondary-fixed-dim">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="text-sm font-bold">94% Confidence</span>
+</div>
+</div>
+</div>
+<div class="mb-6 bg-surface-container-lowest/50 p-4 rounded-2xl italic text-slate-300 text-sm border-l-2 border-white/10">
+                        "Hey Alex, we're really excited for the stay! Does the kitchen have an espresso machine or should we bring ours? Also, can we drop bags 2 hours early?"
+                    </div>
+<div class="mb-8 p-6 bg-primary/5 rounded-2xl border border-primary/20 relative">
+<div class="absolute top-4 right-4 text-primary opacity-40">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<p class="text-primary-fixed-dim text-sm leading-relaxed">
+                            Hi Julian! We can't wait to host you. The kitchen is fully equipped with a Nespresso Vertuo machine and a French Press, so no need to bring yours! Regarding the early bag drop, that won't be a problem at all. You can leave them in the secure locker by the entrance starting at 1 PM. See you Friday!
+                        </p>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex-1 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-extrabold py-3 rounded-xl shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+                            Approve &amp; Send
+                        </button>
+<button class="px-6 py-3 text-white border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all">
+                            Edit
+                        </button>
+</div>
+</div>
+<!-- Draft Card 2 -->
+<div class="glass-card rounded-3xl p-8 group hover:bg-white/[0.03] transition-colors border-l-4 border-l-primary">
+<div class="flex items-start justify-between mb-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center border border-white/10">
+<img alt="Guest" class="w-full h-full object-cover rounded-2xl" data-alt="professional woman looking thoughtfully into distance, minimal office background, high key lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN_RTeSTjcV_LyXSqZiflSjFi9OrMfxe97965uPK4z9sXcGTas5ruVoGirkzLyrFuFbqmeao2SBJLc-o1LjhYVRwsiQLwlGZ7eQXGVhXo9G29g5W5SJpplqftGTovgCuaDRqOb5llf9xq_DHs4pqAY3IexEQ1E-OH769gpEQ0QyUhE7y_DqID8Ay77ogNno4-jQz4j57LEKGapRFjYmGyCCCpxVBBDtWUcJ6UcVYK1ifJ-IKkaYvvsrI8HneO7eeqhDQMV8Zywtmnc"/>
+</div>
+<div>
+<h3 class="font-bold text-lg text-white">Sarah Jenkins</h3>
+<p class="text-slate-400 text-sm">Downtown Loft • Check-out: Today</p>
+</div>
+</div>
+<div class="text-right">
+<span class="bg-primary/20 text-primary px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-widest mb-2 block">Routine Inquiry</span>
+<div class="flex items-center gap-1 text-secondary-fixed-dim">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="text-sm font-bold">99% Confidence</span>
+</div>
+</div>
+</div>
+<div class="mb-6 bg-surface-container-lowest/50 p-4 rounded-2xl italic text-slate-300 text-sm border-l-2 border-white/10">
+                        "What is the checkout code for the trash room again? Thanks!"
+                    </div>
+<div class="mb-8 p-6 bg-primary/5 rounded-2xl border border-primary/20 relative">
+<p class="text-primary-fixed-dim text-sm leading-relaxed">
+                            Hi Sarah! The trash room code is 5582#. It's located just to the right of the elevator bank on the ground floor. Have a safe trip home!
+                        </p>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex-1 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-extrabold py-3 rounded-xl shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+                            Approve &amp; Send
+                        </button>
+<button class="px-6 py-3 text-white border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all">
+                            Edit
+                        </button>
+</div>
+</div>
+</div>
+<!-- Recent Activity Sidebar -->
+<div class="space-y-12">
+<div>
+<h2 class="text-xl font-extrabold text-white tracking-tight mb-6 flex items-center gap-2">
+                        Recent Activity
+                        <span class="material-symbols-outlined text-primary text-sm">auto_graph</span>
+</h2>
+<div class="space-y-6">
+<!-- Activity Item -->
+<div class="flex gap-4 relative">
+<div class="absolute left-[11px] top-6 bottom-0 w-[2px] bg-white/5"></div>
+<div class="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-primary text-[10px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex-1 pb-6">
+<p class="text-white text-sm font-bold">Draft sent to Marco P.</p>
+<p class="text-slate-500 text-xs">2 minutes ago • Auto-approved</p>
+<div class="mt-2 flex gap-1">
+<span class="material-symbols-outlined text-secondary-fixed-dim text-xs">sentiment_satisfied</span>
+<span class="text-[10px] text-slate-400">High Sentiment</span>
+</div>
+</div>
+</div>
+<!-- Activity Item -->
+<div class="flex gap-4 relative">
+<div class="absolute left-[11px] top-6 bottom-0 w-[2px] bg-white/5"></div>
+<div class="w-6 h-6 rounded-full bg-tertiary/20 flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-tertiary text-[10px]" style="font-variation-settings: 'FILL' 1;">edit_note</span>
+</div>
+<div class="flex-1 pb-6">
+<p class="text-white text-sm font-bold">Draft modified: Elena S.</p>
+<p class="text-slate-500 text-xs">1 hour ago • By Alex</p>
+</div>
+</div>
+<!-- Activity Item -->
+<div class="flex gap-4 relative">
+<div class="w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-secondary text-[10px]" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+</div>
+<div class="flex-1">
+<p class="text-white text-sm font-bold">New Booking: Loft 4</p>
+<p class="text-slate-500 text-xs">3 hours ago • 4 nights</p>
+</div>
+</div>
+</div>
+</div>
+<!-- AI Context Map -->
+<div class="glass-card rounded-3xl p-6 border-primary/10">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold text-white">AI Context Map</h3>
+<span class="material-symbols-outlined text-primary">hub</span>
+</div>
+<p class="text-slate-400 text-xs mb-6 leading-relaxed">Your AI understands 84% of your property details and house rules.</p>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+<span>Check-in Rules</span>
+<span class="text-primary">95%</span>
+</div>
+<div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[95%] shadow-[0_0_8px_rgba(174,198,255,0.4)]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+<span>Local Recs</span>
+<span class="text-secondary-fixed-dim">72%</span>
+</div>
+<div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-secondary-fixed-dim w-[72%] shadow-[0_0_8px_rgba(0,227,253,0.4)]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+<span>Troubleshooting</span>
+<span class="text-tertiary">60%</span>
+</div>
+<div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[60%] shadow-[0_0_8px_rgba(255,185,96,0.4)]"></div>
+</div>
+</div>
+</div>
+<button class="w-full mt-8 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm transition-all border border-white/5">
+                        Expand Knowledge Base
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed bottom-8 right-8 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-container text-on-primary-container shadow-[0_8px_32px_rgba(93,142,241,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 group">
+<span class="material-symbols-outlined text-3xl group-hover:rotate-90 transition-transform duration-300" style="font-variation-settings: 'wght' 400;">add</span>
+</button>
+{%- endblock %}
+{%- endblock %}

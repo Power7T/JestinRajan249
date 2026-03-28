@@ -216,27 +216,11 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
             </td>
 
             <td class="px-6 py-4">
-              {% if row.wa_mode == "baileys" %}
-                <div class="flex flex-col gap-1 text-[0.7rem] uppercase tracking-wider font-bold">
-                  <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full {% if row.bot_online %}bg-[#27c93f]{% else %}bg-rose-500{% endif %}"></span>
-                    <span class="{% if row.bot_online %}text-[#27c93f]{% else %}text-rose-400{% endif %}">{{ "Online" if row.bot_online else "Offline" }}</span>
-                  </div>
-                  {% if row.bot_heartbeat_age_min is not none %}
-                    <span class="text-[0.65rem] text-slate-500">{{ row.bot_heartbeat_age_min }}m ago</span>
-                  {% endif %}
-                </div>
-              {% else %}
-                <span class="text-slate-600">—</span>
-              {% endif %}
+              <span class="text-slate-600">—</span>
             </td>
 
             <td class="px-6 py-4 text-center">
-              {% if row.wa_mode == "baileys" %}
-                <span class="font-extrabold text-white text-sm bg-black/40 px-3 py-1 rounded-full border border-white/5 shadow-inner">{{ row.baileys_pending }}</span>
-              {% else %}
-                <span class="text-slate-600">—</span>
-              {% endif %}
+              <span class="text-slate-600">—</span>
             </td>
 
             <td class="px-6 py-4 text-right">

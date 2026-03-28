@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HostAI Analytics Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#121319",
+              "tertiary-fixed-dim": "#ffb960",
+              "tertiary-container": "#ca8103",
+              "on-error": "#690005",
+              "on-tertiary-fixed": "#2a1700",
+              "secondary-fixed-dim": "#00daf3",
+              "primary": "#aec6ff",
+              "surface-container": "#1e1f26",
+              "tertiary": "#ffb960",
+              "primary-fixed-dim": "#aec6ff",
+              "on-tertiary": "#472a00",
+              "inverse-on-surface": "#2f3037",
+              "surface": "#121319",
+              "secondary": "#bdf4ff",
+              "outline": "#8d909e",
+              "surface-variant": "#34343b",
+              "inverse-surface": "#e3e1eb",
+              "on-primary-container": "#00275e",
+              "background": "#121319",
+              "error-container": "#93000a",
+              "surface-bright": "#383940",
+              "primary-fixed": "#d8e2ff",
+              "primary-container": "#5d8ef1",
+              "on-secondary-container": "#00616d",
+              "secondary-container": "#00e3fd",
+              "on-surface": "#e3e1eb",
+              "surface-container-highest": "#34343b",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-secondary-fixed": "#001f24",
+              "surface-container-lowest": "#0d0e14",
+              "on-tertiary-container": "#3e2400",
+              "surface-container-low": "#1a1b22",
+              "on-surface-variant": "#c3c6d4",
+              "surface-container-high": "#292930",
+              "on-secondary": "#00363d",
+              "error": "#ffb4ab",
+              "secondary-fixed": "#9cf0ff",
+              "on-primary-fixed-variant": "#004397",
+              "inverse-primary": "#1e5bba",
+              "on-primary-fixed": "#001a43",
+              "surface-tint": "#aec6ff",
+              "on-error-container": "#ffdad6",
+              "on-primary": "#002e6b",
+              "outline-variant": "#424752",
+              "on-background": "#e3e1eb",
+              "tertiary-fixed": "#ffddb8",
+              "on-tertiary-fixed-variant": "#653e00"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #08090F;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #e3e1eb;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+<!-- SideNavBar -->
+<aside class="w-[260px] h-screen fixed left-0 top-0 border-r border-[#424752]/15 bg-[#08090F]/60 backdrop-blur-xl shadow-[0px_0px_40px_rgba(174,198,255,0.08)] flex flex-col h-full py-8 px-6 z-50">
+<div class="mb-10 px-2">
+<h1 class="text-xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-[#aec6ff] to-[#5b8def]">HostAI</h1>
+<p class="text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500 mt-1">Premium Management</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors font-['Plus_Jakarta_Sans'] font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors font-['Plus_Jakarta_Sans'] font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="#">
+<span class="material-symbols-outlined text-[20px]">calendar_month</span>
+<span>Reservations</span>
+</a>
+<!-- Active Tab: Analytics -->
+<a class="flex items-center gap-3 px-4 py-3 text-[#aec6ff] font-bold bg-[#5d8ef1]/10 backdrop-blur-md rounded-md font-['Plus_Jakarta_Sans'] text-[0.875rem] tracking-tight transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span>Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors font-['Plus_Jakarta_Sans'] font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 transition-all duration-200 rounded-md" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="mt-auto space-y-2 pt-6 border-t border-[#424752]/15">
+<button class="w-full bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-[#002e6b] font-bold py-3 rounded-md mb-6 active:scale-95 transition-transform text-sm">
+                New Booking
+            </button>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors text-[0.875rem]" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+<span>Help</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors text-[0.875rem]" href="#">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[260px] min-h-screen">
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-16 flex justify-between items-center px-10 z-40 bg-transparent">
+<div class="flex items-center gap-4">
+<h2 class="font-['Plus_Jakarta_Sans'] font-extrabold text-2xl text-[#aec6ff]">Analytics</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm group-focus-within:text-[#aec6ff]">search</span>
+<input class="bg-surface-container-lowest border-none rounded-full py-2 pl-10 pr-4 text-sm w-64 focus:ring-1 focus:ring-[#aec6ff]/40 transition-all placeholder:text-slate-500" placeholder="Search data..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-slate-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-[#aec6ff]/20">
+<img class="w-full h-full object-cover" data-alt="close-up portrait of a professional male business executive in dark lighting with blue rim light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvBHhPxCIdEXMJS9beEmmCuGpQLItZUTWuQaBQcD__DXrvLNd5foBBpSuILeznoStfkNDltRNZb_TX4mpo9oHwe8lughEbHKe3ftDgO127XjDynTIqnl3iEUDrJpWnfm3j-_D9HWr7zwhEgeJKw8W-nkhS5ocHjA2AF9WdM6kv7BnM-Ghxpz6cglqt5eVGgtRS67ncOeuL2ic7Xgow4XC4eD68iX25mB7nArvoK5PRE9oPq3aE-c30eJXicmmTHBYBcw3trOac28xe"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Scrollable Dashboard Content -->
+<div class="pt-24 pb-16 px-10 max-w-7xl mx-auto space-y-10">
+<!-- Metric Summary Cards (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="glass-card p-6 rounded-xl flex flex-col justify-between group">
+<div class="flex justify-between items-start">
+<p class="text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500">Occupancy Rate</p>
+<span class="material-symbols-outlined text-primary text-[20px]">trending_up</span>
+</div>
+<div class="mt-4">
+<h3 class="text-4xl font-extrabold text-[#aec6ff]">94%</h3>
+<p class="text-xs text-secondary-fixed-dim mt-2 font-medium">+2.4% from last month</p>
+</div>
+</div>
+<div class="glass-card p-6 rounded-xl flex flex-col justify-between border-primary/20 bg-primary-container/5">
+<div class="flex justify-between items-start">
+<p class="text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500">AI Resolution Accuracy</p>
+<span class="material-symbols-outlined text-secondary-container text-[20px]">auto_awesome</span>
+</div>
+<div class="mt-4">
+<h3 class="text-4xl font-extrabold text-[#aec6ff]">98.2%</h3>
+<p class="text-xs text-slate-400 mt-2">Target: 95.0%</p>
+</div>
+</div>
+<div class="glass-card p-6 rounded-xl flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<p class="text-[0.6875rem] font-bold uppercase tracking-[0.05rem] text-slate-500">Avg. Response Time</p>
+<span class="material-symbols-outlined text-error text-[20px]">timer</span>
+</div>
+<div class="mt-4">
+<h3 class="text-4xl font-extrabold text-[#aec6ff]">45s</h3>
+<p class="text-xs text-slate-400 mt-2 font-medium">12s faster than average</p>
+</div>
+</div>
+</div>
+<!-- Main Charts Area -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Occupancy Trends (Line Chart) -->
+<div class="lg:col-span-8 glass-card rounded-xl p-8 min-h-[450px] relative overflow-hidden">
+<div class="flex justify-between items-center mb-10">
+<div>
+<h4 class="text-lg font-bold text-white">Occupancy Trends</h4>
+<p class="text-sm text-slate-500">Performance over the last 12 months</p>
+</div>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-surface-container-high rounded-full text-[0.6875rem] font-bold uppercase text-slate-400">Monthly</span>
+<span class="px-3 py-1 bg-primary/10 rounded-full text-[0.6875rem] font-bold uppercase text-primary border border-primary/20">Yearly</span>
+</div>
+</div>
+<!-- Line Chart Visual Representation -->
+<div class="relative h-[280px] w-full flex items-end">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 800 200">
+<defs>
+<lineargradient id="lineGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#aec6ff" stop-opacity="0.5"></stop>
+<stop offset="100%" stop-color="#aec6ff" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,150 Q50,140 100,160 T200,120 T300,80 T400,100 T500,60 T600,40 T700,70 T800,30" fill="none" stroke="#aec6ff" stroke-linecap="round" stroke-width="4"></path>
+<path d="M0,150 Q50,140 100,160 T200,120 T300,80 T400,100 T500,60 T600,40 T700,70 T800,30 V200 H0 Z" fill="url(#lineGradient)"></path>
+<!-- Interaction Dots -->
+<circle cx="500" cy="60" fill="#08090F" r="6" stroke="#aec6ff" stroke-width="3"></circle>
+</svg>
+<!-- Tooltip Placeholder -->
+<div class="absolute left-[510px] top-[10px] glass-card px-3 py-2 rounded-lg border border-primary/30">
+<p class="text-[0.6rem] uppercase text-slate-400 font-bold">August Peak</p>
+<p class="text-sm font-bold text-white">96.8%</p>
+</div>
+</div>
+<!-- X-Axis Labels -->
+<div class="flex justify-between mt-6 px-2 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-600">
+<span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span>
+</div>
+</div>
+<!-- Weekly Guest Volume (Bar Chart) -->
+<div class="lg:col-span-4 glass-card rounded-xl p-8 flex flex-col">
+<div class="mb-10">
+<h4 class="text-lg font-bold text-white">Weekly Volume</h4>
+<p class="text-sm text-slate-500">Guest check-ins per day</p>
+</div>
+<div class="flex-1 flex items-end justify-between gap-3 px-2">
+<!-- Bar 1 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[40%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">M</span>
+</div>
+<!-- Bar 2 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[55%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">T</span>
+</div>
+<!-- Bar 3 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[45%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">W</span>
+</div>
+<!-- Bar 4 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-primary-container rounded-t-sm h-[85%] relative">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 text-[0.6rem] text-primary font-bold">142</div>
+</div>
+<span class="text-[0.6rem] font-bold text-primary">T</span>
+</div>
+<!-- Bar 5 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[70%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">F</span>
+</div>
+<!-- Bar 6 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[95%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">S</span>
+</div>
+<!-- Bar 7 -->
+<div class="flex flex-col items-center gap-3 w-full">
+<div class="w-full bg-surface-container-high rounded-t-sm transition-all hover:bg-primary-container h-[60%]"></div>
+<span class="text-[0.6rem] font-bold text-slate-600">S</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-[#424752]/15">
+<div class="flex justify-between items-center text-sm">
+<span class="text-slate-500">Average Stay</span>
+<span class="text-white font-bold">3.4 Days</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Insights Section (Asymmetric Grid) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="glass-card rounded-xl p-6 flex gap-6 items-center">
+<div class="w-16 h-16 rounded-full bg-secondary-container/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-secondary-container text-3xl">lightbulb</span>
+</div>
+<div>
+<h5 class="font-bold text-white">AI Strategy Insight</h5>
+<p class="text-sm text-slate-400 mt-1">Properties with high AI resolution (98%+) see 14% higher repeat booking rates. Consider expanding AI automation to check-out procedures.</p>
+</div>
+</div>
+<div class="glass-card rounded-xl p-6 overflow-hidden relative">
+<div class="flex justify-between items-center relative z-10">
+<div>
+<h5 class="font-bold text-white">Revenue Impact</h5>
+<p class="text-sm text-slate-400 mt-1">Smart pricing increased yield by $4,200 this week.</p>
+</div>
+<button class="bg-[#292930]/60 p-2 rounded-full text-primary hover:bg-[#aec6ff]/10">
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<!-- Background Decoration -->
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl"></div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

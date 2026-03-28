@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-container": "#1e1f26",
+            "outline": "#8d909e",
+            "on-secondary-fixed": "#001f24",
+            "inverse-primary": "#1e5bba",
+            "on-primary-fixed-variant": "#004397",
+            "on-primary-container": "#00275e",
+            "error": "#ffb4ab",
+            "secondary-fixed": "#9cf0ff",
+            "on-background": "#e3e1eb",
+            "surface-container-high": "#292930",
+            "secondary-fixed-dim": "#00daf3",
+            "on-primary": "#002e6b",
+            "on-error-container": "#ffdad6",
+            "on-tertiary-fixed": "#2a1700",
+            "secondary": "#bdf4ff",
+            "outline-variant": "#424752",
+            "inverse-surface": "#e3e1eb",
+            "tertiary": "#ffb960",
+            "surface-variant": "#34343b",
+            "surface-dim": "#121319",
+            "inverse-on-surface": "#2f3037",
+            "background": "#08090F",
+            "primary-container": "#5d8ef1",
+            "primary": "#aec6ff",
+            "on-error": "#690005",
+            "on-tertiary-fixed-variant": "#653e00",
+            "surface-bright": "#383940",
+            "on-tertiary-container": "#3e2400",
+            "surface-tint": "#aec6ff",
+            "tertiary-fixed-dim": "#ffb960",
+            "on-tertiary": "#472a00",
+            "on-surface-variant": "#c3c6d4",
+            "surface-container-highest": "#34343b",
+            "primary-fixed": "#d8e2ff",
+            "secondary-container": "#00e3fd",
+            "on-primary-fixed": "#001a43",
+            "surface-container-low": "#1a1b22",
+            "surface-container-lowest": "#0d0e14",
+            "surface": "#121319",
+            "on-secondary-container": "#00616d",
+            "on-secondary-fixed-variant": "#004f58",
+            "primary-fixed-dim": "#aec6ff",
+            "error-container": "#93000a",
+            "on-secondary": "#00363d",
+            "tertiary-fixed": "#ffddb8",
+            "on-surface": "#e3e1eb",
+            "tertiary-container": "#ca8103"
+          },
+          fontFamily: {
+            "headline": ["Plus Jakarta Sans"],
+            "body": ["Plus Jakarta Sans"],
+            "label": ["Plus Jakarta Sans"]
+          },
+          borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+        },
+      },
+    }
+  </script>
+<style>
+    .glass-panel {
+      background: rgba(26, 27, 34, 0.7);
+      backdrop-filter: blur(24px);
+      border-top: 1px solid rgba(174, 198, 255, 0.1);
+      border-left: 1px solid rgba(174, 198, 255, 0.1);
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body selection:bg-primary/30">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-8 bg-[#121319]/60 backdrop-blur-xl h-screen w-64 border-r border-[#424752]/15 shadow-[0px_0px_40px_rgba(174,198,255,0.08)] z-[60]">
+<div class="px-6 mb-12">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-fixed text-sm" style="font-variation-settings: 'FILL' 1;">domain</span>
+</div>
+<div>
+<h1 class="text-xl font-extrabold text-[#aec6ff] tracking-tighter">HostAI</h1>
+<p class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500">Admin Console</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-2">
+<a class="flex items-center gap-3 py-3 text-[#aec6ff] font-bold border-l-2 border-[#aec6ff] pl-4 active:scale-95 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[20px]">domain</span>
+<span class="text-[13px]">Tenants</span>
+</a>
+<a class="flex items-center gap-3 py-3 text-slate-400 hover:text-slate-200 transition-colors duration-200 pl-4 hover:bg-[#292930]/40 group" href="#">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+<span class="text-[13px]">AI Metrics</span>
+</a>
+<a class="flex items-center gap-3 py-3 text-slate-400 hover:text-slate-200 transition-colors duration-200 pl-4 hover:bg-[#292930]/40 group" href="#">
+<span class="material-symbols-outlined text-[20px]">health_and_safety</span>
+<span class="text-[13px]">System Health</span>
+</a>
+<div class="mt-8 px-6">
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary-container py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:opacity-90 transition-all">
+          New Instance
+        </button>
+</div>
+</nav>
+<div class="mt-auto flex flex-col gap-1">
+<a class="flex items-center gap-3 py-3 text-slate-400 hover:text-slate-200 transition-colors duration-200 pl-4 hover:bg-[#292930]/40" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="text-[13px]">Settings</span>
+</a>
+<a class="flex items-center gap-3 py-3 text-slate-400 hover:text-slate-200 transition-colors duration-200 pl-4 hover:bg-[#292930]/40" href="#">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+<span class="text-[13px]">Logout</span>
+</a>
+</div>
+</aside>
+<!-- TopNavBar Shell -->
+<header class="sticky top-0 z-50 flex justify-between items-center px-8 w-[calc(100%-16rem)] ml-64 bg-[#121319]/60 backdrop-blur-xl h-16 border-b border-[#424752]/15">
+<div class="flex items-center gap-8 flex-1">
+<div class="relative w-full max-w-md group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest border-none rounded-full pl-10 pr-4 py-2 text-sm text-on-surface focus:ring-1 focus:ring-primary/40 placeholder:text-slate-600 transition-all" placeholder="Search across all tenants..." type="text"/>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-slate-400 hover:text-slate-200 text-xs font-bold uppercase tracking-wider transition-all" href="#">Dashboard</a>
+<a class="text-slate-400 hover:text-slate-200 text-xs font-bold uppercase tracking-wider transition-all" href="#">Logs</a>
+<a class="text-slate-400 hover:text-slate-200 text-xs font-bold uppercase tracking-wider transition-all" href="#">Reports</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<button class="p-2 text-slate-400 hover:bg-white/5 rounded-full transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-400 hover:bg-white/5 rounded-full transition-all">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+<button class="bg-surface-container-high border border-outline-variant/30 text-[#aec6ff] px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-primary/10 transition-all">
+        Deploy Update
+      </button>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-primary/20">
+<img alt="Admin" class="w-full h-full object-cover" data-alt="Close up portrait of a professional man in tech with minimalist lighting and dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMTTA0J8xYuO-t_B60NdKylwPazDs4zK8hcgVm6vCdMVR3fCZ0Q4EcqAeKDrfdLkbKr2LfMmU3Jfd-_ptqeM64yEl_FkT52IJxEf8ax7gKREo-E1E2CZFy2GmCRkXuZkCtHCFzR5jhbuyI1mGYxYp55EqvvGCbi0Qjz3a8J25hKaZsbq091hO1FDDzKpGoGhmKuAC5QBP9NOo-47BV9xMue_V56kDNnkwnSVwWP4aWKFACfmmtW59MOh5ZuXAR-CdgJulPdwivbo-p"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-64 p-12 min-h-[calc(100vh-4rem)]">
+<!-- Header Section -->
+<section class="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h2 class="text-4xl font-extrabold text-on-surface tracking-tight mb-2">Tenants Overview</h2>
+<p class="text-slate-400 max-w-lg">Manage organizational hierarchies, property connections, and real-time revenue performance across the global infrastructure.</p>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex flex-col">
+<label class="text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Filter by Region</label>
+<div class="relative">
+<select class="appearance-none bg-surface-container-low border border-outline-variant/20 rounded-lg px-4 py-2.5 pr-10 text-sm text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-all min-w-[200px]">
+<option>All Regions</option>
+<option>North America (East)</option>
+<option>North America (West)</option>
+<option>European Union</option>
+<option>Asia Pacific</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">expand_more</span>
+</div>
+</div>
+<button class="flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-4 py-2.5 rounded-lg border border-outline-variant/20 transition-all mt-auto self-end h-[42px]">
+<span class="material-symbols-outlined text-lg">tune</span>
+<span class="text-sm font-medium">Advanced</span>
+</button>
+</div>
+</section>
+<!-- Metrics Bento Row -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+<div class="glass-panel p-6 rounded-xl border border-outline-variant/15">
+<div class="flex items-center justify-between mb-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="text-secondary font-bold text-xs tracking-tighter bg-secondary/10 px-2 py-0.5 rounded">+12%</span>
+</div>
+<div class="text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500 mb-1">Total Tenants</div>
+<div class="text-3xl font-extrabold text-on-surface">1,284</div>
+</div>
+<div class="glass-panel p-6 rounded-xl border border-outline-variant/15">
+<div class="flex items-center justify-between mb-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="text-secondary font-bold text-xs tracking-tighter bg-secondary/10 px-2 py-0.5 rounded">+5.4%</span>
+</div>
+<div class="text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500 mb-1">Combined MRR</div>
+<div class="text-3xl font-extrabold text-on-surface">$4.2M</div>
+</div>
+<div class="glass-panel p-6 rounded-xl border border-outline-variant/15">
+<div class="flex items-center justify-between mb-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">apartment</span>
+</div>
+<div class="text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500 mb-1">Total Properties</div>
+<div class="text-3xl font-extrabold text-on-surface">42.1k</div>
+</div>
+<div class="glass-panel p-6 rounded-xl border border-outline-variant/15">
+<div class="flex items-center justify-between mb-4">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<div class="text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500 mb-1">API Throughput</div>
+<div class="text-3xl font-extrabold text-on-surface">99.98%</div>
+</div>
+</section>
+<!-- Main Table Container -->
+<section class="glass-panel rounded-xl overflow-hidden shadow-[0px_0px_40px_rgba(0,0,0,0.4)]">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-lowest/50">
+<th class="px-8 py-5 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">Tenant Name</th>
+<th class="px-8 py-5 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500 text-center">Connected Properties</th>
+<th class="px-8 py-5 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">MRR</th>
+<th class="px-8 py-5 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">Active Subs</th>
+<th class="px-8 py-5 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Row 1 -->
+<tr class="hover:bg-primary/5 transition-colors duration-150 group">
+<td class="px-8 py-5">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center border border-outline-variant/20 overflow-hidden">
+<img alt="Nexus Group" class="w-full h-full object-cover" data-alt="Abstract corporate minimalist logo with blue geometric shapes on white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2oKU1xgLYkFn7V9_G3IgAOrWKYK2kiRti94zfuk_ND0sfPywXndIpgF5ChPaRbOuznfZHIO7aR5yO6sgBx3yP8VRzj0VGDKOvxmD9U7kPXwsduIeEKyRVGF2ANm76AUXxJ31iUM0wiI_Q_qzj1M5Jq9cIVpc80JOHSDcVClguBoleK5pf9r0Qqwj-UwRdEB7JSBABz-eyw5PczgWXUa6frodh9BW_kM18DUE1kFlp3W9dMehhwSBJwyQBN_HwQu9Abw0FM-uTxoQy"/>
+</div>
+<div>
+<div class="text-sm font-bold text-on-surface">Nexus Global Properties</div>
+<div class="text-xs text-slate-500">nexus-global.hostai.app</div>
+</div>
+</div>
+</td>
+<td class="px-8 py-5 text-center">
+<div class="inline-flex items-center px-2.5 py-1 rounded-full bg-surface-container-lowest border border-outline-variant/20 text-sm font-medium">
+                  842
+                </div>
+</td>
+<td class="px-8 py-5">
+<div class="text-sm font-bold text-on-surface">$142,500.00</div>
+<div class="text-[10px] text-secondary font-bold uppercase">+2.4% vs lw</div>
+</td>
+<td class="px-8 py-5">
+<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary-container/10 border border-secondary-container/30 text-secondary-fixed-dim text-[11px] font-bold uppercase tracking-wider">Enterprise</span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="p-2 text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-primary/5 transition-colors duration-150 group">
+<td class="px-8 py-5">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center border border-outline-variant/20 overflow-hidden">
+<img alt="Aether Living" class="w-full h-full object-cover" data-alt="Stylized letter A logo in sleek metallic silver on a deep charcoal background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBi3mbztvvf1jxPr3tEOeYJ6iUSavIBAw5BXVuT5xIIl6U3watmvZmDfh-NbWVgs6CYpO0yEtw-4E1MTtXHsXgJhm7pEIMJDoa_wPW4pdexU3NVuY04BxEOw-bsjBFcKHy8nKDcFPhBcnaDZkti1_IfWsfmt8AMiW971nxwXwmEsydvAzHI4PZ1o_AXME63MxmgS3boU89_KSdFssi_TCX3e_0f9mnVCKMrbP4ldZwhORScTFnkmsre5r8qnbEaPT_vDDeraRfPgIIq"/>
+</div>
+<div>
+<div class="text-sm font-bold text-on-surface">Aether Living Space</div>
+<div class="text-xs text-slate-500">aether.hostai.app</div>
+</div>
+</div>
+</td>
+<td class="px-8 py-5 text-center">
+<div class="inline-flex items-center px-2.5 py-1 rounded-full bg-surface-container-lowest border border-outline-variant/20 text-sm font-medium">
+                  215
+                </div>
+</td>
+<td class="px-8 py-5">
+<div class="text-sm font-bold text-on-surface">$38,200.00</div>
+<div class="text-[10px] text-error font-bold uppercase">-0.8% vs lw</div>
+</td>
+<td class="px-8 py-5">
+<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-primary-container/10 border border-primary-container/30 text-primary-fixed-dim text-[11px] font-bold uppercase tracking-wider">Pro Tier</span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="p-2 text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-primary/5 transition-colors duration-150 group">
+<td class="px-8 py-5">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center border border-outline-variant/20 overflow-hidden">
+<img alt="Horizon Stays" class="w-full h-full object-cover" data-alt="Minimalist sunset horizon line logo with vibrant orange and blue gradient" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsTXEhCKRHqVt8k04xqC1KdP3-oe1KyYXRKtKtpt7TPZeVWU6x47lxgZT9gMYbDsnzKRPD7vPK3tBryK0IjsqXdPVfcpsqlE6dfgn9M_hAUMKr0hUtpDUkx8EXM2Xc5Kj7MCdsyzDyEIIcI3HYxGpRaRv5hBmYynGgn3K6D0UmKxInpzuOfHzjWDIRp8uOCO7-NEmpqImknC9dMyRo59z90xcGzPvyv-n5GF62_CGsV4Uul6ytqt9iFuxqkrAOfSeSzb3bZ4TxPq5a"/>
+</div>
+<div>
+<div class="text-sm font-bold text-on-surface">Horizon Stays Ltd.</div>
+<div class="text-xs text-slate-500">horizon-stays.hostai.app</div>
+</div>
+</div>
+</td>
+<td class="px-8 py-5 text-center">
+<div class="inline-flex items-center px-2.5 py-1 rounded-full bg-surface-container-lowest border border-outline-variant/20 text-sm font-medium">
+                  1,402
+                </div>
+</td>
+<td class="px-8 py-5">
+<div class="text-sm font-bold text-on-surface">$284,100.00</div>
+<div class="text-[10px] text-secondary font-bold uppercase">+12.1% vs lw</div>
+</td>
+<td class="px-8 py-5">
+<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary-container/10 border border-secondary-container/30 text-secondary-fixed-dim text-[11px] font-bold uppercase tracking-wider">Enterprise</span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="p-2 text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-primary/5 transition-colors duration-150 group">
+<td class="px-8 py-5">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center border border-outline-variant/20 overflow-hidden">
+<img alt="Urban Nest" class="w-full h-full object-cover" data-alt="Bird nest shape formed by urban skyscraper silhouettes in electric blue" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBF5zC-cQpNWFwWTWfVG6GxbEZulQGGZiEUMMxqPLmtoV8KJx8vk66NXUWBS6aKUgsj9zqvyr7Wl4V5YtzdTCoBmc4Kdi2ArEILFzCEPeiBWCWCyfUCqs7trCCjgI7Zfoz4THkYFCOC1xNaDwyRWzJmEPwXp9B5fZTtUo_kQZATnaOMvHMKaONlNGQKNz7nEvivmKVYVSRuXYP2agIlR8Xm5Z-4WW8IStTzCyaqVVDnengu4fe-F2tiHRSWmMefE9aWXxmQ6Zm1lfR5"/>
+</div>
+<div>
+<div class="text-sm font-bold text-on-surface">Urban Nest Management</div>
+<div class="text-xs text-slate-500">urbannest.hostai.app</div>
+</div>
+</div>
+</td>
+<td class="px-8 py-5 text-center">
+<div class="inline-flex items-center px-2.5 py-1 rounded-full bg-surface-container-lowest border border-outline-variant/20 text-sm font-medium">
+                  52
+                </div>
+</td>
+<td class="px-8 py-5">
+<div class="text-sm font-bold text-on-surface">$12,450.00</div>
+<div class="text-[10px] text-slate-500 font-bold uppercase">Stable</div>
+</td>
+<td class="px-8 py-5">
+<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-surface-container-highest/50 border border-outline-variant/30 text-slate-300 text-[11px] font-bold uppercase tracking-wider">Starter</span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="p-2 text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer -->
+<div class="bg-surface-container-lowest/30 px-8 py-4 flex items-center justify-between border-t border-outline-variant/10">
+<div class="text-xs text-slate-500">
+          Showing <span class="text-on-surface font-bold">1-4</span> of <span class="text-on-surface font-bold">1,284</span> tenants
+        </div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 rounded-lg border border-outline-variant/20 text-xs font-bold text-slate-500 disabled:opacity-30" disabled="">
+            Previous
+          </button>
+<div class="flex items-center gap-1">
+<button class="w-8 h-8 rounded-lg bg-primary text-on-primary-container text-xs font-bold">1</button>
+<button class="w-8 h-8 rounded-lg hover:bg-surface-container-high text-xs font-bold transition-all">2</button>
+<button class="w-8 h-8 rounded-lg hover:bg-surface-container-high text-xs font-bold transition-all">3</button>
+</div>
+<button class="px-3 py-1.5 rounded-lg border border-outline-variant/20 text-xs font-bold text-on-surface hover:bg-surface-container-high transition-all">
+            Next
+          </button>
+</div>
+</div>
+</section>
+</main>
+</body></html>

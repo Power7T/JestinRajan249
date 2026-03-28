@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings - HostAI Premium Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#121319",
+              "tertiary-fixed-dim": "#ffb960",
+              "tertiary-container": "#ca8103",
+              "on-error": "#690005",
+              "on-tertiary-fixed": "#2a1700",
+              "secondary-fixed-dim": "#00daf3",
+              "primary": "#aec6ff",
+              "surface-container": "#1e1f26",
+              "tertiary": "#ffb960",
+              "primary-fixed-dim": "#aec6ff",
+              "on-tertiary": "#472a00",
+              "inverse-on-surface": "#2f3037",
+              "surface": "#121319",
+              "secondary": "#bdf4ff",
+              "outline": "#8d909e",
+              "surface-variant": "#34343b",
+              "inverse-surface": "#e3e1eb",
+              "on-primary-container": "#00275e",
+              "background": "#121319",
+              "error-container": "#93000a",
+              "surface-bright": "#383940",
+              "primary-fixed": "#d8e2ff",
+              "primary-container": "#5d8ef1",
+              "on-secondary-container": "#00616d",
+              "secondary-container": "#00e3fd",
+              "on-surface": "#e3e1eb",
+              "surface-container-highest": "#34343b",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-secondary-fixed": "#001f24",
+              "surface-container-lowest": "#0d0e14",
+              "on-tertiary-container": "#3e2400",
+              "surface-container-low": "#1a1b22",
+              "on-surface-variant": "#c3c6d4",
+              "surface-container-high": "#292930",
+              "on-secondary": "#00363d",
+              "error": "#ffb4ab",
+              "secondary-fixed": "#9cf0ff",
+              "on-primary-fixed-variant": "#004397",
+              "inverse-primary": "#1e5bba",
+              "on-primary-fixed": "#001a43",
+              "surface-tint": "#aec6ff",
+              "on-error-container": "#ffdad6",
+              "on-primary": "#002e6b",
+              "outline-variant": "#424752",
+              "on-background": "#e3e1eb",
+              "tertiary-fixed": "#ffddb8",
+              "on-tertiary-fixed-variant": "#653e00"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #08090F;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #e3e1eb;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
+        }
+        .text-gradient-primary {
+            background: linear-gradient(135deg, #aec6ff 0%, #5d8ef1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #aec6ff 0%, #5d8ef1 100%);
+            box-shadow: 0px 0px 12px rgba(174, 198, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="w-[260px] h-screen fixed left-0 top-0 border-r border-[#424752]/15 bg-[#08090F]/60 backdrop-blur-xl flex flex-col py-8 px-6 shadow-[0px_0px_40px_rgba(174,198,255,0.08)] z-50">
+<div class="mb-10 flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5b8def] flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container text-lg">bolt</span>
+</div>
+<div>
+<h1 class="text-xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-[#aec6ff] to-[#5b8def]">HostAI</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Premium Management</p>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 py-3 px-4 text-slate-400 hover:text-slate-200 transition-colors font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 rounded-md" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 text-slate-400 hover:text-slate-200 transition-colors font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 rounded-md" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_month">calendar_month</span>
+                Reservations
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 text-slate-400 hover:text-slate-200 transition-colors font-medium text-[0.875rem] tracking-tight hover:bg-[#292930]/40 rounded-md" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 text-[#aec6ff] font-bold bg-[#5d8ef1]/10 backdrop-blur-md rounded-md transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+</nav>
+<div class="mt-auto pt-6 border-t border-[#424752]/15 space-y-2">
+<button class="w-full btn-gradient py-2.5 px-4 rounded-xl text-on-primary text-sm font-bold flex items-center justify-center gap-2 mb-6 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-sm">add</span>
+                New Booking
+            </button>
+<a class="flex items-center gap-3 py-2 px-4 text-slate-400 hover:text-slate-200 transition-colors font-medium text-[0.875rem] tracking-tight" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                Help
+            </a>
+<a class="flex items-center gap-3 py-2 px-4 text-slate-400 hover:text-slate-200 transition-colors font-medium text-[0.875rem] tracking-tight" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Logout
+            </a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-[260px] relative">
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-16 bg-transparent flex justify-between items-center px-10 z-40">
+<div class="flex items-center">
+<h2 class="font-['Plus_Jakarta_Sans'] font-extrabold text-2xl text-[#aec6ff]">Settings</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative group">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-sm">search</span>
+<input class="bg-surface-container-lowest text-on-surface text-sm rounded-full pl-10 pr-4 py-1.5 w-64 border-none focus:ring-1 focus:ring-primary/40 transition-all outline-none" placeholder="Search settings..." type="text"/>
+</div>
+<div class="flex items-center gap-4 text-[#aec6ff]">
+<button class="hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+<img alt="User Profile" class="w-8 h-8 rounded-full border border-primary/20" data-alt="professional portrait of a tech executive with neutral background and cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYltmN80DnRJYRxf4ZJ9vg8L6hZzWQue_dZubX3R4vmrExl1y7BcHdOTA5AaGS8BnSI-T0w57f7TOvpx-IGVcbVagIPn4NB0z7iYeJhVpsWPoxbVPQySESzuVSW7TAqUjePX4_F6Sn1GuyfTocvXzaK1eNOUCzwICx5p6tnDaNsFW5bNUq2m1ogGhXIXbctnDXxk7otQ0e2oVfjzKsBwomiSmA8ZMSEarPWpJtYP6YG74rYZPu94BvlPJPztJyo_f4IkBV63dyGODp"/>
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="pt-24 pb-16 px-10 max-w-5xl mx-auto">
+<!-- Sub-navigation Tabs -->
+<div class="flex gap-8 mb-12 border-b border-[#424752]/15">
+<button class="pb-4 text-[#aec6ff] border-b-2 border-[#aec6ff] font-bold text-sm transition-all">Profile</button>
+<button class="pb-4 text-slate-400 hover:text-slate-200 font-medium text-sm transition-all">API Keys</button>
+<button class="pb-4 text-slate-400 hover:text-slate-200 font-medium text-sm transition-all">Notifications</button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+<!-- Profile Information Form -->
+<section class="lg:col-span-2 space-y-8">
+<div>
+<h3 class="text-xl font-extrabold headline-lg mb-2">Admin Details</h3>
+<p class="text-slate-400 text-sm body-md">Update your personal information and contact preferences.</p>
+</div>
+<div class="glass-card p-8 rounded-xl space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-[0.6875rem] font-bold uppercase tracking-wider text-primary/70 label-sm">Full Name</label>
+<input class="w-full bg-surface-container-lowest border-none rounded-lg p-3 text-on-surface focus:ring-1 focus:ring-primary/40 transition-all outline-none" type="text" value="Alexander Vance"/>
+</div>
+<div class="space-y-2">
+<label class="text-[0.6875rem] font-bold uppercase tracking-wider text-primary/70 label-sm">Role</label>
+<input class="w-full bg-surface-container-lowest/50 border-none rounded-lg p-3 text-slate-500 cursor-not-allowed outline-none" readonly="" type="text" value="Chief Operations Host"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[0.6875rem] font-bold uppercase tracking-wider text-primary/70 label-sm">Email Address</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-500 text-sm">mail</span>
+<input class="w-full bg-surface-container-lowest border-none rounded-lg p-3 pl-10 text-on-surface focus:ring-1 focus:ring-primary/40 transition-all outline-none" type="email" value="alexander@hostai.premium"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[0.6875rem] font-bold uppercase tracking-wider text-primary/70 label-sm">Phone Number</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-500 text-sm">call</span>
+<input class="w-full bg-surface-container-lowest border-none rounded-lg p-3 pl-10 text-on-surface focus:ring-1 focus:ring-primary/40 transition-all outline-none" type="tel" value="+1 (555) 902-4410"/>
+</div>
+</div>
+<div class="pt-4">
+<button class="btn-gradient px-8 py-3 rounded-xl font-bold text-on-primary hover:opacity-90 transition-all">Save Changes</button>
+</div>
+</div>
+</section>
+<!-- AI Automation Rules -->
+<section class="space-y-8">
+<div>
+<h3 class="text-xl font-extrabold headline-lg mb-2">Automation</h3>
+<p class="text-slate-400 text-sm body-md">Configure your host intelligence.</p>
+</div>
+<div class="glass-card p-6 rounded-xl space-y-8">
+<!-- Rule 1 -->
+<div class="flex items-start justify-between gap-4">
+<div class="space-y-1">
+<h4 class="text-sm font-bold text-on-surface">Auto-approve Drafts</h4>
+<p class="text-xs text-slate-500 leading-relaxed">Automatically confirm high-trust booking requests.</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer mt-1">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary-container"></div>
+</label>
+</div>
+<!-- Rule 2 -->
+<div class="flex items-start justify-between gap-4">
+<div class="space-y-1">
+<h4 class="text-sm font-bold text-on-surface">Enable Smart Context</h4>
+<p class="text-xs text-slate-500 leading-relaxed">AI analyzes guest history for tailored check-in instructions.</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer mt-1">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary-container"></div>
+</label>
+</div>
+<div class="p-4 bg-primary/5 rounded-lg border border-primary/10">
+<div class="flex gap-3">
+<span class="material-symbols-outlined text-primary text-lg">info</span>
+<p class="text-[11px] text-slate-400 leading-tight">These rules are applied globally to all managed properties. Use Property Settings for individual overrides.</p>
+</div>
+</div>
+</div>
+<!-- Visual Accent Card -->
+<div class="relative overflow-hidden rounded-xl h-48 group">
+<div class="absolute inset-0 bg-gradient-to-t from-surface to-transparent z-10"></div>
+<img alt="Neural Network Visualization" class="w-full h-full object-cover grayscale opacity-40 group-hover:scale-110 transition-transform duration-700" data-alt="abstract digital visualization of neural network pathways with glowing blue data points on a dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcE-UbYD2lJqtHTd_PcEMfBylQRtKieI4YjRnO0ybaCSXnuBN0mOfOlXLLaXwFJjeHUeRoQX5R6Ekk8xSyAIvpwUtIwcc7ETMlBQVXaaoOojzobt5PDqns2-R0T-qfaeL-WyO4wA_DG_MOGeNR9_Rm7-szXPVsWlbZZN03upGIRhkMSOy-JZ4SDZf2Sk9PrC8IGt-raqY54lIMC8CXDOuCOGg3Qpdq2gnajC8NJrEMC5jTby9zMZ2UNGAAX8_tVmuNGGTsuYLYX07L"/>
+<div class="absolute bottom-4 left-4 z-20">
+<p class="text-[0.6875rem] font-bold text-primary-fixed uppercase tracking-widest mb-1">AI Status</p>
+<p class="text-lg font-extrabold text-white">System Optimized</p>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</body></html>

@@ -281,7 +281,6 @@
 
     <div style="margin-bottom:0.75rem">
       {% for ch in current_plan.channels %}
-        {% if ch == 'baileys' %}<span class="channel-pill pill-wa">WhatsApp (Baileys)</span>{% endif %}
         {% if ch == 'meta_cloud' %}<span class="channel-pill pill-meta">Meta Cloud API</span>{% endif %}
         {% if ch == 'sms' %}<span class="channel-pill pill-sms">SMS / Twilio</span>{% endif %}
       {% else %}
@@ -308,15 +307,6 @@
     <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">Upgrade or switch your messaging channel.</p>
 
     <div style="display:flex;flex-direction:column;gap:0.5rem">
-      {% if cfg.subscription_plan != 'baileys' %}
-      <form method="post" action="/billing/subscribe/baileys">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
-          📱 Baileys (Local Bot) — $19/mo
-        </button>
-      </form>
-      {% endif %}
-
       {% if cfg.subscription_plan != 'meta_cloud' %}
       <form method="post" action="/billing/subscribe/meta_cloud">
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">

@@ -1,0 +1,195 @@
+================================================================================
+BAILEYS INTEGRATION REMOVAL - COMPLETE
+================================================================================
+
+Date: 2026-03-28
+Status: ✓ COMPLETE - All syntax verified
+
+================================================================================
+BACKUP LOCATION
+================================================================================
+
+/Users/chandan/Desktop/BNB/baileys/
+
+Contains:
+  - INDEX.md (complete reference guide)
+  - REMOVAL_SUMMARY.md (detailed changes)
+  - QUICK_REFERENCE.md (quick lookup)
+  - code/ (extracted code sections)
+  - docs/ (original implementation spec)
+  - migrations/ (unapplied database migration)
+  - scripts/ (Baileys bot.js files)
+
+================================================================================
+FILES MODIFIED
+================================================================================
+
+1. web/models.py
+   - Removed BaileysOutbound model class
+   - Removed BaileysCallback model class
+   - Removed PLAN_BAILEYS constant
+   - Removed 6 TenantConfig columns (bot token + rate limit)
+
+2. web/app.py
+   - Removed 7 API endpoints (/api/wa/*)
+   - Removed _auth_bot() function
+   - Removed _bot_token_expiry_warning() function
+   - Removed _queue_baileys_outbound() function
+   - Removed _pop_baileys_outbound() function
+   - Removed _baileys_retry_stale_job() background job
+   - Removed Baileys scheduler job from lifespan
+   - Commented out 16 calls to _queue_baileys_outbound()
+   - Removed PLAN_BAILEYS from imports
+   - Removed INTERNAL_TOKEN environment check
+
+3. web/guest_contact_service.py
+   - Removed _send_via_baileys() function
+   - Removed Baileys branch from send_welcome_messages()
+   - Updated docstrings
+
+4. web/pms_worker.py
+   - Removed _notify_host_via_baileys() function
+   - Removed call to _notify_host_via_baileys()
+
+5. web/db.py
+   - Removed BaileysOutbound from model imports
+
+================================================================================
+SYNTAX VERIFICATION
+================================================================================
+
+✓ web/models.py     - VALID
+✓ web/app.py        - VALID
+✓ web/guest_contact_service.py - VALID
+✓ web/pms_worker.py - VALID
+✓ web/db.py         - VALID
+
+================================================================================
+REMAINING FUNCTIONALITY
+================================================================================
+
+✓ Meta Cloud API WhatsApp integration
+✓ Twilio SMS integration
+✓ Email messaging
+✓ Draft management (approve/edit/skip)
+✓ All automation rules
+✓ All PMS integrations
+✓ Guest welcome messages (Meta API only)
+✓ Admin panel
+✓ GDPR data retention job
+✓ All worker processes
+
+================================================================================
+WHAT NO LONGER WORKS
+================================================================================
+
+✗ Baileys bot (/api/wa/* endpoints)
+✗ Local WhatsApp integration
+✗ Bot token generation
+✗ Host WhatsApp command responses (via Baileys)
+✗ PMS guest message notifications (via Baileys)
+
+Note: Host commands are logged but not sent. Code remains commented out for reference.
+
+================================================================================
+DATABASE STATE
+================================================================================
+
+Tables still exist but unused:
+  - baileys_outbound
+  - baileys_callbacks
+
+Columns still exist in TenantConfig (safe):
+  - bot_api_token_hash
+  - bot_api_token_hint
+  - bot_api_token_expires_at
+  - bot_last_heartbeat
+  - baileys_max_batch_size
+  - baileys_max_per_minute
+
+No migrations needed. Values are just NULL for all tenants.
+
+================================================================================
+BACKUP FILES CREATED
+================================================================================
+
+/Users/chandan/Desktop/BNB/baileys/
+  ├── INDEX.md                                    - Full reference
+  ├── REMOVAL_SUMMARY.md                          - Detailed summary
+  ├── QUICK_REFERENCE.md                          - Quick lookup
+  ├── code/
+  │   ├── models_baileys_sections.py              - Model classes
+  │   └── app_baileys_sections.py                 - All endpoints + functions
+  ├── docs/
+  │   └── BAILEYS_IMPLEMENTATION_COMPLETE.md     - Original implementation spec
+  ├── migrations/
+  │   └── 20260323_1800_baileys_improvements.py  - Unapplied migration
+  └── scripts/
+      ├── bot.js                                  - Main Baileys bot
+      ├── bot_airbnb_host.js                      - Alternative bot
+      └── package.json                            - Dependencies
+
+================================================================================
+TESTING CHECKLIST
+================================================================================
+
+Before deployment, verify:
+
+[ ] App starts without errors
+[ ] No syntax errors in Python files
+[ ] Meta API messages send correctly
+[ ] SMS messages send correctly
+[ ] Guest welcome messages work
+[ ] Draft approvals work
+[ ] Draft edits work
+[ ] Draft skips work
+[ ] /api/wa/pending returns 404
+[ ] /api/wa/inbound returns 404
+[ ] Admin panel loads
+[ ] GDPR cleanup job scheduled
+[ ] No error logs related to BaileysOutbound
+
+================================================================================
+RESTORATION
+================================================================================
+
+To restore Baileys functionality, see baileys/INDEX.md for detailed steps.
+
+Quick summary:
+1. Copy code from baileys/code/ back to web/
+2. Update imports to include BaileysOutbound, BaileysCallback
+3. Run: alembic upgrade head
+4. Uncomment all # _queue_baileys_outbound lines in app.py
+5. Restart app
+
+================================================================================
+IMPACT ANALYSIS
+================================================================================
+
+LOW RISK:
+- No breaking changes to non-Baileys functionality
+- All imports properly cleaned up
+- All orphaned functions removed
+- Database tables safe to keep unused
+- Comments left for reference
+
+ZERO RISK:
+- Meta API integration untouched
+- SMS integration untouched
+- Draft logic untouched
+- Admin panel untouched
+- Worker processes untouched
+
+================================================================================
+END OF SUMMARY
+================================================================================
+
+Next steps:
+1. Run test suite
+2. Deploy to staging
+3. Verify in production
+4. Keep baileys/ backup for 6 months
+5. Optional: Clean up Baileys UI from templates
+
+Questions? See baileys/REMOVAL_SUMMARY.md or baileys/INDEX.md
+

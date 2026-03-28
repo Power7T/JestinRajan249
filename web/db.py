@@ -70,7 +70,7 @@ def init_db():
     from web.models import (  # noqa: F401
         SystemConfig, ApiUsageLog,
         Tenant, TenantConfig, Draft, ProcessedEmail, CalendarState,
-        Vendor, ActivityLog, BaileysOutbound, Reservation, ReservationSyncLog,
+        Vendor, ActivityLog, Reservation, ReservationSyncLog,
         ReservationIntakeBatch, AutomationRule, TeamMember, GuestTimelineEvent,
         ArrivalActivation, IssueTicket, TenantKpiSnapshot,
         PMSIntegration, PMSProcessedMessage, PlanConfig,

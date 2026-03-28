@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Guest Timeline — HostAI{% endblock %}
+
+{% block content %}
+<h1>Guest Timeline</h1>
+<p class="section-lead">
+  One stay, one thread. This screen should combine the guest's arrival details, channel history, approvals, and unresolved requests into a single operational timeline.
+</p>
+
+<div class="card" style="margin-bottom:1rem;background:linear-gradient(135deg,#fff9f2 0%,#fff 100%);border:1px solid #f3d7b0">
+  <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start">
+    <div>
+      <h2 style="margin-bottom:0.3rem">Stay summary</h2>
+      <p style="margin:0;font-size:0.86rem;color:var(--text-2);line-height:1.7">
+        Guest: <strong>{{ reservation.guest_name if reservation is defined and reservation else 'Guest name' }}</strong><br>
+        Room / unit: <strong>{{ reservation.unit_identifier if reservation is defined and reservation and reservation.unit_identifier else 'Room 204' }}</strong><br>
+        Booking ref: <strong>{{ reservation.confirmation_code if reservation is defined and reservation and reservation.confirmation_code else 'ABC123' }}</strong>
+      </p>
+    </div>
+    <div class="chip-row" style="margin-top:0">
+      <span class="chip good">Arrival active</span>
+      <span class="chip">Email</span>
+      <span class="chip">WhatsApp</span>
+      <span class="chip">SMS</span>
+    </div>
+  </div>
+</div>
+
+<div class="workflow-grid" style="margin-bottom:1rem">
+  <div class="workflow-card">
+    <h3>What belongs here</h3>
+    <p>Incoming guest messages, draft generation, approvals, auto-sends, manual edits, vendor notes, and check-in events should all be visible in one place.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>What should not</h3>
+    <p>Hosts should not need to scan unrelated dashboards or switch between channels to understand what happened on a stay.</p>
+  </div>
+</div>
+
+<div class="timeline">
+  {% if timeline_events %}
+    {% for event in timeline_events %}
+    <div class="timeline-item">
+      <div class="timeline-meta">
+        {{ event.created_at.strftime('%b %d %H:%M') if event.created_at else '' }}
+        {% if event.channel %} · {{ event.channel }}{% endif %}
+        {% if event.event_type %} · {{ event.event_type|replace('_', ' ') }}{% endif %}
+      </div>
+      <div class="timeline-title">{{ event.message or event.summary or 'Timeline event' }}</div>
+      <div class="timeline-text">{{ event.status or event.detail or '' }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="timeline-item">
+      <div class="timeline-meta">No live events yet</div>
+      <div class="timeline-title">This stay has not generated guest events yet</div>
+      <div class="timeline-text">As soon as the guest messages or the host activates the stay, the timeline will start filling with real events.</div>
+    </div>
+  {% endif %}
+</div>
+
+<div class="workflow-grid" style="margin-top:1rem">
+  <div class="workflow-card">
+    <h3>Guest interactions</h3>
+    <p>Wi-Fi, parking, towels, late checkout, local recommendations, and issue reporting are the core concierge flows.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>Exception handling</h3>
+    <p>Refunds, complaints, safety concerns, and room mapping problems should be tagged and escalated.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>Room-aware replies</h3>
+    <p>Always include the property, room, and arrival details when they matter so the response feels specific and professional.</p>
+  </div>
+</div>
+
+<div class="card" style="margin-top:1rem">
+  <h2 style="margin-bottom:0.5rem">Conversation memory</h2>
+  <div class="draft-text">{{ conversation_memory or 'No memory block yet. HostAI will build one as stay events arrive.' }}</div>
+</div>
+
+<div class="card" style="margin-top:1rem">
+  <h2 style="margin-bottom:0.5rem">Open issues</h2>
+{% if open_issues %}
+    <div class="timeline">
+      {% for issue in open_issues %}
+      <div class="timeline-item">
+        <div class="timeline-meta">{{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}</div>
+        <div class="timeline-title">{{ issue.title }}</div>
+        <div class="timeline-text">{{ issue.description or 'No description provided.' }}</div>
+        <div class="chip-row" style="margin-top:0.5rem">
+          <span class="chip">{{ issue.status|replace('_', ' ') }}</span>
+          <span class="chip">{% if issue.assigned_to_member %}{{ issue.assigned_to_member.display_name }}{% else %}Unassigned{% endif %}</span>
+          <span class="chip">{% if issue.vendor %}{{ issue.vendor.name }}{% else %}No vendor{% endif %}</span>
+        </div>
+        <form method="post" action="/issues/{{ issue.id }}/update" style="margin-top:0.75rem">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <input type="hidden" name="next_path" value="/reservations/{{ reservation.id }}/timeline">
+          <div class="form-row">
+            <div>
+              <label>Status</label>
+              <select name="status">
+                <option value="open" {% if issue.status == 'open' %}selected{% endif %}>Open</option>
+                <option value="triage" {% if issue.status == 'triage' %}selected{% endif %}>Triage</option>
+                <option value="assigned" {% if issue.status == 'assigned' %}selected{% endif %}>Assigned</option>
+                <option value="vendor_dispatched" {% if issue.status == 'vendor_dispatched' %}selected{% endif %}>Vendor dispatched</option>
+                <option value="resolved" {% if issue.status == 'resolved' %}selected{% endif %}>Resolved</option>
+              </select>
+            </div>
+            <div>
+              <label>Assigned team member</label>
+              <select name="assigned_to_member_id">
+                <option value="">Unassigned</option>
+                {% for member in team_members or [] %}
+                <option value="{{ member.id }}" {% if issue.assigned_to_member_id == member.id %}selected{% endif %}>{{ member.display_name }} — {{ member.role|replace('_', ' ') }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label>Vendor</label>
+              <select name="vendor_id">
+                <option value="">No vendor</option>
+                {% for vendor in vendors or [] %}
+                <option value="{{ vendor.id }}" {% if issue.vendor_id == vendor.id %}selected{% endif %}>{{ vendor.name }} — {{ vendor.category }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label>Resolution notes</label>
+              <input type="text" name="resolution_notes" value="{{ issue.resolution_notes or '' }}" placeholder="ETA, fix, or follow-up note">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-outline btn-sm">Update issue</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p style="font-size:0.85rem;color:var(--text-3)">No unresolved issues for this stay.</p>
+  {% endif %}
+
+  <form method="post" action="/reservations/{{ reservation.id }}/issues" style="margin-top:1rem">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div class="form-row">
+      <div>
+        <label>Issue title</label>
+        <input type="text" name="title" placeholder="Guest reported AC issue" required>
+      </div>
+      <div>
+        <label>Category</label>
+        <select name="category">
+          <option value="guest_request">Guest request</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="cleaning">Cleaning</option>
+          <option value="billing">Billing</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Priority</label>
+        <select name="priority">
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div>
+        <label>Assigned team member</label>
+        <select name="assigned_to_member_id">
+          <option value="">Assign later</option>
+          {% for member in team_members or [] %}
+          <option value="{{ member.id }}">{{ member.display_name }} — {{ member.role|replace('_', ' ') }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <label>Vendor</label>
+    <select name="vendor_id">
+      <option value="">No vendor yet</option>
+      {% for vendor in vendors or [] %}
+      <option value="{{ vendor.id }}">{{ vendor.name }} — {{ vendor.category }}</option>
+      {% endfor %}
+    </select>
+    <label>Description</label>
+    <textarea name="description" rows="3" placeholder="What happened, where, and what the guest needs next"></textarea>
+    <button type="submit" class="btn btn-primary btn-sm">Create issue</button>
+  </form>
+</div>
+{% endblock %}

@@ -32,11 +32,6 @@ Routes:
   POST /wa/webhook/{tenant_id} → Meta Cloud API inbound messages
   POST /sms/webhook/{tenant_id} → Twilio inbound SMS
 
-  GET  /api/wa/pending         → Baileys bot polls for outbound drafts
-  POST /api/wa/inbound         → Baileys bot pushes inbound guest/vendor message
-  POST /api/wa/callback        → Baileys bot reports host WA command (APPROVE/EDIT/SKIP)
-  GET  /api/download/baileys   → download pre-configured Baileys zip for this tenant
-
   GET  /api/drafts    → JSON list of pending drafts (HTMX polling)
   GET  /api/workers   → worker status JSON
 """
@@ -75,12 +70,12 @@ from web.db import get_db, init_db, SessionLocal
 from web.db_read import get_read_db
 from web.models import (
     SystemConfig, ApiUsageLog,
-    Tenant, TenantConfig, Draft, Vendor, ActivityLog, BaileysOutbound, BaileysCallback,
+    Tenant, TenantConfig, Draft, Vendor, ActivityLog,
     Reservation, ReservationSyncLog, ReservationIntakeBatch, GuestContact,
     AutomationRule, TeamMember, GuestTimelineEvent, ArrivalActivation, IssueTicket, TenantKpiSnapshot,
     PMSIntegration, PMSProcessedMessage,
     ProcessedEmail, PlanConfig, FailedDraftLog,
-    PLAN_FREE, PLAN_BAILEYS, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
+    PLAN_FREE, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
     PLAN_STARTER, PLAN_GROWTH,
 )
 from web.auth import (
@@ -243,15 +238,6 @@ def _startup_checks() -> None:
             "will fail at runtime."
         )
 
-    # INTERNAL_TOKEN should be set when the Baileys WhatsApp bot is deployed
-    # alongside this server so the bot ↔ server channel is authenticated.
-    if not os.getenv("INTERNAL_TOKEN", ""):
-        warnings.append(
-            "INTERNAL_TOKEN is not set. If you are running the Baileys WhatsApp bot "
-            "alongside this server, set INTERNAL_TOKEN to a shared secret so the "
-            "bot-to-server channel is authenticated."
-        )
-
     # Admin emails must be configured for production
     if not os.getenv("ADMIN_EMAILS", "").strip():
         warnings.append(
@@ -274,16 +260,16 @@ def _gdpr_data_retention_job():
     """Background job to clean up old messages based on tenant retention settings. (GDPR #21)"""
     db = SessionLocal()
     try:
-        from web.models import TenantConfig, BaileysOutbound, Draft, ProcessedEmail, ActivityLog, FailedDraftLog, PMSProcessedMessage
+        from web.models import TenantConfig, Draft, ProcessedEmail, ActivityLog, FailedDraftLog, PMSProcessedMessage
         now = datetime.now(timezone.utc)
         configs = db.query(TenantConfig).all()
-        
+
         total_deleted = 0
         for cfg in configs:
             cutoff = now - timedelta(days=cfg.data_retention_days)
             tid = cfg.tenant_id
-            
-            total_deleted += db.query(BaileysOutbound).filter(BaileysOutbound.tenant_id == tid, BaileysOutbound.created_at < cutoff).delete(synchronize_session=False)
+
+            # Note: BaileysOutbound table cleanup removed (Baileys integration discontinued)
             total_deleted += db.query(Draft).filter(Draft.tenant_id == tid, Draft.created_at < cutoff).delete(synchronize_session=False)
             total_deleted += db.query(ProcessedEmail).filter(ProcessedEmail.tenant_id == tid, ProcessedEmail.created_at < cutoff).delete(synchronize_session=False)
             total_deleted += db.query(ActivityLog).filter(ActivityLog.tenant_id == tid, ActivityLog.timestamp < cutoff).delete(synchronize_session=False)
@@ -299,69 +285,7 @@ def _gdpr_data_retention_job():
         db.close()
 
 
-def _baileys_retry_stale_job():
-    """Background job to retry stale in_transit Baileys messages. (Baileys fix #2)"""
-    from web.redis_client import get_redis
-    db = SessionLocal()
-    try:
-        now = datetime.now(timezone.utc)
-        stale_cutoff = now - timedelta(minutes=5)
-
-        # Find messages stuck in in_transit for >5 minutes
-        stale_msgs = db.query(BaileysOutbound).filter(
-            BaileysOutbound.status == "in_transit",
-            BaileysOutbound.created_at < stale_cutoff
-        ).all()
-
-        r = get_redis()
-        retried = 0
-        failed = 0
-
-        for row in stale_msgs:
-            if row.retry_count >= 3:
-                # Max retries exceeded — mark as failed
-                row.status = "failed"
-                row.delivered = False
-                row.error_reason = "Max retries exceeded — message stuck in transit"
-                # Alert host when message permanently fails (Failure gap fix #5)
-                try:
-                    _cfg = db.query(TenantConfig).filter_by(tenant_id=row.tenant_id).first()
-                    _t = db.query(Tenant).filter_by(id=row.tenant_id).first()
-                    if _cfg and _t:
-                        from web.mailer import send_integration_alert
-                        send_integration_alert(
-                            _cfg.escalation_email or _t.email,
-                            "WhatsApp (Baileys)", 3,
-                            f"Message to ...{(row.to_phone or '')[-4:]} could not be delivered after 3 retries"
-                        )
-                except Exception:
-                    pass  # non-critical — message already marked failed
-                failed += 1
-            else:
-                # Re-queue to pending and increment retry counter
-                row.status = "pending"
-                row.retry_count += 1
-                row.last_retry_at = now
-                # Re-push to Redis queue if available
-                if r:
-                    try:
-                        msg = json.dumps({"to": row.to_phone, "text": row.text, "db_id": row.id})
-                        r.rpush(f"baileys_out:{row.tenant_id}", msg)
-                        r.expire(f"baileys_out:{row.tenant_id}", 172800)
-                    except Exception as exc:
-                        log.warning("[%s] Failed to re-queue Baileys message %d: %s", row.tenant_id, row.id, exc)
-                retried += 1
-
-        db.commit()
-        log.info("Baileys stale message retry job: retried=%d, failed=%d", retried, failed)
-    except Exception as e:
-        log.error("Baileys retry job crashed [%s]: %s", type(e).__name__, str(e))
-        try:
-            db.rollback()
-        except Exception:
-            pass
-    finally:
-        db.close()
+# _baileys_retry_stale_job removed — Baileys integration discontinued
 
 
 async def lifespan(app: FastAPI):
@@ -370,20 +294,13 @@ async def lifespan(app: FastAPI):
     validate_smtp_config()  # Validate SMTP at startup — fail fast, not on first email send
     worker_manager.start_all_workers()
 
-    # Start background scheduler for GDPR cleanup and Baileys retry jobs
+    # Start background scheduler for GDPR cleanup
     scheduler = BackgroundScheduler()
     scheduler.add_job(
         _gdpr_data_retention_job,
         CronTrigger(hour=2, minute=0, timezone="UTC"),  # Daily at 2:00 AM UTC
         id="gdpr_retention_cleanup",
         name="GDPR Data Retention",
-        replace_existing=True
-    )
-    scheduler.add_job(
-        _baileys_retry_stale_job,
-        "interval", minutes=5,  # Every 5 minutes (Baileys fix #2)
-        id="baileys_retry_stale",
-        name="Baileys Stale Message Retry",
         replace_existing=True
     )
     # Add APScheduler event listeners for job failures (Failure gap fix #5)
@@ -401,7 +318,7 @@ async def lifespan(app: FastAPI):
     scheduler.add_listener(_scheduler_missed_listener, EVENT_JOB_MISSED)
 
     scheduler.start()
-    log.info("Scheduled background jobs started (cleanup at 02:00 UTC daily, Baileys retry every 5 min)")
+    log.info("Scheduled background jobs started (cleanup at 02:00 UTC daily)")
 
     flags.log_state()  # Log all feature flag values at startup
     log.info("Airbnb Host Assistant web app started")
@@ -833,41 +750,7 @@ def _find_tenant_by_token(db: Session, column: str, token: str) -> Optional[Tena
     return db.query(Tenant).filter(col == token).first()
 
 
-def _auth_bot(request: Request, db: Session) -> TenantConfig:
-    """Authenticate a Baileys bot request via Bearer token. Returns TenantConfig."""
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing bot token")
-    raw_token = auth[7:].strip()
-    # Find the tenant whose bot_api_token_hash matches
-    cfgs = db.query(TenantConfig).filter(TenantConfig.bot_api_token_hash.isnot(None)).all()
-    for cfg in cfgs:
-        if verify_bot_token(raw_token, cfg):
-            # Check token expiration (Improvement #11)
-            if cfg.bot_api_token_expires_at and cfg.bot_api_token_expires_at < datetime.now(timezone.utc):
-                raise HTTPException(status_code=401, detail="Bot token expired — regenerate in settings")
-            return cfg
-    raise HTTPException(status_code=401, detail="Invalid bot token")
-
-
-def _bot_token_expiry_warning(cfg: TenantConfig) -> dict:
-    """Return expiry warning dict if token expires within 7 days. (Baileys fix #8)"""
-    if cfg.bot_api_token_expires_at:
-        days_left = (cfg.bot_api_token_expires_at - datetime.now(timezone.utc)).days
-        if 0 <= days_left <= 7:
-            return {"token_expires_in_days": days_left,
-                    "warning": f"Bot token expires in {days_left} day(s). Regenerate in Settings."}
-    return {}
-
-
-def _validate_phone_number(phone: str) -> bool:
-    """Validate phone number is in E.164 format (~14 digits). (Improvement #5)"""
-    # E.164: + followed by country code + number, max 15 digits total, no spaces/dashes
-    phone = str(phone).strip()
-    if not phone.startswith("+") or not phone[1:].isdigit():
-        return False
-    digits = len(phone) - 1  # exclude +
-    return 8 <= digits <= 15
+# _auth_bot and _bot_token_expiry_warning removed — Baileys integration discontinued
 
 
 def _public_request_url(request: Request) -> str:
@@ -1753,9 +1636,9 @@ def _execute_draft(
                 ok = send_whatsapp(cfg.whatsapp_phone_id, token, guest_phone, final_text)
                 if not ok:
                     log.warning("[%s] Meta WA send failed for ***%s", tenant_id, guest_phone[-4:] if guest_phone else "")
-        elif tenant_has_channel(cfg, PLAN_BAILEYS):
-            # Store as outbound pending — Baileys bot will pick it up on next poll
-            _queue_baileys_outbound(tenant_id, guest_phone, final_text, db)
+        # Note: Baileys channel check removed (Baileys integration discontinued)
+        # elif tenant_has_channel(cfg, PLAN_BAILEYS):
+        #     _queue_baileys_outbound(tenant_id, guest_phone, final_text, db)
 
     elif draft.source == "sms" and draft.reply_to and cfg:
         guest_phone = draft.reply_to
@@ -1819,143 +1702,7 @@ def _execute_draft(
     db.commit()
 
 
-# ---------------------------------------------------------------------------
-# Baileys outbound queue
-# Priority: Redis (fast, shared across workers) → DB (durable, survives restarts)
-# Redis TTL is 48h — survives any plausible server downtime.
-# DB rows are written alongside Redis; popping marks them delivered=True
-# so we have a permanent audit trail and zero message loss even on Redis failure.
-# ---------------------------------------------------------------------------
-
-def _queue_baileys_outbound(tenant_id: str, to_phone: str, text: str, db: Session):
-    """Queue a Baileys outbound message with validation and idempotency. (Improvements #5, #6, #10)"""
-    from web.redis_client import get_redis
-
-    # Validate phone number (Improvement #5)
-    if not _validate_phone_number(to_phone):
-        log.error("[%s] Invalid phone number: ***%s", tenant_id, to_phone[-4:] if to_phone else "")
-        return
-
-    r = get_redis()
-    # Generate idempotency key to prevent duplicate sends — guaranteed unique via uuid (Baileys fix #3)
-    idempotency_key = f"{tenant_id}:{to_phone}:{uuid4().hex}"
-
-    # Always persist to DB first — durable audit trail regardless of Redis (Improvement #4)
-    try:
-        row = BaileysOutbound(
-            tenant_id=tenant_id,
-            to_phone=to_phone,
-            text=text,
-            status="pending",  # Improvement #4 (two-phase commit)
-            idempotency_key=idempotency_key
-        )
-        db.add(row)
-        db.commit()
-        db.refresh(row)
-        row_id = row.id
-    except Exception as exc:
-        log.error("[%s] Failed to persist Baileys outbound to DB: %s", tenant_id, exc)
-        db.rollback()
-        row_id = None
-
-    msg = json.dumps({"to": to_phone, "text": text, "db_id": row_id})
-    if r is not None:
-        try:
-            r.rpush(f"baileys_out:{tenant_id}", msg)
-            r.expire(f"baileys_out:{tenant_id}", 172800)  # 48h — survives server downtime
-            log.info("[%s] Queued Baileys outbound (Redis+DB) to ***%s", tenant_id, to_phone[-4:] if to_phone else "")
-            return
-        except Exception as exc:
-            log.warning("[%s] Redis push failed — will serve from DB on next poll: %s", tenant_id, exc)
-    log.info("[%s] Queued Baileys outbound (DB-only) to ***%s", tenant_id, to_phone[-4:] if to_phone else "")
-
-
-def _pop_baileys_outbound(tenant_id: str, db: Session) -> dict:
-    """
-    Return pending outbound messages with rate limiting and bandwidth control.
-    Implements two-phase commit (pending → in_transit → delivered).
-    (Improvements #1, #2, #4, #10)
-    """
-    from web.redis_client import get_redis
-
-    # Get tenant config for rate limiting settings
-    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
-    if not cfg:
-        return {"messages": [], "batch_id": "", "remaining_quota": 0, "pending_count": 0}
-
-    max_batch_size = cfg.baileys_max_batch_size or 50
-    max_per_minute = cfg.baileys_max_per_minute or 60
-
-    r = get_redis()
-    msgs: list[dict] = []
-    db_ids: list[int] = []
-    batch_id = secrets.token_hex(16)  # Unique batch identifier
-
-    # Try Redis first
-    if r is not None:
-        try:
-            key = f"baileys_out:{tenant_id}"
-            pipe = r.pipeline()
-            pipe.lrange(key, 0, max_batch_size - 1)
-            pipe.ltrim(key, max_batch_size, -1)
-            results, _ = pipe.execute()
-            for raw in results:
-                item = json.loads(raw)
-                msgs.append({"to": item["to"], "text": item["text"]})
-                if item.get("db_id"):
-                    db_ids.append(item["db_id"])
-        except Exception as exc:
-            log.warning("[%s] Redis pop failed, falling back to DB: %s", tenant_id, exc)
-
-    # Fallback: if Redis returned nothing, check DB for pending rows
-    if not msgs:
-        rows = (db.query(BaileysOutbound)
-                .filter_by(tenant_id=tenant_id, status="pending")
-                .order_by(BaileysOutbound.created_at)
-                .limit(max_batch_size)
-                .all())
-        for row in rows:
-            msgs.append({"to": row.to_phone, "text": row.text})
-            db_ids.append(row.id)
-
-    # Calculate remaining quota based on messages delivered in last 60 seconds (Improvement #10)
-    now = datetime.now(timezone.utc)
-    delivered_in_last_min = db.query(BaileysOutbound).filter(
-        BaileysOutbound.tenant_id == tenant_id,
-        BaileysOutbound.status == "delivered",
-        BaileysOutbound.delivered_at >= now - timedelta(seconds=60)
-    ).count()
-
-    remaining_quota = max(0, max_per_minute - delivered_in_last_min)
-
-    # Limit batch size to respect remaining quota (smooth delivery over ~6 polls)
-    effective_batch_size = min(len(msgs), max(1, remaining_quota // 6))
-    msgs = msgs[:effective_batch_size]
-    db_ids = db_ids[:effective_batch_size]
-
-    # Two-phase commit: mark as in_transit (not delivered yet) (Improvement #4)
-    if db_ids:
-        try:
-            (db.query(BaileysOutbound)
-             .filter(BaileysOutbound.id.in_(db_ids))
-             .update({"status": "in_transit", "delivered": False},
-                     synchronize_session=False))
-            db.commit()
-        except Exception as exc:
-            log.warning("[%s] Failed to mark Baileys rows in_transit: %s", tenant_id, exc)
-            db.rollback()
-
-    # Count total pending messages for response
-    pending_count = db.query(BaileysOutbound).filter_by(
-        tenant_id=tenant_id, status="pending"
-    ).count()
-
-    return {
-        "messages": msgs,
-        "batch_id": batch_id,
-        "remaining_quota": remaining_quota,
-        "pending_count": pending_count
-    }
+# _queue_baileys_outbound and _pop_baileys_outbound removed — Baileys integration discontinued
 
 
 def _normalize_phone(phone: str) -> str:
@@ -2016,7 +1763,7 @@ def _handle_host_command(tenant_id: str, command: str, db: Session):
             lines.append("Help: h")
             response = "\n".join(lines)
 
-        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, response, db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, response, db)
         log.info(f"[{tenant_id}] Host list command processed")
 
     # Command: approve <index_or_id> — approve a draft by index (1, 2, 3) or full ID
@@ -2039,11 +1786,11 @@ def _handle_host_command(tenant_id: str, command: str, db: Session):
             draft = db.query(Draft).filter_by(id=identifier, tenant_id=tenant_id).first()
 
         if not draft:
-            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
             return
 
         if draft.status != "pending":
-            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Already {draft.status}: {draft.guest_name}", db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Already {draft.status}: {draft.guest_name}", db)
             return
 
         # Approve and send the draft
@@ -2052,7 +1799,7 @@ def _handle_host_command(tenant_id: str, command: str, db: Session):
         draft.updated_at = datetime.now(timezone.utc)
 
         # Queue the response to guest
-        _queue_baileys_outbound(tenant_id, draft.reply_to, draft.final_text, db)
+            # _queue_baileys_outbound(tenant_id, draft.reply_to, draft.final_text, db)
 
         # Log timeline event
         from web.models import Reservation
@@ -2076,7 +1823,7 @@ def _handle_host_command(tenant_id: str, command: str, db: Session):
         ))
         db.commit()
 
-        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"✓ Sent to {draft.guest_name}", db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"✓ Sent to {draft.guest_name}", db)
         log.info(f"[{tenant_id}] Host approved: {draft.guest_name}")
 
     # Command: skip <index_or_id> — skip a draft by index (1, 2, 3) or full ID
@@ -2099,7 +1846,7 @@ def _handle_host_command(tenant_id: str, command: str, db: Session):
             draft = db.query(Draft).filter_by(id=identifier, tenant_id=tenant_id).first()
 
         if not draft:
-            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
             return
 
         draft.status = "skipped"
@@ -2112,7 +1859,7 @@ def _handle_host_command(tenant_id: str, command: str, db: Session):
         ))
         db.commit()
 
-        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"✓ Skipped {draft.guest_name}'s message", db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"✓ Skipped {draft.guest_name}'s message", db)
         log.info(f"[{tenant_id}] Host skipped: {draft.guest_name}")
 
     # Command: show <index> — preview draft before approving
@@ -2134,7 +1881,7 @@ def _handle_host_command(tenant_id: str, command: str, db: Session):
             draft = db.query(Draft).filter_by(id=identifier, tenant_id=tenant_id).first()
 
         if not draft:
-            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
             return
 
         # Show the draft
@@ -2146,7 +1893,7 @@ Status: {draft.status}
 Confidence: {draft.confidence:.0%}
 
 Reply: approve {identifier} or skip {identifier}"""
-        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, preview, db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, preview, db)
         log.info(f"[{tenant_id}] Host viewed draft preview")
 
     # Command: edit <index> <new_text> — edit draft before sending
@@ -2170,11 +1917,11 @@ Reply: approve {identifier} or skip {identifier}"""
             draft = db.query(Draft).filter_by(id=identifier, tenant_id=tenant_id).first()
 
         if not draft:
-            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Draft #{identifier} not found", db)
             return
 
         if draft.status != "pending":
-            _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Can't edit {draft.status} draft", db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, f"❌ Can't edit {draft.status} draft", db)
             return
 
         # Update the draft
@@ -2187,7 +1934,7 @@ Reply: approve {identifier} or skip {identifier}"""
 "{new_text}"
 
 Reply: approve {identifier} to send"""
-        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, response, db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, response, db)
         log.info(f"[{tenant_id}] Host edited draft")
 
     # Command: help / ? — show available commands
@@ -2208,11 +1955,12 @@ p
 (sees pending drafts)
 a 1
 (approves first one)"""
-        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, help_text, db)
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, help_text, db)
 
     else:
-        # Unknown command
-        _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, "❓ Unknown command. Type 'h' or 'help'", db)
+        # Unknown command (Baileys integration removed)
+        pass
+            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, "❓ Unknown command. Type 'h' or 'help'", db)
 
 
 def _send_host_notification(tenant_id: str, notify_phone: str, text: str, guest_name: str, guest_message: str, channel: str, db: Session):
@@ -2224,7 +1972,7 @@ def _send_host_notification(tenant_id: str, notify_phone: str, text: str, guest_
     try:
         # WhatsApp notification (to host's own number)
         if cfg.wa_mode == "baileys" and cfg.whatsapp_number:
-            _queue_baileys_outbound(tenant_id, notify_phone, text, db)
+            # _queue_baileys_outbound(tenant_id, notify_phone, text, db)
             log.info(f"[{tenant_id}] Host notification queued via Baileys WhatsApp")
         elif cfg.wa_mode == "meta_cloud":
             from web.meta_sender import send_whatsapp
@@ -2994,16 +2742,16 @@ def api_gdpr_delete_tenant(
     """
     try:
         from web.models import (
-            Tenant, TenantConfig, TeamMember, AutomationRule, PMSIntegration, Vendor, 
-            Draft, ActivityLog, Reservation, ReservationIntakeBatch, BaileysOutbound, 
+            Tenant, TenantConfig, TeamMember, AutomationRule, PMSIntegration, Vendor,
+            Draft, ActivityLog, Reservation, ReservationIntakeBatch,
             ProcessedEmail, CalendarState, FailedDraftLog, PMSProcessedMessage,
             ReservationSyncLog, GuestTimelineEvent, ArrivalActivation, IssueTicket
         )
-        
+
         # We must delete in referential order (children first)
         db.query(Draft).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
         db.query(ActivityLog).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
-        db.query(BaileysOutbound).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        # Note: BaileysOutbound cleanup removed (Baileys integration discontinued)
         db.query(ProcessedEmail).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
         db.query(CalendarState).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
         db.query(FailedDraftLog).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
@@ -3818,7 +3566,7 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
             draft.updated_at = datetime.now(timezone.utc)
 
             # Queue message to guest
-            _queue_baileys_outbound(tenant_id, reply_to, draft.final_text, db)
+            # _queue_baileys_outbound(tenant_id, reply_to, draft.final_text, db)
 
             # Log auto-send
             db.add(ActivityLog(
@@ -3887,420 +3635,6 @@ def _handle_inbound_sms(tenant_id: str, from_phone: str, text: str, db: Session)
     """Classify an inbound SMS and create a pending draft."""
     _handle_guest_inbound_message(tenant_id, "sms", from_phone, text, db)
 
-
-# ---------------------------------------------------------------------------
-# Baileys bot API (bot runs on host's PC, calls back to here)
-# ---------------------------------------------------------------------------
-
-@app.get("/api/wa/pending")
-def api_wa_pending(request: Request, db: Session = Depends(get_db)):
-    """Baileys bot polls this to get outbound messages to deliver to guests. (Improvements #1, #2, #10)"""
-    cfg = _auth_bot(request, db)
-    try:
-        require_channel(cfg, PLAN_BAILEYS)
-    except HTTPException:
-        raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
-
-    # Rate limit: max 100 polls/minute per bot (Improvement #1)
-    rate_limit(f"wa:poll:{cfg.tenant_id}", 100, 60)
-
-    result = _pop_baileys_outbound(cfg.tenant_id, db)
-    result.update(_bot_token_expiry_warning(cfg))  # Baileys fix #8: include token expiry warning
-    return JSONResponse(result)
-
-
-@app.post("/api/wa/inbound")
-async def api_wa_inbound(request: Request, db: Session = Depends(get_db)):
-    """Baileys bot pushes an inbound message from a guest/vendor. (Improvements #1, #5)"""
-    cfg = _auth_bot(request, db)
-    try:
-        require_channel(cfg, PLAN_BAILEYS)
-    except HTTPException:
-        raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
-
-    # Rate limit: max 300 inbound/minute per bot (Improvement #1)
-    rate_limit(f"wa:inbound:{cfg.tenant_id}", 300, 60)
-
-    body = await request.json()
-    from_phone = body.get("from", "")
-    text = body.get("text", "")
-
-    # Validate phone number (Improvement #5)
-    if not _validate_phone_number(from_phone):
-        return JSONResponse({"status": "error", "detail": "Invalid phone number"}, status_code=400)
-
-    if from_phone and text:
-        _handle_inbound_wa(cfg.tenant_id, from_phone, text, db)
-        log.info("[%s] Inbound WA message from ***%s received and queued for processing", cfg.tenant_id, from_phone[-4:] if from_phone else "")  # Baileys fix #9
-    return JSONResponse({"status": "ok"})
-
-
-@app.post("/api/wa/callback")
-async def api_wa_callback(request: Request, db: Session = Depends(get_db)):
-    """
-    Baileys bot reports that the host typed a command in WA (APPROVE / EDIT / SKIP).
-    Body: {"action": "approve"|"edit"|"skip", "draft_id": str, "text": str, "idempotency_key": str}
-    (Improvements #6, #9)
-    """
-    cfg = _auth_bot(request, db)
-    try:
-        require_channel(cfg, PLAN_BAILEYS)
-    except HTTPException:
-        raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
-
-    rate_limit(f"wa:callback:{cfg.tenant_id}", 50, 60)  # Baileys fix #1: rate limit callback requests
-
-    body     = await request.json()
-    action   = body.get("action", "")
-    draft_id = body.get("draft_id", "")
-    text     = body.get("text", "")
-    idempotency_key = body.get("idempotency_key", "")
-    tenant_id = cfg.tenant_id
-
-    # Idempotency: check if this callback was already processed (Improvement #6)
-    if idempotency_key:
-        existing = db.query(BaileysCallback).filter_by(idempotency_key=idempotency_key).first()
-        if existing:
-            return JSONResponse({"status": "already_processed"})
-
-    draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
-    if not draft:
-        return JSONResponse({"status": "not_found"}, status_code=404)
-
-    try:
-        if action == "approve":
-            _execute_draft(draft, draft.draft, tenant_id, db)
-        elif action == "edit" and text:
-            _execute_draft(draft, text, tenant_id, db)
-        elif action == "skip":
-            draft.status = "skipped"
-            db.add(ActivityLog(tenant_id=tenant_id, event_type="draft_skipped",
-                               message=f"Draft skipped via WA: {draft.guest_name}"))
-            db.commit()
-
-        # Record the callback (Improvement #6)
-        if idempotency_key:
-            cb = BaileysCallback(
-                tenant_id=tenant_id,
-                draft_id=draft_id,
-                action=action,
-                idempotency_key=idempotency_key
-            )
-            db.add(cb)
-            db.commit()
-
-        log.info("[%s] WA callback processed: action=%s draft_id=%s", tenant_id, action, draft_id)  # Baileys fix #9
-        result = {"status": "ok"}
-        result.update(_bot_token_expiry_warning(cfg))  # Baileys fix #8: include token expiry warning
-        return JSONResponse(result)
-    except Exception as e:
-        # Better error context for debugging (Improvement #9)
-        log.error("[%s] Failed to process callback: action=%s draft_id=%s error=%s",
-                  tenant_id, action, draft_id, str(e))
-        return JSONResponse({"status": "error", "detail": "Internal error — check server logs"}, status_code=500)
-
-
-@app.post("/api/wa/token/generate")
-def api_generate_bot_token(request: Request,
-                           csrf_token: str = Form(None),
-                           db: Session = Depends(get_db)):
-    """Generate (or regenerate) the Baileys bot API token for this tenant. (Improvement #11)"""
-    try:
-        tenant_id = get_current_tenant_id(request)
-    except HTTPException:
-        raise HTTPException(status_code=401)
-    validate_csrf(request, csrf_token)
-
-    cfg = _get_or_create_config(tenant_id, db)
-    try:
-        require_channel(cfg, PLAN_BAILEYS)
-    except HTTPException:
-        raise HTTPException(status_code=402, detail="Baileys plan required")
-
-    raw_token = generate_bot_token(cfg, db)
-
-    # Set token expiration to 90 days from now (Improvement #11)
-    cfg.bot_api_token_expires_at = datetime.now(timezone.utc) + timedelta(days=90)
-    db.add(cfg)
-    db.commit()
-
-    return JSONResponse({
-        "token": raw_token,
-        "hint": cfg.bot_api_token_hint,
-        "expires_at": cfg.bot_api_token_expires_at.isoformat()
-    })
-
-
-@app.post("/api/wa/ack")
-async def api_wa_ack(request: Request, db: Session = Depends(get_db)):
-    """
-    Bot confirms it successfully sent messages.
-    Completes two-phase commit: marks in_transit messages from last 60s as delivered.
-    Body: {"batch_id": str}
-    (Improvement #4)
-    """
-    cfg = _auth_bot(request, db)
-    try:
-        require_channel(cfg, PLAN_BAILEYS)
-    except HTTPException:
-        raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
-
-    rate_limit(f"wa:ack:{cfg.tenant_id}", 100, 60)  # Baileys fix #1: rate limit ack requests
-
-    body = await request.json()
-    batch_id = body.get("batch_id", "")
-    tenant_id = cfg.tenant_id
-
-    # Mark in_transit messages from last 60s as delivered (Improvement #4)
-    now = datetime.now(timezone.utc)
-    sixty_seconds_ago = now - timedelta(seconds=60)
-
-    try:
-        updated = db.query(BaileysOutbound).filter(
-            BaileysOutbound.tenant_id == tenant_id,
-            BaileysOutbound.status == "in_transit",
-            BaileysOutbound.created_at >= sixty_seconds_ago
-        ).update(
-            {"status": "delivered", "delivered": True, "delivered_at": now},
-            synchronize_session=False
-        )
-        db.commit()
-        log.info("[%s] Marked %d Baileys messages as delivered (batch %s)", tenant_id, updated, batch_id)
-        return JSONResponse({"status": "ok", "confirmed_count": updated})
-    except Exception as e:
-        log.error("[%s] Failed to mark messages delivered: %s", tenant_id, str(e))
-        db.rollback()
-        return JSONResponse({"status": "error", "detail": "Internal error — check server logs"}, status_code=500)
-
-
-@app.post("/api/wa/heartbeat")
-async def api_wa_heartbeat(request: Request, db: Session = Depends(get_db)):
-    """
-    Bot pings every 5 minutes. Updates heartbeat timestamp and returns pending count.
-    (Improvement #8)
-    """
-    cfg = _auth_bot(request, db)
-    try:
-        require_channel(cfg, PLAN_BAILEYS)
-    except HTTPException:
-        raise HTTPException(status_code=402, detail="Subscription required — renew at /billing")
-
-    rate_limit(f"wa:heartbeat:{cfg.tenant_id}", 20, 60)  # Baileys fix #1: rate limit heartbeat requests
-
-    tenant_id = cfg.tenant_id
-
-    try:
-        # Update last heartbeat (Improvement #8)
-        cfg.bot_last_heartbeat = datetime.now(timezone.utc)
-        db.add(cfg)
-        db.commit()
-
-        # Count pending messages
-        pending_count = db.query(BaileysOutbound).filter_by(
-            tenant_id=tenant_id,
-            status="pending"
-        ).count()
-
-        log.info("[%s] Heartbeat received. Pending count: %d", tenant_id, pending_count)  # Baileys fix #9: log success
-        result = {
-            "status": "alive",
-            "pending_count": pending_count,
-            "next_poll_in_seconds": 10
-        }
-        result.update(_bot_token_expiry_warning(cfg))  # Baileys fix #8: include token expiry warning
-        return JSONResponse(result)
-    except Exception as e:
-        log.error("[%s] Failed to process heartbeat: %s", tenant_id, str(e))
-        return JSONResponse({"status": "error", "detail": "Internal error — check server logs"}, status_code=500)
-
-
-@app.get("/api/download/baileys")
-def api_download_baileys(request: Request, db: Session = Depends(get_db)):
-    """
-    Generate and serve a pre-configured Baileys zip for the logged-in tenant.
-    The zip contains bot.js, package.json, a pre-filled .env, and setup scripts.
-    """
-    try:
-        tenant_id = get_current_tenant_id(request)
-    except HTTPException:
-        return _redirect_login()
-
-    cfg = _get_or_create_config(tenant_id, db)
-    try:
-        require_channel(cfg, PLAN_BAILEYS)
-    except HTTPException:
-        raise HTTPException(status_code=402, detail="Baileys plan required")
-
-    # Generate a fresh bot token for download
-    raw_token = generate_bot_token(cfg, db)
-
-    # Read bot.js source
-    bot_js_path = os.path.join(os.path.dirname(__file__), "bot.js")
-    try:
-        with open(bot_js_path) as f:
-            bot_js_content = f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="Bot source not found on server")
-
-    pkg_json = json.dumps({
-        "name": "hostai-baileys-bot",
-        "version": "1.0.0",
-        "main": "bot.js",
-        "scripts": {"start": "node bot.js"},
-        "dependencies": {
-            "@whiskeysockets/baileys": "^6.7.9",
-            "dotenv": "^16.4.5",
-            "pino": "^9.4.0",
-            "qrcode-terminal": "^0.12.0",
-        },
-        "engines": {"node": ">=22.0.0"},
-    }, indent=2)
-
-    phone_comment = ("# Phone pre-filled from your settings" if cfg.whatsapp_number
-                     else "# IMPORTANT: Replace HOST_WHATSAPP_NUMBER with the WhatsApp number you will scan QR with")
-    env_content = (
-        f"# HostAI Baileys Bot — auto-generated for your account\n"
-        f"WA_MODE=saas_bridge\n"
-        f"WEB_APP_URL={APP_BASE_URL}\n"
-        f"TENANT_ID={tenant_id}\n"
-        f"BOT_API_TOKEN={raw_token}\n"
-        f"HOST_WHATSAPP_NUMBER={cfg.whatsapp_number or '+1234567890'}\n"
-        f"{phone_comment}\n"
-    )
-
-    setup_sh = (
-        "#!/usr/bin/env bash\n"
-        "set -e\n"
-        "echo '=== HostAI Baileys Bot Setup ==='\n"
-        "command -v node >/dev/null 2>&1 || { echo 'Node.js not found. Download from https://nodejs.org (v22+)'; exit 1; }\n"
-        "echo \"Node $(node --version)\"\n"
-        "npm install --silent\n"
-        "echo ''\n"
-        "# Use PM2 if available (auto-restart on crash, runs in background)\n"
-        "if command -v pm2 >/dev/null 2>&1; then\n"
-        "  pm2 start ecosystem.config.js\n"
-        "  pm2 save\n"
-        "  echo ''\n"
-        "  echo 'Bot started with PM2 (auto-restarts on crash).'\n"
-        "  echo 'To see QR code: pm2 logs hostai-bot'\n"
-        "  echo 'To stop:        pm2 stop hostai-bot'\n"
-        "else\n"
-        "  echo 'Starting bot... Scan the QR code with WhatsApp.'\n"
-        "  echo '(Tip: install PM2 for auto-restart: npm install -g pm2)'\n"
-        "  node bot.js\n"
-        "fi\n"
-    )
-    setup_bat = (
-        "@echo off\n"
-        "echo === HostAI Baileys Bot Setup ===\n"
-        "where node >nul 2>&1 || (echo Node.js not found. Download from https://nodejs.org ^(v22+^) && pause && exit /b 1)\n"
-        "npm install --silent\n"
-        "echo.\n"
-        "where pm2 >nul 2>&1\n"
-        "if %ERRORLEVEL% EQU 0 (\n"
-        "  pm2 start ecosystem.config.js\n"
-        "  pm2 save\n"
-        "  echo Bot started with PM2. To see QR: pm2 logs hostai-bot\n"
-        ") else (\n"
-        "  echo Starting bot... Scan the QR code with WhatsApp.\n"
-        "  echo Tip: install PM2 for auto-restart: npm install -g pm2\n"
-        "  node bot.js\n"
-        ")\n"
-        "pause\n"
-    )
-    pm2_config = json.dumps({
-        "apps": [{
-            "name":       "hostai-bot",
-            "script":     "bot.js",
-            "watch":      False,
-            "restart_delay": 3000,
-            "max_restarts":  10,
-            "env": {
-                "NODE_ENV": "production",
-            },
-        }]
-    }, indent=2)
-    readme = (
-        "HostAI Baileys Bot — Quick Start\n"
-        "=================================\n\n"
-        "Requirements: Node.js 22+ — download from https://nodejs.org\n\n"
-        "━━ First time setup ━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "  Mac / Linux:\n"
-        "    chmod +x setup.sh\n"
-        "    ./setup.sh\n\n"
-        "  Windows:\n"
-        "    Double-click setup.bat\n\n"
-        "━━ Steps ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "1. Run setup.sh (or setup.bat on Windows)\n"
-        "2. Scan the QR code printed in the terminal:\n"
-        "     WhatsApp → ... → Linked Devices → Link a Device\n"
-        "3. Done! You only need to scan once.\n\n"
-        "━━ Recommended: PM2 (auto-restart on crash) ━\n\n"
-        "  npm install -g pm2\n"
-        "  Then re-run setup.sh — PM2 starts automatically.\n"
-        "  pm2 startup   ← makes bot start on computer boot\n\n"
-        "━━ Keep bot running ━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "  - Your PC must be on and connected to the internet\n"
-        "  - Bot reconnects automatically if connection drops\n"
-        "  - WhatsApp messages go through your home IP (no ban risk)\n\n"
-        "━━ Commands (type in WhatsApp to your host number) ━\n\n"
-        "  APPROVE [id]         Send AI draft to guest\n"
-        "  EDIT [id]: [text]    Edit draft then send\n"
-        "  SKIP [id]            Discard draft\n\n"
-        f"Dashboard: {APP_BASE_URL}/dashboard\n"
-        f"Settings:  {APP_BASE_URL}/settings\n"
-    )
-
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("hostai-bot/bot.js",              bot_js_content)
-        zf.writestr("hostai-bot/package.json",         pkg_json)
-        zf.writestr("hostai-bot/.env",                 env_content)
-        zf.writestr("hostai-bot/ecosystem.config.js",  pm2_config)
-        zf.writestr("hostai-bot/setup.sh",             setup_sh)
-        zf.writestr("hostai-bot/setup.bat",            setup_bat)
-        zf.writestr("hostai-bot/README.txt",           readme)
-    buf.seek(0)
-
-    return StreamingResponse(
-        buf,
-        media_type="application/zip",
-        headers={"Content-Disposition": "attachment; filename=hostai-bot.zip"},
-    )
-
-
-# ---------------------------------------------------------------------------
-# Reservations — CSV import, list, analytics
-# ---------------------------------------------------------------------------
-
-# Airbnb CSV column name aliases (different export locales/versions use different names)
-_CSV_ALIASES = {
-    "confirmation_code": ["confirmation code", "confirmation_code", "reservationid", "reservation id"],
-    "guest_name":        ["guest name", "guest_name", "guest"],
-    "guest_phone":       ["guest phone", "guest_phone", "phone", "phone number", "guest phone number"],
-    "listing_name":      ["listing", "listing name", "listing_name", "property"],
-    "unit_identifier":   [
-        "unit",
-        "unit identifier",
-        "unit number",
-        "unit / room",
-        "room",
-        "room number",
-        "room / unit",
-        "property no",
-        "property number",
-    ],
-    "checkin":           ["start date", "start_date", "check-in", "check_in", "checkin", "arrival"],
-    "checkout":          ["end date", "end_date", "check-out", "check_out", "checkout", "departure"],
-    "nights":            ["nights", "# nights", "number of nights", "duration"],
-    "guests_count":      ["# guests", "guests", "number of guests", "guest count"],
-    "payout_usd":        ["amount", "total payout", "payout", "earnings", "host payout"],
-    "status":            ["status", "booking status"],
-    "review_rating":     ["review rating", "rating", "guest rating", "review stars", "stars"],
-    "review_text":       ["review text", "guest review", "review", "review body"],
-    "review_submitted_at": ["review date", "review submitted at", "reviewed at"],
-    "repeat_guest_count": ["repeat guest count", "repeat stays", "previous stays"],
-}
 
 
 def _csv_col(headers: list[str], field: str) -> Optional[str]:
@@ -6823,12 +6157,7 @@ def admin_system(request: Request, db: Session = Depends(get_db)):
         cal_conf     = bool(cfg and cfg.ical_urls)
         any_dead     = (email_conf and not ws["email_running"]) or (cal_conf and not ws["cal_running"])
 
-        # Baileys fix #7: bot status tracking
-        bot_online = bool(cfg and cfg.bot_last_heartbeat and
-                         (now_utc - cfg.bot_last_heartbeat).total_seconds() < 600)
-        baileys_pending = db.query(BaileysOutbound).filter_by(
-            tenant_id=t.id, status="pending"
-        ).count() if (cfg and cfg.wa_mode == "baileys") else 0
+        # Baileys support removed (using official WhatsApp Business API instead)
         bot_heartbeat_age_min = None
         if cfg and cfg.bot_last_heartbeat:
             bot_heartbeat_age_min = max(0, (now_utc - cfg.bot_last_heartbeat).total_seconds() // 60)
@@ -6840,9 +6169,6 @@ def admin_system(request: Request, db: Session = Depends(get_db)):
             "email_conf":          email_conf,
             "cal_conf":            cal_conf,
             "any_dead":            any_dead,
-            "bot_online":          bot_online,
-            "baileys_pending":     baileys_pending,
-            "wa_mode":             cfg.wa_mode if cfg else None,
             "bot_heartbeat_age_min": bot_heartbeat_age_min,
         })
 

@@ -1,6 +1,6 @@
 """
 Guest Contact Service — handle guest contact creation, welcome messages, and bot whitelisting.
-Integrates with Baileys, Meta API, and Twilio for real message sending.
+Integrates with Meta API and Twilio for real message sending.
 """
 
 import os
@@ -62,8 +62,8 @@ async def send_welcome_messages(
 ) -> None:
     """
     Send welcome messages via:
-    1. WhatsApp (Baileys or Meta) to guest
-    2. WhatsApp (Baileys or Meta) to host
+    1. WhatsApp (Meta) to guest
+    2. WhatsApp (Meta) to host
     3. SMS (Twilio) if available
     """
 
@@ -80,10 +80,7 @@ async def send_welcome_messages(
     host_sent = False
 
     # Send to guest via available channel
-    if cfg.wa_mode == "baileys" and cfg.whatsapp_number:
-        # Send via Baileys
-        guest_sent = await _send_via_baileys(guest_contact.guest_phone, guest_msg, tenant_id, db)
-    elif cfg.wa_mode == "meta_cloud":
+    if cfg.wa_mode == "meta_cloud":
         # Send via Meta API
         guest_sent = await _send_via_meta(guest_contact.guest_phone, guest_msg, tenant_id, cfg)
 
@@ -96,11 +93,8 @@ async def send_welcome_messages(
         log.warning(f"[{tenant_id}] Failed to send welcome to {guest_contact.guest_name}")
 
     # Send to host via available channel
-    if cfg.whatsapp_number:
-        if cfg.wa_mode == "baileys":
-            host_sent = await _send_via_baileys(cfg.whatsapp_number, host_msg, tenant_id, db)
-        elif cfg.wa_mode == "meta_cloud":
-            host_sent = await _send_via_meta(cfg.whatsapp_number, host_msg, tenant_id, cfg)
+    if cfg.whatsapp_number and cfg.wa_mode == "meta_cloud":
+        host_sent = await _send_via_meta(cfg.whatsapp_number, host_msg, tenant_id, cfg)
 
     if host_sent:
         guest_contact.welcome_sent_to_host = datetime.now(timezone.utc)
@@ -181,17 +175,7 @@ Check-out: {guest_contact.check_out.strftime('%Y-%m-%d')}
     return message
 
 
-async def _send_via_baileys(phone_number: str, message: str, tenant_id: str, db: Session) -> bool:
-    """Send message via Baileys (WhatsApp) using queue system."""
-
-    try:
-        from web.app import _queue_baileys_outbound
-        _queue_baileys_outbound(tenant_id, phone_number, message, db)
-        log.info(f"[{tenant_id}] Queued Baileys message to {phone_number}")
-        return True
-    except Exception as e:
-        log.error(f"[{tenant_id}] Error queuing Baileys message: {e}")
-        return False
+# _send_via_baileys removed — Baileys integration discontinued
 
 
 async def _send_via_meta(phone_number: str, message: str, tenant_id: str, cfg: TenantConfig) -> bool:

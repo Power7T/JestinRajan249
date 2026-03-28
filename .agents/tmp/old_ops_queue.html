@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Ops Queue — HostAI{% endblock %}
+
+{% block content %}
+<h1>Ops Queue</h1>
+<p class="section-lead">
+  This is the exception-based work queue: unresolved guest issues, failed sends, room-mapping problems, and vendor tasks that need a human to act.
+</p>
+
+<div class="kpi-grid" style="margin-bottom:1rem">
+  <div class="kpi-card"><div class="kpi-value">{{ issues|selectattr('priority', 'in', ['high', 'urgent'])|list|length }}</div><div class="kpi-label">Urgent issues</div><div class="kpi-note">Safety, complaints, and high-priority tickets.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ exceptions|selectattr('kind', 'in', ['missing_guest_phone', 'missing_unit_mapping'])|list|length }}</div><div class="kpi-label">Needs context</div><div class="kpi-note">Room or booking details still missing.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ issues|selectattr('vendor_id')|list|length }}</div><div class="kpi-label">Vendor tasks</div><div class="kpi-note">Tickets already routed to a vendor.</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ team_members|length }}</div><div class="kpi-label">Active team roles</div><div class="kpi-note">Owner, desk, maintenance, and cleaner coverage.</div></div>
+</div>
+
+<div class="chip-row" style="margin-bottom:1rem">
+  <a class="chip {% if selected_role == 'all' %}good{% endif %}" href="/ops">All {{ role_counts.get('all', 0) }}</a>
+  <a class="chip {% if selected_role == 'unassigned' %}warn{% endif %}" href="/ops?role=unassigned">Unassigned {{ role_counts.get('unassigned', 0) }}</a>
+  <a class="chip {% if selected_role == 'owner' %}good{% endif %}" href="/ops?role=owner">Owner {{ role_counts.get('owner', 0) }}</a>
+  <a class="chip {% if selected_role == 'front_desk' %}good{% endif %}" href="/ops?role=front_desk">Front desk {{ role_counts.get('front_desk', 0) }}</a>
+  <a class="chip {% if selected_role == 'maintenance' %}good{% endif %}" href="/ops?role=maintenance">Maintenance {{ role_counts.get('maintenance', 0) }}</a>
+  <a class="chip {% if selected_role == 'cleaner' %}good{% endif %}" href="/ops?role=cleaner">Cleaner {{ role_counts.get('cleaner', 0) }}</a>
+</div>
+
+<div class="queue-grid" style="margin-bottom:1rem">
+  {% for item in exceptions[:4] %}
+  <div class="queue-card {% if item.severity == 'high' %}critical{% elif item.severity == 'medium' %}warn{% else %}good{% endif %}">
+    <h3>{{ item.title }}</h3>
+    <p>{{ item.detail }}</p>
+    <div class="queue-meta">
+      <span class="chip {% if item.severity == 'high' %}bad{% elif item.severity == 'medium' %}warn{% else %}good{% endif %}">{{ item.severity }}</span>
+      <span class="chip">{{ item.kind|replace('_', ' ') }}</span>
+      <span class="chip">{{ item.entity_type }}</span>
+    </div>
+  </div>
+  {% endfor %}
+  {% if not exceptions %}
+  <div class="queue-card good">
+    <h3>No active exceptions</h3>
+    <p>The queue is clear. Routine work can stay automated until a real exception appears.</p>
+    <div class="queue-meta"><span class="chip good">Clear</span></div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-bottom:1rem">
+  <h2>Open issue tickets</h2>
+  {% if issues %}
+  <div class="timeline">
+    {% for issue in issues %}
+    <div class="timeline-item">
+      <div class="timeline-meta">
+        {{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}
+        {% if issue.reservation %} · {{ issue.reservation.confirmation_code }}{% endif %}
+      </div>
+      <div class="timeline-title">{{ issue.title }}</div>
+      <div class="timeline-text">{{ issue.description or 'No description provided.' }}</div>
+      <div class="chip-row" style="margin-top:0.5rem">
+        <span class="chip">{{ issue.status|replace('_', ' ') }}</span>
+        <span class="chip">{% if issue.assigned_to_member %}{{ issue.assigned_to_member.display_name }}{% else %}Unassigned{% endif %}</span>
+        <span class="chip">{% if issue.vendor %}{{ issue.vendor.name }}{% else %}No vendor{% endif %}</span>
+      </div>
+      <form method="post" action="/issues/{{ issue.id }}/assign" style="margin-top:0.75rem">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <div class="form-row">
+          <div>
+            <label>Assign team member</label>
+            <select name="assigned_to_member_id">
+              <option value="">Unassigned</option>
+              {% for member in team_members %}
+              <option value="{{ member.id }}" {% if issue.assigned_to_member_id == member.id %}selected{% endif %}>{{ member.display_name }} — {{ member.role|replace('_', ' ') }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>Assign vendor</label>
+            <select name="vendor_id">
+              <option value="">No vendor</option>
+              {% for vendor in vendors %}
+              <option value="{{ vendor.id }}" {% if issue.vendor_id == vendor.id %}selected{% endif %}>{{ vendor.name }} — {{ vendor.category|replace('_', ' ') }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button type="submit" class="btn btn-outline btn-sm">Update assignment</button>
+        </div>
+      </form>
+      <form method="post" action="/issues/{{ issue.id }}/resolve" style="margin-top:0.5rem">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <label>Resolution notes</label>
+        <input type="text" name="resolution_notes" value="{{ issue.resolution_notes or '' }}" placeholder="ETA, fix, or guest follow-up">
+        <button type="submit" class="btn btn-primary btn-sm">Mark resolved</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="font-size:0.85rem;color:var(--text-3)">No open issue tickets in this queue.</p>
+  {% endif %}
+</div>
+
+<div class="workflow-grid" style="margin-top:1rem">
+  <div class="workflow-card">
+    <h3>Who sees what</h3>
+    <p>Front desk sees guest issues, maintenance sees vendor tickets, cleaners see turnover tasks, and the owner sees unresolved exceptions.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>Queue rules</h3>
+    <p>Urgent items stay at the top. Missing context should be resolved before the bot attempts a confident answer.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>Fallbacks</h3>
+    <p>If there is no PMS, CSV and manual booking entry still keep the queue operational.</p>
+  </div>
+</div>
+{% endblock %}

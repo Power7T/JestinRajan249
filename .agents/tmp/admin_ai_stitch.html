@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HostAI Admin | AI Metrics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #08090F;
+        }
+        .glass-card {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'WHT' 200;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container": "#1e1f26",
+                        "outline": "#8d909e",
+                        "on-secondary-fixed": "#001f24",
+                        "inverse-primary": "#1e5bba",
+                        "on-primary-fixed-variant": "#004397",
+                        "on-primary-container": "#00275e",
+                        "error": "#ffb4ab",
+                        "secondary-fixed": "#9cf0ff",
+                        "on-background": "#e3e1eb",
+                        "surface-container-high": "#292930",
+                        "secondary-fixed-dim": "#00daf3",
+                        "on-primary": "#002e6b",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#2a1700",
+                        "secondary": "#bdf4ff",
+                        "outline-variant": "#424752",
+                        "inverse-surface": "#e3e1eb",
+                        "tertiary": "#ffb960",
+                        "surface-variant": "#34343b",
+                        "surface-dim": "#121319",
+                        "inverse-on-surface": "#2f3037",
+                        "background": "#121319",
+                        "primary-container": "#5d8ef1",
+                        "primary": "#aec6ff",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "surface-bright": "#383940",
+                        "on-tertiary-container": "#3e2400",
+                        "surface-tint": "#aec6ff",
+                        "tertiary-fixed-dim": "#ffb960",
+                        "on-tertiary": "#472a00",
+                        "on-surface-variant": "#c3c6d4",
+                        "surface-container-highest": "#34343b",
+                        "primary-fixed": "#d8e2ff",
+                        "secondary-container": "#00e3fd",
+                        "on-primary-fixed": "#001a43",
+                        "surface-container-low": "#1a1b22",
+                        "surface-container-lowest": "#0d0e14",
+                        "surface": "#121319",
+                        "on-secondary-container": "#00616d",
+                        "on-secondary-fixed-variant": "#004f58",
+                        "primary-fixed-dim": "#aec6ff",
+                        "error-container": "#93000a",
+                        "on-secondary": "#00363d",
+                        "tertiary-fixed": "#ffddb8",
+                        "on-surface": "#e3e1eb",
+                        "tertiary-container": "#ca8103"
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="text-on-surface overflow-x-hidden">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-8 h-screen w-64 border-r border-[#424752]/15 bg-[#121319]/60 backdrop-blur-xl shadow-[0px_0px_40px_rgba(174,198,255,0.08)] z-[60]">
+<div class="px-8 mb-12">
+<h1 class="text-xl font-extrabold text-[#aec6ff] tracking-tighter">HostAI</h1>
+<p class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Admin Console</p>
+</div>
+<nav class="flex-1 space-y-2">
+<div class="group cursor-pointer py-3 transition-all duration-300 hover:bg-[#292930]/40 text-slate-400 hover:text-slate-200 transition-colors duration-200 pl-4">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-xl">domain</span>
+<span class="text-sm font-medium">Tenants</span>
+</div>
+</div>
+<!-- Active Tab: AI Metrics -->
+<div class="group cursor-pointer py-3 transition-all duration-300 bg-[#292930]/40 text-[#aec6ff] font-bold border-l-2 border-[#aec6ff] pl-4">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-xl">analytics</span>
+<span class="text-sm font-medium">AI Metrics</span>
+</div>
+</div>
+<div class="group cursor-pointer py-3 transition-all duration-300 hover:bg-[#292930]/40 text-slate-400 hover:text-slate-200 transition-colors duration-200 pl-4">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-xl">health_and_safety</span>
+<span class="text-sm font-medium">System Health</span>
+</div>
+</div>
+</nav>
+<div class="px-6 mb-8">
+<button class="w-full py-3 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-on-primary-fixed font-bold rounded-xl text-sm shadow-[0px_0px_12px_rgba(174,198,255,0.3)] active:scale-95 duration-150 ease-in-out">
+                New Instance
+            </button>
+</div>
+<div class="mt-auto space-y-2 border-t border-[#424752]/15 pt-6">
+<div class="flex items-center gap-4 px-8 py-3 text-slate-400 hover:text-slate-200 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-xl">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</div>
+<div class="flex items-center gap-4 px-8 py-3 text-slate-400 hover:text-slate-200 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-xl">logout</span>
+<span class="text-sm font-medium">Logout</span>
+</div>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 flex justify-between items-center px-8 h-16 w-[calc(100%-16rem)] ml-64 bg-[#121319]/60 backdrop-blur-xl border-b border-[#424752]/15">
+<div class="flex items-center gap-8">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
+<input class="bg-surface-container-lowest border-none rounded-full py-1.5 pl-10 pr-4 text-sm w-64 focus:ring-1 focus:ring-primary/40 placeholder:text-slate-600 transition-all" placeholder="Search parameters..." type="text"/>
+</div>
+<nav class="hidden md:flex gap-6 items-center">
+<a class="text-slate-400 hover:text-slate-200 text-[0.6875rem] font-bold uppercase tracking-wider" href="#">Dashboard</a>
+<a class="text-slate-400 hover:text-slate-200 text-[0.6875rem] font-bold uppercase tracking-wider" href="#">Logs</a>
+<a class="text-[#aec6ff] border-b-2 border-[#aec6ff] pb-1 text-[0.6875rem] font-bold uppercase tracking-wider" href="#">Reports</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="hover:bg-white/5 p-2 rounded-full transition-all flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">notifications</span>
+</button>
+<button class="hover:bg-white/5 p-2 rounded-full transition-all flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">help_outline</span>
+</button>
+<button class="px-4 py-1.5 text-xs font-bold text-primary border border-primary/30 rounded-full hover:bg-primary/10 transition-all">
+                Deploy Update
+            </button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/20">
+<img alt="Admin Profile" class="w-full h-full object-cover" data-alt="Close up portrait of a professional system administrator in a high-tech environment with blue ambient lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvn8ir2V9FVopL3BKu4yfjLE_g90oJI-ybmIQUtk3W9JBjWmQ2SAbOGgOTeGij9wRUkSIRXgZecZIAD-gC3CZ9nbzt4eUn9Wa9DP7LbOOSQnFoMYXe1bbpsCD2q9GUt2E0CHMcc2evZPnksL1lo5h0MJqsFmy08IhJhN8r-b11mX7QYAlRxhJJGwHysTBa_j1Tz7OgMI6UBy5belroVbqto7uG5sKUYiuWLpi8Ld2d9HFAQiBbeJTExjsjguVcxJFBCxpNSkIpaPiL"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 p-10 min-h-screen">
+<div class="max-w-7xl mx-auto">
+<!-- Header Section -->
+<div class="mb-12">
+<span class="text-[0.6875rem] font-bold uppercase tracking-[0.2em] text-primary mb-2 block">Global Insights</span>
+<h2 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">AI Performance Metrics</h2>
+<p class="text-slate-400 max-w-2xl">Real-time visualization of neural processing, safety filters, and platform-wide anomaly detection.</p>
+</div>
+<!-- Stats Grid (Bento Style) -->
+<div class="grid grid-cols-12 gap-6 mb-12">
+<!-- Total Tokens Used (High Contrast) -->
+<div class="col-span-12 lg:col-span-7 glass-card rounded-xl p-8 flex flex-col justify-between group overflow-hidden relative">
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500 mb-1">Total Tokens Processed</h3>
+<p class="text-5xl font-extrabold text-on-surface tracking-tighter">142.8M</p>
+</div>
+<div class="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+                                +12.4%
+                            </div>
+</div>
+<div class="h-32 w-full mt-4 flex items-end gap-1">
+<!-- Visual Trend Line Mockup -->
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[40%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[35%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[50%]"></div>
+<div class="flex-1 bg-primary/30 rounded-t-sm h-[65%]"></div>
+<div class="flex-1 bg-primary/40 rounded-t-sm h-[45%]"></div>
+<div class="flex-1 bg-primary/50 rounded-t-sm h-[75%]"></div>
+<div class="flex-1 bg-gradient-to-t from-primary/40 to-primary rounded-t-sm h-[90%]"></div>
+</div>
+</div>
+<div class="absolute -right-20 -bottom-20 w-64 h-64 bg-primary/5 rounded-full blur-[80px]"></div>
+</div>
+<!-- Spam Blocked (Donut Chart) -->
+<div class="col-span-12 lg:col-span-5 glass-card rounded-xl p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
+<h3 class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500 mb-6 w-full text-left">Spam Messages Blocked</h3>
+<div class="relative w-48 h-48 mb-6">
+<svg class="w-full h-full transform -rotate-90">
+<circle cx="96" cy="96" fill="transparent" r="80" stroke="#1e1f26" stroke-width="12"></circle>
+<circle class="transition-all duration-1000" cx="96" cy="96" fill="transparent" r="80" stroke="#00e3fd" stroke-dasharray="502.4" stroke-dashoffset="125.6" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-3xl font-extrabold text-on-surface tracking-tighter">75%</span>
+<span class="text-[0.6875rem] font-bold uppercase text-slate-500">Efficiency</span>
+</div>
+</div>
+<div class="w-full flex justify-between items-center pt-4 border-t border-outline-variant/10">
+<div class="text-left">
+<p class="text-2xl font-bold text-on-surface tracking-tighter">4.2M</p>
+<p class="text-[0.6875rem] text-slate-500 uppercase font-bold">Total Blocked</p>
+</div>
+<span class="material-symbols-outlined text-secondary-container text-4xl" data-weight="fill">security</span>
+</div>
+</div>
+<!-- Threat Blockades (Bar Chart) -->
+<div class="col-span-12 lg:col-span-8 glass-card rounded-xl p-8">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h3 class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500">Threat Blockades</h3>
+<p class="text-sm text-slate-400">Hourly analysis of blocked malicious requests</p>
+</div>
+<select class="bg-surface-container-lowest border-none text-xs font-bold text-slate-400 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-primary/40">
+<option>Last 24 Hours</option>
+<option>Last 7 Days</option>
+</select>
+</div>
+<div class="flex items-end justify-between h-64 gap-3 px-4">
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[20%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[45%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[30%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[60%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-primary/60 rounded-t-lg h-[85%] transition-all hover:bg-primary"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[40%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[55%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[25%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[70%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[50%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[35%] transition-all hover:bg-primary/40"></div>
+<div class="flex-1 bg-surface-container-high rounded-t-lg h-[65%] transition-all hover:bg-primary/40"></div>
+</div>
+</div>
+<!-- Recent Anomalies Feed -->
+<div class="col-span-12 lg:col-span-4 glass-card rounded-xl p-8 flex flex-col">
+<h3 class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500 mb-6">Recent Anomalies</h3>
+<div class="space-y-6 flex-1">
+<div class="flex gap-4 group cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-error text-xl">warning</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-on-surface">Spike in Token Usage</h4>
+<p class="text-xs text-slate-500">Instance-449 showing 400% increase</p>
+<span class="text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-1 block">2m ago</span>
+</div>
+</div>
+<div class="flex gap-4 group cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-secondary-container/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-secondary-container text-xl">shield_person</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-on-surface">Safety Filter Triggered</h4>
+<p class="text-xs text-slate-500">Critical policy violation blocked</p>
+<span class="text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-1 block">15m ago</span>
+</div>
+</div>
+<div class="flex gap-4 group cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">speed</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-on-surface">Latency Variance</h4>
+<p class="text-xs text-slate-500">EU-West nodes reporting 200ms lag</p>
+<span class="text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-1 block">1h ago</span>
+</div>
+</div>
+<div class="flex gap-4 group cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-tertiary text-xl">robot</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-on-surface">Agent Recursive Loop</h4>
+<p class="text-xs text-slate-500">Process halted to prevent resource drain</p>
+<span class="text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-1 block">3h ago</span>
+</div>
+</div>
+</div>
+<button class="mt-8 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-primary hover:text-white transition-colors text-center w-full">View All Incidents</button>
+</div>
+</div>
+<!-- Deep Metrics Table (Asymmetric Layout) -->
+<div class="glass-card rounded-xl overflow-hidden mb-12">
+<div class="px-8 py-6 border-b border-outline-variant/10 flex justify-between items-center">
+<h3 class="text-lg font-bold text-on-surface">Active Deployment Performance</h3>
+<div class="flex gap-4">
+<button class="flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">filter_list</span> Filter
+                        </button>
+<button class="flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">download</span> Export
+                        </button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-lowest">
+<th class="px-8 py-4 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">Instance ID</th>
+<th class="px-8 py-4 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">Status</th>
+<th class="px-8 py-4 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">Avg Latency</th>
+<th class="px-8 py-4 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500">Token Cost</th>
+<th class="px-8 py-4 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-500 text-right">Uptime</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<tr class="hover:bg-white/[0.02] transition-colors">
+<td class="px-8 py-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold text-on-surface">ALPHA-7712</span>
+<span class="text-xs text-slate-500">Production Tier</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary-container"></div>
+<span class="text-xs font-bold text-secondary-container uppercase">Optimal</span>
+</div>
+</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">142ms</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">$12,402.00</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300 text-right">99.98%</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors">
+<td class="px-8 py-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold text-on-surface">BETA-1994</span>
+<span class="text-xs text-slate-500">Developer Tier</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="text-xs font-bold text-primary uppercase">Syncing</span>
+</div>
+</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">415ms</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">$2,118.45</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300 text-right">98.40%</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors">
+<td class="px-8 py-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold text-on-surface">GAMMA-003</span>
+<span class="text-xs text-slate-500">Legacy Tier</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-error"></div>
+<span class="text-xs font-bold text-error uppercase">Overloaded</span>
+</div>
+</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">1.2s</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300">$45,102.10</td>
+<td class="px-8 py-6 text-sm font-medium text-slate-300 text-right">94.12%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- Background Decorative Element -->
+<div class="fixed top-0 right-0 -z-10 w-[800px] h-[800px] bg-primary-container/10 rounded-full blur-[150px] translate-x-1/2 -translate-y-1/2 opacity-30 pointer-events-none"></div>
+<div class="fixed bottom-0 left-0 -z-10 w-[600px] h-[600px] bg-secondary-container/5 rounded-full blur-[120px] -translate-x-1/2 translate-y-1/2 opacity-20 pointer-events-none"></div>
+</body></html>

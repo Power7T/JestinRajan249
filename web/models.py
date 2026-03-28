@@ -16,7 +16,7 @@ from web.db import Base
 
 # Subscription plans (old channel-based — kept for backward compat with Alembic)
 PLAN_FREE       = "free"
-PLAN_BAILEYS    = "baileys"
+# PLAN_BAILEYS removed (Baileys integration discontinued)
 PLAN_META_CLOUD = "meta_cloud"
 PLAN_SMS        = "sms"
 PLAN_PRO        = "pro"   # all three channels
@@ -208,16 +208,6 @@ class TenantConfig(Base):
     stripe_subscription_id:  Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     num_units:               Mapped[int]           = mapped_column(Integer, default=1)  # units this tenant manages
 
-    # Baileys bot API token (hashed) — bot authenticates with this instead of user password
-    bot_api_token_hash:     Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
-    bot_api_token_hint:     Mapped[Optional[str]] = mapped_column(String(8), nullable=True)  # last 8 chars for display
-    bot_api_token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    bot_last_heartbeat:     Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    # Baileys rate limiting and batch control
-    baileys_max_batch_size:  Mapped[int] = mapped_column(Integer, default=50)   # max messages per poll
-    baileys_max_per_minute:  Mapped[int] = mapped_column(Integer, default=60)   # WhatsApp rate limit
-
     # Onboarding step 3: extra services (comma-separated, stored separately for re-population)
     extra_services: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
@@ -228,47 +218,6 @@ class TenantConfig(Base):
     internal_token: Mapped[str] = mapped_column(String(64), default=lambda: str(uuid.uuid4()))
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="config")
-
-
-# ---------------------------------------------------------------------------
-# BaileysOutbound — persistent fallback queue for Baileys outbound messages.
-# Primary queue is Redis; rows here are written when Redis is unavailable
-# and are also used as audit trail so no message is silently lost.
-# ---------------------------------------------------------------------------
-
-class BaileysOutbound(Base):
-    __tablename__ = "baileys_outbound"
-
-    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
-    to_phone:    Mapped[str]           = mapped_column(String(32), index=True)
-    text:        Mapped[str]           = mapped_column(Text)
-    created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
-    delivered:   Mapped[bool]          = mapped_column(Boolean, default=False, index=True)
-    delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    # Baileys improvements: status tracking, retry logic, idempotency
-    status:            Mapped[str] = mapped_column(String(32), default="pending", index=True)  # pending / in_transit / delivered / failed
-    error_reason:      Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    idempotency_key:   Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True, unique=True)
-    retry_count:       Mapped[int] = mapped_column(Integer, default=0)
-    last_retry_at:     Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-# ---------------------------------------------------------------------------
-# BaileysCallback — tracks processed Baileys callbacks (approve/edit/skip actions)
-# Prevents duplicate actions from retries with idempotency
-# ---------------------------------------------------------------------------
-
-class BaileysCallback(Base):
-    __tablename__ = "baileys_callbacks"
-
-    id:               Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id:        Mapped[str]      = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
-    draft_id:         Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("drafts.id"), nullable=True)
-    action:           Mapped[str]      = mapped_column(String(32))  # approve / edit / skip
-    idempotency_key:  Mapped[str]      = mapped_column(String(128), index=True, unique=True)
-    processed_at:     Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 # ---------------------------------------------------------------------------

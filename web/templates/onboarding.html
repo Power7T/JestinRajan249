@@ -93,6 +93,14 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
   }
   .skip-link:hover { color:var(--text-2); }
 
+  /* Custom AM/PM time picker */
+  .time-picker-wrap { display:flex; align-items:center; gap:0.35rem; margin-bottom:0.85rem; }
+  .time-picker-wrap select { width:auto !important; margin-bottom:0 !important; min-width:0; padding:0.55rem 0.45rem; }
+  .ampm-toggle { display:flex; border:1px solid rgba(66,71,82,0.4); border-radius:0.5rem; overflow:hidden; flex-shrink:0; }
+  .ampm-btn { background:transparent; border:none; color:#8d909e; font-size:0.78rem; font-weight:700; padding:0.45rem 0.65rem; cursor:pointer; transition:all 0.15s; font-family:inherit; line-height:1; }
+  .ampm-btn.active { background:var(--accent); color:#002e6b; }
+  .tp-sep { color:var(--text-3); font-weight:700; font-size:0.9rem; flex-shrink:0; }
+
   /* Demo result */
   #demo-result {
     display:none;
@@ -221,11 +229,13 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
     <div class="form-row">
       <div>
         <label>Check-in time</label>
-        <input type="time" name="check_in_time" class="time-field" data-initial="{{ cfg.check_in_time or '' }}">
+        <div class="time-picker-wrap" id="tp-check-in"></div>
+        <input type="hidden" name="check_in_time" id="check_in_time_val" value="{{ cfg.check_in_time or '' }}">
       </div>
       <div>
         <label>Check-out time</label>
-        <input type="time" name="check_out_time" class="time-field" data-initial="{{ cfg.check_out_time or '' }}">
+        <div class="time-picker-wrap" id="tp-check-out"></div>
+        <input type="hidden" name="check_out_time" id="check_out_time_val" value="{{ cfg.check_out_time or '' }}">
       </div>
     </div>
 
@@ -280,10 +290,12 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
     <div class="form-row" style="margin-top:1rem">
       <div>
         <label>Quiet hours</label>
-        <div style="display:flex;gap:0.5rem;align-items:center;">
-          <input type="time" id="q-start" class="time-field" data-initial="" style="margin:0;">
-          <span style="color:var(--text-3);font-size:0.85rem">to</span>
-          <input type="time" id="q-end" class="time-field" data-initial="" style="margin:0;">
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;">
+          <div class="time-picker-wrap" id="tp-q-start" style="margin-bottom:0;"></div>
+          <span style="color:var(--text-3);font-size:0.85rem;flex-shrink:0">to</span>
+          <div class="time-picker-wrap" id="tp-q-end" style="margin-bottom:0;"></div>
+          <input type="hidden" id="q-start" value="">
+          <input type="hidden" id="q-end" value="">
           <input type="hidden" name="quiet_hours" id="quiet-hours-val" data-initial="{{ cfg.quiet_hours or '' }}" value="{{ cfg.quiet_hours or '' }}">
         </div>
         <p class="help-text" style="margin-top:0.4rem">Will be included in house rules context.</p>
@@ -656,50 +668,107 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 {% endif %}
 
 <script nonce="{{ request.state.csp_nonce }}">
-// Parse existing "X to Y" into inputs
-const qVal = document.getElementById('quiet-hours-val');
-if (qVal) {
-    let raw = qVal.getAttribute('data-initial') || '';
-    let startEl = document.getElementById('q-start');
-    let endEl = document.getElementById('q-end');
-    let parts = raw.split(/ to | - | – /i);
-    if (parts.length === 2 && startEl && endEl) {
-        startEl.setAttribute('data-initial', parts[0]);
-        endEl.setAttribute('data-initial', parts[1]);
-    } else if (parts.length === 1 && startEl) {
-        startEl.setAttribute('data-initial', parts[0]);
-    }
+// ─── Custom AM/PM Time Picker ───────────────────────────────────────────────
+function parseToH24(val) {
+  if (!val) return { h: 0, m: 0 };
+  if (val.toUpperCase().includes('M')) {
+    let isPM = val.toUpperCase().includes('PM');
+    let parts = val.replace(/[^0-9:]/g, '').split(':');
+    let h = parseInt(parts[0]) || 0;
+    let m = parseInt(parts[1]) || 0;
+    if (isPM && h < 12) h += 12;
+    if (!isPM && h === 12) h = 0;
+    return { h, m };
+  }
+  let parts = val.split(':');
+  return { h: parseInt(parts[0]) || 0, m: parseInt(parts[1]) || 0 };
 }
 
-// Format 'time' inputs to ensure "HH:MM" (24hr)
-document.querySelectorAll('.time-field').forEach(el => {
-    let val = el.getAttribute('data-initial');
-    if(val && val.includes('M')) {
-        let isPM = val.toUpperCase().includes('PM');
-        let parts = val.replace(/[^0-9:]/g, '').split(':');
-        if(parts.length >= 2) {
-            let h = parseInt(parts[0]) || 0;
-            let m = parts[1];
-            if(isPM && h < 12) h += 12;
-            if(!isPM && h === 12) h = 0;
-            el.value = h.toString().padStart(2,'0') + ':' + m;
-        } else {
-            el.value = val;
-        }
-    } else if(val) {
-        el.value = val;
-    }
-    
-    // Sync logic for quiet hours
-    if(el.id === 'q-start' || el.id === 'q-end') {
-        el.addEventListener('change', () => {
-            const s = document.getElementById('q-start').value;
-            const e = document.getElementById('q-end').value;
-            if(s && e) qVal.value = s + " to " + e;
-            else if(s) qVal.value = s + " onwards";
-            else qVal.value = "";
-        });
-    }
+function buildTimePicker(wrapId, hiddenId, initialVal) {
+  const wrap = document.getElementById(wrapId);
+  const hidden = document.getElementById(hiddenId);
+  if (!wrap || !hidden) return;
+
+  let { h: h24, m } = parseToH24(initialVal || hidden.value || '');
+  let ampm = h24 >= 12 ? 'PM' : 'AM';
+  let h12 = h24 % 12 || 12;
+
+  let hourSel = document.createElement('select');
+  hourSel.className = 'tp-hour';
+  for (let i = 1; i <= 12; i++) {
+    let opt = document.createElement('option');
+    opt.value = i; opt.textContent = i.toString().padStart(2, '0');
+    if (i === h12) opt.selected = true;
+    hourSel.appendChild(opt);
+  }
+
+  let sep = document.createElement('span');
+  sep.className = 'tp-sep'; sep.textContent = ':';
+
+  let minSel = document.createElement('select');
+  minSel.className = 'tp-min';
+  for (let i = 0; i < 60; i++) {
+    let opt = document.createElement('option');
+    opt.value = i; opt.textContent = i.toString().padStart(2, '0');
+    if (i === m) opt.selected = true;
+    minSel.appendChild(opt);
+  }
+
+  let toggle = document.createElement('div');
+  toggle.className = 'ampm-toggle';
+  ['AM', 'PM'].forEach(p => {
+    let btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'ampm-btn' + (p === ampm ? ' active' : '');
+    btn.dataset.val = p; btn.textContent = p;
+    btn.addEventListener('click', () => {
+      toggle.querySelectorAll('.ampm-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      sync();
+    });
+    toggle.appendChild(btn);
+  });
+
+  wrap.appendChild(hourSel); wrap.appendChild(sep);
+  wrap.appendChild(minSel); wrap.appendChild(toggle);
+
+  function sync() {
+    let hr = parseInt(hourSel.value);
+    let mn = parseInt(minSel.value);
+    let ap = toggle.querySelector('.ampm-btn.active').dataset.val;
+    let h = hr % 12 + (ap === 'PM' ? 12 : 0);
+    hidden.value = h.toString().padStart(2, '0') + ':' + mn.toString().padStart(2, '0');
+    hidden.dispatchEvent(new Event('change'));
+  }
+
+  // Set initial hidden value
+  if (initialVal || hidden.value) {
+    hidden.value = h24.toString().padStart(2, '0') + ':' + m.toString().padStart(2, '0');
+  }
+  hourSel.addEventListener('change', sync);
+  minSel.addEventListener('change', sync);
+}
+
+// Initialize check-in / check-out pickers
+buildTimePicker('tp-check-in',  'check_in_time_val',  '{{ cfg.check_in_time or "" }}');
+buildTimePicker('tp-check-out', 'check_out_time_val', '{{ cfg.check_out_time or "" }}');
+
+// Initialize quiet hours pickers
+const qVal = document.getElementById('quiet-hours-val');
+let qRaw = (qVal && qVal.getAttribute('data-initial')) || '';
+let qParts = qRaw.split(/ to | - | – /i);
+buildTimePicker('tp-q-start', 'q-start', qParts[0] || '');
+buildTimePicker('tp-q-end',   'q-end',   qParts[1] || '');
+
+// Sync quiet hours composite hidden input
+['q-start', 'q-end'].forEach(id => {
+  let el = document.getElementById(id);
+  if (el) el.addEventListener('change', () => {
+    const s = document.getElementById('q-start').value;
+    const e = document.getElementById('q-end').value;
+    if (s && e) qVal.value = s + ' to ' + e;
+    else if (s) qVal.value = s + ' onwards';
+    else qVal.value = '';
+  });
 });
 
 // Airbnb listing auto-import

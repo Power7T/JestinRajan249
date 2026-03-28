@@ -1,0 +1,720 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — HostAI{% endblock %}
+
+{% block head %}
+<style>
+  /* Setup checklist card */
+  .checklist-card {
+    background: var(--surface);
+    border: 1px solid rgba(245,166,35,0.3);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .checklist-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), transparent 70%);
+  }
+  .checklist-card h2 { font-size: 1rem; margin-bottom: 1rem; }
+
+  /* Feedback row */
+  .feedback-row { display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.75rem; }
+
+  /* Guest avatar */
+  .guest-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--rose));
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif; font-size: 0.7rem; font-weight: 800;
+    color: #060911; flex-shrink: 0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Dashboard</h1>
+    <p class="page-subtitle">Your property overview at a glance</p>
+  </div>
+  <div class="page-actions">
+    <form method="get" action="/dashboard" style="display:flex;gap:0.5rem;align-items:center;">
+      <select name="property" style="max-width:240px;margin-bottom:0;font-size:0.82rem;padding:7px 12px;">
+        <option value="">All properties</option>
+        {% for property_name in property_options or [] %}
+        <option value="{{ property_name }}" {% if property_name == selected_property %}selected{% endif %}>{{ property_name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-outline btn-sm">Apply</button>
+      {% if selected_property %}
+      <a href="/dashboard" class="btn btn-ghost btn-sm">✕ Clear</a>
+      {% endif %}
+    </form>
+    {% if selected_property %}
+    <span class="chip accent">📍 {{ selected_property }}</span>
+    {% endif %}
+  </div>
+</div>
+
+
+<!-- CSV stale warning -->
+{% if sync_log and csv_stale %}
+<div class="csv-banner">
+  ⚠️ Your reservation data was last synced
+  {% set hours_ago = ((today | string | length) and ((now - sync_log.last_synced).total_seconds() // 3600) | int) %}
+  over 12 hours ago.
+  <a href="/reservations">Upload fresh CSV →</a>
+  <span style="margin-left:auto;font-size:0.75rem;color:var(--text-3)">Recommended: twice daily (morning + evening)</span>
+</div>
+{% elif not sync_log %}
+<div class="csv-banner">
+  📋 No reservation data yet — <a href="/reservations">upload your Airbnb CSV</a> to unlock guest context, analytics, and proactive messages.
+</div>
+{% endif %}
+
+<!-- Analytics widgets (shown once reservations are uploaded) -->
+{% if sync_log %}
+<div class="analytics-row">
+  <div class="analytics-widget">
+    <div class="widget-value">{{ upcoming_count }}</div>
+    <div class="widget-label">Upcoming reservations</div>
+    {% if next_checkin %}
+    <div class="widget-sub">Next: {{ next_checkin.guest_name.split()[0] }}, {{ next_checkin.checkin.strftime('%b %d') }}</div>
+    {% endif %}
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">${{ "%.0f"|format(month_revenue) }}</div>
+    <div class="widget-label">Revenue this month</div>
+    <div class="widget-sub">Confirmed bookings only</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ occupancy_pct }}%</div>
+    <div class="widget-label">Occupancy this month</div>
+    <div class="widget-sub">Booked nights ÷ 30</div>
+  </div>
+  <div class="analytics-widget" style="cursor:pointer" id="all-reservations-widget">
+    <div class="widget-value" style="font-size:1.1rem;color:#e00b27">→</div>
+    <div class="widget-label">All reservations</div>
+    <div class="widget-sub">View & upload CSV</div>
+  </div>
+</div>
+{% endif %}
+
+{% set ingest_mode = cfg.email_ingest_mode or 'imap' %}
+{% set has_forwarding = ingest_mode == 'forwarding' %}
+{% set has_ai = true %}
+
+<div id="workflow" class="card" style="padding:1.5rem;margin-bottom:1.5rem">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+    <h2 style="margin-bottom:0">Workflow setup status</h2>
+    <div class="chip-row" style="justify-content:flex-end">
+      <span class="chip {% if cfg.onboarding_complete %}good{% else %}warn{% endif %}">Onboarding {% if cfg.onboarding_complete %}ready{% else %}in progress{% endif %}</span>
+      <span class="chip {% if has_forwarding %}good{% else %}warn{% endif %}">Email {% if has_forwarding %}forwarding{% else %}IMAP fallback{% endif %}</span>
+      <span class="chip {% if cfg.ical_urls %}good{% else %}warn{% endif %}">Calendar {% if cfg.ical_urls %}connected{% else %}not linked{% endif %}</span>
+      <span class="chip {% if has_ai %}good{% else %}warn{% endif %}">AI context {% if has_ai %}loaded{% else %}missing{% endif %}</span>
+    </div>
+  </div>
+
+  <div class="kpi-grid" style="margin-top:1rem">
+    <div class="kpi-card">
+      <div class="kpi-value">{{ drafts|length }}</div>
+      <div class="kpi-label">Drafts waiting</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value">{{ upcoming_count }}</div>
+      <div class="kpi-label">Upcoming arrivals</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value">{{ occupancy_pct }}%</div>
+      <div class="kpi-label">Occupancy</div>
+    </div>
+    <div class="kpi-card {% if approval_streak >= 5 %}kpi-streak{% endif %}">
+      <div class="kpi-value">{% if approval_streak >= 3 %}🔥{% endif %}{{ approval_streak }}</div>
+      <div class="kpi-label">Approval streak</div>
+    </div>
+  </div>
+
+  {% if occupancy_gaps %}
+  <div style="margin-top:0.75rem;padding:0.75rem 1rem;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;font-size:0.85rem">
+    <strong>Occupancy gaps detected</strong> — {{ occupancy_gaps|length }} gap{% if occupancy_gaps|length != 1 %}s{% endif %} in the next 60 days:
+    <ul style="margin:0.4rem 0 0 1rem;padding:0">
+      {% for gap in occupancy_gaps[:4] %}
+      <li>{{ gap.gap_start.strftime('%b %d') if gap.gap_start else '?' }} – {{ gap.gap_end.strftime('%b %d') if gap.gap_end else '?' }}: <strong>{{ gap.gap_nights }} night{% if gap.gap_nights != 1 %}s{% endif %}</strong> (between {{ gap.before_guest }} and {{ gap.after_guest }})</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem">
+    <a class="btn btn-primary btn-sm" href="/settings">Configure workflow</a>
+    <a class="btn btn-outline btn-sm" href="/reservations">Map guest room numbers</a>
+    <a class="btn btn-outline btn-sm" href="/activity">Review events</a>
+  </div>
+</div>
+
+{% if activation_checklist %}
+<div class="card" style="margin-bottom:1rem">
+  <h2 style="margin-bottom:0.5rem">Activation checklist</h2>
+  {% for item in activation_checklist %}
+  <div class="checklist-item">
+    <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
+    <span>{{ item.label }}</span>
+    <span style="color:var(--text-3);font-size:0.8rem">{{ item.detail }}</span>
+    {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if exception_queue %}
+<div class="card" style="margin-bottom:1rem">
+  <h2 style="margin-bottom:0.5rem">Exception queue</h2>
+  <div class="timeline">
+    {% for item in exception_queue %}
+    <div class="timeline-item">
+      <div class="timeline-meta">{{ item.kind|replace('_', ' ') }} · {{ item.severity }}</div>
+      <div class="timeline-title">{{ item.title }}</div>
+      <div class="timeline-text">{{ item.detail }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+
+
+<div class="kpi-grid" style="margin-bottom:1rem">
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.drafts.approval_rate }}%</div>
+    <div class="kpi-label">Approval rate</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ kpis.reservations.context_completion_rate }}%</div>
+    <div class="kpi-label">Stay context mapped</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ open_issues|length }}</div>
+    <div class="kpi-label">Open issues</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ sentiment_summary.trend }}</div>
+    <div class="kpi-label">Guest sentiment</div>
+  </div>
+</div>
+
+
+<!-- Quick actions row -->
+<div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem">
+  <a class="btn btn-primary btn-sm" href="/settings">Configure workflow</a>
+  <a class="btn btn-outline btn-sm" href="/reservations">Map guest rooms</a>
+  <a class="btn btn-outline btn-sm" href="/activity">Activity log</a>
+  {% if workflow_rules or team_members %}
+  <form method="post" action="/api/digest/send" style="display:inline" class="confirm-submit" data-confirm="Send this week's digest to your email?">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button type="submit" class="btn btn-outline btn-sm">📧 Weekly digest</button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- Setup checklist (only shown when onboarding not complete) -->
+{% if not cfg.onboarding_complete %}
+<div class="checklist-card">
+  <h2>Getting started with HostAI</h2>
+  <div class="checklist-item">
+    <span class="check-icon done">✓</span>
+    <span>Account created</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check-icon {% if cfg.property_names %}done{% else %}todo{% endif %}">{% if cfg.property_names %}✓{% else %}○{% endif %}</span>
+    <span>Property details added</span>
+    {% if not cfg.property_names %}<a href="/onboarding?step=1" class="checklist-action btn btn-primary btn-sm">Set up →</a>{% endif %}
+  </div>
+  <div class="checklist-item">
+    <span class="check-icon {% if cfg.email_address %}done{% else %}todo{% endif %}">{% if cfg.email_address %}✓{% else %}○{% endif %}</span>
+    <span>Email connected</span>
+    {% if not cfg.email_address %}<a href="/onboarding?step=5" class="checklist-action btn btn-primary btn-sm">Connect →</a>{% endif %}
+  </div>
+  <div class="checklist-item" style="flex-wrap:wrap;gap:0.5rem">
+    <span class="check-icon {% if cfg.ical_urls %}done{% else %}todo{% endif %}">{% if cfg.ical_urls %}✓{% else %}○{% endif %}</span>
+    <span>Calendar connected</span>
+    {% if not cfg.ical_urls %}
+    <a href="/onboarding?step=5" class="checklist-action btn btn-outline btn-sm">Add iCal →</a>
+    {% endif %}
+    <details style="width:100%;margin-top:0.25rem">
+      <summary style="cursor:pointer;font-size:0.82rem;color:#0d6efd">{% if cfg.ical_urls %}Update{% else %}Paste{% endif %} your Airbnb listing URL to auto-fill</summary>
+      <form id="prefill-form" style="display:flex;gap:0.5rem;align-items:center;margin-top:0.4rem;flex-wrap:wrap">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="text" id="listing_url" name="listing_url" placeholder="https://www.airbnb.com/rooms/12345678"
+               style="font-size:0.82rem;padding:5px 10px;border:1px solid #ced4da;border-radius:6px;flex:1;min-width:200px">
+        <button type="submit" id="extract-btn" class="btn btn-primary btn-sm">Extract iCal →</button>
+        <span id="extract-status" style="font-size:0.82rem;color:var(--text-3);margin-left:0.5rem"></span>
+      </form>
+    </details>
+    <script nonce="{{ request.state.csp_nonce }}">
+    document.getElementById('prefill-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const listingUrl = document.getElementById('listing_url').value.trim();
+      const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+      const btn = document.getElementById('extract-btn');
+      const status = document.getElementById('extract-status');
+
+      if (!listingUrl) {
+        status.textContent = '❌ Please enter a URL';
+        status.style.color = '#dc3545';
+        return;
+      }
+
+      // Show loading state
+      btn.disabled = true;
+      btn.textContent = 'Extracting...';
+      status.textContent = '';
+
+      try {
+        const response = await fetch('/api/prefill-listing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            listing_url: listingUrl,
+            csrf_token: csrfToken
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          status.textContent = '✓ Calendar added! Reloading...';
+          status.style.color = '#28a745';
+          // Reload page after 1 second to show updated config
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          status.textContent = '❌ ' + (data.detail || 'Error extracting iCal');
+          status.style.color = '#dc3545';
+          btn.disabled = false;
+          btn.textContent = 'Extract iCal →';
+        }
+      } catch (error) {
+        status.textContent = '❌ Network error: ' + error.message;
+        status.style.color = '#dc3545';
+        btn.disabled = false;
+        btn.textContent = 'Extract iCal →';
+      }
+    });
+    </script>
+  </div>
+  <div class="checklist-item">
+    <span class="check-icon todo">○</span>
+    <span style="color:var(--text-3)">First draft approved (waiting for a guest message)</span>
+  </div>
+  <p style="font-size:0.78rem;color:var(--text-3);margin-top:1rem">
+    <a href="/onboarding">Resume setup wizard →</a>
+  </p>
+</div>
+{% endif %}
+
+{% if cfg.onboarding_complete and not (cfg.pet_policy or cfg.refund_policy or cfg.early_checkin_policy or cfg.late_checkout_policy or cfg.parking_policy or cfg.smoking_policy) %}
+<div class="card" style="margin-bottom:1rem;border-left:4px solid #fd7e14">
+  <div class="card-header">
+    <div class="card-title" style="color:#fd7e14">⚠️ Guest policies not configured</div>
+    <a href="/settings#policies" class="btn btn-outline btn-sm">Configure now →</a>
+  </div>
+  <p style="font-size:0.84rem;color:var(--text-2);margin:0.5rem 0 0">
+    Without pet, refund, check-in/out, parking, and smoking policies, HostAI cannot detect policy conflicts in AI-generated replies.<br>
+    Add policies in <a href="/settings#policies"><strong>Settings → Guest Policies</strong></a> to enable conflict detection and protect against inappropriate auto-sends.
+  </p>
+</div>
+{% endif %}
+
+{% if not drafts %}
+<div class="empty" id="empty-state">
+  <div class="empty-icon">{% if cfg.onboarding_complete %}✅{% else %}⏳{% endif %}</div>
+  <p>{% if cfg.onboarding_complete %}No pending drafts — all caught up!{% else %}No drafts yet — complete setup above to start{% endif %}</p>
+  <p style="font-size:0.8rem;margin-top:0.4rem">New guest messages will appear here for your approval.</p>
+  {% if cfg.onboarding_complete %}
+  <details style="margin-top:1rem;text-align:left">
+    <summary style="cursor:pointer;font-size:0.85rem;color:#0d6efd;font-weight:600">Simulate a guest message →</summary>
+    <form method="post" action="/api/simulate" style="margin-top:0.75rem;display:flex;flex-direction:column;gap:0.5rem">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <input type="text" name="guest_name" value="Demo Guest" placeholder="Guest name"
+             style="font-size:0.85rem;padding:6px 10px;border:1px solid #ced4da;border-radius:6px">
+      <textarea name="message" rows="2" placeholder="e.g. Hi, what time is check-in?"
+                style="font-size:0.85rem;padding:6px 10px;border:1px solid #ced4da;border-radius:6px;resize:vertical">Hi, what time is check-in?</textarea>
+      <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-start">Generate demo draft →</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+{% else %}
+<!-- Bulk action bar -->
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem">
+  <p style="font-size:0.85rem;color:var(--text-3);margin:0">
+    {% if conversations is defined and conversations %}
+      {{ conversations|length }} conversation{% if conversations|length != 1 %}s{% endif %}
+      ({{ drafts|length }} draft{% if drafts|length != 1 %}s{% endif %}) waiting for review
+    {% else %}
+      {{ drafts|length }} pending draft{% if drafts|length != 1 %}s{% endif %} waiting for review
+    {% endif %}
+  </p>
+  <div style="display:flex;gap:0.5rem">
+    <form method="post" action="/drafts/bulk-approve" class="confirm-submit" data-confirm="Approve and send all {{ drafts|length }} pending draft(s)?">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn btn-success btn-sm">✓ Approve all</button>
+    </form>
+    <form method="post" action="/drafts/bulk-skip" class="confirm-submit" data-confirm="Skip all {{ drafts|length }} pending draft(s)?">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn btn-outline btn-sm">✗ Skip all</button>
+    </form>
+  </div>
+</div>
+
+{% if conversations is defined and conversations %}
+{% for conv in conversations %}
+{% if conv.drafts|length > 1 %}
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:1rem">
+  <div style="padding:0.65rem 1rem;background:var(--bg-2,#f5f5f5);border-bottom:1px solid var(--border,#dee2e6);display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap">
+    <div>
+      <strong style="font-size:0.9rem">{{ conv.guest_name }}</strong>
+      {% if conv.reservation %}<span class="chip" style="margin-left:0.4rem;font-size:0.75rem">{{ conv.reservation.listing_name }}</span>{% endif %}
+    </div>
+    <div style="display:flex;align-items:center;gap:0.6rem">
+      <span style="font-size:0.75rem;color:var(--text-3)">{{ conv.drafts|length }} messages in thread</span>
+      {% if conv.thread_key %}
+      <button style="font-size:0.72rem;background:none;border:1px solid var(--border,#dee2e6);border-radius:4px;padding:2px 8px;cursor:pointer;color:#0d6efd"
+              hx-get="/api/conversation/{{ conv.thread_key }}"
+              hx-target="#conv-hist-{{ loop.index }}"
+              hx-swap="innerHTML">Load history</button>
+      <div id="conv-hist-{{ loop.index }}" style="font-size:0.78rem;color:var(--text-3)"></div>
+      {% endif %}
+    </div>
+  </div>
+  <div style="padding:0.5rem 0.5rem 0">
+{% endif %}
+{% for draft in conv.drafts %}
+<div class="card {% if draft.msg_type == 'escalation' %}draft-escalation{% endif %}{% if conv.drafts|length > 1 %}" style="margin-bottom:0.5rem;box-shadow:none;border:1px solid var(--border,#dee2e6){% endif %}" id="draft-{{ draft.id }}">
+  <div class="card-header">
+    <div>
+      <span class="card-title">{{ draft.guest_name }}</span>
+      &nbsp;
+      <span class="badge badge-{{ draft.msg_type }}">{{ draft.msg_type }}</span>
+      <span class="badge badge-{{ draft.source }}">{{ draft.source }}</span>
+      {% if draft.confidence is not none %}
+      {% set conf_pct = (draft.confidence * 100)|int %}
+      {% set conf_color = '#198754' if draft.confidence >= 0.7 else ('#fd7e14' if draft.confidence >= 0.45 else '#dc3545') %}
+      <span title="AI confidence score" style="font-size:0.7rem;padding:2px 7px;border-radius:12px;background:{{ conf_color }};color:#fff;font-weight:600">{{ conf_pct }}% confident</span>
+      {% if draft.context_sources %}
+      <button type="button" class="toggle-why" data-id="{{ draft.id }}"
+              style="font-size:0.7rem;padding:2px 7px;border:1px solid #ced4da;border-radius:12px;background:transparent;cursor:pointer;color:var(--text-3)">why?</button>
+      {% endif %}
+      {% endif %}
+      {% if draft.vendor_type %}
+      <span class="badge badge-complex">{{ draft.vendor_type|replace('_', ' ') }}</span>
+      {% endif %}
+    </div>
+    <span class="card-meta">{{ draft.created_at.strftime('%b %d, %H:%M') if draft.created_at else '' }}</span>
+  </div>
+
+  {% if draft.message and draft.source != 'calendar' %}
+  <div style="font-size:0.8rem;color:var(--text-3);margin-bottom:0.5rem">
+    <strong>Guest message:</strong> {{ draft.message[:200] }}{% if draft.message|length > 200 %}…{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="chip-row" style="margin-bottom:0.6rem">
+    {% if draft.property_name_snapshot or (draft.reservation and draft.reservation.listing_name) %}
+    <span class="chip">{{ draft.property_name_snapshot or draft.reservation.listing_name }}</span>
+    {% endif %}
+    {% if draft.unit_identifier_snapshot or (draft.reservation and draft.reservation.unit_identifier) %}
+    <span class="chip">Unit {{ draft.unit_identifier_snapshot or draft.reservation.unit_identifier }}</span>
+    {% endif %}
+    {% if draft.stay_stage %}
+    <span class="chip" style="font-size:0.72rem">{{ draft.stay_stage|replace('_',' ')|title }}</span>
+    {% endif %}
+    {% if draft.guest_message_index and draft.guest_message_index > 1 %}
+    <span class="chip warn">Thread msg {{ draft.guest_message_index }}
+      {% if draft.thread_key %}
+      <button type="button" class="toggle-thread" data-id="{{ draft.id }}"
+              style="background:none;border:none;color:var(--text-3);cursor:pointer;font-size:0.7rem;padding:0 2px;margin-left:2px">▾</button>
+      {% endif %}
+    </span>
+    {% endif %}
+    {% if draft.guest_sentiment %}
+    <span class="chip {% if draft.guest_sentiment == 'negative' %}bad{% elif draft.guest_sentiment == 'positive' %}good{% endif %}">Tone {{ draft.guest_sentiment }}{% if draft.sentiment_score is not none %} ({{ "%.0f"|format(draft.sentiment_score * 100) }}%){% endif %}</span>
+    {% endif %}
+    {% if draft.guest_history_score is not none %}
+    <span class="chip" title="Guest history score: how reliably this guest has received positive AI replies">History {{ "%.2f"|format(draft.guest_history_score) }}</span>
+    {% endif %}
+    {% if draft.auto_send_eligible %}
+    <span class="chip good" style="font-size:0.7rem">✓ Auto-send eligible</span>
+    {% endif %}
+  </div>
+
+  {% if draft.policy_conflicts_json %}
+  {% set conflicts = draft.policy_conflicts_json | from_json if draft.policy_conflicts_json else [] %}
+  <div style="font-size:0.78rem;color:var(--warn);background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;padding:0.55rem 0.7rem;margin-bottom:0.6rem">
+    ⚠️ <strong>Policy review required</strong> — this reply may conflict with your configured policies:
+    {% if conflicts %}
+    <ul style="margin:0.25rem 0 0 1rem;padding:0">
+      {% for c in conflicts %}<li>{{ c }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if draft.thread_key and draft.guest_message_index and draft.guest_message_index > 1 %}
+  <div id="thread-{{ draft.id }}" style="display:none;margin-bottom:0.6rem;font-size:0.78rem;color:var(--text-2);
+       background:#f0f4ff;border:1px solid #c5d4f0;border-radius:6px;padding:0.5rem 0.75rem">
+    <strong>Thread context ({{ draft.guest_message_index - 1 }} earlier message{% if draft.guest_message_index > 2 %}s{% endif %}):</strong>
+    This is message #{{ draft.guest_message_index }} in thread <code style="font-size:0.7rem">{{ draft.thread_key[-16:] }}…</code>.<br>
+    Review the guest timeline for the full conversation history.
+    {% if draft.reservation_id %}
+    <a href="/reservations" style="font-size:0.75rem;color:#0d6efd"> → View full guest timeline</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="draft-text">{{ draft.draft }}</div>
+
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-start">
+    <!-- Approve -->
+    <form method="post" action="/drafts/{{ draft.id }}/approve{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn btn-success btn-sm">✓ Send this</button>
+    </form>
+
+    <!-- Skip -->
+    <form method="post" action="/drafts/{{ draft.id }}/skip{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn btn-outline btn-sm">✗ Skip</button>
+    </form>
+
+    <!-- Edit toggle (HTMX inline) -->
+    <button class="btn btn-secondary btn-sm"
+            hx-get="/drafts/{{ draft.id }}/edit-form{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}"
+            hx-target="#edit-area-{{ draft.id }}"
+            hx-swap="innerHTML">
+      ✎ Edit &amp; send
+    </button>
+
+    <!-- Schedule toggle -->
+    <button class="btn btn-outline btn-sm toggle-schedule" data-id="{{ draft.id }}">
+      🕐 Schedule
+    </button>
+  </div>
+
+  <!-- "Why" confidence tooltip panel -->
+  {% if draft.context_sources %}
+  <div id="why-{{ draft.id }}" style="display:none;margin-top:0.5rem;font-size:0.78rem;color:var(--text-2);background:#f8f9fa;border-radius:6px;padding:0.5rem 0.75rem">
+    <strong>AI used:</strong>
+    {% set sources = draft.context_sources | tojson %}
+    {{ draft.context_sources | replace('[', '') | replace(']', '') | replace('"', '') | replace(',', ' ·') }}
+  </div>
+  {% endif %}
+
+  <!-- Inline edit form (loaded by HTMX) -->
+  <div id="edit-area-{{ draft.id }}" style="margin-top:0.75rem"></div>
+
+  <!-- Inline schedule form -->
+  <div id="schedule-area-{{ draft.id }}" style="display:none;margin-top:0.75rem">
+    <form method="post" action="/drafts/{{ draft.id }}/schedule{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}"
+          style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <input type="datetime-local" name="scheduled_at"
+             style="width:auto;margin-bottom:0;font-size:0.82rem"
+             {% if draft.scheduled_at %}value="{{ draft.scheduled_at.strftime('%Y-%m-%dT%H:%M') }}"{% endif %}>
+      <button type="submit" class="btn btn-primary btn-sm">Set schedule</button>
+      <span style="font-size:0.78rem;color:var(--text-3)">Draft auto-sends when the scheduled time arrives.</span>
+    </form>
+    {% if draft.scheduled_at %}
+    <p style="font-size:0.78rem;color:var(--text-3);margin-top:0.3rem">
+      ⏰ Scheduled: <strong>{{ draft.scheduled_at.strftime('%b %d, %H:%M UTC') }}</strong>
+    </p>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% if conv.drafts|length > 1 %}
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+{% else %}
+{% for draft in drafts %}
+<div class="card {% if draft.msg_type == 'escalation' %}draft-escalation{% endif %}" id="draft-{{ draft.id }}-flat">
+  <div class="card-header">
+    <div>
+      <span class="card-title">{{ draft.guest_name }}</span>
+      <span class="badge badge-{{ draft.msg_type }}">{{ draft.msg_type }}</span>
+      <span class="badge badge-{{ draft.source }}">{{ draft.source }}</span>
+    </div>
+    <span class="card-meta">{{ draft.created_at.strftime('%b %d, %H:%M') if draft.created_at else '' }}</span>
+  </div>
+  <div class="draft-text">{{ draft.draft }}</div>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <form method="post" action="/drafts/{{ draft.id }}/approve" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn btn-success btn-sm">✓ Send this</button>
+    </form>
+    <form method="post" action="/drafts/{{ draft.id }}/skip" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn btn-outline btn-sm">✗ Skip</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if recent_sent_drafts %}
+<div class="card" style="margin-top:1rem">
+  <div class="card-header">
+    <div class="card-title">Recent sent replies</div>
+    <span class="card-meta">Capture thumbs up/down so HostAI learns which replies actually worked.</span>
+  </div>
+  {% for draft in recent_sent_drafts %}
+  <div style="padding:0.85rem 0;border-top:1px solid #f1f3f5">
+    <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+      <div>
+        <strong>{{ draft.guest_name }}</strong>
+        <span class="badge badge-{{ draft.source }}">{{ draft.source }}</span>
+        {% if draft.property_name_snapshot %}<span class="chip">{{ draft.property_name_snapshot }}</span>{% endif %}
+      </div>
+      <span style="font-size:0.78rem;color:var(--text-3)">{{ draft.approved_at.strftime('%b %d, %H:%M') if draft.approved_at else '' }}</span>
+    </div>
+    <div style="font-size:0.8rem;color:var(--text-3);margin-top:0.35rem">{{ draft.final_text or draft.draft }}</div>
+    <div class="feedback-row">
+      {% if draft.host_feedback_score is not none %}
+      <span class="chip {% if draft.host_feedback_score > 0 %}good{% else %}bad{% endif %}">
+        {% if draft.host_feedback_score > 0 %}Helpful{% else %}Needs work{% endif %}
+      </span>
+      {% else %}
+      <form method="post" action="/drafts/{{ draft.id }}/feedback{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="hidden" name="score" value="1">
+        <button type="submit" class="btn btn-outline btn-sm" title="Helpful response">👍</button>
+      </form>
+      <form method="post" action="/drafts/{{ draft.id }}/feedback{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="hidden" name="score" value="-1">
+        <button type="submit" class="btn btn-outline btn-sm" title="Needs improvement">👎</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Real-time notifications via SSE (falls back to HTMX polling on error) -->
+<div id="drafts-refresh-poll" data-count="{{ drafts|length }}"></div>
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+  // Request notification permission
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  function startPollingFallback() {
+    const poll = document.createElement('div');
+    poll.setAttribute('hx-get', '/api/drafts');
+    poll.setAttribute('hx-trigger', 'every 30s');
+    poll.setAttribute('hx-swap', 'none');
+    document.body.appendChild(poll);
+    if (typeof htmx !== 'undefined') htmx.process(poll);
+  }
+
+  try {
+    const sse = new EventSource('/api/sse/drafts');
+    sse.onmessage = function(e) {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === 'refresh' || data.draft_id) {
+          if (Notification.permission === 'granted' && data.guest_name) {
+            new Notification('New message — ' + data.guest_name, {
+              body: (data.source || '') + (data.msg_type ? ' • ' + data.msg_type : ''),
+              icon: '/static/icon.png',
+            });
+          }
+          location.reload();
+        }
+      } catch(_) {}
+    };
+    sse.onerror = function() {
+      sse.close();
+      startPollingFallback();
+    };
+  } catch(_) {
+    startPollingFallback();
+  }
+})();
+</script>
+
+<!-- Post-onboarding first-visit tour (shown once via localStorage) -->
+<script nonce="{{ request.state.csp_nonce }}">
+// ── Navigation ──────────────────────────────────────────────
+const allResWidget = document.getElementById('all-reservations-widget');
+if (allResWidget) {
+    allResWidget.addEventListener('click', () => { location.href = '/reservations'; });
+}
+
+// ── Confirmation Handlers ─────────────────────────────────────
+document.querySelectorAll('.confirm-submit').forEach(form => {
+    form.addEventListener('submit', (e) => {
+        const msg = form.getAttribute('data-confirm');
+        if (!confirm(msg)) e.preventDefault();
+    });
+});
+
+// ── Toggle Functions ──────────────────────────────────────────
+function toggleSchedule(id) {
+  const el = document.getElementById('schedule-area-' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function toggleWhy(id) {
+  const el = document.getElementById('why-' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function toggleThread(id) {
+  const el = document.getElementById('thread-' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// Use delegation for dynamic toggle buttons
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const id = btn.getAttribute('data-id');
+    if (btn.classList.contains('toggle-why')) toggleWhy(id);
+    if (btn.classList.contains('toggle-thread')) toggleThread(id);
+    if (btn.classList.contains('toggle-schedule')) toggleSchedule(id);
+    if (btn.id === 'dismiss-tour-btn') dismissTour();
+});
+
+// ── HTMX Refresh Poll ─────────────────────────────────────────
+document.body.addEventListener('htmx:afterRequest', (e) => {
+    const poll = document.getElementById('drafts-refresh-poll');
+    if (poll && e.detail.elt === poll) {
+        const results = JSON.parse(e.detail.xhr.responseText);
+        const oldCount = parseInt(poll.getAttribute('data-count'));
+        if (results.length !== oldCount) location.reload();
+    }
+});
+
+// ── Tour Logic ──────────────────────────────────────────────
+function dismissTour() {
+    const overlay = document.getElementById('tour-overlay');
+    if (overlay) overlay.remove();
+    fetch('/onboarding/dismiss-tour', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csrf_token: '{{ request.state.csrf_token }}' })
+    });
+}
+</script>
+{% endblock %}
