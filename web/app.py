@@ -3484,10 +3484,11 @@ def api_plan_pricing(db: Session = Depends(get_db)):
 
 @app.get("/admin/pricing", response_class=HTMLResponse)
 def admin_pricing_page(request: Request, db: Session = Depends(get_db)):
-    _require_admin(request, db)
+    admin = _require_admin(request, db)
     plans = db.query(PlanConfig).order_by(PlanConfig.min_units).all()
     return templates.TemplateResponse("admin_pricing.html", {
         "request": request,
+        "admin": admin,
         "plans": plans,
     })
 
@@ -6613,7 +6614,7 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/admin/tenants/{tid}", response_class=HTMLResponse)
 def admin_tenant_detail(tid: str, request: Request, db: Session = Depends(get_db)):
-    _require_admin(request, db)
+    admin = _require_admin(request, db)
     t = db.query(Tenant).filter_by(id=tid).first()
     if not t:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -6648,6 +6649,7 @@ def admin_tenant_detail(tid: str, request: Request, db: Session = Depends(get_db
 
     return templates.TemplateResponse("admin_tenant.html", {
         "request":           request,
+        "admin":             admin,
         "t":                 t,
         "cfg":               cfg,
         "draft_stats":       draft_stats,
@@ -6807,7 +6809,7 @@ def admin_unimpersonate(
 
 @app.get("/admin/system", response_class=HTMLResponse)
 def admin_system(request: Request, db: Session = Depends(get_db)):
-    _require_admin(request, db)
+    admin = _require_admin(request, db)
 
     tenants = db.query(Tenant).order_by(Tenant.email).all()
     configs = {c.tenant_id: c for c in db.query(TenantConfig).all()}
@@ -6868,6 +6870,7 @@ def admin_system(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse("admin_system.html", {
         "request":        request,
+        "admin":          admin,
         "system_rows":    system_rows,
         "watchdog_ok":    watchdog_ok,
         "redis_ok":       redis_ok,
@@ -6882,7 +6885,7 @@ def admin_system(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/admin/ai", response_class=HTMLResponse)
 def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
-    _require_admin(request, db)
+    admin = _require_admin(request, db)
 
     sys_conf = db.query(SystemConfig).first()
     if not sys_conf:
@@ -6903,8 +6906,9 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse("admin_ai.html", {
         "request": request,
+        "admin": admin,
         "sys_conf": sys_conf,
-        "usage_logs": usage_logs,
+        "logs": usage_logs,
         "total_cost": total_cost,
     })
 
@@ -6912,7 +6916,7 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
 @app.get("/admin/host-profitability", response_class=HTMLResponse)
 def admin_host_profitability(request: Request, db: Session = Depends(get_db)):
     """Per-host profitability breakdown — see revenue, costs, and profit for each tenant."""
-    _require_admin(request, db)
+    admin = _require_admin(request, db)
 
     from sqlalchemy.sql import func
     from datetime import timedelta
@@ -6996,6 +7000,7 @@ def admin_host_profitability(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse("admin_host_profitability.html", {
         "request": request,
+        "admin": admin,
         "hosts": hosts,
         "total_revenue": total_revenue,
         "total_cost": total_cost,
@@ -7007,7 +7012,7 @@ def admin_host_profitability(request: Request, db: Session = Depends(get_db)):
 @app.get("/admin/costs", response_class=HTMLResponse)
 def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
     """Phase 2: Internal Profitability Analysis."""
-    _require_admin(request, db)
+    admin = _require_admin(request, db)
 
     configs = db.query(TenantConfig).all()
 
@@ -7053,6 +7058,7 @@ def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
     
     return templates.TemplateResponse("admin_costs.html", {
         "request": request,
+        "admin": admin,
         "metrics": metrics,
         "total_rev": total_rev,
         "total_cost": total_cost,
@@ -7064,7 +7070,7 @@ def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
 @app.get("/admin/health_api", response_class=HTMLResponse)
 def admin_api_health(request: Request, db: Session = Depends(get_db)):
     """Phase 4: API Health & Performance Monitoring."""
-    _require_admin(request, db)
+    admin = _require_admin(request, db)
 
     # Calculate average cost per request and actual monthly cost
     avg_cost = 0.0
@@ -7091,6 +7097,7 @@ def admin_api_health(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse("admin_api.html", {
         "request": request,
+        "admin": admin,
         "avg_cost": avg_cost,
         "predicted_monthly": predicted_monthly,
     })
