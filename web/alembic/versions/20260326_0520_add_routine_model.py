@@ -16,7 +16,20 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add routine_model column to system_config if it doesn't exist
+    # Create system_config table if it doesn't exist
+    op.execute(
+        """CREATE TABLE IF NOT EXISTS system_config (
+            id VARCHAR(36) PRIMARY KEY,
+            openrouter_api_key_enc VARCHAR(255),
+            primary_model VARCHAR(100) NOT NULL DEFAULT 'anthropic/claude-3.5-sonnet',
+            fallback_model VARCHAR(100) NOT NULL DEFAULT 'meta-llama/llama-3.1-70b-instruct',
+            routine_model VARCHAR(100) NOT NULL DEFAULT 'google/gemini-2.5-flash',
+            sentiment_model VARCHAR(100) NOT NULL DEFAULT 'openai/gpt-4o-mini',
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+        )"""
+    )
+
+    # Add routine_model column to system_config if it doesn't exist (for existing tables)
     op.execute(
         """ALTER TABLE system_config ADD COLUMN IF NOT EXISTS routine_model
            VARCHAR(100) NOT NULL DEFAULT 'google/gemini-2.5-flash'"""
