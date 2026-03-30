@@ -332,7 +332,8 @@ def _voice_scheduled_calls_job():
                 )
                 try:
                     # Synthesize reminder message to speech
-                    audio_bytes, s3_url = asyncio.run(VoiceAIService.synthesize_speech(message))
+                    voice_id = cfg.voice_elevenlabs_voice_id if cfg else None
+                    audio_bytes, s3_url = asyncio.run(VoiceAIService.synthesize_speech(message, voice_id=voice_id))
                     if not s3_url:
                         log.warning(f"[VOICE] Failed to synthesize audio for {guest.guest_name}")
                         continue
@@ -2949,6 +2950,7 @@ async def settings_save(
     voice_twilio_account_sid:        str = Form(""),
     voice_twilio_auth_token:         str = Form(""),
     voice_twilio_from_number:        str = Form(""),
+    voice_elevenlabs_voice_id:       str = Form("EXAVITQu4vr4xnSDxMaL"),
     voice_send_channel:              str = Form("disabled"),
     voice_post_call_summary:         str = Form("false"),
     voice_scheduled_calls_enabled:   str = Form("false"),
@@ -3034,6 +3036,8 @@ async def settings_save(
     cfg.voice_twilio_from_number = voice_twilio_from_number.strip() or None
     if voice_twilio_auth_token.strip():
         cfg.voice_twilio_auth_token_enc = encrypt(voice_twilio_auth_token.strip())
+    cfg.sms_notify_number = sms_notify_number.strip() or None
+    cfg.voice_elevenlabs_voice_id = voice_elevenlabs_voice_id.strip() or "EXAVITQu4vr4xnSDxMaL"
     cfg.voice_send_channel           = voice_send_channel.strip() or "disabled"
     cfg.voice_post_call_summary      = voice_post_call_summary.strip().lower() == "true"
     cfg.voice_scheduled_calls_enabled = voice_scheduled_calls_enabled.strip().lower() == "true"
@@ -7718,9 +7722,10 @@ def _send_voice_message(cfg, guest_phone: str, content: str, channel: str) -> bo
         if channel == "sms":
             from twilio.rest import Client as TwilioClient
             from web.crypto import decrypt
-            sid   = cfg.twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
-            token = decrypt(cfg.twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
-            frm   = cfg.twilio_from_number or os.getenv("TWILIO_PHONE_NUMBER", "")
+            # Try voice Twilio creds first, then SMS creds, then env vars
+            sid   = cfg.voice_twilio_account_sid or cfg.twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
+            token = decrypt(cfg.voice_twilio_auth_token_enc or cfg.twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
+            frm   = cfg.voice_twilio_from_number or cfg.twilio_from_number or os.getenv("TWILIO_PHONE_NUMBER", "")
             if not (sid and token and frm):
                 log.warning("[VOICE] SMS send skipped — Twilio not fully configured")
                 return False
@@ -7742,9 +7747,10 @@ def _send_voice_message(cfg, guest_phone: str, content: str, channel: str) -> bo
                 # Fall back to Twilio WhatsApp
                 from twilio.rest import Client as TwilioClient
                 from web.crypto import decrypt
-                sid   = cfg.twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
-                token = decrypt(cfg.twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
-                frm   = f"whatsapp:{cfg.twilio_from_number or os.getenv('TWILIO_PHONE_NUMBER', '')}"
+                # Try voice Twilio creds first, then SMS creds, then env vars
+                sid   = cfg.voice_twilio_account_sid or cfg.twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
+                token = decrypt(cfg.voice_twilio_auth_token_enc or cfg.twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
+                frm   = f"whatsapp:{cfg.voice_twilio_from_number or cfg.twilio_from_number or os.getenv('TWILIO_PHONE_NUMBER', '')}"
                 if sid and token and frm:
                     client = TwilioClient(sid, token)
                     client.messages.create(from_=frm, to=f"whatsapp:{guest_phone}", body=content)
@@ -8000,7 +8006,8 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
             )
 
         # ── Step 5: Escalate low-confidence turns to host ────────────────────
-        if confidence < 0.6 and cfg and cfg.sms_notify_number:
+        notify_phone = cfg.sms_notify_number or getattr(cfg, "host_notify_phone", None) if cfg else None
+        if confidence < 0.6 and notify_phone:
             log.warning(f"[VOICE] Low confidence ({confidence:.2f}), alerting host")
             alert = (
                 f"⚠️ Voice call alert\n"
@@ -8008,10 +8015,11 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
                 f"Said: \"{guest_message}\"\n"
                 f"AI confidence: {int(confidence*100)}% — may need follow-up."
             )
-            _send_voice_message(cfg, cfg.sms_notify_number, alert, "sms")
+            _send_voice_message(cfg, notify_phone, alert, "sms")
 
         # ── Step 6: Synthesize AI reply to audio ─────────────────────────────
-        audio_bytes, audio_url = await VoiceAIService.synthesize_speech(ai_text)
+        voice_id = cfg.voice_elevenlabs_voice_id if cfg else None
+        audio_bytes, audio_url = await VoiceAIService.synthesize_speech(ai_text, voice_id=voice_id)
 
         # Update running confidence average
         prev_avg = voice_call.confidence_avg or confidence
@@ -8049,6 +8057,7 @@ async def handle_hangup(request: Request, db: Session = Depends(get_db)):
         form_data   = await request.form()
         call_sid    = form_data.get("CallSid", "")
         call_status = form_data.get("CallStatus", "completed")
+        recording_url = form_data.get("RecordingUrl", "")
 
         log.info(f"[VOICE] Hangup call_sid={call_sid}, status={call_status}")
 
@@ -8058,6 +8067,8 @@ async def handle_hangup(request: Request, db: Session = Depends(get_db)):
 
         voice_call.status   = call_status
         voice_call.ended_at = datetime.now(timezone.utc)
+        if recording_url:
+            voice_call.recording_url = recording_url
 
         # Duration
         if voice_call.started_at and voice_call.ended_at:
@@ -8101,7 +8112,9 @@ async def handle_hangup(request: Request, db: Session = Depends(get_db)):
                     f"Confidence: {int((voice_call.confidence_avg or 0) * 100)}%\n\n"
                     f"Transcript:\n{voice_call.full_transcript[:800]}"
                 )
-                _send_voice_message(cfg, notify_phone, summary, "sms")
+                # Use voice_send_channel if not disabled, else SMS
+                send_channel = cfg.voice_send_channel if cfg.voice_send_channel != "disabled" else "sms"
+                _send_voice_message(cfg, notify_phone, summary, send_channel)
 
         # Activity log
         db.add(ActivityLog(

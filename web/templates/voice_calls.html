@@ -199,9 +199,17 @@ tailwind.config = {
             <td colspan="7" class="px-6 py-4">
               <div class="text-sm text-slate-300 leading-relaxed whitespace-pre-line font-mono">{{ call.full_transcript }}</div>
               {% if call.recording_url %}
-              <a href="{{ call.recording_url }}" target="_blank" class="inline-flex items-center gap-1 mt-3 text-xs text-[#5B8DEF] hover:underline">
-                <span class="material-symbols-outlined text-sm">play_circle</span>Listen to recording
-              </a>
+              <div style="margin-top:1rem">
+                <div style="font-size:0.85rem;color:var(--text-2);margin-bottom:0.5rem">Recording:</div>
+                <audio controls style="width:100%;max-width:400px;margin-bottom:0.5rem">
+                  <source src="{{ call.recording_url }}" type="audio/mpeg">
+                  Your browser does not support the audio element.
+                </audio>
+                <br/>
+                <a href="{{ call.recording_url }}" download class="inline-flex items-center gap-1 text-xs text-[#5B8DEF] hover:underline">
+                  <span class="material-symbols-outlined text-sm">download</span>Download recording
+                </a>
+              </div>
               {% endif %}
             </td>
           </tr>

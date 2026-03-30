@@ -261,11 +261,12 @@ or when you don't know:
     # ──────────────────────────────────────────────────────────────────────────
 
     @staticmethod
-    async def synthesize_speech(text: str) -> tuple[bytes, str]:
+    async def synthesize_speech(text: str, voice_id: Optional[str] = None) -> tuple[bytes, str]:
         """
         Convert text to speech using ElevenLabs.
         Returns (audio_bytes, audio_url).
         In MOCK_MODE returns dummy bytes and mock URL.
+        voice_id: optional voice ID (defaults to class ELEVENLABS_VOICE_ID)
         """
         if MOCK_MODE:
             logger.info(f"[MOCK] Synthesizing speech: {text[:60]}")
@@ -274,9 +275,10 @@ or when you don't know:
             return dummy_mp3, mock_url
 
         try:
+            vid = voice_id or VoiceAIService.ELEVENLABS_VOICE_ID
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
-                    f"https://api.elevenlabs.io/v1/text-to-speech/{VoiceAIService.ELEVENLABS_VOICE_ID}",
+                    f"https://api.elevenlabs.io/v1/text-to-speech/{vid}",
                     headers={
                         "xi-api-key": VoiceAIService.ELEVENLABS_API_KEY,
                         "Content-Type": "application/json",

@@ -612,6 +612,24 @@
     </div>
     <div class="form-row" style="margin-top:0.75rem">
       <div>
+        <label>Host Alert Phone Number</label>
+        <input type="text" name="sms_notify_number" value="{{ cfg.sms_notify_number or '' }}" placeholder="+15550009999">
+        <small style="color:var(--text-3)">Phone number to receive low-confidence alerts and call summaries.</small>
+      </div>
+      <div>
+        <label>Voice Selection</label>
+        <select name="voice_elevenlabs_voice_id">
+          <option value="EXAVITQu4vr4xnSDxMaL" {% if (cfg.voice_elevenlabs_voice_id or 'EXAVITQu4vr4xnSDxMaL') == 'EXAVITQu4vr4xnSDxMaL' %}selected{% endif %}>Rachel — Female (Default)</option>
+          <option value="VR6AewLTigWG4xSOukaG" {% if cfg.voice_elevenlabs_voice_id == 'VR6AewLTigWG4xSOukaG' %}selected{% endif %}>Arnold — Male</option>
+          <option value="pNInz6obpgDQGcFmaJgB" {% if cfg.voice_elevenlabs_voice_id == 'pNInz6obpgDQGcFmaJgB' %}selected{% endif %}>Adam — Male</option>
+          <option value="MF3mGyEYCl7XYWbV9V6O" {% if cfg.voice_elevenlabs_voice_id == 'MF3mGyEYCl7XYWbV9V6O' %}selected{% endif %}>Elli — Female</option>
+          <option value="AZnzlk1XvdvUeBnXmlld" {% if cfg.voice_elevenlabs_voice_id == 'AZnzlk1XvdvUeBnXmlld' %}selected{% endif %}>Domi — Female</option>
+          <option value="ErXwobaYiN019PkySvjV" {% if cfg.voice_elevenlabs_voice_id == 'ErXwobaYiN019PkySvjV' %}selected{% endif %}>Antoni — Male</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:0.75rem">
+      <div>
         <label>Send Info During Call Via</label>
         <select name="voice_send_channel">
           <option value="disabled" {% if (cfg.voice_send_channel or 'disabled') == 'disabled' %}selected{% endif %}>Disabled (don't send)</option>

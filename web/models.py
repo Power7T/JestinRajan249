@@ -203,6 +203,8 @@ class TenantConfig(Base):
     voice_twilio_account_sid:     Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     voice_twilio_auth_token_enc:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # encrypted
     voice_twilio_from_number:     Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    # Voice AI — ElevenLabs voice selection
+    voice_elevenlabs_voice_id:    Mapped[Optional[str]] = mapped_column(String(64), nullable=True, default="EXAVITQu4vr4xnSDxMaL")
 
     # Host notifications on guest messages
     notify_host_on_guest_msg: Mapped[bool]           = mapped_column(Boolean, default=False)
