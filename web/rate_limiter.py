@@ -6,39 +6,10 @@ Prevents one tenant from DoS-ing the system or causing runaway API costs.
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from sqlalchemy.orm import Session
-from web.models import Base, Tenant
-from sqlalchemy import Column, String, Integer, DateTime
+from web.models import TenantRateLimit, RateLimitCounter, Tenant
 import logging
 
 log = logging.getLogger(__name__)
-
-
-class TenantRateLimit(Base):
-    """Store rate limit configurations per tenant."""
-    __tablename__ = "tenant_rate_limits"
-
-    tenant_id = Column(String(36), primary_key=True)  # FK to tenants
-    # Calls per hour
-    voice_calls_per_hour = Column(Integer, default=100)
-    # API requests to external services per hour (Deepgram, OpenAI, ElevenLabs)
-    external_api_calls_per_hour = Column(Integer, default=500)
-    # Max cost in USD per day
-    max_daily_cost_usd = Column(Integer, default=50)
-    # Created and last updated
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-
-class RateLimitCounter(Base):
-    """Track usage within current window (resets hourly/daily)."""
-    __tablename__ = "rate_limit_counters"
-
-    counter_id = Column(String(128), primary_key=True)  # "tenant_id:metric:hour"
-    tenant_id = Column(String(36))
-    metric = Column(String(32))  # "voice_calls", "external_api", "daily_cost"
-    count = Column(Integer, default=0)
-    window_start = Column(DateTime(timezone=True))
-    expires_at = Column(DateTime(timezone=True))  # After this, counter resets
 
 
 def check_rate_limit(
