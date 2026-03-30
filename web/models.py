@@ -807,6 +807,10 @@ class VoiceCall(Base):
     callback_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     callback_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Recording consent (GDPR/CCPA compliance)
+    recording_consent_given: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)  # None = not asked, True/False = asked
+    recording_consent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -852,3 +856,113 @@ class VoiceKnowledgeGap(Base):
     call:   Mapped[Optional["VoiceCall"]] = relationship("VoiceCall", back_populates="knowledge_gaps")
     tenant: Mapped["Tenant"]              = relationship("Tenant")
     issue_ticket: Mapped[Optional["IssueTicket"]] = relationship("IssueTicket")
+
+
+# ---------------------------------------------------------------------------
+# IdempotencyKey — prevent duplicate webhook processing
+# ---------------------------------------------------------------------------
+
+class IdempotencyKey(Base):
+    __tablename__ = "idempotency_keys"
+
+    key_id: Mapped[str]           = mapped_column(String(128), primary_key=True)
+    tenant_id: Mapped[str]        = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    idempotency_key: Mapped[str]  = mapped_column(String(128), unique=True, index=True)
+    operation: Mapped[str]        = mapped_column(String(128), index=True)  # voice.incoming_call, etc.
+
+    result_status: Mapped[str]    = mapped_column(String(32), default="pending")  # pending, success, error
+    result_data: Mapped[Optional[dict]]   = mapped_column(JSON, nullable=True)
+    result_error: Mapped[Optional[str]]   = mapped_column(String(512), nullable=True)
+
+    created_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    expires_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), index=True)
+
+
+# ---------------------------------------------------------------------------
+# TenantRateLimit — per-tenant rate limit configuration
+# ---------------------------------------------------------------------------
+
+class TenantRateLimit(Base):
+    __tablename__ = "tenant_rate_limits"
+
+    tenant_id: Mapped[str]        = mapped_column(String(36), ForeignKey("tenants.id"), primary_key=True)
+    voice_calls_per_hour: Mapped[int]      = mapped_column(Integer, default=100)
+    external_api_calls_per_hour: Mapped[int] = mapped_column(Integer, default=500)
+    max_daily_cost_usd: Mapped[int]        = mapped_column(Integer, default=50)
+
+    created_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+# ---------------------------------------------------------------------------
+# RateLimitCounter — track usage within current window
+# ---------------------------------------------------------------------------
+
+class RateLimitCounter(Base):
+    __tablename__ = "rate_limit_counters"
+
+    counter_id: Mapped[str]       = mapped_column(String(128), primary_key=True)
+    tenant_id: Mapped[str]        = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    metric: Mapped[str]           = mapped_column(String(32), index=True)  # voice_calls, external_api, daily_cost
+    count: Mapped[int]            = mapped_column(Integer, default=0)
+
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), index=True)
+
+
+# ---------------------------------------------------------------------------
+# APIUsageLog — track API usage and costs per tenant
+# ---------------------------------------------------------------------------
+
+class APIUsageLog(Base):
+    __tablename__ = "api_usage_logs"
+
+    id: Mapped[str]               = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id: Mapped[str]        = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    call_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("voice_calls.id"), nullable=True, index=True)
+
+    service: Mapped[str]          = mapped_column(String(32), index=True)  # deepgram, openai, elevenlabs, twilio
+    operation: Mapped[str]        = mapped_column(String(64))  # transcribe, generate_response, synthesize, etc.
+
+    # Usage metrics
+    input_tokens: Mapped[Optional[int]]   = mapped_column(Integer, nullable=True)  # For LLM
+    output_tokens: Mapped[Optional[int]]  = mapped_column(Integer, nullable=True)  # For LLM
+    duration_seconds: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # For speech/TTS
+    characters: Mapped[Optional[int]]     = mapped_column(Integer, nullable=True)  # For TTS
+
+    # Cost
+    cost_usd: Mapped[float]       = mapped_column(Float, default=0.0)  # Actual cost in USD
+
+    status: Mapped[str]           = mapped_column(String(16), default="success")  # success, error
+    error_message: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+
+    created_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+    voice_call: Mapped[Optional["VoiceCall"]] = relationship("VoiceCall")
+    tenant: Mapped["Tenant"] = relationship("Tenant")
+
+
+# ---------------------------------------------------------------------------
+# FeatureFlag — feature flags for safe canary deployments
+# ---------------------------------------------------------------------------
+
+class FeatureFlag(Base):
+    __tablename__ = "feature_flags"
+
+    flag_name: Mapped[str]        = mapped_column(String(128), primary_key=True)
+    enabled: Mapped[bool]         = mapped_column(Boolean, default=False)
+    rollout_percentage: Mapped[int] = mapped_column(Integer, default=0)  # 0-100
+
+    description: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class FeatureFlagOverride(Base):
+    __tablename__ = "feature_flag_overrides"
+
+    id: Mapped[str]               = mapped_column(String(128), primary_key=True)
+    flag_name: Mapped[str]        = mapped_column(String(128), index=True)
+    tenant_id: Mapped[str]        = mapped_column(String(36), index=True)
+    enabled: Mapped[bool]         = mapped_column(Boolean)
+    created_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), default=_now)
