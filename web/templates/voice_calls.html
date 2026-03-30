@@ -1,0 +1,257 @@
+{%- extends "base.html" %}
+{%- block title %}Voice Calls — HostAI{%- endblock %}
+
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "surface-dim": "#121319",
+        "surface": "#121319",
+        "surface-container": "#1e1f26",
+        "primary": "#aec6ff",
+        "on-primary": "#002e6b",
+        "error": "#ffb4ab",
+      }
+    }
+  }
+}
+</script>
+<style>
+  body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color: #e3e1eb; }
+  .glass-card { background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24; }
+  .badge-completed { background: rgba(74,222,128,0.1); color: #4ade80; }
+  .badge-failed { background: rgba(248,113,113,0.1); color: #f87171; }
+  .badge-ringing { background: rgba(251,191,36,0.1); color: #fbbf24; }
+  .badge-answered { background: rgba(96,165,250,0.1); color: #60a5fa; }
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- Sidebar -->
+<aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col font-['Plus_Jakarta_Sans'] text-sm font-medium">
+<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-[#5B8DEF] flex items-center justify-center">
+<span class="material-symbols-outlined text-[#002e6b] text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
+</div>
+<span>HostAI</span>
+</a>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>Dashboard</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>Conversations</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>Reservations</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>Activity</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>Analytics</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>ROI Dashboard</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>Voice Calls</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>Workflow Center</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>Settings</a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>Admin</a>
+{% endif %}
+</nav>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+  {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ tenant.name or tenant.email if tenant else "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+</div>
+</div>
+<form method="post" action="/logout">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+    <span class="material-symbols-outlined text-sm">logout</span>Sign Out
+  </button>
+</form>
+</div>
+</aside>
+
+<!-- Main -->
+<main class="ml-[260px] pt-8 pb-12 px-8 min-h-screen">
+  <div class="mb-8 flex items-center justify-between">
+    <div>
+      <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">Voice Calls</h1>
+      <p class="text-slate-400 text-sm">AI-powered phone support call log</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="/voice-calls/gaps" class="relative flex items-center gap-2 px-4 py-2 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl text-sm font-semibold transition-colors">
+        <span class="material-symbols-outlined text-base">help</span>
+        Knowledge Gaps
+        {% if open_gaps_count and open_gaps_count > 0 %}
+        <span class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-black text-[10px] font-black rounded-full flex items-center justify-center">{{ open_gaps_count }}</span>
+        {% endif %}
+      </a>
+      {% if not tenant.voice_enabled %}
+      <a href="/settings#voice" class="flex items-center gap-2 px-4 py-2 bg-[#5B8DEF]/20 text-[#5B8DEF] rounded-xl text-sm font-semibold hover:bg-[#5B8DEF]/30 transition-colors">
+        <span class="material-symbols-outlined text-base">settings</span>
+        Enable Voice AI
+      </a>
+      {% else %}
+      <span class="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-400 rounded-lg text-xs font-semibold">
+        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+        Voice AI Active
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="glass-card rounded-2xl p-5">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Calls</p>
+      <p class="text-3xl font-extrabold text-white">{{ total }}</p>
+    </div>
+    <div class="glass-card rounded-2xl p-5">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Completed</p>
+      <p class="text-3xl font-extrabold text-green-400">{{ calls | selectattr('status', 'equalto', 'completed') | list | length }}</p>
+    </div>
+    <div class="glass-card rounded-2xl p-5">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Avg Duration</p>
+      {% set durations = calls | selectattr('duration_seconds') | map(attribute='duration_seconds') | list %}
+      <p class="text-3xl font-extrabold text-[#aec6ff]">{{ ((durations | sum) / (durations | length) | round(0)) | int if durations else 0 }}s</p>
+    </div>
+    <div class="glass-card rounded-2xl p-5">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Avg Confidence</p>
+      {% set confidences = calls | selectattr('confidence_avg') | map(attribute='confidence_avg') | list %}
+      <p class="text-3xl font-extrabold text-[#aec6ff]">{{ ((confidences | sum) / (confidences | length) * 100) | round(0) | int if confidences else 0 }}%</p>
+    </div>
+  </div>
+
+  <!-- Call Log Table -->
+  <div class="glass-card rounded-3xl overflow-hidden">
+    <div class="p-6 border-b border-white/5">
+      <h2 class="text-lg font-bold text-white">Call Log</h2>
+    </div>
+    {% if calls %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-white/5">
+            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Guest</th>
+            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Type</th>
+            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Status</th>
+            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Duration</th>
+            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Confidence</th>
+            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Time</th>
+            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Transcript</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+          {% for call in calls %}
+          <tr class="hover:bg-white/[0.02] transition-colors cursor-pointer" onclick="toggleTranscript('{{ call.id }}')">
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-[#5B8DEF]/20 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-[#5B8DEF] text-base">person</span>
+                </div>
+                <span class="text-white font-medium">{{ call.guest_phone_number or "Unknown" }}</span>
+              </div>
+            </td>
+            <td class="px-6 py-4">
+              <span class="text-slate-400 capitalize">{{ call.call_type or "incoming" }}</span>
+            </td>
+            <td class="px-6 py-4">
+              <span class="px-2 py-1 rounded-lg text-xs font-semibold badge-{{ call.status or 'ringing' }}">
+                {{ (call.status or "ringing") | title }}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-slate-300">
+              {% if call.duration_seconds %}{{ call.duration_seconds }}s{% else %}—{% endif %}
+            </td>
+            <td class="px-6 py-4 text-slate-300">
+              {% if call.confidence_avg %}{{ (call.confidence_avg * 100) | round(0) | int }}%{% else %}—{% endif %}
+            </td>
+            <td class="px-6 py-4 text-slate-400 text-xs">
+              {{ call.created_at.strftime('%b %d, %H:%M') if call.created_at else '—' }}
+            </td>
+            <td class="px-6 py-4">
+              {% if call.full_transcript %}
+              <span class="text-[#5B8DEF] text-xs">View ▾</span>
+              {% else %}
+              <span class="text-slate-600 text-xs">No transcript</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% if call.full_transcript %}
+          <tr id="transcript-{{ call.id }}" class="hidden bg-[#5B8DEF]/5">
+            <td colspan="7" class="px-6 py-4">
+              <div class="text-sm text-slate-300 leading-relaxed whitespace-pre-line font-mono">{{ call.full_transcript }}</div>
+              {% if call.recording_url %}
+              <a href="{{ call.recording_url }}" target="_blank" class="inline-flex items-center gap-1 mt-3 text-xs text-[#5B8DEF] hover:underline">
+                <span class="material-symbols-outlined text-sm">play_circle</span>Listen to recording
+              </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-between p-6 border-t border-white/5">
+      <p class="text-slate-500 text-sm">Showing {{ (page-1)*per_page + 1 }}–{{ [page*per_page, total] | min }} of {{ total }}</p>
+      <div class="flex gap-2">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}" class="px-4 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 text-sm transition-colors">← Prev</a>
+        {% endif %}
+        {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}" class="px-4 py-2 rounded-xl bg-[#5B8DEF]/20 text-[#5B8DEF] hover:bg-[#5B8DEF]/30 text-sm transition-colors">Next →</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="flex flex-col items-center justify-center py-24 px-8">
+      <div class="w-20 h-20 rounded-3xl bg-[#5B8DEF]/10 flex items-center justify-center mb-6">
+        <span class="material-symbols-outlined text-[#5B8DEF] text-4xl">phone_in_talk</span>
+      </div>
+      <h3 class="text-xl font-bold text-white mb-2">No calls yet</h3>
+      <p class="text-slate-400 text-sm text-center max-w-sm mb-6">
+        Once guests call your Twilio number, AI-powered conversations will appear here with full transcripts.
+      </p>
+      {% if not tenant.voice_enabled %}
+      <a href="/settings#voice" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
+        <span class="material-symbols-outlined text-base">settings</span>
+        Set Up Voice AI
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</main>
+{%- endblock %}
+{%- endblock %}
+
+<script nonce="{{ request.state.csp_nonce }}">
+function toggleTranscript(id) {
+  const el = document.getElementById('transcript-' + id);
+  if (el) el.classList.toggle('hidden');
+}
+</script>

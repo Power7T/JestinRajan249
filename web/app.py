@@ -288,6 +288,99 @@ def _gdpr_data_retention_job():
 # _baileys_retry_stale_job removed — Baileys integration discontinued
 
 
+def _voice_scheduled_calls_job():
+    """
+    Daily job: for tenants with voice_scheduled_calls_enabled=True,
+    find guests checking in within the next 24 hours and auto-call them
+    with a pre-recorded reminder (synthesised via ElevenLabs).
+    Runs at 09:00 UTC every day.
+    """
+    import asyncio
+    db = SessionLocal()
+    try:
+        now       = datetime.now(timezone.utc)
+        in_24h    = now + timedelta(hours=24)
+
+        # Tenants that have opted in
+        configs = db.query(TenantConfig).filter(
+            TenantConfig.voice_scheduled_calls_enabled.is_(True)
+        ).all()
+
+        for cfg in configs:
+            tenant = db.query(Tenant).filter(Tenant.id == cfg.tenant_id).first()
+            if not tenant or not tenant.voice_enabled or not tenant.voice_phone_number:
+                continue
+
+            # Guests checking in today or tomorrow
+            upcoming = db.query(GuestContact).filter(
+                GuestContact.tenant_id == cfg.tenant_id,
+                GuestContact.check_in >= now,
+                GuestContact.check_in <= in_24h,
+                GuestContact.status.in_(["pending", "active"]),
+            ).all()
+
+            for guest in upcoming:
+                if not guest.guest_phone:
+                    continue
+                prop = cfg.property_names or "our property"
+                checkin_time = cfg.check_in_time or "3:00 PM"
+                message = (
+                    f"Hello {guest.guest_name.split()[0]}! This is a friendly reminder "
+                    f"from {prop}. Your check-in is today at {checkin_time}. "
+                    f"If you have any questions, feel free to call this number anytime. "
+                    f"We look forward to hosting you!"
+                )
+                try:
+                    # Synthesize reminder message to speech
+                    audio_bytes, s3_url = await VoiceAIService.synthesize_speech(message)
+                    if not s3_url:
+                        log.warning(f"[VOICE] Failed to synthesize audio for {guest.guest_name}")
+                        continue
+
+                    # Create outbound Twilio call with audio URL
+                    from twilio.rest import Client as TwilioClient
+                    from web.crypto import decrypt
+                    sid   = cfg.twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
+                    token = decrypt(cfg.twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
+                    frm   = cfg.twilio_from_number or tenant.voice_phone_number
+                    if not (sid and token and frm):
+                        continue
+                    twilio_client = TwilioClient(sid, token)
+                    app_url = os.getenv("APP_BASE_URL", "")
+                    call = twilio_client.calls.create(
+                        from_=frm,
+                        to=guest.guest_phone,
+                        url=f"{app_url}/api/calls/outbound-twiml?s3_url={s3_url}",
+                    )
+                    log.info(f"[VOICE] Scheduled call to {guest.guest_name} ({guest.guest_phone[-4:]}): {call.sid}")
+
+                    # Record the outbound call
+                    from web.models import VoiceCall
+                    vc = VoiceCall(
+                        id=str(uuid4()),
+                        tenant_id=cfg.tenant_id,
+                        guest_contact_id=guest.id,
+                        twilio_call_id=call.sid,
+                        twilio_phone_number=frm,
+                        guest_phone_number=guest.guest_phone,
+                        call_type="scheduled_reminder",
+                        status="ringing",
+                        created_at=datetime.now(timezone.utc),
+                    )
+                    db.add(vc)
+                    db.commit()
+
+                except Exception as e:
+                    log.error(f"[VOICE] Scheduled call failed for {guest.guest_name}: {e}")
+
+        log.info("[VOICE] Scheduled call job completed")
+    except Exception as e:
+        log.error(f"[VOICE] _voice_scheduled_calls_job error: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
 async def lifespan(app: FastAPI):
     _startup_checks()
     init_db()
@@ -301,7 +394,14 @@ async def lifespan(app: FastAPI):
         CronTrigger(hour=2, minute=0, timezone="UTC"),  # Daily at 2:00 AM UTC
         id="gdpr_retention_cleanup",
         name="GDPR Data Retention",
-        replace_existing=True
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        _voice_scheduled_calls_job,
+        CronTrigger(hour=9, minute=0, timezone="UTC"),  # Daily at 9:00 AM UTC
+        id="voice_scheduled_calls",
+        name="Voice Pre-checkin Calls",
+        replace_existing=True,
     )
     # Add APScheduler event listeners for job failures (Failure gap fix #5)
     from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED
@@ -2843,6 +2943,12 @@ async def settings_save(
     twilio_auth_token:     str = Form(""),
     twilio_from_number:    str = Form(""),
     sms_notify_number:     str = Form(""),
+    # Voice AI
+    voice_enabled:                   str = Form("false"),
+    voice_phone_number:              str = Form(""),
+    voice_send_channel:              str = Form("disabled"),
+    voice_post_call_summary:         str = Form("false"),
+    voice_scheduled_calls_enabled:   str = Form("false"),
     csrf_token:            str = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -2917,6 +3023,13 @@ async def settings_save(
         cfg.sms_notify_number  = sms_notify_number.strip() or None
         if twilio_auth_token.strip():
             cfg.twilio_auth_token_enc = encrypt(twilio_auth_token.strip())
+
+    # Voice AI settings
+    tenant.voice_enabled      = voice_enabled.strip().lower() == "true"
+    tenant.voice_phone_number = voice_phone_number.strip() or None
+    cfg.voice_send_channel           = voice_send_channel.strip() or "disabled"
+    cfg.voice_post_call_summary      = voice_post_call_summary.strip().lower() == "true"
+    cfg.voice_scheduled_calls_enabled = voice_scheduled_calls_enabled.strip().lower() == "true"
 
     db.add(ActivityLog(tenant_id=tenant_id, event_type="settings_saved",
                        message="Settings updated"))
@@ -4996,6 +5109,183 @@ def roi_dashboard(request: Request,
         "hourly_rate": hourly_rate,
         "range_days": range_days,
         "snapshots_data": snapshots_data,
+    })
+
+
+@app.get("/voice-calls/gaps", response_class=HTMLResponse)
+def voice_gaps_page(request: Request, db: Session = Depends(get_db)):
+    """Unanswered question dashboard — host fills in answers."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    from web.models import VoiceKnowledgeGap
+    tenant = _get_tenant(tenant_id, db)
+    cfg    = _get_or_create_config(tenant_id, db)
+
+    open_gaps = (
+        db.query(VoiceKnowledgeGap)
+        .filter(VoiceKnowledgeGap.tenant_id == tenant_id, VoiceKnowledgeGap.resolved.is_(False))
+        .order_by(VoiceKnowledgeGap.created_at.desc())
+        .all()
+    )
+    resolved_gaps = (
+        db.query(VoiceKnowledgeGap)
+        .filter(VoiceKnowledgeGap.tenant_id == tenant_id, VoiceKnowledgeGap.resolved.is_(True))
+        .order_by(VoiceKnowledgeGap.resolved_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    return templates.TemplateResponse("voice_gaps.html", {
+        "request": request,
+        "tenant": tenant,
+        "cfg": cfg,
+        "open_gaps": open_gaps,
+        "resolved_gaps": resolved_gaps,
+    })
+
+
+@app.post("/voice-calls/gaps/{gap_id}/resolve")
+async def resolve_voice_gap(
+    request: Request,
+    gap_id: str,
+    answer:          str = Form(...),
+    save_to:         str = Form("faq"),
+    send_to_guest:   str = Form("no"),       # yes | no
+    reply_channel:   str = Form("sms"),      # sms | whatsapp
+    guest_phone:     str = Form(""),         # host can correct the number
+    guest_name:      str = Form(""),         # host can correct the name
+    csrf_token:      str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Save host's answer to property config, mark gap resolved,
+    and optionally send the answer back to the guest via SMS/WhatsApp.
+    """
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    from web.models import VoiceKnowledgeGap
+    gap = db.query(VoiceKnowledgeGap).filter(
+        VoiceKnowledgeGap.id == gap_id,
+        VoiceKnowledgeGap.tenant_id == tenant_id,
+    ).first()
+    if not gap:
+        raise HTTPException(status_code=404, detail="Gap not found")
+
+    cfg     = _get_or_create_config(tenant_id, db)
+    tenant  = _get_tenant(tenant_id, db)
+    now     = datetime.now(timezone.utc)
+    answer  = answer.strip()
+
+    # ── 1. Save answer to chosen property config field ────────────────────────
+    qa_entry = f"\nQ: {gap.question}\nA: {answer}"
+    if save_to == "faq":
+        cfg.faq = (cfg.faq or "") + qa_entry
+    elif save_to == "custom_instructions":
+        cfg.custom_instructions = (cfg.custom_instructions or "") + qa_entry
+    elif save_to == "house_rules":
+        cfg.house_rules = (cfg.house_rules or "") + qa_entry
+    elif save_to == "amenities":
+        cfg.amenities = (cfg.amenities or "") + f"\n{answer}"
+    elif save_to == "parking_policy":
+        cfg.parking_policy = (cfg.parking_policy or "") + f"\n{answer}"
+    elif save_to == "nearby_restaurants":
+        cfg.nearby_restaurants = (cfg.nearby_restaurants or "") + f"\n{answer}"
+
+    # ── 2. Resolve gap ────────────────────────────────────────────────────────
+    # Host may have corrected the phone/name on the form
+    effective_phone = guest_phone.strip() or gap.guest_phone or ""
+    effective_name  = guest_name.strip()  or gap.guest_name  or ""
+
+    gap.host_answer  = answer
+    gap.saved_to     = save_to
+    gap.resolved     = True
+    gap.resolved_at  = now
+    gap.guest_phone  = effective_phone or gap.guest_phone
+    gap.guest_name   = effective_name  or gap.guest_name
+
+    # ── 3. Send reply to guest (if host opted in) ─────────────────────────────
+    reply_sent = False
+    if send_to_guest == "yes" and effective_phone:
+        prop_name  = cfg.property_names or "your host"
+        name_part  = f"Hi {effective_name.split()[0]}! " if effective_name else "Hi! "
+        room_part  = f" (Room/Unit: {gap.guest_room})" if gap.guest_room else ""
+        message    = (
+            f"{name_part}Following up on your call to {prop_name}{room_part}.\n\n"
+            f"❓ You asked:\n\"{gap.question}\"\n\n"
+            f"✅ Answer from your host:\n{answer}\n\n"
+            f"Feel free to call us back anytime if you need more help!"
+        )
+        reply_sent = _send_voice_message(cfg, effective_phone, message, reply_channel)
+        if reply_sent:
+            gap.reply_sent    = True
+            gap.reply_sent_at = now
+            gap.reply_channel = reply_channel
+            log.info(f"[VOICE] Gap reply sent to {effective_phone[-4:]} via {reply_channel}")
+
+    # ── 4. Activity log ───────────────────────────────────────────────────────
+    detail = f"saved to {save_to}"
+    if reply_sent:
+        detail += f", replied to guest via {reply_channel}"
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="voice_gap_resolved",
+        message=f"Knowledge gap answered: \"{gap.question[:80]}\" — {detail}",
+        created_at=now,
+    ))
+    db.commit()
+
+    return RedirectResponse("/voice-calls/gaps", status_code=303)
+
+
+@app.get("/voice-calls", response_class=HTMLResponse)
+def voice_calls_page(request: Request,
+                     page: int = 1,
+                     db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    tenant = _get_tenant(tenant_id, db)
+    cfg = _get_or_create_config(tenant_id, db)
+
+    from web.models import VoiceCall
+    per_page = 25
+    offset = (page - 1) * per_page
+    total = db.query(VoiceCall).filter(VoiceCall.tenant_id == tenant_id).count()
+    calls = (
+        db.query(VoiceCall)
+        .filter(VoiceCall.tenant_id == tenant_id)
+        .order_by(VoiceCall.created_at.desc())
+        .offset(offset)
+        .limit(per_page)
+        .all()
+    )
+
+    from web.models import VoiceKnowledgeGap
+    open_gaps_count = (
+        db.query(VoiceKnowledgeGap)
+        .filter(VoiceKnowledgeGap.tenant_id == tenant_id, VoiceKnowledgeGap.resolved.is_(False))
+        .count()
+    )
+
+    return templates.TemplateResponse("voice_calls.html", {
+        "request": request,
+        "tenant": tenant,
+        "cfg": cfg,
+        "calls": calls,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": max(1, (total + per_page - 1) // per_page),
+        "open_gaps_count": open_gaps_count,
     })
 
 
@@ -7397,6 +7687,511 @@ async def edit_guest_contact(
 
 # ---------------------------------------------------------------------------
 # Catch-all 404 handler for unmapped routes
+# ---------------------------------------------------------------------------
+# Voice Calling Routes (Twilio)
+# ---------------------------------------------------------------------------
+
+from web.integrations.voice import VoiceAIService
+from web.models import VoiceCall
+
+def _voice_twiml_error(msg: str = "Sorry, something went wrong. Please try again later."):
+    from twilio.twiml.voice_response import VoiceResponse
+    r = VoiceResponse()
+    r.say(msg)
+    r.hangup()
+    return Response(str(r), media_type="application/xml")
+
+
+def _send_voice_message(cfg, guest_phone: str, content: str, channel: str) -> bool:
+    """
+    Send `content` to `guest_phone` via SMS or WhatsApp depending on `channel`.
+    Returns True on success. Uses the tenant's Twilio or Meta credentials.
+    """
+    try:
+        if channel == "sms":
+            from twilio.rest import Client as TwilioClient
+            from web.crypto import decrypt
+            sid   = cfg.twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
+            token = decrypt(cfg.twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
+            frm   = cfg.twilio_from_number or os.getenv("TWILIO_PHONE_NUMBER", "")
+            if not (sid and token and frm):
+                log.warning("[VOICE] SMS send skipped — Twilio not fully configured")
+                return False
+            client = TwilioClient(sid, token)
+            client.messages.create(from_=frm, to=guest_phone, body=content)
+            log.info(f"[VOICE] SMS sent to {guest_phone[-4:]}: {content[:40]}")
+            return True
+
+        if channel == "whatsapp":
+            if cfg.wa_mode == "meta_cloud" and cfg.whatsapp_phone_id:
+                from web.meta_sender import send_whatsapp
+                from web.crypto import decrypt
+                token = decrypt(cfg.whatsapp_token_enc or "")
+                if token:
+                    ok = send_whatsapp(cfg.whatsapp_phone_id, token, guest_phone, content)
+                    log.info(f"[VOICE] WhatsApp sent to {guest_phone[-4:]}: ok={ok}")
+                    return ok
+            elif cfg.sms_mode == "twilio":
+                # Fall back to Twilio WhatsApp
+                from twilio.rest import Client as TwilioClient
+                from web.crypto import decrypt
+                sid   = cfg.twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
+                token = decrypt(cfg.twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
+                frm   = f"whatsapp:{cfg.twilio_from_number or os.getenv('TWILIO_PHONE_NUMBER', '')}"
+                if sid and token and frm:
+                    client = TwilioClient(sid, token)
+                    client.messages.create(from_=frm, to=f"whatsapp:{guest_phone}", body=content)
+                    log.info(f"[VOICE] WhatsApp (Twilio) sent to {guest_phone[-4:]}")
+                    return True
+        return False
+    except Exception as e:
+        log.error(f"[VOICE] _send_voice_message error: {e}")
+        return False
+
+
+def _handle_knowledge_gap(db, tenant, cfg, voice_call, question: str) -> None:
+    """
+    Record a question the AI couldn't answer, deduplicate within 24h,
+    and alert the host with a direct link to fill in the answer.
+    """
+    from web.models import VoiceKnowledgeGap
+    now = datetime.now(timezone.utc)
+
+    # Deduplicate: don't create a new gap if the same question was logged in the last 24h
+    existing = (
+        db.query(VoiceKnowledgeGap)
+        .filter(
+            VoiceKnowledgeGap.tenant_id == tenant.id,
+            VoiceKnowledgeGap.question == question,
+            VoiceKnowledgeGap.resolved.is_(False),
+            VoiceKnowledgeGap.created_at >= now - timedelta(hours=24),
+        )
+        .first()
+    )
+    if existing:
+        log.info(f"[VOICE] Gap already recorded (dedup): {question[:60]}")
+        return
+
+    # Resolve guest identity from call record
+    gc = voice_call.guest_contact
+    gap = VoiceKnowledgeGap(
+        id=str(uuid4()),
+        tenant_id=tenant.id,
+        call_id=voice_call.id,
+        question=question,
+        guest_phone=voice_call.guest_phone_number,
+        guest_name=gc.guest_name if gc else None,
+        guest_room=(gc.room_identifier or gc.property_name) if gc else None,
+        resolved=False,
+        alerted_at=now,
+        created_at=now,
+    )
+    db.add(gap)
+    db.commit()
+    db.refresh(gap)
+
+    # Alert host (SMS to notify number if configured)
+    if cfg and cfg.sms_notify_number:
+        app_url = os.getenv("APP_BASE_URL", "")
+        alert = (
+            f"❓ Guest question I couldn't answer:\n"
+            f"\"{question}\"\n\n"
+            f"Add the answer so I can handle it next time:\n"
+            f"{app_url}/voice-calls/gaps"
+        )
+        _send_voice_message(cfg, cfg.sms_notify_number, alert, "sms")
+        log.info(f"[VOICE] Knowledge gap alert sent for: {question[:60]}")
+
+
+@app.post("/api/calls/incoming")
+async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
+    """
+    Handle incoming Twilio call — greet guest by name if recognised.
+    """
+    try:
+        form_data = await request.form()
+        from_number = form_data.get("From", "")
+        call_sid    = form_data.get("CallSid", "")
+        to_number   = form_data.get("To", "")
+
+        log.info(f"[VOICE] Incoming call from {from_number} to {to_number}, CallSid={call_sid}")
+
+        # Find tenant that owns this Twilio number
+        tenant = (
+            db.query(Tenant)
+            .join(TenantConfig)
+            .filter(TenantConfig.twilio_from_number == to_number)
+            .first()
+        )
+        if not tenant or not tenant.voice_enabled:
+            return _voice_twiml_error("Sorry, this number is not configured for voice support.")
+
+        # Try to identify the guest
+        guest_contact = (
+            db.query(GuestContact)
+            .filter(
+                GuestContact.tenant_id == tenant.id,
+                GuestContact.guest_phone == from_number,
+            )
+            .order_by(GuestContact.check_in.desc())
+            .first()
+        )
+
+        # Create VoiceCall record
+        voice_call = VoiceCall(
+            id=str(uuid4()),
+            tenant_id=tenant.id,
+            guest_contact_id=guest_contact.id if guest_contact else None,
+            twilio_call_id=call_sid,
+            twilio_phone_number=to_number,
+            guest_phone_number=from_number,
+            call_type="incoming",
+            status="ringing",
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(voice_call)
+        db.commit()
+        db.refresh(voice_call)
+
+        property_name = (tenant.config.property_names or "our property") if tenant.config else "our property"
+        if guest_contact:
+            greeting = f"Hello {guest_contact.guest_name.split()[0]}, welcome back to {property_name}! How can I help you today?"
+        else:
+            greeting = f"Hello, welcome to {property_name}. How can I help you today?"
+
+        from twilio.twiml.voice_response import VoiceResponse
+        response = VoiceResponse()
+        response.say(greeting)
+        response.record(
+            action=f"/api/calls/process-speech?call_id={voice_call.id}",
+            method="POST",
+            max_length=60,
+            play_beep=True,
+        )
+        response.hangup()
+        return Response(str(response), media_type="application/xml")
+
+    except Exception as e:
+        log.error(f"[VOICE] Error in handle_incoming_call: {e}\n{traceback.format_exc()}")
+        return _voice_twiml_error()
+
+
+@app.post("/api/calls/process-speech")
+async def process_speech(request: Request, call_id: str, db: Session = Depends(get_db)):
+    """
+    Full pipeline: STT → LLM (with send-action detection) → TTS → TwiML.
+    If the LLM returns a send_action, dispatch SMS/WhatsApp to the guest live.
+    """
+    try:
+        form_data    = await request.form()
+        recording_url = form_data.get("RecordingUrl", "")
+
+        log.info(f"[VOICE] Processing speech call_id={call_id}")
+
+        voice_call = db.query(VoiceCall).filter(VoiceCall.id == call_id).first()
+        if not voice_call:
+            return _voice_twiml_error("Call record not found.")
+
+        voice_call.started_at = datetime.now(timezone.utc)
+        voice_call.status = "answered"
+        db.commit()
+
+        # ── Step 1: Transcribe ────────────────────────────────────────────────
+        guest_message, confidence = await VoiceAIService.transcribe_audio(recording_url)
+        log.info(f"[VOICE] Transcribed: '{guest_message}' (conf={confidence:.2f})")
+
+        if not guest_message:
+            from twilio.twiml.voice_response import VoiceResponse
+            r = VoiceResponse()
+            r.say("Sorry, I didn't catch that. Please try again.")
+            r.record(action=f"/api/calls/process-speech?call_id={call_id}", method="POST", max_length=60, play_beep=True)
+            r.hangup()
+            return Response(str(r), media_type="application/xml")
+
+        voice_call.guest_messages = list(voice_call.guest_messages or [])
+        voice_call.guest_messages.append({
+            "text": guest_message,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "confidence": confidence,
+        })
+
+        # ── Step 2: Build full tenant context ────────────────────────────────
+        tenant = voice_call.tenant
+        cfg    = tenant.config
+        guest_contact = (
+            db.query(GuestContact).filter(GuestContact.id == voice_call.guest_contact_id).first()
+            if voice_call.guest_contact_id else None
+        )
+        # Pull active reservation for this guest (door codes etc.)
+        active_reservation = None
+        if guest_contact and guest_contact.reservation_id:
+            active_reservation = db.query(Reservation).filter(
+                Reservation.id == guest_contact.reservation_id
+            ).first()
+
+        tenant_config_dict = {
+            "property_type":        cfg.property_type        if cfg else "property",
+            "property_city":        cfg.property_city        if cfg else "",
+            "check_in_time":        cfg.check_in_time        if cfg else "15:00",
+            "check_out_time":       cfg.check_out_time       if cfg else "11:00",
+            "max_guests":           cfg.max_guests           if cfg else "",
+            "house_rules":          cfg.house_rules          if cfg else "",
+            "pet_policy":           cfg.pet_policy           if cfg else "",
+            "parking_policy":       cfg.parking_policy       if cfg else "",
+            "smoking_policy":       cfg.smoking_policy       if cfg else "",
+            "quiet_hours":          cfg.quiet_hours          if cfg else "",
+            "amenities":            cfg.amenities            if cfg else "",
+            "food_menu":            cfg.food_menu            if cfg else "",
+            "nearby_restaurants":   cfg.nearby_restaurants   if cfg else "",
+            "faq":                  cfg.faq                  if cfg else "",
+            "custom_instructions":  cfg.custom_instructions  if cfg else "",
+            "early_checkin_policy": cfg.early_checkin_policy if cfg else "",
+            "late_checkout_policy": cfg.late_checkout_policy if cfg else "",
+            "refund_policy":        cfg.refund_policy        if cfg else "",
+        }
+        # Inject reservation details if available
+        if active_reservation:
+            res = active_reservation
+            tenant_config_dict["guest_reservation"] = (
+                f"Confirmation: {res.confirmation_code}, "
+                f"Check-in: {res.check_in.strftime('%b %d %Y') if hasattr(res, 'check_in') and res.check_in else 'N/A'}, "
+                f"Check-out: {res.check_out.strftime('%b %d %Y') if hasattr(res, 'check_out') and res.check_out else 'N/A'}"
+            )
+
+        guest_name = guest_contact.guest_name if guest_contact else None
+
+        # ── Step 3: Generate response ─────────────────────────────────────────
+        ai_text, send_action, unanswered_question = await VoiceAIService.generate_response(
+            guest_message,
+            tenant_config_dict,
+            voice_call.guest_messages,
+            guest_name=guest_name,
+        )
+        log.info(f"[VOICE] Response: '{ai_text[:80]}' | send={send_action} | gap={unanswered_question}")
+
+        voice_call.ai_responses = list(voice_call.ai_responses or [])
+        voice_call.ai_responses.append({
+            "text": ai_text,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "sent_message": send_action,
+        })
+
+        # ── Step 4: Dispatch send_action (SMS or WhatsApp to guest live) ─────
+        if send_action and cfg:
+            channel = getattr(cfg, "voice_send_channel", "disabled")
+            if channel in ("sms", "whatsapp"):
+                _send_voice_message(cfg, voice_call.guest_phone_number, send_action["content"], channel)
+
+        # ── Step 4b: Knowledge gap — AI didn't know the answer ───────────────
+        if unanswered_question:
+            _handle_knowledge_gap(
+                db=db,
+                tenant=tenant,
+                cfg=cfg,
+                voice_call=voice_call,
+                question=unanswered_question,
+            )
+
+        # ── Step 5: Escalate low-confidence turns to host ────────────────────
+        if confidence < 0.6 and cfg and cfg.sms_notify_number:
+            log.warning(f"[VOICE] Low confidence ({confidence:.2f}), alerting host")
+            alert = (
+                f"⚠️ Voice call alert\n"
+                f"Guest: {voice_call.guest_phone_number}\n"
+                f"Said: \"{guest_message}\"\n"
+                f"AI confidence: {int(confidence*100)}% — may need follow-up."
+            )
+            _send_voice_message(cfg, cfg.sms_notify_number, alert, "sms")
+
+        # ── Step 6: Synthesize AI reply to audio ─────────────────────────────
+        audio_bytes, audio_url = await VoiceAIService.synthesize_speech(ai_text)
+
+        # Update running confidence average
+        prev_avg = voice_call.confidence_avg or confidence
+        n_turns  = len(voice_call.guest_messages)
+        voice_call.confidence_avg = ((prev_avg * (n_turns - 1)) + confidence) / n_turns
+        if audio_url:
+            voice_call.recording_url = audio_url
+        db.commit()
+
+        # ── Step 7: Return TwiML ──────────────────────────────────────────────
+        from twilio.twiml.voice_response import VoiceResponse
+        r = VoiceResponse()
+        if audio_url:
+            r.play(audio_url)
+        else:
+            r.say(ai_text)
+        r.record(
+            action=f"/api/calls/process-speech?call_id={call_id}",
+            method="POST",
+            max_length=60,
+            play_beep=True,
+        )
+        r.hangup()
+        return Response(str(r), media_type="application/xml")
+
+    except Exception as e:
+        log.error(f"[VOICE] Error in process_speech: {e}\n{traceback.format_exc()}")
+        return _voice_twiml_error("Sorry, something went wrong. Goodbye.")
+
+
+@app.post("/api/calls/hangup")
+async def handle_hangup(request: Request, db: Session = Depends(get_db)):
+    """Log call end — duration, interleaved transcript, sentiment, post-call summary."""
+    try:
+        form_data   = await request.form()
+        call_sid    = form_data.get("CallSid", "")
+        call_status = form_data.get("CallStatus", "completed")
+
+        log.info(f"[VOICE] Hangup call_sid={call_sid}, status={call_status}")
+
+        voice_call = db.query(VoiceCall).filter(VoiceCall.twilio_call_id == call_sid).first()
+        if not voice_call:
+            return {"status": "not_found"}
+
+        voice_call.status   = call_status
+        voice_call.ended_at = datetime.now(timezone.utc)
+
+        # Duration
+        if voice_call.started_at and voice_call.ended_at:
+            voice_call.duration_seconds = int(
+                (voice_call.ended_at - voice_call.started_at).total_seconds()
+            )
+
+        # Interleaved transcript (by timestamp, guest first per turn)
+        turns = []
+        for msg in (voice_call.guest_messages or []):
+            turns.append(("Guest", msg.get("timestamp", ""), msg.get("text", "")))
+        for resp in (voice_call.ai_responses or []):
+            turns.append(("AI", resp.get("timestamp", ""), resp.get("text", "")))
+        turns.sort(key=lambda t: t[1])
+        voice_call.full_transcript = "\n".join(f"{role}: {text}" for role, _, text in turns)
+
+        db.commit()
+
+        # Sentiment analysis (async, non-blocking for Twilio)
+        if voice_call.full_transcript:
+            try:
+                sentiment = await VoiceAIService.analyze_sentiment(voice_call.full_transcript)
+                voice_call.sentiment = sentiment
+                db.commit()
+            except Exception:
+                pass
+
+        # Post-call summary to host
+        cfg = voice_call.tenant.config if voice_call.tenant else None
+        if cfg and getattr(cfg, "voice_post_call_summary", False):
+            notify_phone = cfg.sms_notify_number or cfg.host_notify_phone
+            if notify_phone:
+                dur = f"{voice_call.duration_seconds}s" if voice_call.duration_seconds else "unknown"
+                sentiment_emoji = {"positive": "😊", "negative": "😟", "neutral": "😐"}.get(
+                    voice_call.sentiment or "neutral", "😐"
+                )
+                summary = (
+                    f"📞 Voice Call Summary\n"
+                    f"Guest: {voice_call.guest_phone_number}\n"
+                    f"Duration: {dur} | Sentiment: {sentiment_emoji} {(voice_call.sentiment or 'neutral').title()}\n"
+                    f"Confidence: {int((voice_call.confidence_avg or 0) * 100)}%\n\n"
+                    f"Transcript:\n{voice_call.full_transcript[:800]}"
+                )
+                _send_voice_message(cfg, notify_phone, summary, "sms")
+
+        # Activity log
+        db.add(ActivityLog(
+            tenant_id=voice_call.tenant_id,
+            event_type="voice_call_completed",
+            message=(
+                f"Voice call with {voice_call.guest_phone_number}: "
+                f"{voice_call.duration_seconds or '?'}s, "
+                f"status={call_status}, sentiment={voice_call.sentiment or 'n/a'}"
+            ),
+            created_at=datetime.now(timezone.utc),
+        ))
+        db.commit()
+
+        return {"status": "logged"}
+
+    except Exception as e:
+        log.error(f"[VOICE] Error in handle_hangup: {e}\n{traceback.format_exc()}")
+        return {"error": str(e)}
+
+
+@app.post("/api/calls/send-voice")
+async def send_outbound_voice(
+    request: Request,
+    tenant_id: str,
+    guest_phone: str,
+    message: str,
+    db: Session = Depends(get_db)
+):
+    """Initiate outbound call with message synthesis."""
+    try:
+        tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+        if not tenant or not tenant.voice_enabled:
+            return {"error": "Voice not enabled"}, 400
+
+        # Synthesize message
+        audio_bytes, s3_url = await VoiceAIService.synthesize_speech(message)
+        if not s3_url:
+            return {"error": "Could not synthesize speech"}, 500
+
+        # Create Twilio call
+        from twilio.rest import Client as TwilioClient
+        twilio_client = TwilioClient(
+            os.getenv("TWILIO_ACCOUNT_SID"),
+            os.getenv("TWILIO_AUTH_TOKEN")
+        )
+
+        app_url = os.getenv("APP_URL", "http://localhost:8000")
+        call = twilio_client.calls.create(
+            from_=tenant.config.twilio_from_number if tenant.config else os.getenv("TWILIO_PHONE_NUMBER"),
+            to=guest_phone,
+            url=f"{app_url}/api/calls/outbound-twiml?s3_url={s3_url}"
+        )
+
+        # Log in database
+        voice_call = VoiceCall(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            twilio_call_id=call.sid,
+            twilio_phone_number=tenant.config.twilio_from_number if tenant.config else os.getenv("TWILIO_PHONE_NUMBER"),
+            guest_phone_number=guest_phone,
+            call_type="outbound",
+            status="ringing",
+            recording_url=s3_url,
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(voice_call)
+        db.commit()
+
+        log.info(f"[VOICE] Outbound call initiated: call_id={call.sid}, to={guest_phone}")
+
+        return {"call_id": call.sid, "status": "initiated"}
+
+    except Exception as e:
+        log.error(f"[VOICE] Error in send_outbound_voice: {e}\n{traceback.format_exc()}")
+        return {"error": str(e)}, 500
+
+
+@app.get("/api/calls/outbound-twiml")
+async def outbound_twiml(s3_url: str):
+    """TwiML for outbound call - play message."""
+    try:
+        from twilio.twiml.voice_response import VoiceResponse
+        response = VoiceResponse()
+        response.play(s3_url)
+        response.say("Press 1 to repeat, or hangup.")
+        response.hangup()
+        return Response(str(response), media_type="application/xml")
+    except Exception as e:
+        log.error(f"[VOICE] Error in outbound_twiml: {e}")
+        from twilio.twiml.voice_response import VoiceResponse
+        response = VoiceResponse()
+        response.say("Sorry, something went wrong.")
+        response.hangup()
+        return Response(str(response), media_type="application/xml")
+
+
 # ---------------------------------------------------------------------------
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])

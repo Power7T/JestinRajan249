@@ -1,0 +1,464 @@
+{%- extends "base.html" %}
+{%- block title %}Knowledge Gaps — HostAI{%- endblock %}
+
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+  darkMode:"class",
+  theme:{ extend:{ colors:{ primary:"#aec6ff", surface:"#121319" } } }
+}
+</script>
+<style>
+  *{box-sizing:border-box}
+  body{background:#08090F;font-family:'Plus Jakarta Sans',sans-serif;color:#e3e1eb;margin:0}
+  .glass{background:rgba(26,27,34,0.75);backdrop-filter:blur(24px);border-top:1px solid rgba(174,198,255,0.08);border-left:1px solid rgba(174,198,255,0.08)}
+  .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 200,'GRAD' 0,'opsz' 24;vertical-align:middle}
+  input[type=text],input[type=tel],textarea,select{
+    display:block;width:100%;background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;
+    color:#e3e1eb;padding:0.625rem 0.875rem;font-family:inherit;font-size:0.875rem;
+    transition:border-color .15s,box-shadow .15s
+  }
+  input[type=text]:focus,input[type=tel]:focus,textarea:focus,select:focus{
+    outline:none;border-color:#5B8DEF;box-shadow:0 0 0 3px rgba(91,141,239,.15)
+  }
+  textarea{resize:vertical;min-height:80px}
+  select option{background:#1e1f26}
+  .channel-pill input[type=radio]{position:absolute;opacity:0;width:0;height:0}
+  .channel-pill{cursor:pointer;transition:all .15s}
+  .channel-pill:has(input:checked){border-color:#5B8DEF!important;background:rgba(91,141,239,.12)!important;color:#aec6ff!important}
+  .save-pill input[type=radio]{position:absolute;opacity:0;width:0;height:0}
+  .save-pill{cursor:pointer;transition:all .15s}
+  .save-pill:has(input:checked){border-color:#5B8DEF!important;background:rgba(91,141,239,.12)!important;color:#aec6ff!important}
+  .preview-box{background:rgba(91,141,239,.06);border:1px solid rgba(91,141,239,.2);border-radius:1rem;padding:1rem 1.25rem;font-size:0.8125rem;color:#94a3b8;white-space:pre-line;line-height:1.6}
+  .badge-sms{background:rgba(96,165,250,.12);color:#60a5fa}
+  .badge-wa{background:rgba(74,222,128,.12);color:#4ade80}
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+{%- block main_wrapper %}
+{%- block content %}
+
+<!-- ── Sidebar ───────────────────────────────────────────────────────────── -->
+<aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col text-sm font-medium">
+  <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80">
+    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
+      <span class="material-symbols-outlined text-[#002e6b] text-xl" style="font-variation-settings:'FILL' 1">hub</span>
+    </div>HostAI</a>
+  <nav class="flex-1 px-4 space-y-0.5">
+    {% set nav = [
+      ('/dashboard','dashboard','Dashboard'),
+      ('/conversations','forum','Conversations'),
+      ('/reservations','event_available','Reservations'),
+      ('/activity','history','Activity'),
+      ('/analytics','analytics','Analytics'),
+      ('/analytics/roi','trending_up','ROI Dashboard'),
+      ('/voice-calls','phone_in_talk','Voice Calls'),
+      ('/workflow','hub','Workflow Center'),
+      ('/settings','settings','Settings'),
+    ] %}
+    {% for href,icon,label in nav %}
+    <a class="flex items-center gap-3 px-6 py-3 rounded-r-xl {% if request.url.path.startswith(href) and (href != '/dashboard' or request.url.path == '/dashboard') %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="{{ href }}">
+      <span class="material-symbols-outlined text-[1.1rem]">{{ icon }}</span>{{ label }}
+    </a>
+    {% endfor %}
+    {% if tenant is defined and tenant and is_admin(tenant.email) %}
+    <a class="flex items-center gap-3 px-6 py-3 text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold transition-all" href="/admin">
+      <span class="material-symbols-outlined text-[1.1rem]">admin_panel_settings</span>Admin
+    </a>
+    {% endif %}
+  </nav>
+  <div class="p-6 space-y-3">
+    <div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold flex-shrink-0">
+        {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+      </div>
+      <div class="min-w-0">
+        <p class="text-white font-bold text-sm truncate">{{ tenant.name or tenant.email if tenant else 'Host' }}</p>
+        <p class="text-slate-500 text-xs">Host</p>
+      </div>
+    </div>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-red-400 text-xs font-bold uppercase tracking-widest transition-colors">
+        <span class="material-symbols-outlined text-sm">logout</span>Sign Out
+      </button>
+    </form>
+  </div>
+</aside>
+
+<!-- ── Main ──────────────────────────────────────────────────────────────── -->
+<main class="ml-[260px] min-h-screen pt-8 pb-20 px-8">
+
+  <!-- Header -->
+  <div class="flex items-start justify-between mb-2">
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <a href="/voice-calls" class="text-slate-500 hover:text-slate-300 text-xs transition-colors flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">arrow_back</span>Voice Calls
+        </a>
+      </div>
+      <h1 class="text-4xl font-extrabold text-white tracking-tight mb-1">Knowledge Gaps</h1>
+      <p class="text-slate-400 text-sm">Questions guests asked that the AI couldn't answer. Answer once — AI learns forever.</p>
+    </div>
+    {% if open_gaps %}
+    <div class="flex items-center gap-2 mt-1 px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+      <span class="material-symbols-outlined text-amber-400">warning</span>
+      <span class="text-amber-300 font-bold text-sm">{{ open_gaps|length }} need{{ 's' if open_gaps|length == 1 else '' }} your answer</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- How it works banner -->
+  <div class="glass rounded-2xl p-5 mb-8 flex items-start gap-4 mt-6">
+    <div class="w-10 h-10 rounded-xl bg-[#5B8DEF]/15 flex items-center justify-center flex-shrink-0">
+      <span class="material-symbols-outlined text-[#5B8DEF] text-xl">auto_fix_high</span>
+    </div>
+    <div>
+      <p class="text-white font-semibold text-sm mb-1">Self-improving AI</p>
+      <p class="text-slate-400 text-sm leading-relaxed">
+        When the AI doesn't know an answer, it logs the guest's question here and alerts you.
+        You type the answer once. It's saved to your property info so the AI handles it automatically in every future call.
+        You can also send the answer directly back to the guest who asked.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Open gaps ──────────────────────────────────────────────────────── -->
+  {% if open_gaps %}
+  <section class="mb-12">
+    <h2 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block"></span>
+      Open — needs your answer
+    </h2>
+
+    <div class="space-y-5">
+    {% for gap in open_gaps %}
+    <div class="glass rounded-3xl overflow-hidden" id="card-{{ gap.id }}">
+
+      <!-- ── Gap card header ── -->
+      <div class="p-6 flex items-start gap-4">
+
+        <!-- Guest avatar -->
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#aec6ff]/20 to-[#5B8DEF]/20 flex items-center justify-center flex-shrink-0 text-lg font-extrabold text-[#aec6ff]">
+          {{ (gap.guest_name or '?')[0]|upper }}
+        </div>
+
+        <div class="flex-1 min-w-0">
+          <!-- Guest identity row -->
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            {% if gap.guest_name %}
+            <span class="text-white font-bold text-sm">{{ gap.guest_name }}</span>
+            {% else %}
+            <span class="text-slate-400 text-sm italic">Unknown guest</span>
+            {% endif %}
+            {% if gap.guest_phone %}
+            <span class="text-slate-500 text-xs font-mono">{{ gap.guest_phone[:-4] | replace(gap.guest_phone[:-4], '••••••') }}{{ gap.guest_phone[-4:] }}</span>
+            {% endif %}
+            {% if gap.guest_room %}
+            <span class="px-2 py-0.5 rounded-lg bg-white/5 text-slate-400 text-xs flex items-center gap-1">
+              <span class="material-symbols-outlined text-xs">bed</span>{{ gap.guest_room }}
+            </span>
+            {% endif %}
+            <span class="text-slate-600 text-xs ml-auto">{{ gap.created_at.strftime('%b %d · %H:%M') if gap.created_at else '' }}</span>
+          </div>
+
+          <!-- The question -->
+          <div class="flex items-start gap-2">
+            <span class="material-symbols-outlined text-amber-400 text-lg mt-0.5">help</span>
+            <p class="text-white text-sm font-medium leading-relaxed">"{{ gap.question }}"</p>
+          </div>
+        </div>
+
+        <!-- Answer button -->
+        <button onclick="openGap('{{ gap.id }}')" id="btn-{{ gap.id }}"
+          class="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
+          <span class="material-symbols-outlined text-base">edit_note</span>Answer
+        </button>
+      </div>
+
+      <!-- ── Answer form (hidden until "Answer" clicked) ── -->
+      <div id="form-{{ gap.id }}" class="hidden border-t border-white/5">
+        <form method="post" action="/voice-calls/gaps/{{ gap.id }}/resolve"
+              class="p-6 space-y-6" id="fobj-{{ gap.id }}">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+          <!-- Step 1: Answer -->
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+              Step 1 — Your Answer
+            </label>
+            <textarea name="answer" id="ans-{{ gap.id }}" rows="3"
+              placeholder="Type the correct information here…"
+              oninput="updatePreview('{{ gap.id }}')"
+              required></textarea>
+          </div>
+
+          <!-- Step 2: Save to field -->
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+              Step 2 — Save to Property Info
+            </label>
+            <div class="flex flex-wrap gap-2">
+              {% for val, lbl, icon in [
+                ('faq','FAQ','quiz'),
+                ('custom_instructions','Instructions','tune'),
+                ('house_rules','House Rules','gavel'),
+                ('amenities','Amenities / WiFi','wifi'),
+                ('parking_policy','Parking','local_parking'),
+                ('nearby_restaurants','Area / Food','restaurant'),
+              ] %}
+              <label class="save-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 text-slate-400 text-xs relative">
+                <input type="radio" name="save_to" value="{{ val }}" {% if loop.first %}checked{% endif %}>
+                <span class="material-symbols-outlined text-sm">{{ icon }}</span>{{ lbl }}
+              </label>
+              {% endfor %}
+            </div>
+            <p class="text-slate-600 text-xs mt-1.5">The Q&A will be appended to this field so the AI can answer it next time.</p>
+          </div>
+
+          <!-- Step 3: Send reply to guest -->
+          <div class="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <p class="text-white text-sm font-semibold">Step 3 — Send answer back to guest</p>
+                <p class="text-slate-500 text-xs mt-0.5">Optional. Closes the loop — the guest who asked gets your answer immediately.</p>
+              </div>
+              <!-- Toggle -->
+              <label class="relative inline-flex items-center cursor-pointer ml-4 flex-shrink-0">
+                <input type="checkbox" id="tog-{{ gap.id }}" onchange="toggleSend('{{ gap.id }}')"
+                  {% if gap.guest_phone %}checked{% endif %} class="sr-only peer">
+                <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer
+                  peer-checked:after:translate-x-full peer-checked:bg-[#5B8DEF]
+                  after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                  after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+              </label>
+            </div>
+
+            <div id="send-section-{{ gap.id }}" class="{% if not gap.guest_phone %}hidden{% endif %} space-y-4">
+
+              <!-- Guest phone + name (editable) -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1.5 font-medium">Guest Phone Number</label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-500 text-base">call</span>
+                    <input type="tel" name="guest_phone" id="gphone-{{ gap.id }}"
+                      value="{{ gap.guest_phone or '' }}"
+                      placeholder="+1 555 000 0000"
+                      oninput="updatePreview('{{ gap.id }}')"
+                      style="padding-left:2.25rem">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1.5 font-medium">Guest Name <span class="text-slate-600">(optional)</span></label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-500 text-base">person</span>
+                    <input type="text" name="guest_name" id="gname-{{ gap.id }}"
+                      value="{{ gap.guest_name or '' }}"
+                      placeholder="Sarah"
+                      oninput="updatePreview('{{ gap.id }}')"
+                      style="padding-left:2.25rem">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Channel selector -->
+              <div>
+                <label class="block text-xs text-slate-500 mb-2 font-medium">Send via</label>
+                <div class="flex gap-2">
+                  <label class="channel-pill flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-slate-400 text-sm relative">
+                    <input type="radio" name="reply_channel" value="sms" checked>
+                    <span class="material-symbols-outlined text-base">sms</span>SMS
+                  </label>
+                  <label class="channel-pill flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-slate-400 text-sm relative">
+                    <input type="radio" name="reply_channel" value="whatsapp">
+                    <span class="material-symbols-outlined text-base">chat</span>WhatsApp
+                  </label>
+                </div>
+              </div>
+
+              <!-- Message preview -->
+              <div>
+                <label class="block text-xs text-slate-500 mb-1.5 font-medium flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">preview</span>Message preview
+                </label>
+                <div class="preview-box" id="preview-{{ gap.id }}">
+                  {%- set pname = gap.guest_name.split()[0] ~ '!' if gap.guest_name else 'Hi!' -%}
+                  {%- set pprop = cfg.property_names or 'your host' -%}
+                  {%- set proom = ' (Room/Unit: ' ~ gap.guest_room ~ ')' if gap.guest_room else '' -%}
+Hi {{ pname }} Following up on your call to {{ pprop }}{{ proom }}.
+
+❓ You asked:
+"{{ gap.question }}"
+
+✅ Answer from your host:
+<em class="text-slate-600">[your answer will appear here]</em>
+
+Feel free to call us back anytime if you need more help!</div>
+              </div>
+            </div>
+
+            <!-- Hidden field toggled by JS -->
+            <input type="hidden" name="send_to_guest" id="stg-{{ gap.id }}"
+              value="{% if gap.guest_phone %}yes{% else %}no{% endif %}">
+          </div>
+
+          <!-- Action buttons -->
+          <div class="flex items-center gap-3">
+            <button type="submit"
+              class="flex items-center gap-2 px-6 py-3 bg-[#5B8DEF] text-white rounded-xl text-sm font-bold hover:bg-[#4a7de0] transition-colors shadow-lg shadow-[#5B8DEF]/20">
+              <span class="material-symbols-outlined text-base">save</span>
+              <span id="btnlabel-{{ gap.id }}">
+                {% if gap.guest_phone %}Save &amp; Send to Guest{% else %}Save &amp; Train AI{% endif %}
+              </span>
+            </button>
+            <button type="button" onclick="closeGap('{{ gap.id }}')"
+              class="px-4 py-3 text-slate-400 hover:text-white text-sm transition-colors">
+              Cancel
+            </button>
+          </div>
+
+        </form>
+      </div><!-- /form -->
+    </div><!-- /card -->
+    {% endfor %}
+    </div>
+  </section>
+
+  {% else %}
+  <!-- All clear -->
+  <div class="glass rounded-3xl py-20 flex flex-col items-center justify-center text-center mb-12">
+    <div class="w-16 h-16 rounded-3xl bg-green-500/10 flex items-center justify-center mb-5">
+      <span class="material-symbols-outlined text-green-400 text-3xl">check_circle</span>
+    </div>
+    <h3 class="text-xl font-bold text-white mb-2">All caught up!</h3>
+    <p class="text-slate-400 text-sm max-w-xs">No open knowledge gaps. Your AI is fully trained on everything guests have asked.</p>
+  </div>
+  {% endif %}
+
+  <!-- ── Resolved history ───────────────────────────────────────────────── -->
+  {% if resolved_gaps %}
+  <section>
+    <h2 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+      <span class="material-symbols-outlined text-green-400 text-lg">check_circle</span>
+      Resolved — AI already knows
+    </h2>
+    <div class="glass rounded-2xl overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-white/5">
+            <th class="text-left px-5 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Guest & Question</th>
+            <th class="text-left px-5 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Answer</th>
+            <th class="text-left px-5 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Saved to</th>
+            <th class="text-left px-5 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Replied</th>
+            <th class="text-left px-5 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Resolved</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+          {% for gap in resolved_gaps %}
+          <tr class="hover:bg-white/[0.02] transition-colors">
+            <td class="px-5 py-4 max-w-[220px]">
+              {% if gap.guest_name %}
+              <p class="text-white text-xs font-semibold truncate">{{ gap.guest_name }}</p>
+              {% endif %}
+              <p class="text-slate-400 text-xs truncate mt-0.5">"{{ gap.question }}"</p>
+            </td>
+            <td class="px-5 py-4 max-w-[200px]">
+              <p class="text-slate-400 text-xs truncate">{{ (gap.host_answer or '—')[:70] }}{% if gap.host_answer and gap.host_answer|length > 70 %}…{% endif %}</p>
+            </td>
+            <td class="px-5 py-4">
+              <span class="px-2 py-0.5 rounded-lg bg-white/5 text-slate-500 text-xs">{{ gap.saved_to or '—' }}</span>
+            </td>
+            <td class="px-5 py-4">
+              {% if gap.reply_sent %}
+              <span class="flex items-center gap-1 text-xs {% if gap.reply_channel == 'whatsapp' %}badge-wa{% else %}badge-sms{% endif %} px-2 py-0.5 rounded-lg w-fit">
+                <span class="material-symbols-outlined text-xs">{% if gap.reply_channel == 'whatsapp' %}chat{% else %}sms{% endif %}</span>
+                {{ gap.reply_channel|title }}
+              </span>
+              {% else %}
+              <span class="text-slate-600 text-xs">Not sent</span>
+              {% endif %}
+            </td>
+            <td class="px-5 py-4 text-slate-500 text-xs">
+              {{ gap.resolved_at.strftime('%b %d') if gap.resolved_at else '—' }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+</main>
+{%- endblock %}
+{%- endblock %}
+
+<script nonce="{{ request.state.csp_nonce }}">
+// ── Data baked in from Jinja for preview generation ────────────────────────
+const gapData = {
+  {% for gap in open_gaps %}
+  "{{ gap.id }}": {
+    question: {{ gap.question | tojson }},
+    propName: {{ (cfg.property_names or 'your host') | tojson }},
+    guestRoom: {{ (gap.guest_room or '') | tojson }},
+  },
+  {% endfor %}
+};
+
+function openGap(id) {
+  document.getElementById('form-' + id).classList.remove('hidden');
+  document.getElementById('btn-' + id).classList.add('hidden');
+  document.getElementById('ans-' + id).focus();
+}
+function closeGap(id) {
+  document.getElementById('form-' + id).classList.add('hidden');
+  document.getElementById('btn-' + id).classList.remove('hidden');
+}
+
+function toggleSend(id) {
+  const checked = document.getElementById('tog-' + id).checked;
+  document.getElementById('send-section-' + id).classList.toggle('hidden', !checked);
+  document.getElementById('stg-' + id).value = checked ? 'yes' : 'no';
+  updateButtonLabel(id, checked);
+}
+
+function updateButtonLabel(id, sendEnabled) {
+  const phone = document.getElementById('gphone-' + id)?.value?.trim();
+  const lbl   = document.getElementById('btnlabel-' + id);
+  if (lbl) lbl.textContent = (sendEnabled && phone) ? 'Save & Send to Guest' : 'Save & Train AI';
+}
+
+function updatePreview(id) {
+  const data    = gapData[id];
+  if (!data) return;
+  const answer  = document.getElementById('ans-' + id)?.value?.trim() || '';
+  const nameVal = document.getElementById('gname-' + id)?.value?.trim() || '';
+  const phoneVal= document.getElementById('gphone-' + id)?.value?.trim() || '';
+
+  const greeting  = nameVal ? `Hi ${nameVal.split(' ')[0]}!` : 'Hi!';
+  const roomPart  = data.guestRoom ? ` (Room/Unit: ${data.guestRoom})` : '';
+  const answerPart= answer || '<em style="color:#475569">[your answer will appear here]</em>';
+
+  document.getElementById('preview-' + id).innerHTML =
+    `${greeting} Following up on your call to ${data.propName}${roomPart}.\n\n` +
+    `❓ You asked:\n"${data.question}"\n\n` +
+    `✅ Answer from your host:\n${answerPart}\n\n` +
+    `Feel free to call us back anytime if you need more help!`;
+
+  updateButtonLabel(id, document.getElementById('tog-' + id)?.checked);
+}
+
+// Auto-open if only one gap
+document.addEventListener('DOMContentLoaded', () => {
+  const cards = document.querySelectorAll('[id^="card-"]');
+  if (cards.length === 1) {
+    openGap(cards[0].id.replace('card-', ''));
+  }
+});
+</script>

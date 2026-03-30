@@ -215,6 +215,10 @@
 <span class="material-symbols-outlined" data-icon="analytics">analytics</span>
                 Analytics
             </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+                Voice Calls
+            </a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
 <span class="material-symbols-outlined" data-icon="hub">hub</span>
                 Workflow Center
@@ -560,6 +564,73 @@
     <p style="font-size:0.85rem;color:var(--text-3)">
       Subscribe to the <strong>SMS</strong> or <strong>Pro</strong> plan to enable Twilio SMS.
       <a href="/billing">View plans →</a>
+    </p>
+    {% endif %}
+  </div>
+
+  <!-- ── Voice AI Calling ───────────────────────────────────────── -->
+  <div class="channel-section" style="margin-top:1.5rem">
+    <div class="channel-header">
+      <span class="channel-title">📞 Voice AI — Phone Support</span>
+      {% if tenant.voice_enabled %}
+        <span class="active-badge">Enabled</span>
+      {% else %}
+        <span style="font-size:0.75rem;color:var(--text-3)">Disabled</span>
+      {% endif %}
+    </div>
+    <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">
+      AI answers guest phone calls 24/7 using your property info. Uses Twilio + Deepgram + ElevenLabs.
+    </p>
+    <div class="form-row">
+      <div>
+        <label>Enable Voice AI</label>
+        <select name="voice_enabled">
+          <option value="false" {% if not tenant.voice_enabled %}selected{% endif %}>Disabled</option>
+          <option value="true" {% if tenant.voice_enabled %}selected{% endif %}>Enabled</option>
+        </select>
+      </div>
+      <div>
+        <label>Voice Phone Number (Twilio)</label>
+        <input type="text" name="voice_phone_number" value="{{ tenant.voice_phone_number or '' }}" placeholder="+15550001234">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:0.75rem">
+      <div>
+        <label>Send Info During Call Via</label>
+        <select name="voice_send_channel">
+          <option value="disabled" {% if (cfg.voice_send_channel or 'disabled') == 'disabled' %}selected{% endif %}>Disabled (don't send)</option>
+          <option value="sms" {% if cfg.voice_send_channel == 'sms' %}selected{% endif %}>SMS (Twilio)</option>
+          <option value="whatsapp" {% if cfg.voice_send_channel == 'whatsapp' %}selected{% endif %}>WhatsApp</option>
+        </select>
+        <small style="color:var(--text-3)">If guest says "send me the WiFi password" etc. during a call, we'll text it to them.</small>
+      </div>
+      <div>
+        <label>Post-call Summary</label>
+        <select name="voice_post_call_summary">
+          <option value="false" {% if not cfg.voice_post_call_summary %}selected{% endif %}>Disabled</option>
+          <option value="true" {% if cfg.voice_post_call_summary %}selected{% endif %}>Send to host after each call</option>
+        </select>
+        <small style="color:var(--text-3)">SMS you a transcript + sentiment after every call ends.</small>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:0.5rem">
+      <div>
+        <label>Scheduled Pre-checkin Calls</label>
+        <select name="voice_scheduled_calls_enabled">
+          <option value="false" {% if not cfg.voice_scheduled_calls_enabled %}selected{% endif %}>Disabled</option>
+          <option value="true" {% if cfg.voice_scheduled_calls_enabled %}selected{% endif %}>Auto-call guests 24h before check-in</option>
+        </select>
+        <small style="color:var(--text-3)">System calls guests the day before arrival with a reminder. Runs at 9 AM UTC daily.</small>
+      </div>
+    </div>
+    {% if tenant.voice_enabled %}
+    <label style="margin-top:0.75rem;display:block">Twilio Webhook URL (for incoming calls)</label>
+    <div class="copy-box">
+      <input type="text" readonly value="{{ app_base_url }}/api/calls/incoming" id="voice-webhook-url">
+      <button type="button" class="btn btn-outline copy-btn" data-target="voice-webhook-url">Copy</button>
+    </div>
+    <p class="help-text">
+      Twilio Console → Phone Numbers → your number → Voice → Webhook URL (HTTP POST).
     </p>
     {% endif %}
   </div>

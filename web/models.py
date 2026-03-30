@@ -95,6 +95,10 @@ class Tenant(Base):
     phone:        Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     country:      Mapped[Optional[str]] = mapped_column(String(2), nullable=True)
 
+    # Voice calling
+    voice_enabled:     Mapped[bool]           = mapped_column(Boolean, default=False)
+    voice_phone_number: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+
     # Email verification
     email_verified:      Mapped[bool]           = mapped_column(Boolean, default=False)
     verification_token:  Mapped[Optional[str]]  = mapped_column(String(128), nullable=True, index=True)
@@ -117,6 +121,7 @@ class Tenant(Base):
     kpi_snapshots:  Mapped[list["TenantKpiSnapshot"]] = relationship("TenantKpiSnapshot", back_populates="tenant")
     intake_batches: Mapped[list["ReservationIntakeBatch"]] = relationship("ReservationIntakeBatch", back_populates="tenant")
     guest_contacts: Mapped[list["GuestContact"]]  = relationship("GuestContact", back_populates="tenant")
+    voice_calls:    Mapped[list["VoiceCall"]]     = relationship("VoiceCall", back_populates="tenant")
 
 
 # ---------------------------------------------------------------------------
@@ -189,6 +194,11 @@ class TenantConfig(Base):
     twilio_auth_token_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # encrypted
     twilio_from_number:    Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     sms_notify_number:     Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+
+    # Voice AI — in-call send + post-call options
+    voice_send_channel:           Mapped[str]           = mapped_column(String(16), default="disabled")  # disabled | sms | whatsapp
+    voice_post_call_summary:      Mapped[bool]          = mapped_column(Boolean, default=False)
+    voice_scheduled_calls_enabled: Mapped[bool]         = mapped_column(Boolean, default=False)
 
     # Host notifications on guest messages
     notify_host_on_guest_msg: Mapped[bool]           = mapped_column(Boolean, default=False)
@@ -467,6 +477,7 @@ class GuestContact(Base):
 
     reservation: Mapped[Optional["Reservation"]] = relationship("Reservation", back_populates="guest_contacts")
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="guest_contacts")
+    voice_calls: Mapped[list["VoiceCall"]] = relationship("VoiceCall", back_populates="guest_contact")
 
 
 # ---------------------------------------------------------------------------
@@ -745,3 +756,78 @@ class TenantKpiSnapshot(Base):
     created_at:         Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="kpi_snapshots")
+
+
+# ---------------------------------------------------------------------------
+# VoiceCall — incoming and outbound voice calls via Twilio
+# ---------------------------------------------------------------------------
+
+class VoiceCall(Base):
+    __tablename__ = "voice_calls"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    guest_contact_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("guest_contacts.id"), nullable=True, index=True)
+
+    # Twilio info
+    twilio_call_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    twilio_phone_number: Mapped[str] = mapped_column(String(32))
+    guest_phone_number: Mapped[str] = mapped_column(String(32), index=True)
+
+    # Call details
+    call_type: Mapped[str] = mapped_column(String(16))  # incoming / outbound
+    status: Mapped[str] = mapped_column(String(32), default="ringing", index=True)  # ringing / answered / completed / failed
+
+    # Conversation history (JSON arrays)
+    guest_messages: Mapped[list] = mapped_column(JSON, default=list)
+    ai_responses: Mapped[list] = mapped_column(JSON, default=list)
+
+    # Analytics
+    full_transcript: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    confidence_avg: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    sentiment: Mapped[Optional[str]] = mapped_column(String(16), nullable=True, index=True)
+    duration_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    recording_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="voice_calls")
+    guest_contact: Mapped[Optional["GuestContact"]] = relationship("GuestContact", back_populates="voice_calls")
+    knowledge_gaps: Mapped[list["VoiceKnowledgeGap"]] = relationship("VoiceKnowledgeGap", back_populates="call", cascade="all, delete-orphan")
+
+
+# ---------------------------------------------------------------------------
+# VoiceKnowledgeGap — questions the AI couldn't answer; host can fill in
+# ---------------------------------------------------------------------------
+
+class VoiceKnowledgeGap(Base):
+    __tablename__ = "voice_knowledge_gaps"
+
+    id:          Mapped[str]           = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    call_id:     Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("voice_calls.id"), nullable=True, index=True)
+
+    # Guest who asked (copied from voice_call at creation time for easy access)
+    guest_phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    guest_name:  Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    guest_room:  Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
+    question:    Mapped[str]           = mapped_column(Text)
+    host_answer: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    saved_to:    Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    resolved:    Mapped[bool]          = mapped_column(Boolean, default=False, index=True)
+
+    # Reply back to guest
+    reply_sent:    Mapped[bool]               = mapped_column(Boolean, default=False)
+    reply_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    reply_channel: Mapped[Optional[str]]      = mapped_column(String(16), nullable=True)  # sms | whatsapp
+
+    alerted_at:  Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at:  Mapped[datetime]           = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    call:   Mapped[Optional["VoiceCall"]] = relationship("VoiceCall", back_populates="knowledge_gaps")
+    tenant: Mapped["Tenant"]              = relationship("Tenant")

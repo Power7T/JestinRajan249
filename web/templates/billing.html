@@ -194,6 +194,10 @@
 <span class="material-symbols-outlined" data-icon="analytics">analytics</span>
                 Analytics
             </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+                Voice Calls
+            </a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
 <span class="material-symbols-outlined" data-icon="hub">hub</span>
                 Workflow Center

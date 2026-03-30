@@ -40,6 +40,12 @@ stripe>=9.0.0,<10.0.0
 # SMS (Twilio)
 twilio>=9.0.0,<10.0.0
 
+# Voice (Speech-to-Text, Text-to-Speech, Audio Storage)
+deepgram-sdk>=3.0.0,<4.0.0
+elevenlabs>=0.2.0,<1.0.0
+boto3>=1.28.0,<2.0.0
+httpx>=0.24.0,<1.0.0
+
 # Redis (shared state: rate limiting, Baileys queue)
 redis>=5.0.0,<6.0.0
 
