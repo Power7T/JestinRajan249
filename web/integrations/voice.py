@@ -53,15 +53,20 @@ class VoiceAIService:
     @staticmethod
     async def transcribe_audio(audio_url: str) -> tuple[str, float]:
         """
-        Transcribe audio from URL using Deepgram STT.
+        Transcribe audio from URL using Deepgram STT with timeout protection.
         Returns (transcribed_text, confidence_score).
         In MOCK_MODE returns demo text.
+
+        Timeout: 8 seconds (Deepgram should respond within this)
+        Fallback on timeout: ("", 0.0) — guest message marked as "[audio unclear]"
         """
+        import asyncio
+
         if MOCK_MODE:
             logger.info(f"[MOCK] Transcribing audio from {audio_url}")
             return "What time can I check in?", 0.95
 
-        try:
+        async def _call_deepgram():
             async with httpx.AsyncClient(timeout=30) as client:
                 audio_resp = await client.get(audio_url)
                 response = await client.post(
@@ -85,6 +90,14 @@ class VoiceAIService:
                         return alt.get("transcript", ""), alt.get("confidence", 0.8)
                 logger.error(f"Deepgram error: {response.status_code} {response.text}")
                 return "", 0.0
+
+        try:
+            # Hard timeout: 8 seconds for Deepgram
+            result = await asyncio.wait_for(_call_deepgram(), timeout=8.0)
+            return result
+        except asyncio.TimeoutError:
+            logger.error(f"[TIMEOUT] Deepgram transcription exceeded 8s timeout")
+            return "", 0.0  # Fallback: no transcription
         except Exception as e:
             logger.error(f"Deepgram transcription error: {e}")
             return "", 0.0
@@ -245,38 +258,51 @@ or when sending info:
 or when you don't know:
 {{"voice": "I don't have that info right now, but I'll let the host know so they can update their listing.", "send": null, "unknown": true, "unanswered_question": "<the specific question the guest asked>"}}"""
 
+            import asyncio
+
             messages = []
             for i, msg in enumerate(conversation_history[-6:]):
                 role = "user" if i % 2 == 0 else "assistant"
                 messages.append({"role": role, "content": msg["text"]})
             messages.append({"role": "user", "content": guest_message})
 
-            async with httpx.AsyncClient(timeout=20) as client:
-                resp = await client.post(
-                    "https://api.openai.com/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {VoiceAIService.OPENAI_API_KEY}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": "gpt-4o-mini",
-                        "messages": [{"role": "system", "content": system_prompt}] + messages,
-                        "temperature": 0.7,
-                        "max_tokens": 300,
-                        "response_format": {"type": "json_object"},
-                    },
-                )
+            async def _call_openai():
+                async with httpx.AsyncClient(timeout=20) as client:
+                    resp = await client.post(
+                        "https://api.openai.com/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {VoiceAIService.OPENAI_API_KEY}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": "gpt-4o-mini",
+                            "messages": [{"role": "system", "content": system_prompt}] + messages,
+                            "temperature": 0.7,
+                            "max_tokens": 300,
+                            "response_format": {"type": "json_object"},
+                        },
+                    )
 
-            if resp.status_code != 200:
-                logger.error(f"OpenAI error: {resp.status_code} {resp.text}")
-                return "Sorry, I couldn't understand that. Could you repeat?", None
+                if resp.status_code != 200:
+                    logger.error(f"OpenAI error: {resp.status_code} {resp.text}")
+                    return None
 
-            raw = resp.json()["choices"][0]["message"]["content"]
-            data = json.loads(raw)
-            voice_text          = data.get("voice", "Sorry, I couldn't process that.")
-            send_action         = data.get("send")          # None | {"type", "content"}
-            unanswered_question = data.get("unanswered_question") if data.get("unknown") else None
-            return voice_text, send_action, unanswered_question
+                raw = resp.json()["choices"][0]["message"]["content"]
+                data = json.loads(raw)
+                voice_text          = data.get("voice", "Sorry, I couldn't process that.")
+                send_action         = data.get("send")          # None | {"type", "content"}
+                unanswered_question = data.get("unanswered_question") if data.get("unknown") else None
+                return (voice_text, send_action, unanswered_question)
+
+            try:
+                # Hard timeout: 6 seconds for OpenAI
+                result = await asyncio.wait_for(_call_openai(), timeout=6.0)
+                if result:
+                    return result
+                return "Sorry, I couldn't understand that. Could you repeat?", None, None
+            except asyncio.TimeoutError:
+                logger.error(f"[TIMEOUT] OpenAI generation exceeded 6s timeout")
+                return "Sorry, I'm having trouble understanding. Could you repeat that?", None, None
 
         except json.JSONDecodeError:
             try:
@@ -297,18 +323,23 @@ or when you don't know:
     @staticmethod
     async def synthesize_speech(text: str, voice_id: Optional[str] = None) -> tuple[bytes, str]:
         """
-        Convert text to speech using ElevenLabs.
+        Convert text to speech using ElevenLabs with timeout protection.
         Returns (audio_bytes, audio_url).
         In MOCK_MODE returns dummy bytes and mock URL.
         voice_id: optional voice ID (defaults to class ELEVENLABS_VOICE_ID)
+
+        Timeout: 5 seconds for ElevenLabs TTS
+        Fallback on timeout: (b"", "") — no audio, guest won't hear response
         """
+        import asyncio
+
         if MOCK_MODE:
             logger.info(f"[MOCK] Synthesizing speech: {text[:60]}")
             dummy_mp3 = b"ID3\x04\x00\x00\x00\x00\x00\x00"
             mock_url = f"https://mock-r2.example.com/voice_{uuid.uuid4()}.mp3"
             return dummy_mp3, mock_url
 
-        try:
+        async def _call_elevenlabs():
             vid = voice_id or VoiceAIService.ELEVENLABS_VOICE_ID
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
@@ -329,6 +360,14 @@ or when you don't know:
                     return audio_bytes, url
                 logger.error(f"ElevenLabs error: {response.status_code} {response.text}")
                 return b"", ""
+
+        try:
+            # Hard timeout: 5 seconds for ElevenLabs TTS
+            result = await asyncio.wait_for(_call_elevenlabs(), timeout=5.0)
+            return result
+        except asyncio.TimeoutError:
+            logger.error(f"[TIMEOUT] ElevenLabs TTS exceeded 5s timeout")
+            return b"", ""  # Fallback: no audio
         except Exception as e:
             logger.error(f"ElevenLabs TTS error: {e}")
             return b"", ""
