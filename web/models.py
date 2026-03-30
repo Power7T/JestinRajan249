@@ -364,22 +364,6 @@ class ActivityLog(Base):
 # ApiUsageLog — tracks LLM token usage and estimated cost
 # ---------------------------------------------------------------------------
 
-class ApiUsageLog(Base):
-    __tablename__ = "api_usage_logs"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("tenants.id"), index=True, nullable=True)
-    model: Mapped[str] = mapped_column(String(100))
-    provider: Mapped[str] = mapped_column(String(50)) 
-    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
-    feature: Mapped[str] = mapped_column(String(50))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
-
-    tenant: Mapped[Optional["Tenant"]] = relationship("Tenant")
-
-
 # ---------------------------------------------------------------------------
 # Reservation — imported from Airbnb CSV (one row per booking per tenant)
 # ---------------------------------------------------------------------------
