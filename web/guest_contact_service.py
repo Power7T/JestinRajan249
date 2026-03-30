@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from web.models import GuestContact, TenantConfig, Reservation
+from web.phone_utils import normalize_phone
 from web import logger
 
 log = logger.get_logger(__name__)
@@ -26,21 +27,27 @@ async def create_guest_contact(
 ) -> GuestContact:
     """Create a guest contact and send welcome messages."""
 
+    # Normalize phone number to E.164 format
+    normalized_phone = normalize_phone(guest_phone)
+    if not normalized_phone:
+        log.warning(f"[{tenant_id}] Invalid phone number: {guest_phone}")
+        normalized_phone = guest_phone  # Fall back to original if normalization fails
+
     # Auto-link to Reservation if phone matches and no reservation_id provided
-    if not reservation_id and guest_phone:
+    if not reservation_id and normalized_phone:
         matching_reservation = db.query(Reservation).filter(
             Reservation.tenant_id == tenant_id,
-            Reservation.guest_phone == guest_phone,
+            Reservation.guest_phone == normalized_phone,
             Reservation.status == "confirmed",
         ).first()
         if matching_reservation:
             reservation_id = matching_reservation.id
-            log.info(f"[{tenant_id}] Auto-linked guest contact {guest_phone} to reservation {reservation_id}")
+            log.info(f"[{tenant_id}] Auto-linked guest contact {normalized_phone} to reservation {reservation_id}")
 
     guest_contact = GuestContact(
         tenant_id=tenant_id,
         guest_name=guest_name,
-        guest_phone=guest_phone,
+        guest_phone=normalized_phone,
         check_in=check_in,
         check_out=check_out,
         property_name=property_name,
@@ -226,13 +233,18 @@ def is_guest_whitelisted(
 ) -> bool:
     """Check if guest phone is whitelisted (has active guest contact)."""
 
+    # Normalize phone number for consistent matching
+    normalized_phone = normalize_phone(guest_phone)
+    if not normalized_phone:
+        return False
+
     now = datetime.now(timezone.utc)
 
     guest_contact = (
         db.query(GuestContact)
         .filter(
             GuestContact.tenant_id == tenant_id,
-            GuestContact.guest_phone == guest_phone,
+            GuestContact.guest_phone == normalized_phone,
             GuestContact.status == "active",
             GuestContact.check_in <= now,
             GuestContact.check_out >= now,
@@ -250,13 +262,18 @@ def get_guest_contact_for_phone(
 ) -> GuestContact:
     """Get active guest contact for a phone number."""
 
+    # Normalize phone number for consistent matching
+    normalized_phone = normalize_phone(guest_phone)
+    if not normalized_phone:
+        return None
+
     now = datetime.now(timezone.utc)
 
     return (
         db.query(GuestContact)
         .filter(
             GuestContact.tenant_id == tenant_id,
-            GuestContact.guest_phone == guest_phone,
+            GuestContact.guest_phone == normalized_phone,
             GuestContact.status == "active",
             GuestContact.check_in <= now,
             GuestContact.check_out >= now,

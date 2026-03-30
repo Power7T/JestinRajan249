@@ -36,6 +36,7 @@ Routes:
   GET  /api/workers   → worker status JSON
 """
 
+import asyncio
 import base64
 import csv
 import hashlib
@@ -116,6 +117,15 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from web.metrics_prom import REQUEST_COUNT, REQUEST_DURATION, normalize_path
 from web.flags import flags, require_flag
+
+# SaaS reliability features
+from web.phone_utils import normalize_phone, phones_match
+from web.idempotency import check_idempotency, store_idempotency_result
+from web.rate_limiter import check_rate_limit, increment_rate_limit
+from web.cost_tracker import log_api_usage, estimate_cost
+from web.timeout_handler import call_with_timeout, TimeoutConfig, FALLBACKS
+from web.call_consent import get_consent_prompt, handle_consent_response, should_record_call
+from web.feature_flags import is_feature_enabled
 
 # Global context var for Request ID tracking (#18)
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
@@ -8061,6 +8071,7 @@ def _create_voice_ticket(tenant_id: str, knowledge_gap: VoiceKnowledgeGap, db: S
 async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
     """
     Handle incoming Twilio call — greet guest by name if recognised.
+    Includes: idempotency, rate limiting, phone normalization, consent flow.
     """
     try:
         form_data = await request.form()
@@ -8069,6 +8080,14 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         to_number   = form_data.get("To", "")
 
         log.info(f"[VOICE] Incoming call from {from_number} to {to_number}, CallSid={call_sid}")
+
+        # ── Idempotency check: prevent duplicate processing of webhook retries
+        idempotency_check = check_idempotency(
+            db, "", call_sid, "voice.incoming_call"
+        )
+        if idempotency_check["is_duplicate"]:
+            log.info(f"[VOICE] Duplicate call detected: {call_sid}")
+            return _voice_twiml_error("Call already processed.")
 
         # Find tenant that owns this Twilio number (for voice calls)
         tenant = (
@@ -8080,13 +8099,25 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         if not tenant or not tenant.voice_enabled:
             return _voice_twiml_error("Sorry, this number is not configured for voice support.")
 
+        # ── Rate limiting: check if tenant exceeded call limits
+        rate_limit_check = check_rate_limit(db, tenant.id, "voice_calls")
+        if not rate_limit_check["allowed"]:
+            log.warning(f"[VOICE] Rate limit exceeded for {tenant.id}: {rate_limit_check['reason']}")
+            return _voice_twiml_error("Service temporarily unavailable. Please try again later.")
+        increment_rate_limit(db, tenant.id, "voice_calls")
+
+        # ── Normalize phone numbers for consistent matching
+        normalized_from = normalize_phone(from_number)
+        if not normalized_from:
+            normalized_from = from_number
+
         # Try to identify the guest from GuestContact (current stay only)
         now = datetime.now(timezone.utc)
         guest_contact = (
             db.query(GuestContact)
             .filter(
                 GuestContact.tenant_id == tenant.id,
-                GuestContact.guest_phone == from_number,
+                GuestContact.guest_phone == normalized_from,
                 GuestContact.status.in_(["active", "pending"]),
                 GuestContact.check_in <= now + timedelta(days=1),
                 GuestContact.check_out >= now,
@@ -8102,7 +8133,7 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
                 db.query(Reservation)
                 .filter(
                     Reservation.tenant_id == tenant.id,
-                    Reservation.guest_phone == from_number,
+                    Reservation.guest_phone == normalized_from,
                     Reservation.status == "confirmed",
                     Reservation.checkin <= (now + timedelta(days=1)).date(),
                     Reservation.checkout >= now.date(),
@@ -8119,7 +8150,7 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
             reservation_id=reservation.id if reservation else None,
             twilio_call_id=call_sid,
             twilio_phone_number=to_number,
-            guest_phone_number=from_number,
+            guest_phone_number=normalized_from,  # Store normalized phone
             call_type="incoming",
             status="ringing",
             created_at=datetime.now(timezone.utc),
@@ -8127,6 +8158,13 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         db.add(voice_call)
         db.commit()
         db.refresh(voice_call)
+
+        # Store idempotency result for future webhook retries
+        store_idempotency_result(
+            db, tenant.id, call_sid, "voice.incoming_call",
+            status="success",
+            result_data={"voice_call_id": voice_call.id}
+        )
 
         property_name = (tenant.config.property_names or "our property") if tenant.config else "our property"
         guest_name_for_greeting = None
