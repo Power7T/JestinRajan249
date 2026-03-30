@@ -8219,6 +8219,17 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
         guest_message, confidence = await VoiceAIService.transcribe_audio(recording_url)
         log.info(f"[VOICE] Transcribed: '{guest_message}' (conf={confidence:.2f})")
 
+        # Log Deepgram cost (approximately 1 minute = $0.0043)
+        deepgram_cost = estimate_cost("deepgram", "transcribe", duration_seconds=60)
+        log_api_usage(
+            db, voice_call.tenant_id, "deepgram", "transcribe",
+            cost_usd=deepgram_cost,
+            duration_seconds=60,
+            call_id=call_id,
+            status="success" if guest_message else "partial"
+        )
+        increment_rate_limit(db, voice_call.tenant_id, "daily_cost", deepgram_cost)
+
         if not guest_message:
             from twilio.twiml.voice_response import VoiceResponse
             r = VoiceResponse()
@@ -8363,6 +8374,26 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
         )
         log.info(f"[VOICE] Response: '{ai_text[:80]}' | send={send_action} | gap={unanswered_question}")
 
+        # Estimate OpenAI cost (gpt-4o-mini with context)
+        # Rough estimate: ~400 tokens input + 150 tokens output per call
+        estimated_input_tokens = 400
+        estimated_output_tokens = 150
+        openai_cost = estimate_cost(
+            "openai", "generate_response",
+            input_tokens=estimated_input_tokens,
+            output_tokens=estimated_output_tokens,
+            model="gpt-4o-mini"
+        )
+        log_api_usage(
+            db, voice_call.tenant_id, "openai", "generate_response",
+            cost_usd=openai_cost,
+            input_tokens=estimated_input_tokens,
+            output_tokens=estimated_output_tokens,
+            call_id=call_id,
+            status="success"
+        )
+        increment_rate_limit(db, voice_call.tenant_id, "daily_cost", openai_cost)
+
         voice_call.ai_responses = list(voice_call.ai_responses or [])
         voice_call.ai_responses.append({
             "text": ai_text,
@@ -8401,6 +8432,20 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
         # ── Step 6: Synthesize AI reply to audio ─────────────────────────────
         voice_id = cfg.voice_elevenlabs_voice_id if cfg else None
         audio_bytes, audio_url = await VoiceAIService.synthesize_speech(ai_text, voice_id=voice_id)
+
+        # Log ElevenLabs cost (roughly $0.0003 per character)
+        elevenlabs_cost = estimate_cost(
+            "elevenlabs", "synthesize",
+            characters=len(ai_text)
+        )
+        log_api_usage(
+            db, voice_call.tenant_id, "elevenlabs", "synthesize",
+            cost_usd=elevenlabs_cost,
+            characters=len(ai_text),
+            call_id=call_id,
+            status="success" if audio_url else "failed"
+        )
+        increment_rate_limit(db, voice_call.tenant_id, "daily_cost", elevenlabs_cost)
 
         # Update running confidence average
         prev_avg = voice_call.confidence_avg or confidence
