@@ -332,7 +332,7 @@ def _voice_scheduled_calls_job():
                 )
                 try:
                     # Synthesize reminder message to speech
-                    audio_bytes, s3_url = await VoiceAIService.synthesize_speech(message)
+                    audio_bytes, s3_url = asyncio.run(VoiceAIService.synthesize_speech(message))
                     if not s3_url:
                         log.warning(f"[VOICE] Failed to synthesize audio for {guest.guest_name}")
                         continue
