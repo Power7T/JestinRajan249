@@ -264,11 +264,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         nonce = secrets.token_urlsafe(16)
         request.state.csp_nonce = nonce
-        
+
         response = await call_next(request)
         h = response.headers
         h["X-Content-Type-Options"]  = "nosniff"
-        h["X-Frame-Options"]          = "DENY"
+
+        # HIGH severity fix #7: X-Frame-Options for clickjacking protection
+        # Allow guest portal (/checkin) to be embedded in iframes, deny everything else
+        if request.url.path.startswith("/checkin/"):
+            h["X-Frame-Options"] = "SAMEORIGIN"  # Allow embedding in same-origin contexts
+        else:
+            h["X-Frame-Options"] = "DENY"  # Prevent all framing for authenticated pages
+
         h["X-XSS-Protection"]         = "0"        # Deprecated; CSP handles this
         h["Referrer-Policy"]          = "strict-origin-when-cross-origin"
         h["Permissions-Policy"]       = "geolocation=(), microphone=(), camera=()"

@@ -648,6 +648,73 @@ def _tenant_inbound_email_address(cfg: TenantConfig) -> str:
     return f"{alias}@{INBOUND_EMAIL_DOMAIN}" if alias else ""
 
 
+# ---------------------------------------------------------------------------
+# Security Utilities (CRITICAL/HIGH severity fixes)
+# ---------------------------------------------------------------------------
+
+def _mask_token(token: str, keep_chars: int = 4) -> str:
+    """Mask sensitive tokens in logs (CRITICAL severity fix #3)."""
+    if not token or len(token) <= keep_chars:
+        return "***"
+    return token[:keep_chars] + "*" * (len(token) - keep_chars)
+
+
+def _require_tenant_access(tenant_id: str, accessed_tenant_id: str, action: str = "access") -> None:
+    """
+    Validate that the current tenant can access another resource (CRITICAL severity fix #1).
+    Raises 403 if tenant_id doesn't own accessed_tenant_id.
+    """
+    if tenant_id != accessed_tenant_id:
+        log.warning(f"[SECURITY] Tenant isolation bypass attempt: {tenant_id} tried to {action} {accessed_tenant_id}")
+        raise HTTPException(status_code=403, detail="Access denied")
+
+
+def _require_admin_role(member_role: str, action: str = "perform admin action") -> None:
+    """
+    Validate that member has admin or owner role (CRITICAL severity fix #5).
+    Raises 403 if not authorized.
+    """
+    if member_role not in ("owner", "admin"):
+        log.warning(f"[SECURITY] Unauthorized admin attempt: role={member_role}, action={action}")
+        raise HTTPException(status_code=403, detail="Only admins can perform this action")
+
+
+def _audit_log_action(
+    db: Session,
+    tenant_id: str,
+    actor_email: str,
+    action: str,
+    resource_id: Optional[str] = None,
+    details: Optional[str] = None,
+) -> None:
+    """
+    Log administrative or sensitive actions for auditing (HIGH severity fix #10).
+    """
+    try:
+        db.add(ActivityLog(
+            tenant_id=tenant_id,
+            event_type=f"security_audit:{action}",
+            actor_email=actor_email,
+            message=f"{action.replace('_', ' ').title()}" + (f" {resource_id}" if resource_id else ""),
+            details=details,
+            created_at=datetime.now(timezone.utc),
+        ))
+        db.commit()
+        log.info(f"[AUDIT] {tenant_id} | {actor_email} | {action}")
+    except Exception as e:
+        log.error(f"[AUDIT] Failed to log action {action}: {e}")
+
+
+def _extract_property_whitelist(cfg: TenantConfig) -> set[str]:
+    """
+    Extract allowed property names for tenant (CRITICAL severity fix #1).
+    Validates query parameters against this set.
+    """
+    if not cfg or not cfg.property_names:
+        return set()
+    return set(p.strip() for p in cfg.property_names.split(",") if p.strip())
+
+
 def _extract_recipient_alias(recipient: str) -> str:
     if not recipient:
         return ""
@@ -1050,25 +1117,36 @@ def login_post(
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
+    # CRITICAL severity fix #2: Rate limit login attempts
     rate_limit(f"login:{client_ip(request)}", max_requests=10, window_seconds=900)
     validate_csrf(request, csrf_token)
     tenant = db.query(Tenant).filter_by(email=email.lower().strip()).first()
     if not tenant or not tenant.is_active or not verify_password(password, tenant.password_hash):
+        # HIGH severity fix #10: Track failed login attempts for audit
+        if tenant:
+            _audit_log_action(db, tenant.id, email, "failed_login_attempt")
         return templates.TemplateResponse("login.html",
                                           {"request": request, "error": "Invalid email or password"})
+
     token = create_token(tenant.id, tenant_session_version(tenant))
     is_secure = is_request_secure(request)
+
+    # MEDIUM severity fix #13: Use consistent TOKEN_HOURS for session cookie
+    from web.auth import TOKEN_HOURS
     # Resume onboarding if not yet complete
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant.id).first()
-    
+
     if tenant.email.lower().strip() in _ADMIN_EMAILS:
         redirect_to = "/admin"
     else:
         redirect_to = "/dashboard"
-        
+
+    # HIGH severity fix #10: Audit successful login
+    _audit_log_action(db, tenant.id, email, "login_success")
+
     resp = RedirectResponse(redirect_to, status_code=303)
     resp.set_cookie("session", token, httponly=True,
-                    samesite="strict", secure=is_secure, max_age=72 * 3600)
+                    samesite="strict", secure=is_secure, max_age=TOKEN_HOURS * 3600)
     return resp
 
 
@@ -1096,15 +1174,20 @@ def signup_post(
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
+    # CRITICAL severity fix #2: Rate limit signup
     rate_limit(f"signup:{client_ip(request)}", max_requests=5, window_seconds=3600)
     validate_csrf(request, csrf_token)
     email = email.lower().strip()
     if db.query(Tenant).filter_by(email=email).first():
         return templates.TemplateResponse("signup.html",
                                           {"request": request, "error": "Email already registered"})
-    if len(password) < 8:
+
+    # MEDIUM severity fix #11: Validate password strength
+    from web.auth import validate_password_strength
+    is_valid, error_msg = validate_password_strength(password)
+    if not is_valid:
         return templates.TemplateResponse("signup.html",
-                                          {"request": request, "error": "Password must be 8+ characters"})
+                                          {"request": request, "error": error_msg})
     ver_token = secrets.token_urlsafe(32)
     tenant = Tenant(
         first_name=first_name.strip(),
@@ -1126,8 +1209,10 @@ def signup_post(
     token = create_token(tenant.id, tenant_session_version(tenant))
     is_secure = is_request_secure(request)
     resp = RedirectResponse("/onboarding", status_code=302)
+    # MEDIUM severity fix #13: Reduce session timeout from 72h to 2h (TOKEN_HOURS from auth.py)
+    from web.auth import TOKEN_HOURS
     resp.set_cookie("session", token, httponly=True,
-                    samesite="strict", secure=is_secure, max_age=72 * 3600)
+                    samesite="strict", secure=is_secure, max_age=TOKEN_HOURS * 3600)
     return resp
 
 
@@ -3370,6 +3455,9 @@ def billing_subscribe(plan_key: str, request: Request,
     except HTTPException:
         return _redirect_login()
     validate_csrf(request, csrf_token)
+
+    # HIGH severity fix #6: Rate limit Stripe checkout creation
+    rate_limit(f"checkout:{tenant_id}", max_requests=5, window_seconds=60)
 
     # Validate plan and units
     plan = db.query(PlanConfig).filter_by(plan_key=plan_key, is_active=True).first()
@@ -8302,7 +8390,10 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         return Response(str(response), media_type="application/xml")
 
     except Exception as e:
-        log.error(f"[VOICE] Error in handle_incoming_call: {e}\n{traceback.format_exc()}")
+        # CRITICAL severity fix #3: Don't expose stack traces in production logs
+        log.error(f"[VOICE] Error in handle_incoming_call: {type(e).__name__}")
+        if _ENVIRONMENT == "development":
+            log.debug(f"[VOICE] Full error: {traceback.format_exc()}")
         return _voice_twiml_error()
 
 
@@ -8642,7 +8733,10 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
         return Response(str(r), media_type="application/xml")
 
     except Exception as e:
-        log.error(f"[VOICE] Error in process_speech: {e}\n{traceback.format_exc()}")
+        # CRITICAL severity fix #3: Don't expose stack traces in production logs
+        log.error(f"[VOICE] Error in process_speech: {type(e).__name__}")
+        if _ENVIRONMENT == "development":
+            log.debug(f"[VOICE] Full error: {traceback.format_exc()}")
         return _voice_twiml_error("Sorry, something went wrong. Goodbye.")
 
 
@@ -8738,8 +8832,11 @@ async def handle_hangup(request: Request, db: Session = Depends(get_db)):
         return {"status": "logged"}
 
     except Exception as e:
-        log.error(f"[VOICE] Error in handle_hangup: {e}\n{traceback.format_exc()}")
-        return {"error": str(e)}
+        # CRITICAL severity fix #3: Don't expose stack traces in production logs
+        log.error(f"[VOICE] Error in handle_hangup: {type(e).__name__}")
+        if _ENVIRONMENT == "development":
+            log.debug(f"[VOICE] Full error: {traceback.format_exc()}")
+        return {"error": "An error occurred during hangup processing"}
 
 
 @app.post("/api/calls/rating")
@@ -8839,8 +8936,11 @@ async def send_outbound_voice(
         return {"call_id": call.sid, "status": "initiated"}
 
     except Exception as e:
-        log.error(f"[VOICE] Error in send_outbound_voice: {e}\n{traceback.format_exc()}")
-        return {"error": str(e)}, 500
+        # CRITICAL severity fix #3: Don't expose stack traces in production logs
+        log.error(f"[VOICE] Error in send_outbound_voice: {type(e).__name__}")
+        if _ENVIRONMENT == "development":
+            log.debug(f"[VOICE] Full error: {traceback.format_exc()}")
+        return {"error": "Failed to initiate outbound call"}, 500
 
 
 @app.get("/api/calls/outbound-twiml")
@@ -8981,9 +9081,12 @@ def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
 async def api_admin_set_rate_limits(request: Request, db: Session = Depends(get_db)):
     """Set rate limits for a tenant."""
     try:
-        _require_admin(request, db)
+        admin = _require_admin(request, db)
     except HTTPException:
         return JSONResponse({"error": "Admin access required"}, status_code=401)
+
+    # CRITICAL severity fix #2: Rate limit admin API access
+    rate_limit(f"admin-api:{admin.id}:rate-limits", max_requests=10, window_seconds=60)
 
     data = await request.json()
     tenant_id = data.get("tenant_id")
@@ -8992,6 +9095,12 @@ async def api_admin_set_rate_limits(request: Request, db: Session = Depends(get_
     daily_cost = data.get("max_daily_cost_usd", 50)
 
     try:
+        # CRITICAL severity fix #1: Validate tenant_id belongs to an actual tenant
+        target_tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+        if not target_tenant:
+            log.warning(f"[SECURITY] Admin {admin.email} attempted to set rate limits for non-existent tenant {tenant_id}")
+            return JSONResponse({"error": "Tenant not found"}, status_code=404)
+
         limit = db.query(TenantRateLimit).filter_by(tenant_id=tenant_id).first()
         if not limit:
             limit = TenantRateLimit(
@@ -9007,20 +9116,32 @@ async def api_admin_set_rate_limits(request: Request, db: Session = Depends(get_
             limit.max_daily_cost_usd = daily_cost
 
         db.commit()
+
+        # HIGH severity fix #10: Audit log this action
+        _audit_log_action(
+            db, admin.id, admin.email, "admin_rate_limits_changed",
+            resource_id=tenant_id,
+            details=f"Voice: {voice_calls}/h, API: {api_calls}/h, Daily cost: ${daily_cost}"
+        )
+
         return JSONResponse({"message": "Rate limits updated successfully"})
     except Exception as e:
         db.rollback()
-        log.error(f"Error setting rate limits: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        # CRITICAL severity fix #3: Don't expose internal error details
+        log.error(f"Error setting rate limits for {tenant_id}: {type(e).__name__}")
+        return JSONResponse({"error": "Failed to update rate limits"}, status_code=500)
 
 
 @app.post("/api/admin/feature-flags/override")
 async def api_admin_feature_flag_override(request: Request, db: Session = Depends(get_db)):
     """Set per-tenant feature flag override."""
     try:
-        _require_admin(request, db)
+        admin = _require_admin(request, db)
     except HTTPException:
         return JSONResponse({"error": "Admin access required"}, status_code=401)
+
+    # CRITICAL severity fix #2: Rate limit admin API access
+    rate_limit(f"admin-api:{admin.id}:feature-flags", max_requests=10, window_seconds=60)
 
     data = await request.json()
     flag_name = data.get("flag_name")
@@ -9028,11 +9149,26 @@ async def api_admin_feature_flag_override(request: Request, db: Session = Depend
     enabled = data.get("enabled")
 
     try:
+        # CRITICAL severity fix #1: Validate tenant exists
+        target_tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+        if not target_tenant:
+            log.warning(f"[SECURITY] Admin {admin.email} attempted to override flag for non-existent tenant {tenant_id}")
+            return JSONResponse({"error": "Tenant not found"}, status_code=404)
+
         set_tenant_override(db, flag_name, tenant_id, enabled)
+
+        # HIGH severity fix #10: Audit log this action
+        _audit_log_action(
+            db, admin.id, admin.email, "admin_feature_flag_override",
+            resource_id=tenant_id,
+            details=f"Flag: {flag_name}, Enabled: {enabled}"
+        )
+
         return JSONResponse({"message": "Feature flag override set successfully"})
     except Exception as e:
-        log.error(f"Error setting flag override: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        # CRITICAL severity fix #3: Don't expose internal error details
+        log.error(f"Error setting flag override for {flag_name}/{tenant_id}: {type(e).__name__}")
+        return JSONResponse({"error": "Failed to set feature flag override"}, status_code=500)
 
 
 # ---------------------------------------------------------------------------

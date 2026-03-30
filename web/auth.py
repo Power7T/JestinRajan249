@@ -34,7 +34,14 @@ def _load_required_secret(name: str, placeholder: str) -> str:
 
 SECRET_KEY  = _load_required_secret("SECRET_KEY", "change-me-in-production-use-a-long-random-string")
 ALGORITHM   = "HS256"
-TOKEN_HOURS = int(os.getenv("SESSION_HOURS", "72"))
+TOKEN_HOURS = int(os.getenv("SESSION_HOURS", "2"))  # SECURITY: Reduced from 72h to 2h
+
+# Password complexity requirements (MEDIUM severity fix #11)
+MIN_PASSWORD_LENGTH = 12
+REQUIRE_UPPERCASE = True
+REQUIRE_LOWERCASE = True
+REQUIRE_DIGIT = True
+REQUIRE_SPECIAL = True
 
 # ---------------------------------------------------------------------------
 # Password
@@ -50,6 +57,29 @@ def verify_password(plain: str, hashed: str) -> bool:
     except ValueError:
         log.warning("Invalid password hash encountered during login verification")
         return False
+
+
+def validate_password_strength(pwd: str) -> tuple[bool, str]:
+    """
+    Validate password meets security requirements (MEDIUM severity fix #11).
+    Returns (is_valid, error_message).
+    """
+    if len(pwd) < MIN_PASSWORD_LENGTH:
+        return False, f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
+
+    if REQUIRE_UPPERCASE and not any(c.isupper() for c in pwd):
+        return False, "Password must contain at least one uppercase letter"
+
+    if REQUIRE_LOWERCASE and not any(c.islower() for c in pwd):
+        return False, "Password must contain at least one lowercase letter"
+
+    if REQUIRE_DIGIT and not any(c.isdigit() for c in pwd):
+        return False, "Password must contain at least one digit"
+
+    if REQUIRE_SPECIAL and not any(c in "!@#$%^&*()-_=+[]{}|;:,.<>?" for c in pwd):
+        return False, "Password must contain at least one special character (!@#$%^&*etc)"
+
+    return True, ""
 
 # ---------------------------------------------------------------------------
 # JWT
