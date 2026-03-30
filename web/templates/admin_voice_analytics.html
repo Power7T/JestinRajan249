@@ -34,18 +34,72 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 {%- block content %}
 <!-- Sidebar -->
 <aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col -translate-x-full md:translate-x-0 transition-transform duration-300 md:relative">
-  <nav class="flex-1 px-4 space-y-1 mt-6">
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200" href="/dashboard">
+  <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7 hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
+<span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
+</div>
+<span>HostAI</span>
+</a>
+  <nav class="flex-1 px-4 space-y-1">
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/dashboard">
       <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
     </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
+      <span class="material-symbols-outlined" data-icon="forum">forum</span> Conversations
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
+      <span class="material-symbols-outlined" data-icon="event_available">event_available</span> Reservations
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
+      <span class="material-symbols-outlined" data-icon="history">history</span> Activity
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
+      <span class="material-symbols-outlined" data-icon="analytics">analytics</span> Analytics
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+                Voice Calls
+            </a>
+      <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
+      <span class="material-symbols-outlined" data-icon="hub">hub</span> Workflow Center
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
+      <span class="material-symbols-outlined" data-icon="settings">settings</span> Settings
+    </a>
+    {% if is_admin(admin.email) %}
     <a class="flex items-center gap-3 px-6 py-3 text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold transition-all duration-200" href="/admin">
       <span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span> Admin Panel
     </a>
+    {% endif %}
   </nav>
+
+  <div class="p-6 border-t border-white/5">
+    <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
+      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+        {{ (admin.name or admin.email or 'H')[0]|upper }}
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-white text-sm font-bold truncate">{{ admin.name or admin.email.split('@')[0]|title }}</p>
+        <p class="text-slate-500 text-xs truncate">Admin Account</p>
+      </div>
+    </div>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-red-400 transition-colors text-xs font-bold uppercase tracking-widest py-2">
+        <span class="material-symbols-outlined text-sm">logout</span>Sign Out
+      </button>
+    </form>
+  </div>
 </aside>
 
 <!-- Main -->
 <main class="md:ml-[260px] pt-8 pb-12 px-4 md:px-8 min-h-screen relative">
+  <!-- Mobile hamburger menu -->
+  <button id="sidebar-toggle" class="md:hidden fixed top-4 left-4 z-40 p-2 text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all" onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full')">
+    <span class="material-symbols-outlined">menu</span>
+  </button>
+  <div class="absolute -top-48 -right-48 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
+  
   <div class="mb-10 pt-4">
     <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">Voice Analytics</h1>
     <p class="text-slate-400 text-sm">AI Call metrics and insights</p>
@@ -92,7 +146,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
               <span class="text-slate-300 capitalize">{{ sentiment }}</span>
               <span class="text-slate-400">{{ count }} calls</span>
             </div>
-            <div class="w-full bg-black/40 rounded-full h-2">
+            <div class="w-full bg-white/5 rounded-full h-2">
               {% set pct = (count / analytics_data.total_calls * 100) %}
               <div class="h-full rounded-full {% if sentiment == 'positive' %}bg-[#27c93f]{% elif sentiment == 'negative' %}bg-rose-500{% else %}bg-[#5B8DEF]{% endif %}" style="width: {{ pct }}%"></div>
             </div>
@@ -125,7 +179,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <h3 class="text-sm font-bold text-slate-300 mb-3">Top Rooms with Questions</h3>
       <div class="space-y-2">
         {% for room, count in analytics_data.knowledge_gaps.by_room.items() %}
-        <div class="flex justify-between items-center p-3 rounded-xl bg-black/20 border border-white/5">
+        <div class="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5">
           <span class="text-sm text-slate-300 font-medium">{{ room }}</span>
           <span class="text-xs font-bold text-slate-500 bg-white/5 px-2 py-1 rounded">{{ count }} gap(s)</span>
         </div>
