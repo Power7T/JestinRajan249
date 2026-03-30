@@ -1,7 +1,7 @@
 """Add signup fields to tenant table
 
 Revision ID: 20260326_0530
-Revises: 20260326_0520
+Revises: 20260325_0510
 Create Date: 2026-03-26 05:30:00.000000
 
 """
@@ -10,7 +10,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '20260326_0530'
-down_revision = '20260326_0520'
+down_revision = '20260325_0510'
 branch_labels = None
 depends_on = None
 
