@@ -8034,6 +8034,116 @@ def _detect_language(text: str) -> str:
     return "en"
 
 
+def _find_guest_by_name(tenant_id: str, name: str, db: Session) -> dict | None:
+    """
+    Search for guest by name (fuzzy match).
+    Checks GuestContact first, then falls back to Reservation.
+    Returns guest info dict with source, name, room, property, dates, etc.
+    """
+    if not name or len(name) < 2:
+        return None
+
+    now = datetime.now(timezone.utc)
+    name_pattern = f"%{name.strip()}%"
+
+    try:
+        # Search GuestContact first (higher priority)
+        gc = (
+            db.query(GuestContact)
+            .filter(
+                GuestContact.tenant_id == tenant_id,
+                GuestContact.guest_name.ilike(name_pattern),
+                GuestContact.status.in_(["active", "pending"]),
+                GuestContact.check_out >= now,
+            )
+            .first()
+        )
+
+        if gc:
+            return {
+                "source": "guest_contact",
+                "name": gc.guest_name,
+                "phone": gc.guest_phone,
+                "room": gc.room_identifier,
+                "property": gc.property_name,
+                "check_in": gc.check_in,
+                "check_out": gc.check_out,
+                "guest_contact_id": gc.id,
+            }
+
+        # Fallback to Reservation (from CSV imports, PMS syncs, or iCal)
+        res = (
+            db.query(Reservation)
+            .filter(
+                Reservation.tenant_id == tenant_id,
+                Reservation.guest_name.ilike(name_pattern),
+                Reservation.status == "confirmed",
+                Reservation.checkout >= now.date(),
+            )
+            .first()
+        )
+
+        if res:
+            return {
+                "source": "reservation",
+                "name": res.guest_name,
+                "phone": res.guest_phone,
+                "unit": res.unit_identifier,
+                "property": res.listing_name,
+                "confirmation": res.confirmation_code,
+                "check_in": res.checkin,
+                "check_out": res.checkout,
+                "reservation_id": res.id,
+            }
+
+        return None
+    except Exception as e:
+        log.error(f"[VOICE] Error searching guest by name '{name}': {e}")
+        return None
+
+
+def _find_guest_by_confirmation(tenant_id: str, code: str, db: Session) -> dict | None:
+    """
+    Search for guest by confirmation code (e.g., Airbnb confirmation or iCal UID).
+    Returns guest info dict if found.
+    """
+    if not code or len(code) < 2:
+        return None
+
+    try:
+        now = datetime.now(timezone.utc)
+        code_pattern = f"%{code.strip()}%"
+
+        # Search Reservation by confirmation_code
+        res = (
+            db.query(Reservation)
+            .filter(
+                Reservation.tenant_id == tenant_id,
+                Reservation.confirmation_code.ilike(code_pattern),
+                Reservation.status == "confirmed",
+            )
+            .first()
+        )
+
+        if res:
+            return {
+                "source": "confirmation",
+                "name": res.guest_name,
+                "phone": res.guest_phone,
+                "unit": res.unit_identifier,
+                "property": res.listing_name,
+                "confirmation": res.confirmation_code,
+                "check_in": res.checkin,
+                "check_out": res.checkout,
+                "reservation_id": res.id,
+            }
+
+        return None
+    except Exception as e:
+        log.error(f"[VOICE] Error searching guest by confirmation '{code}': {e}")
+        return None
+
+
 def _create_voice_ticket(tenant_id: str, knowledge_gap: VoiceKnowledgeGap, db: Session) -> Optional[int]:
     """
     Create an IssueTicket from a VoiceKnowledgeGap.
@@ -8265,6 +8375,54 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
                 Reservation.id == guest_contact.reservation_id
             ).first()
 
+        # Phase 2: Try name-based lookup if phone lookup failed
+        found_by_name = None
+        found_by_confirmation = None
+        if not guest_contact and not voice_call.reservation_id and guest_message:
+            # Extract potential name from first message (e.g., "Hi, I'm John" or "This is John")
+            msg_lower = guest_message.lower()
+            name_keywords = ["i'm", "i am", "this is", "my name is", "call me"]
+            extracted_name = None
+            for keyword in name_keywords:
+                if keyword in msg_lower:
+                    # Simple extraction: grab the word(s) after the keyword
+                    parts = msg_lower.split(keyword)
+                    if len(parts) > 1:
+                        # Get next 1-2 words after keyword
+                        remaining = parts[1].strip().rstrip('.,!?')
+                        words = remaining.split()[:2]
+                        if words:
+                            extracted_name = " ".join(words)
+                            break
+
+            # Try name lookup
+            if extracted_name and len(extracted_name) >= 2:
+                found_by_name = _find_guest_by_name(tenant.id, extracted_name, db)
+                if found_by_name:
+                    log.info(f"[VOICE] Found guest by name: {found_by_name['name']} (source={found_by_name['source']})")
+                    if found_by_name['source'] == 'guest_contact':
+                        guest_contact = db.query(GuestContact).filter(
+                            GuestContact.id == found_by_name['guest_contact_id']
+                        ).first()
+                    elif found_by_name['source'] == 'reservation':
+                        voice_call.reservation_id = found_by_name['reservation_id']
+
+        # Phase 3: Try confirmation-based lookup if name lookup also failed
+        if not guest_contact and not voice_call.reservation_id and guest_message and not found_by_name:
+            # Extract potential confirmation code (4-16 char alphanumeric token)
+            import re
+            tokens = re.findall(r'\b[A-Z0-9]{4,16}\b', guest_message.upper())
+            for token in tokens:
+                found_by_confirmation = _find_guest_by_confirmation(tenant.id, token, db)
+                if found_by_confirmation:
+                    log.info(f"[VOICE] Found guest by confirmation code: {found_by_confirmation['name']}")
+                    voice_call.reservation_id = found_by_confirmation['reservation_id']
+                    break
+
+        # Persist any updates to voice_call from name/confirmation lookup
+        if found_by_name or found_by_confirmation:
+            db.commit()
+
         tenant_config_dict = {
             "property_type":        cfg.property_type        if cfg else "property",
             "property_city":        cfg.property_city        if cfg else "",
@@ -8319,7 +8477,7 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
                 if res.listing_name:
                     tenant_config_dict["guest_property"] = res.listing_name
 
-        guest_name = guest_contact.guest_name if guest_contact else None
+        guest_name = guest_contact.guest_name if guest_contact else (found_by_name.get('name') if found_by_name else (found_by_confirmation.get('name') if found_by_confirmation else None))
 
         # ── Step 2b: Add conversation history and guest email ─────────────────
         call_history = _get_guest_call_history(tenant.id, voice_call.guest_phone_number, db)
@@ -8331,6 +8489,17 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
             voice_call.guest_email = guest_contact.guest_email
         elif active_reservation and hasattr(active_reservation, 'guest_email') and active_reservation.guest_email:
             voice_call.guest_email = active_reservation.guest_email
+        elif found_by_name and found_by_name.get('phone'):
+            # If found by name, try to get email from reservation
+            if found_by_name.get('reservation_id'):
+                res = db.query(Reservation).filter(Reservation.id == found_by_name['reservation_id']).first()
+                if res and hasattr(res, 'guest_email') and res.guest_email:
+                    voice_call.guest_email = res.guest_email
+        elif found_by_confirmation and found_by_confirmation.get('reservation_id'):
+            # If found by confirmation, try to get email from reservation
+            res = db.query(Reservation).filter(Reservation.id == found_by_confirmation['reservation_id']).first()
+            if res and hasattr(res, 'guest_email') and res.guest_email:
+                voice_call.guest_email = res.guest_email
 
         # ── Step 2c: Detect callback requests ────────────────────────────────
         callback_keywords = ["callback", "call me", "call back", "ring me", "call later", "later time"]
