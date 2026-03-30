@@ -1,7 +1,7 @@
 """Add voice_pricing_configs table for admin-editable voice pricing
 
-Revision ID: f6g7h8i9j0k1
-Revises: 20260330_1220_add_voice_call_reservation_id
+Revision ID: 20260330_1400
+Revises: 20260330_1220
 Create Date: 2026-03-30 14:00:00.000000+00:00
 
 Creates new table to store voice AI add-on pricing that can be edited
@@ -20,8 +20,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'f6g7h8i9j0k1'
-down_revision: Union[str, None] = '20260330_1220_add_voice_call_reservation_id'
+revision: str = '20260330_1400'
+down_revision: Union[str, None] = '20260330_1220'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
