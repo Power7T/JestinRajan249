@@ -40,7 +40,7 @@ def upgrade() -> None:
         sa.Column('cost_basis_usd', sa.Float(), nullable=False),
         sa.Column('markup_ratio', sa.Float(), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='1'),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint('id')
     )
@@ -51,10 +51,10 @@ def upgrade() -> None:
         (voice_tier, display_name, monthly_price_usd, minutes_included, overage_per_minute_usd,
          surge_threshold, surge_multiplier, cost_basis_usd, markup_ratio, is_active, updated_at)
         VALUES
-        ('light', 'Voice Light', 39.0, 100, 0.049, 0.5, 1.15, 1.80, 21.7, 1, CURRENT_TIMESTAMP),
-        ('standard', 'Voice Standard', 79.0, 300, 0.049, 0.5, 1.15, 5.40, 14.6, 1, CURRENT_TIMESTAMP),
-        ('professional', 'Voice Professional', 129.0, 750, 0.049, 0.5, 1.15, 13.50, 9.6, 1, CURRENT_TIMESTAMP),
-        ('unlimited', 'Voice Unlimited', 199.0, NULL, 0.0, 0.5, 1.15, 36.0, 5.5, 1, CURRENT_TIMESTAMP)
+        ('light', 'Voice Light', 39.0, 100, 0.049, 0.5, 1.15, 1.80, 21.7, TRUE, CURRENT_TIMESTAMP),
+        ('standard', 'Voice Standard', 79.0, 300, 0.049, 0.5, 1.15, 5.40, 14.6, TRUE, CURRENT_TIMESTAMP),
+        ('professional', 'Voice Professional', 129.0, 750, 0.049, 0.5, 1.15, 13.50, 9.6, TRUE, CURRENT_TIMESTAMP),
+        ('unlimited', 'Voice Unlimited', 199.0, NULL, 0.0, 0.5, 1.15, 36.0, 5.5, TRUE, CURRENT_TIMESTAMP)
     """)
 
 
