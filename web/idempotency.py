@@ -8,9 +8,9 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from web.models import IdempotencyKey
 
-from web import logger
+import logging
 
-log = logger.get_logger(__name__)
+log = logging.getLogger(__name__)
 
 
 def generate_key_id(tenant_id: str, idempotency_key: str) -> str:

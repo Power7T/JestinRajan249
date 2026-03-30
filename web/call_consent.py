@@ -6,9 +6,9 @@ Ensures GDPR/CCPA compliance by getting explicit consent before recording.
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from web.models import VoiceCall
-from web import logger
+import logging
 
-log = logger.get_logger(__name__)
+log = logging.getLogger(__name__)
 
 
 def get_consent_prompt(property_name: str = "our property") -> str:

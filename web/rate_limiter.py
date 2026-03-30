@@ -8,9 +8,9 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from web.models import Base, Tenant
 from sqlalchemy import Column, String, Integer, DateTime
-from web import logger
+import logging
 
-log = logger.get_logger(__name__)
+log = logging.getLogger(__name__)
 
 
 class TenantRateLimit(Base):

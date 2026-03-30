@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 
 from web.models import GuestContact, TenantConfig, Reservation
 from web.phone_utils import normalize_phone
-from web import logger
+import logging
 
-log = logger.get_logger(__name__)
+log = logging.getLogger(__name__)
 
 
 async def create_guest_contact(

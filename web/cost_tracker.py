@@ -8,9 +8,9 @@ from typing import Optional
 from uuid import uuid4
 from sqlalchemy.orm import Session
 from web.models import APIUsageLog, Tenant
-from web import logger
+import logging
 
-log = logger.get_logger(__name__)
+log = logging.getLogger(__name__)
 
 # Current API costs (as of 2024)
 COSTS = {

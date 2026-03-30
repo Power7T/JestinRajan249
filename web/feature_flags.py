@@ -10,9 +10,9 @@ from datetime import datetime, timezone
 from typing import Optional
 import random
 
-from web import logger
+import logging
 
-log = logger.get_logger(__name__)
+log = logging.getLogger(__name__)
 
 
 class FeatureFlag(Base):
