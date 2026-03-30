@@ -4,40 +4,13 @@ Allows rolling out features to a percentage of tenants or specific tenants.
 """
 
 from sqlalchemy.orm import Session
-from web.models import Base, Tenant
-from sqlalchemy import Column, String, Boolean, Integer, DateTime
+from web.models import FeatureFlag, FeatureFlagOverride
 from datetime import datetime, timezone
-from typing import Optional
 import random
 
 import logging
 
 log = logging.getLogger(__name__)
-
-
-class FeatureFlag(Base):
-    """Store feature flag configurations."""
-    __tablename__ = "feature_flags"
-
-    flag_name = Column(String(128), primary_key=True)  # e.g., "voice_ai_v2", "consent_flow"
-    enabled = Column(Boolean, default=False)  # Global on/off
-    rollout_percentage = Column(Integer, default=0)  # 0-100: percentage of tenants
-
-    # For tenant-specific overrides
-    description = Column(String(512), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-
-class FeatureFlagOverride(Base):
-    """Per-tenant feature flag overrides."""
-    __tablename__ = "feature_flag_overrides"
-
-    id = Column(String(128), primary_key=True)
-    flag_name = Column(String(128))  # References FeatureFlag.flag_name
-    tenant_id = Column(String(36))  # FK to tenants (but nullable for flexibility)
-    enabled = Column(Boolean)  # Override: True = force enable, False = force disable
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 def is_feature_enabled(
