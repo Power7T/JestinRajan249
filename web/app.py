@@ -340,9 +340,9 @@ def _voice_scheduled_calls_job():
                     # Create outbound Twilio call with audio URL
                     from twilio.rest import Client as TwilioClient
                     from web.crypto import decrypt
-                    sid   = cfg.twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
-                    token = decrypt(cfg.twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
-                    frm   = cfg.twilio_from_number or tenant.voice_phone_number
+                    sid   = cfg.voice_twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
+                    token = decrypt(cfg.voice_twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
+                    frm   = cfg.voice_twilio_from_number or tenant.voice_phone_number
                     if not (sid and token and frm):
                         continue
                     twilio_client = TwilioClient(sid, token)
@@ -2946,6 +2946,9 @@ async def settings_save(
     # Voice AI
     voice_enabled:                   str = Form("false"),
     voice_phone_number:              str = Form(""),
+    voice_twilio_account_sid:        str = Form(""),
+    voice_twilio_auth_token:         str = Form(""),
+    voice_twilio_from_number:        str = Form(""),
     voice_send_channel:              str = Form("disabled"),
     voice_post_call_summary:         str = Form("false"),
     voice_scheduled_calls_enabled:   str = Form("false"),
@@ -3027,6 +3030,10 @@ async def settings_save(
     # Voice AI settings
     tenant.voice_enabled      = voice_enabled.strip().lower() == "true"
     tenant.voice_phone_number = voice_phone_number.strip() or None
+    cfg.voice_twilio_account_sid = voice_twilio_account_sid.strip() or None
+    cfg.voice_twilio_from_number = voice_twilio_from_number.strip() or None
+    if voice_twilio_auth_token.strip():
+        cfg.voice_twilio_auth_token_enc = encrypt(voice_twilio_auth_token.strip())
     cfg.voice_send_channel           = voice_send_channel.strip() or "disabled"
     cfg.voice_post_call_summary      = voice_post_call_summary.strip().lower() == "true"
     cfg.voice_scheduled_calls_enabled = voice_scheduled_calls_enabled.strip().lower() == "true"
@@ -7816,11 +7823,11 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
 
         log.info(f"[VOICE] Incoming call from {from_number} to {to_number}, CallSid={call_sid}")
 
-        # Find tenant that owns this Twilio number
+        # Find tenant that owns this Twilio number (for voice calls)
         tenant = (
             db.query(Tenant)
             .join(TenantConfig)
-            .filter(TenantConfig.twilio_from_number == to_number)
+            .filter(TenantConfig.voice_twilio_from_number == to_number)
             .first()
         )
         if not tenant or not tenant.voice_enabled:

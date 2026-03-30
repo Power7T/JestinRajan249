@@ -199,6 +199,10 @@ class TenantConfig(Base):
     voice_send_channel:           Mapped[str]           = mapped_column(String(16), default="disabled")  # disabled | sms | whatsapp
     voice_post_call_summary:      Mapped[bool]          = mapped_column(Boolean, default=False)
     voice_scheduled_calls_enabled: Mapped[bool]         = mapped_column(Boolean, default=False)
+    # Voice AI — Twilio credentials (per-tenant)
+    voice_twilio_account_sid:     Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    voice_twilio_auth_token_enc:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # encrypted
+    voice_twilio_from_number:     Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
 
     # Host notifications on guest messages
     notify_host_on_guest_msg: Mapped[bool]           = mapped_column(Boolean, default=False)

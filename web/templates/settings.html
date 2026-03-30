@@ -594,6 +594,22 @@
         <input type="text" name="voice_phone_number" value="{{ tenant.voice_phone_number or '' }}" placeholder="+15550001234">
       </div>
     </div>
+    <div class="form-row">
+      <div>
+        <label>Twilio Account SID (for voice calls)</label>
+        <input type="text" name="voice_twilio_account_sid" value="{{ cfg.voice_twilio_account_sid or '' }}" placeholder="ACxxxxxxxx">
+      </div>
+      <div>
+        <label>Twilio Auth Token <span style="color:var(--text-3);font-weight:400">(leave blank to keep)</span></label>
+        <input type="password" name="voice_twilio_auth_token" placeholder="••••••••">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Twilio From Number (for voice calls)</label>
+        <input type="text" name="voice_twilio_from_number" value="{{ cfg.voice_twilio_from_number or '' }}" placeholder="+15550001234">
+      </div>
+    </div>
     <div class="form-row" style="margin-top:0.75rem">
       <div>
         <label>Send Info During Call Via</label>
