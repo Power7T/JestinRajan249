@@ -143,6 +143,8 @@ class Tenant(Base):
     intake_batches: Mapped[list["ReservationIntakeBatch"]] = relationship("ReservationIntakeBatch", back_populates="tenant")
     guest_contacts: Mapped[list["GuestContact"]]  = relationship("GuestContact", back_populates="tenant")
     voice_calls:    Mapped[list["VoiceCall"]]     = relationship("VoiceCall", back_populates="tenant")
+    voice_routing_config: Mapped[Optional["VoiceRoutingConfig"]] = relationship("VoiceRoutingConfig", back_populates="tenant", uselist=False)
+    routing_rules:  Mapped[list["RoutingRule"]]   = relationship("RoutingRule", back_populates="tenant")
 
 
 # ---------------------------------------------------------------------------
@@ -971,3 +973,48 @@ class FeatureFlagOverride(Base):
     tenant_id: Mapped[str]        = mapped_column(String(36), index=True)
     enabled: Mapped[bool]         = mapped_column(Boolean)
     created_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), default=_now)
+
+# ---------------------------------------------------------------------------
+# VoiceRoutingConfig — configures call routing behavior per tenant
+# ---------------------------------------------------------------------------
+
+class VoiceRoutingConfig(Base):
+    __tablename__ = "voice_routing_configs"
+
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), primary_key=True)
+    default_route: Mapped[str] = mapped_column(String(32), default="ai")  # ai, voicemail, host
+    fallback_sms: Mapped[bool] = mapped_column(Boolean, default=True)
+    dead_air_timeout: Mapped[int] = mapped_column(Integer, default=30)
+    queue_hold_music: Mapped[bool] = mapped_column(Boolean, default=False)
+    host_routing_number: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="voice_routing_config")
+
+# ---------------------------------------------------------------------------
+# RoutingRule — specific condition-based routes (e.g., negative sentiment -> escalate)
+# ---------------------------------------------------------------------------
+
+class RoutingRule(Base):
+    __tablename__ = "routing_rules"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    priority: Mapped[int] = mapped_column(Integer, default=100)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Condition
+    condition_type: Mapped[str] = mapped_column(String(32))  # sentiment, vip, repeat_caller, time_of_day
+    condition_value: Mapped[str] = mapped_column(String(128))
+
+    # Action
+    action: Mapped[str] = mapped_column(String(32))  # escalate, direct_to_voicemail
+    action_target: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant")

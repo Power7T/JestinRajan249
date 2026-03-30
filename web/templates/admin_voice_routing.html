@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% set tenant = admin %}
+{% block title %}Voice Routing — HostAI Admin{% endblock %}
+
+{% block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+  darkMode: "class",
+  theme: { extend: { colors: {
+    "primary": "#aec6ff","primary-container":"#5d8ef1","on-primary":"#002e6b",
+    "surface":"#121319","surface-container":"#1e1f26","surface-container-lowest":"#0d0e14",
+    "surface-container-high":"#292930","on-surface":"#e3e1eb","on-surface-variant":"#c3c6d4",
+    "outline":"#424752","outline-variant":"#34343b","error":"#ffb4ab","tertiary":"#ffb960",
+    "secondary":"#bdf4ff","secondary-fixed-dim":"#00daf3",
+  }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
+}
+</script>
+<style>
+body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
+.glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
+.material-symbols-outlined { font-variation-settings:'FILL' 1,'wght' 300,'GRAD' 0,'opsz' 24; }
+.admin-tab { padding-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; transition: color 0.2s, border-bottom-color 0.2s; border-bottom: 2px solid transparent; color: #8d909e; }
+.admin-tab:hover { color: #e3e1eb; }
+.admin-tab.active { color: #5B8DEF; border-bottom-color: #5B8DEF; }
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- Sidebar -->
+<aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col -translate-x-full md:translate-x-0 transition-transform duration-300 md:relative">
+  <nav class="flex-1 px-4 space-y-1 mt-6">
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200" href="/dashboard">
+      <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold transition-all duration-200" href="/admin">
+      <span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span> Admin Panel
+    </a>
+  </nav>
+</aside>
+
+<!-- Main -->
+<main class="md:ml-[260px] pt-8 pb-12 px-4 md:px-8 min-h-screen relative">
+  <div class="mb-10 pt-4">
+    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">Voice Routing</h1>
+    <p class="text-slate-400 text-sm">Configure how incoming calls are handled and escalated.</p>
+    
+    <!-- Admin Subnav -->
+    <div class="flex items-center gap-6 mt-6 border-b border-white/10">
+      <a href="/admin" class="admin-tab">Overview</a>
+      <a href="/admin/system" class="admin-tab">System Health</a>
+      <a href="/admin/ai" class="admin-tab">AI Engine</a>
+      <a href="/admin/costs" class="admin-tab">Profitability</a>
+      <a href="/admin/health_api" class="admin-tab">API Health</a>
+      <a href="/admin/voice-analytics" class="admin-tab">Voice Analytics</a>
+      <a href="/admin/voice-routing" class="admin-tab active">Voice Routing</a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- Config -->
+    <div class="glass-card p-6 rounded-3xl h-fit">
+      <h2 class="text-lg font-bold text-white mb-4">Global Default Route</h2>
+      <form method="POST" action="/api/admin/voice-routing/config" class="space-y-4">
+        <div>
+          <label class="block text-sm font-bold text-slate-300 mb-2">Default Action</label>
+          <select name="default_route" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-slate-200 focus:outline-[#5B8DEF] focus:border-transparent transition-all">
+            <option value="ai" {% if not routing_config or routing_config.default_route == 'ai' %}selected{% endif %}>AI Voice Agent (Default)</option>
+            <option value="voicemail" {% if routing_config and routing_config.default_route == 'voicemail' %}selected{% endif %}>Direct to Voicemail</option>
+            <option value="host" {% if routing_config and routing_config.default_route == 'host' %}selected{% endif %}>Call Host Phone</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-slate-300 mb-2">Host Routing Number</label>
+          <input type="text" name="host_routing_number" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-[#5B8DEF] transition-all" placeholder="+1234567890" value="{{ routing_config.host_routing_number if routing_config else '' }}">
+        </div>
+        <div class="flex items-center gap-3 pt-2">
+          <input type="checkbox" name="fallback_sms" id="fallback_sms" class="w-5 h-5 rounded border-white/20 bg-black/40 text-[#5B8DEF] cursor-pointer" {% if not routing_config or routing_config.fallback_sms %}checked{% endif %}>
+          <label for="fallback_sms" class="text-sm text-slate-300 font-medium cursor-pointer">Fallback to SMS if unanswered</label>
+        </div>
+        <div class="flex items-center gap-3 pt-2">
+          <input type="checkbox" name="queue_hold_music" id="queue_hold_music" class="w-5 h-5 rounded border-white/20 bg-black/40 text-[#5B8DEF] cursor-pointer" {% if routing_config and routing_config.queue_hold_music %}checked{% endif %}>
+          <label for="queue_hold_music" class="text-sm text-slate-300 font-medium cursor-pointer">Play hold music during complex tasks</label>
+        </div>
+        <button type="button" class="mt-4 px-5 py-2.5 bg-[#5B8DEF] hover:bg-blue-600 text-[#002e6b] hover:text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all font-['Plus_Jakarta_Sans'] group flex items-center gap-2">
+          Save Configuration
+        </button>
+      </form>
+    </div>
+
+    <!-- Smart rules -->
+    <div class="glass-card p-6 rounded-3xl h-fit">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-lg font-bold text-white">Smart Escalation Rules</h2>
+        <button class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg text-xs transition-colors border border-white/5">
+          + New Rule
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        {% if routing_rules %}
+          {% for rule in routing_rules %}
+          <div class="p-4 rounded-xl bg-black/20 border border-white/5 hover:border-white/10 transition-colors">
+            <div class="flex justify-between items-start mb-2">
+              <span class="font-bold text-slate-200">{{ rule.name }}</span>
+              {% if rule.is_active %}
+                <span class="text-[10px] font-bold tracking-wider uppercase text-[#27c93f]">Active</span>
+              {% else %}
+                <span class="text-[10px] font-bold tracking-wider uppercase text-slate-500">Disabled</span>
+              {% endif %}
+            </div>
+            <div class="flex flex-col gap-2 text-sm text-slate-400">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[1rem] text-rose-400" style="font-variation-settings:'FILL' 0">gavel</span>
+                If <span class="font-mono text-xs bg-white/5 px-1 py-0.5 rounded">{{ rule.condition_type }}</span> = <span class="font-mono text-xs text-rose-400">{{ rule.condition_value }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[1rem] text-[#5B8DEF]" style="font-variation-settings:'FILL' 0">arrow_right_alt</span>
+                Then <strong class="text-[#5B8DEF]">{{ rule.action|title }}</strong>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-center p-8 bg-black/20 rounded-xl border border-white/5">
+            <span class="material-symbols-outlined text-4xl text-slate-600 mb-2">rule_folder</span>
+            <p class="text-slate-400 text-sm font-medium">No smart routing rules set up.</p>
+            <p class="text-slate-500 text-xs mt-1">Add rules to automatically escalate difficult calls.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</main>
+{%- endblock %}
+{%- endblock %}

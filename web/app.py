@@ -9063,6 +9063,51 @@ async def outbound_twiml(s3_url: str):
 # Admin SaaS Operations Dashboard
 # ---------------------------------------------------------------------------
 
+@app.get("/admin/voice-analytics", response_class=HTMLResponse)
+def admin_voice_analytics_view(request: Request, days: int = 30, db: Session = Depends(get_db)):
+    """Phase 5: Voice Analytics Dashboard"""
+    try:
+        tenant = _require_admin(request, db)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Admin access required")
+    
+    from web.voice_analytics import get_voice_analytics
+    # Use tenant.id for analytics
+    analytics_data = get_voice_analytics(db, tenant.id, days=days)
+    
+    return templates.TemplateResponse(
+        "admin_voice_analytics.html",
+        {
+            "request": request,
+            "tenant": tenant,
+            "analytics_data": analytics_data,
+            "active_page": "voice_analytics"
+        }
+    )
+
+@app.get("/admin/voice-routing", response_class=HTMLResponse)
+def admin_voice_routing_view(request: Request, db: Session = Depends(get_db)):
+    """Phase 7: Smart Routing UI"""
+    try:
+        tenant = _require_admin(request, db)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Admin access required")
+    
+    from web.models import VoiceRoutingConfig, RoutingRule
+    config = db.query(VoiceRoutingConfig).filter(VoiceRoutingConfig.tenant_id == tenant.id).first()
+    rules = db.query(RoutingRule).filter(RoutingRule.tenant_id == tenant.id).order_by(RoutingRule.priority.asc()).all()
+    
+    return templates.TemplateResponse(
+        "admin_voice_routing.html",
+        {
+            "request": request,
+            "tenant": tenant,
+            "routing_config": config,
+            "routing_rules": rules,
+            "active_page": "voice_routing"
+        }
+    )
+
 @app.get("/admin/saas-dashboard", response_class=HTMLResponse)
 def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
     """SaaS operations dashboard: costs, rate limits, feature flags, API logs."""
