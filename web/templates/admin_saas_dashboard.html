@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaaS Operations Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px 32px;
+            border-bottom: 1px solid #ddd;
+        }
+        .header h1 { font-size: 24px; margin-bottom: 8px; }
+        .header p { opacity: 0.9; font-size: 14px; }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid #eee;
+        }
+        .tabs button {
+            padding: 12px 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .tabs button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .tabs button:hover { color: #667eea; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #eee;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .card h3 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid #eee;
+        }
+
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #333;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button.btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #dee2e6;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #28a745;
+            color: #155724;
+        }
+
+        .chart-container {
+            height: 300px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .rate-limit-bar {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .rate-limit-fill {
+            height: 100%;
+            background: #667eea;
+            transition: width 0.2s;
+        }
+
+        .rate-limit-fill.warning { background: #ffc107; }
+        .rate-limit-fill.danger { background: #dc3545; }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔧 SaaS Operations Dashboard</h1>
+        <p>Monitor costs, rate limits, and feature rollouts</p>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="active" onclick="switchTab('costs')">💰 Cost Tracking</button>
+            <button onclick="switchTab('limits')">⚡ Rate Limits</button>
+            <button onclick="switchTab('flags')">🚀 Feature Flags</button>
+            <button onclick="switchTab('logs')">📊 API Logs</button>
+        </div>
+
+        <!-- COST TRACKING TAB -->
+        <div id="costs" class="tab-content active">
+            <div class="card">
+                <h3>System-Wide Costs (Last 30 Days)</h3>
+                <div class="stats-grid">
+                    <div class="stat">
+                        <div class="stat-value">${{ total_cost_30d | round(2) }}</div>
+                        <div class="stat-label">Total Cost</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">{{ total_calls_30d | default(0) }}</div>
+                        <div class="stat-label">Total Calls</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${{ (total_cost_30d / max(total_calls_30d, 1)) | round(3) }}</div>
+                        <div class="stat-label">Cost Per Call</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${{ (total_cost_30d / 30) | round(2) }}</div>
+                        <div class="stat-label">Daily Average</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Costs by Service</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Calls</th>
+                            <th>Total Cost</th>
+                            <th>Avg per Call</th>
+                            <th>% of Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for service, data in costs_by_service.items() %}
+                        <tr>
+                            <td><strong>{{ service | capitalize }}</strong></td>
+                            <td>{{ data.count }}</td>
+                            <td>${{ data.cost | round(2) }}</td>
+                            <td>${{ (data.cost / max(data.count, 1)) | round(4) }}</td>
+                            <td>{{ ((data.cost / max(total_cost_30d, 0.01)) * 100) | round(1) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>Top Tenants by Cost (Today)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Cost Today</th>
+                            <th>Calls</th>
+                            <th>Daily Limit</th>
+                            <th>% of Limit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tenant in top_tenants_today %}
+                        <tr>
+                            <td><strong>{{ tenant.name }}</strong></td>
+                            <td>${{ tenant.cost_today | round(2) }}</td>
+                            <td>{{ tenant.calls_today }}</td>
+                            <td>${{ tenant.daily_limit }}</td>
+                            <td>
+                                <span class="badge {% if (tenant.cost_today / max(tenant.daily_limit, 1) * 100) > 80 %}badge-danger{% elif (tenant.cost_today / max(tenant.daily_limit, 1) * 100) > 50 %}badge-warning{% else %}badge-success{% endif %}">
+                                    {{ ((tenant.cost_today / max(tenant.daily_limit, 1)) * 100) | round(0) }}%
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- RATE LIMITS TAB -->
+        <div id="limits" class="tab-content">
+            <div class="card">
+                <h3>Manage Rate Limits</h3>
+                <div class="alert alert-warning">
+                    ⚠️ Rate limits prevent one tenant from DoS-ing the system or causing runaway API costs.
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Tenant ID</label>
+                        <input type="text" id="tenant-id" placeholder="e.g., 550e8400-e29b-41d4-a716-446655440000">
+                    </div>
+                    <div class="form-group">
+                        <label>Voice Calls per Hour</label>
+                        <input type="number" id="calls-per-hour" placeholder="100" value="100">
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>External API Calls per Hour</label>
+                        <input type="number" id="api-calls-per-hour" placeholder="500" value="500">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Daily Cost (USD)</label>
+                        <input type="number" id="max-daily-cost" placeholder="50" value="50" step="1">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="saveTenantLimits()">Save Rate Limits</button>
+            </div>
+
+            <div class="card">
+                <h3>Current Rate Limit Usage</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Calls/Hour</th>
+                            <th>Usage</th>
+                            <th>API Calls/Hour</th>
+                            <th>Usage</th>
+                            <th>Daily Cost</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for limit in rate_limits %}
+                        <tr>
+                            <td><strong>{{ limit.tenant_name }}</strong></td>
+                            <td>{{ limit.calls_per_hour }}</td>
+                            <td>
+                                <div class="rate-limit-bar">
+                                    <div class="rate-limit-fill {% if limit.calls_usage_pct > 80 %}danger{% elif limit.calls_usage_pct > 60 %}warning{% endif %}" style="width: {{ min(limit.calls_usage_pct, 100) }}%"></div>
+                                </div>
+                                <small>{{ limit.calls_current }}/{{ limit.calls_per_hour }} ({{ limit.calls_usage_pct | round(0) }}%)</small>
+                            </td>
+                            <td>{{ limit.api_calls_per_hour }}</td>
+                            <td>
+                                <div class="rate-limit-bar">
+                                    <div class="rate-limit-fill {% if limit.api_usage_pct > 80 %}danger{% elif limit.api_usage_pct > 60 %}warning{% endif %}" style="width: {{ min(limit.api_usage_pct, 100) }}%"></div>
+                                </div>
+                                <small>{{ limit.api_calls_current }}/{{ limit.api_calls_per_hour }} ({{ limit.api_usage_pct | round(0) }}%)</small>
+                            </td>
+                            <td>${{ limit.daily_cost_current | round(2) }}/${{ limit.max_daily_cost }}</td>
+                            <td>
+                                {% if limit.daily_cost_current > limit.max_daily_cost %}
+                                    <span class="badge badge-danger">BLOCKED</span>
+                                {% elif limit.daily_cost_current > limit.max_daily_cost * 0.8 %}
+                                    <span class="badge badge-warning">WARNING</span>
+                                {% else %}
+                                    <span class="badge badge-success">OK</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- FEATURE FLAGS TAB -->
+        <div id="flags" class="tab-content">
+            <div class="card">
+                <h3>Global Feature Flags</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Flag</th>
+                            <th>Status</th>
+                            <th>Rollout</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for flag in feature_flags %}
+                        <tr>
+                            <td><strong>{{ flag.name }}</strong></td>
+                            <td>
+                                {% if flag.enabled %}
+                                    <span class="badge badge-success">ENABLED</span>
+                                {% else %}
+                                    <span class="badge badge-info">DISABLED</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ flag.rollout_percentage }}%</td>
+                            <td>{{ flag.description or 'N/A' }}</td>
+                            <td>
+                                <button class="btn btn-secondary" onclick="editFlag('{{ flag.name }}')">Edit</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>Per-Tenant Flag Overrides</h3>
+                <div class="form-group">
+                    <label>Flag Name</label>
+                    <select id="override-flag">
+                        {% for flag in feature_flags %}
+                        <option value="{{ flag.name }}">{{ flag.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Tenant ID</label>
+                        <input type="text" id="override-tenant-id" placeholder="Tenant ID">
+                    </div>
+                    <div class="form-group">
+                        <label>Enabled</label>
+                        <select id="override-enabled">
+                            <option value="true">True (Force Enable)</option>
+                            <option value="false">False (Force Disable)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="setTenantOverride()">Set Override</button>
+            </div>
+        </div>
+
+        <!-- API LOGS TAB -->
+        <div id="logs" class="tab-content">
+            <div class="card">
+                <h3>Recent API Calls</h3>
+
+                <div class="grid-2" style="margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label>Filter by Service</label>
+                        <select id="filter-service">
+                            <option value="">All Services</option>
+                            <option value="deepgram">Deepgram</option>
+                            <option value="openai">OpenAI</option>
+                            <option value="elevenlabs">ElevenLabs</option>
+                            <option value="twilio">Twilio</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Filter by Tenant</label>
+                        <input type="text" id="filter-tenant" placeholder="Tenant ID">
+                    </div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="filterLogs()">Filter</button>
+
+                <table style="margin-top: 16px;">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Service</th>
+                            <th>Operation</th>
+                            <th>Tenant</th>
+                            <th>Cost</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in recent_logs %}
+                        <tr>
+                            <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>{{ log.service | capitalize }}</td>
+                            <td>{{ log.operation }}</td>
+                            <td><small>{{ log.tenant_id[:8] }}...</small></td>
+                            <td>${{ log.cost_usd | round(4) }}</td>
+                            <td>
+                                {% if log.status == 'success' %}
+                                    <span class="badge badge-success">Success</span>
+                                {% elif log.status == 'failed' %}
+                                    <span class="badge badge-danger">Failed</span>
+                                {% else %}
+                                    <span class="badge badge-info">{{ log.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function saveTenantLimits() {
+            const tenantId = document.getElementById('tenant-id').value;
+            if (!tenantId) {
+                alert('Please enter a tenant ID');
+                return;
+            }
+
+            const data = {
+                tenant_id: tenantId,
+                voice_calls_per_hour: parseInt(document.getElementById('calls-per-hour').value),
+                external_api_calls_per_hour: parseInt(document.getElementById('api-calls-per-hour').value),
+                max_daily_cost_usd: parseInt(document.getElementById('max-daily-cost').value),
+            };
+
+            fetch('/api/admin/rate-limits', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(d => {
+                alert(d.message || 'Rate limits updated');
+                location.reload();
+            })
+            .catch(e => alert('Error: ' + e));
+        }
+
+        function setTenantOverride() {
+            const flagName = document.getElementById('override-flag').value;
+            const tenantId = document.getElementById('override-tenant-id').value;
+            const enabled = document.getElementById('override-enabled').value === 'true';
+
+            if (!tenantId) {
+                alert('Please enter a tenant ID');
+                return;
+            }
+
+            const data = { flag_name: flagName, tenant_id: tenantId, enabled };
+
+            fetch('/api/admin/feature-flags/override', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(d => {
+                alert(d.message || 'Override set');
+                location.reload();
+            })
+            .catch(e => alert('Error: ' + e));
+        }
+
+        function filterLogs() {
+            const service = document.getElementById('filter-service').value;
+            const tenant = document.getElementById('filter-tenant').value;
+            const params = new URLSearchParams();
+            if (service) params.append('service', service);
+            if (tenant) params.append('tenant_id', tenant);
+            window.location = '/admin/saas-dashboard?logs?' + params.toString();
+        }
+    </script>
+</body>
+</html>

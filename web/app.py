@@ -76,6 +76,7 @@ from web.models import (
     AutomationRule, TeamMember, GuestTimelineEvent, ArrivalActivation, IssueTicket, TenantKpiSnapshot,
     PMSIntegration, PMSProcessedMessage,
     ProcessedEmail, PlanConfig, FailedDraftLog,
+    VoiceCall, APIUsageLog, TenantRateLimit, RateLimitCounter, FeatureFlag, FeatureFlagOverride,
     PLAN_FREE, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
     PLAN_STARTER, PLAN_GROWTH,
 )
@@ -8690,6 +8691,179 @@ async def outbound_twiml(s3_url: str):
         response.say("Sorry, something went wrong.")
         response.hangup()
         return Response(str(response), media_type="application/xml")
+
+
+# ---------------------------------------------------------------------------
+# Admin SaaS Operations Dashboard
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/saas-dashboard", response_class=HTMLResponse)
+def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
+    """SaaS operations dashboard: costs, rate limits, feature flags, API logs."""
+    try:
+        tenant = _require_admin(request, db)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Admin access required")
+
+    from sqlalchemy import func, desc
+    from datetime import timedelta as td
+
+    # Get cost summary for last 30 days
+    cutoff = datetime.now(timezone.utc) - td(days=30)
+    usage_logs = db.query(APIUsageLog).filter(
+        APIUsageLog.created_at >= cutoff,
+        APIUsageLog.status == "success"
+    ).all()
+
+    total_cost_30d = sum(log.cost_usd for log in usage_logs)
+    total_calls_30d = len(usage_logs)
+
+    # Costs by service
+    costs_by_service = {}
+    for log in usage_logs:
+        if log.service not in costs_by_service:
+            costs_by_service[log.service] = {"count": 0, "cost": 0.0}
+        costs_by_service[log.service]["count"] += 1
+        costs_by_service[log.service]["cost"] += log.cost_usd
+
+    # Top tenants by cost today
+    start_of_day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    daily_costs = db.query(
+        APIUsageLog.tenant_id,
+        func.sum(APIUsageLog.cost_usd).label('total_cost'),
+        func.count(APIUsageLog.id).label('call_count')
+    ).filter(
+        APIUsageLog.created_at >= start_of_day
+    ).group_by(APIUsageLog.tenant_id).order_by(desc('total_cost')).limit(10).all()
+
+    top_tenants_today = []
+    for tenant_id, cost, calls in daily_costs:
+        t = db.query(Tenant).filter_by(id=tenant_id).first()
+        limit_cfg = db.query(TenantRateLimit).filter_by(tenant_id=tenant_id).first()
+        limit_usd = (limit_cfg.max_daily_cost_usd if limit_cfg else 50)
+        top_tenants_today.append({
+            "name": t.name if t else tenant_id[:8],
+            "cost_today": cost or 0,
+            "calls_today": calls,
+            "daily_limit": limit_usd,
+        })
+
+    # Rate limit status
+    rate_limits = []
+    all_limits = db.query(TenantRateLimit).all()
+    for limit in all_limits:
+        t = db.query(Tenant).filter_by(id=limit.tenant_id).first()
+        # Get current usage
+        current_hour = datetime.now(timezone.utc).hour
+        hour_key = f"{limit.tenant_id}:voice_calls:{current_hour}"
+        counter = db.query(RateLimitCounter).filter_by(counter_id=hour_key).first()
+        calls_current = counter.count if counter else 0
+
+        daily_cost = 0
+        start_of_day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        daily_logs = db.query(APIUsageLog).filter(
+            APIUsageLog.tenant_id == limit.tenant_id,
+            APIUsageLog.created_at >= start_of_day
+        ).all()
+        daily_cost = sum(log.cost_usd for log in daily_logs)
+
+        rate_limits.append({
+            "tenant_name": t.name if t else limit.tenant_id[:8],
+            "calls_per_hour": limit.voice_calls_per_hour,
+            "calls_current": calls_current,
+            "calls_usage_pct": min(100, (calls_current / max(limit.voice_calls_per_hour, 1)) * 100),
+            "api_calls_per_hour": limit.external_api_calls_per_hour,
+            "api_calls_current": 0,  # TODO: track external API calls
+            "api_usage_pct": 0,
+            "daily_cost_current": daily_cost,
+            "max_daily_cost": limit.max_daily_cost_usd,
+        })
+
+    # Feature flags
+    feature_flags = []
+    flags = db.query(FeatureFlag).all()
+    for flag in flags:
+        feature_flags.append({
+            "name": flag.flag_name,
+            "enabled": flag.enabled,
+            "rollout_percentage": flag.rollout_percentage,
+            "description": flag.description,
+        })
+
+    # Recent API logs
+    recent_logs = db.query(APIUsageLog).order_by(desc(APIUsageLog.created_at)).limit(50).all()
+
+    return templates.TemplateResponse(
+        "admin_saas_dashboard.html",
+        {
+            "request": request,
+            "total_cost_30d": total_cost_30d,
+            "total_calls_30d": total_calls_30d,
+            "costs_by_service": costs_by_service,
+            "top_tenants_today": top_tenants_today,
+            "rate_limits": rate_limits,
+            "feature_flags": feature_flags,
+            "recent_logs": recent_logs,
+        }
+    )
+
+
+@app.post("/api/admin/rate-limits")
+async def api_admin_set_rate_limits(request: Request, db: Session = Depends(get_db)):
+    """Set rate limits for a tenant."""
+    try:
+        _require_admin(request, db)
+    except HTTPException:
+        return JSONResponse({"error": "Admin access required"}, status_code=401)
+
+    data = await request.json()
+    tenant_id = data.get("tenant_id")
+    voice_calls = data.get("voice_calls_per_hour", 100)
+    api_calls = data.get("external_api_calls_per_hour", 500)
+    daily_cost = data.get("max_daily_cost_usd", 50)
+
+    try:
+        limit = db.query(TenantRateLimit).filter_by(tenant_id=tenant_id).first()
+        if not limit:
+            limit = TenantRateLimit(
+                tenant_id=tenant_id,
+                voice_calls_per_hour=voice_calls,
+                external_api_calls_per_hour=api_calls,
+                max_daily_cost_usd=daily_cost
+            )
+            db.add(limit)
+        else:
+            limit.voice_calls_per_hour = voice_calls
+            limit.external_api_calls_per_hour = api_calls
+            limit.max_daily_cost_usd = daily_cost
+
+        db.commit()
+        return JSONResponse({"message": "Rate limits updated successfully"})
+    except Exception as e:
+        db.rollback()
+        log.error(f"Error setting rate limits: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.post("/api/admin/feature-flags/override")
+async def api_admin_feature_flag_override(request: Request, db: Session = Depends(get_db)):
+    """Set per-tenant feature flag override."""
+    try:
+        _require_admin(request, db)
+    except HTTPException:
+        return JSONResponse({"error": "Admin access required"}, status_code=401)
+
+    data = await request.json()
+    flag_name = data.get("flag_name")
+    tenant_id = data.get("tenant_id")
+    enabled = data.get("enabled")
+
+    try:
+        set_tenant_override(db, flag_name, tenant_id, enabled)
+        return JSONResponse({"message": "Feature flag override set successfully"})
+    except Exception as e:
+        log.error(f"Error setting flag override: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 # ---------------------------------------------------------------------------
