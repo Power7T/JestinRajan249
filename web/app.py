@@ -70,7 +70,7 @@ from sqlalchemy.orm import Session
 from web.db import get_db, init_db, SessionLocal
 from web.db_read import get_read_db
 from web.models import (
-    SystemConfig, ApiUsageLog,
+    SystemConfig, APIUsageLog,
     Tenant, TenantConfig, Draft, Vendor, ActivityLog,
     Reservation, ReservationSyncLog, ReservationIntakeBatch, GuestContact,
     AutomationRule, TeamMember, GuestTimelineEvent, ArrivalActivation, IssueTicket, TenantKpiSnapshot,
@@ -6878,8 +6878,8 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
     try:
         from datetime import timedelta
         start_date = datetime.now(timezone.utc) - timedelta(days=30)
-        usage_logs = db.query(ApiUsageLog).filter(ApiUsageLog.created_at >= start_date).order_by(ApiUsageLog.created_at.desc()).limit(100).all()
-        total_cost = sum(log.cost_usd for log in db.query(ApiUsageLog).filter(ApiUsageLog.created_at >= start_date).all())
+        usage_logs = db.query(APIUsageLog).filter(APIUsageLog.created_at >= start_date).order_by(APIUsageLog.created_at.desc()).limit(100).all()
+        total_cost = sum(log.cost_usd for log in db.query(APIUsageLog).filter(APIUsageLog.created_at >= start_date).all())
     except Exception:
         # api_usage_logs table may not exist yet if migrations haven't fully run
         pass
@@ -6908,9 +6908,9 @@ def admin_host_profitability(request: Request, db: Session = Depends(get_db)):
     cost_dict = {}
     try:
         cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-        costs_30d = db.query(ApiUsageLog.tenant_id, func.sum(ApiUsageLog.cost_usd).label("total_cost"))\
-            .filter(ApiUsageLog.created_at >= cutoff)\
-            .group_by(ApiUsageLog.tenant_id).all()
+        costs_30d = db.query(APIUsageLog.tenant_id, func.sum(APIUsageLog.cost_usd).label("total_cost"))\
+            .filter(APIUsageLog.created_at >= cutoff)\
+            .group_by(APIUsageLog.tenant_id).all()
         cost_dict = {t_id: float(cost or 0) for t_id, cost in costs_30d}
     except Exception:
         # api_usage_logs table may not exist yet if migrations haven't fully run
@@ -7012,9 +7012,9 @@ def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
     try:
         start_date = datetime.now(timezone.utc) - timedelta(days=30)
         costs = (
-            db.query(ApiUsageLog.tenant_id, func.sum(ApiUsageLog.cost_usd).label("total_cost"))
-            .filter(ApiUsageLog.created_at >= start_date)
-            .group_by(ApiUsageLog.tenant_id)
+            db.query(APIUsageLog.tenant_id, func.sum(APIUsageLog.cost_usd).label("total_cost"))
+            .filter(APIUsageLog.created_at >= start_date)
+            .group_by(APIUsageLog.tenant_id)
             .all()
         )
         cost_dict = {t_id: float(cost or 0) for t_id, cost in costs}
@@ -7056,9 +7056,9 @@ def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
         for i in range(90):
             date = (now - timedelta(days=i)).date()
             daily_cost = (
-                db.query(func.sum(ApiUsageLog.cost_usd))
+                db.query(func.sum(APIUsageLog.cost_usd))
                 .filter(
-                    func.date(ApiUsageLog.created_at) == date,
+                    func.date(APIUsageLog.created_at) == date,
                 )
                 .scalar() or 0
             )
@@ -7071,18 +7071,18 @@ def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
 
         # Also compute month-over-month costs
         costs_last_month = (
-            db.query(func.sum(ApiUsageLog.cost_usd))
+            db.query(func.sum(APIUsageLog.cost_usd))
             .filter(
-                ApiUsageLog.created_at >= start_of_month - timedelta(days=30),
-                ApiUsageLog.created_at < start_of_month
+                APIUsageLog.created_at >= start_of_month - timedelta(days=30),
+                APIUsageLog.created_at < start_of_month
             )
             .scalar() or 0
         )
         costs_two_months_ago = (
-            db.query(func.sum(ApiUsageLog.cost_usd))
+            db.query(func.sum(APIUsageLog.cost_usd))
             .filter(
-                ApiUsageLog.created_at >= start_of_month - timedelta(days=60),
-                ApiUsageLog.created_at < start_of_month - timedelta(days=30)
+                APIUsageLog.created_at >= start_of_month - timedelta(days=60),
+                APIUsageLog.created_at < start_of_month - timedelta(days=30)
             )
             .scalar() or 0
         )
@@ -7127,13 +7127,13 @@ def admin_api_health(request: Request, db: Session = Depends(get_db)):
         thirty_days_ago = now_utc - timedelta(days=30)
 
         # Count total API calls for average
-        total_count = db.query(ApiUsageLog).count()
+        total_count = db.query(APIUsageLog).count()
         # Calculate actual cost from last 30 days
-        monthly_cost = db.query(func.sum(ApiUsageLog.cost_usd)).filter(
-            ApiUsageLog.created_at >= thirty_days_ago
+        monthly_cost = db.query(func.sum(APIUsageLog.cost_usd)).filter(
+            APIUsageLog.created_at >= thirty_days_ago
         ).scalar() or 0.0
         # Calculate average cost per call (from all history)
-        total_cost = db.query(func.sum(ApiUsageLog.cost_usd)).scalar() or 0.0
+        total_cost = db.query(func.sum(APIUsageLog.cost_usd)).scalar() or 0.0
         avg_cost = (total_cost / total_count) if total_count > 0 else 0.0
         predicted_monthly = monthly_cost  # actual 30-day cost, not projection
     except Exception:

@@ -68,7 +68,7 @@ def get_db():
 def init_db():
     """Create all tables (dev/test) and run lightweight migrations when enabled."""
     from web.models import (  # noqa: F401
-        SystemConfig, ApiUsageLog,
+        SystemConfig, APIUsageLog,
         Tenant, TenantConfig, Draft, ProcessedEmail, CalendarState,
         Vendor, ActivityLog, Reservation, ReservationSyncLog,
         ReservationIntakeBatch, AutomationRule, TeamMember, GuestTimelineEvent,

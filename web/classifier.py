@@ -248,7 +248,7 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
     from web.workflow import analyze_guest_sentiment as fallback_analyze
     from web.crypto import decrypt
     from web.db import SessionLocal
-    from web.models import SystemConfig, ApiUsageLog
+    from web.models import SystemConfig, APIUsageLog
     import openai
 
     if not text.strip():
@@ -300,7 +300,7 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
                     cost = 0.0
                     if "gpt-4o-mini" in model:
                         cost = (usage.prompt_tokens / 1000000 * 0.15) + (usage.completion_tokens / 1000000 * 0.60)
-                    log_entry = ApiUsageLog(
+                    log_entry = APIUsageLog(
                         tenant_id=tenant_id,
                         feature="sentiment_analysis",
                         model=model,
@@ -335,7 +335,7 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
 def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional[str] = None, property_context: str = "", tenant_id: Optional[str] = None) -> str:
     """Generate draft via OpenRouter configured centrally by administrator."""
     from web.db import SessionLocal
-    from web.models import SystemConfig, ApiUsageLog, TenantConfig
+    from web.models import SystemConfig, APIUsageLog, TenantConfig
     from datetime import timedelta
     import openai
 
@@ -428,7 +428,7 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
                         content = content.replace("Guest", guest_name)
 
                     # Log usage
-                    log_entry = ApiUsageLog(
+                    log_entry = APIUsageLog(
                         tenant_id=tenant_id,
                         model=model_to_use,
                         provider="openrouter",
