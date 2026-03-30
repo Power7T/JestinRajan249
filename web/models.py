@@ -77,6 +77,27 @@ class PlanConfig(Base):
     updated_at:       Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 # ---------------------------------------------------------------------------
+# VoicePricingConfig — Voice AI add-on pricing (editable in admin panel)
+# ---------------------------------------------------------------------------
+
+class VoicePricingConfig(Base):
+    __tablename__ = "voice_pricing_configs"
+
+    id:                     Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    voice_tier:             Mapped[str]      = mapped_column(String(32), unique=True, index=True)  # "light" / "standard" / "professional" / "unlimited"
+    display_name:           Mapped[str]      = mapped_column(String(128))  # "Voice Light" / "Voice Standard" / etc
+    monthly_price_usd:      Mapped[float]    = mapped_column(Float)  # 39.0 / 79.0 / 129.0 / 199.0
+    minutes_included:       Mapped[int]      = mapped_column(Integer, nullable=True)  # 100 / 300 / 750 / None (unlimited)
+    overage_per_minute_usd: Mapped[float]    = mapped_column(Float)  # 0.049
+    surge_threshold:        Mapped[float]    = mapped_column(Float, default=0.5)  # Apply surge if >50% over limit
+    surge_multiplier:       Mapped[float]    = mapped_column(Float, default=1.15)  # 15% surcharge
+    cost_basis_usd:         Mapped[float]    = mapped_column(Float)  # 1.80 / 5.40 / 13.50 / 36.0
+    markup_ratio:           Mapped[float]    = mapped_column(Float)  # 21.7 / 14.6 / 9.6 / 5.5
+    description:            Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Feature list
+    is_active:              Mapped[bool]     = mapped_column(Boolean, default=True)
+    updated_at:             Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+# ---------------------------------------------------------------------------
 # Tenant — one row per registered host
 # ---------------------------------------------------------------------------
 

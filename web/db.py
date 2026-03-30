@@ -73,7 +73,7 @@ def init_db():
         Vendor, ActivityLog, Reservation, ReservationSyncLog,
         ReservationIntakeBatch, AutomationRule, TeamMember, GuestTimelineEvent,
         ArrivalActivation, IssueTicket, TenantKpiSnapshot,
-        PMSIntegration, PMSProcessedMessage, PlanConfig,
+        PMSIntegration, PMSProcessedMessage, PlanConfig, VoicePricingConfig,
     )
     if _AUTO_CREATE_TABLES:
         Base.metadata.create_all(bind=engine)

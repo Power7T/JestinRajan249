@@ -75,7 +75,7 @@ from web.models import (
     Reservation, ReservationSyncLog, ReservationIntakeBatch, GuestContact,
     AutomationRule, TeamMember, GuestTimelineEvent, ArrivalActivation, IssueTicket, TenantKpiSnapshot,
     PMSIntegration, PMSProcessedMessage,
-    ProcessedEmail, PlanConfig, FailedDraftLog,
+    ProcessedEmail, PlanConfig, VoicePricingConfig, FailedDraftLog,
     VoiceCall, APIUsageLog, TenantRateLimit, RateLimitCounter, FeatureFlag, FeatureFlagOverride,
     PLAN_FREE, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
     PLAN_STARTER, PLAN_GROWTH,
@@ -3616,6 +3616,103 @@ def admin_update_pricing(plan_key: str, request: Request,
     )
 
     return RedirectResponse(f"/admin/pricing?msg=updated", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Admin Voice Pricing Management
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/voice-pricing", response_class=HTMLResponse)
+def admin_voice_pricing_page(request: Request, db: Session = Depends(get_db)):
+    """Display voice pricing configuration dashboard."""
+    admin = _require_admin(request, db)
+    voice_tiers = db.query(VoicePricingConfig).order_by(VoicePricingConfig.id).all()
+    return templates.TemplateResponse("admin_voice_pricing.html", {
+        "request": request,
+        "admin": admin,
+        "voice_tiers": voice_tiers,
+        "csrf_token": request.state.csrf_token,
+    })
+
+
+@app.post("/admin/voice-pricing/{voice_tier}")
+def admin_update_voice_pricing(voice_tier: str, request: Request,
+                               monthly_price: float = Form(...),
+                               overage_per_minute: float = Form(...),
+                               surge_threshold: float = Form(...),
+                               surge_multiplier: float = Form(...),
+                               minutes_included: int = Form(None),
+                               display_name: str = Form(...),
+                               csrf_token: str = Form(None),
+                               db: Session = Depends(get_db)):
+    """Update voice pricing for a tier."""
+    admin = _require_admin(request, db)
+    validate_csrf(request, csrf_token)
+
+    tier = db.query(VoicePricingConfig).filter_by(voice_tier=voice_tier).first()
+    if not tier:
+        raise HTTPException(status_code=404, detail="Voice tier not found")
+
+    # Validation
+    if monthly_price < 0 or overage_per_minute < 0:
+        raise HTTPException(status_code=400, detail="Prices cannot be negative")
+    if surge_threshold < 0 or surge_threshold > 1:
+        raise HTTPException(status_code=400, detail="surge_threshold must be between 0 and 1")
+    if surge_multiplier < 1:
+        raise HTTPException(status_code=400, detail="surge_multiplier must be >= 1.0")
+    if minutes_included is not None and minutes_included < 0:
+        raise HTTPException(status_code=400, detail="minutes_included cannot be negative")
+
+    # Update tier
+    tier.monthly_price_usd = monthly_price
+    tier.overage_per_minute_usd = overage_per_minute
+    tier.surge_threshold = surge_threshold
+    tier.surge_multiplier = surge_multiplier
+    tier.minutes_included = minutes_included
+    tier.display_name = display_name
+    tier.updated_at = datetime.now(timezone.utc)
+
+    db.add(tier)
+
+    # Audit log
+    db.add(ActivityLog(
+        tenant_id=admin.id, event_type="admin_voice_pricing_change",
+        message=f"Voice tier {voice_tier} updated: price={monthly_price} overage={overage_per_minute} mins={minutes_included} by {admin.email}"
+    ))
+    db.commit()
+
+    # Admin alert
+    send_admin_alert(
+        f"Voice pricing changed: {voice_tier}",
+        f"Admin: {admin.email}\nTier: {voice_tier}\nPrice: ${monthly_price}/mo\nOverage: ${overage_per_minute}/min\nMinutes: {minutes_included or 'Unlimited'}"
+    )
+
+    return RedirectResponse(f"/admin/voice-pricing?msg=updated&tier={voice_tier}", status_code=302)
+
+
+@app.get("/api/admin/voice-pricing", response_class="application/json")
+def api_get_voice_pricing(request: Request, db: Session = Depends(get_db)):
+    """Get all voice pricing config (for API access)."""
+    admin = _require_admin(request, db)
+    tiers = db.query(VoicePricingConfig).order_by(VoicePricingConfig.id).all()
+    return {
+        "voice_tiers": [
+            {
+                "tier": t.voice_tier,
+                "display_name": t.display_name,
+                "monthly_price_usd": t.monthly_price_usd,
+                "minutes_included": t.minutes_included,
+                "overage_per_minute_usd": t.overage_per_minute_usd,
+                "surge_threshold": t.surge_threshold,
+                "surge_multiplier": t.surge_multiplier,
+                "cost_basis_usd": t.cost_basis_usd,
+                "markup_ratio": t.markup_ratio,
+                "is_active": t.is_active,
+                "updated_at": t.updated_at.isoformat(),
+            }
+            for t in tiers
+        ]
+    }
 
 
 # ---------------------------------------------------------------------------
