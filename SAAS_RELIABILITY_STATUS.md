@@ -76,42 +76,53 @@
 
 ---
 
-## ⏳ IN PROGRESS
+## ✅ COMPLETED (Integration Phase)
 
 ### 11. Admin Panel Integration
-- [ ] Cost dashboard (per tenant, 30 days, trending)
-- [ ] Rate limit management UI
-- [ ] Feature flag controls (rollout percentage, per-tenant overrides)
-- [ ] API usage logs viewer
-- [ ] Incident alerting setup
+- ✅ Cost dashboard (per tenant, 30 days, trending, by-service breakdown)
+- ✅ Rate limit management UI (create/update limits)
+- ✅ Feature flag controls (rollout percentage, per-tenant overrides)
+- ✅ API usage logs viewer (filter by service/tenant)
+- ✅ Template: admin_saas_dashboard.html
+- ✅ Routes: /admin/saas-dashboard, /api/admin/rate-limits, /api/admin/feature-flags/override
 
-### 12. Application Integration
-- [ ] Add phone normalization to GuestContact creation
-- [ ] Wrap handle_incoming_call with idempotency
-- [ ] Wrap process_speech with idempotency
-- [ ] Implement rate limiting middleware
-- [ ] Log API costs in voice.py
-- [ ] Add timeouts to external API calls
-- [ ] Implement consent flow in TwiML
-- [ ] Use feature flags for AI prompt versions
+### 12. Application Integration (MOSTLY COMPLETE)
+- ✅ Add phone normalization to GuestContact creation
+- ✅ Wrap handle_incoming_call with idempotency
+- ✅ Implement rate limiting in handle_incoming_call
+- ✅ Log API costs in process_speech (Deepgram, OpenAI, ElevenLabs)
+- ✅ Add timeouts to external API calls (voice.py)
+- ✅ Increment daily cost counters for rate limiting
+- ⏳ Wrap process_speech with idempotency (not yet - optional)
+- ⏳ Implement consent flow in TwiML (see below)
+- ⏳ Use feature flags for AI prompt versions (framework ready)
 
-### 13. Timezone Handling
+## ⏳ REMAINING (Lower Priority)
+
+### 13. Call Recording Consent Flow
+- [ ] Add TwiML consent prompt before recording
+- [ ] Handle guest response (1=agree, 2=decline)
+- [ ] Store consent_given, consent_at in VoiceCall
+- [ ] Log consent for compliance
+- [ ] Handle declined calls gracefully
+
+### 14. Timezone Handling
 - [ ] Store guest timezone in GuestContact
-- [ ] Normalize all dates to UTC in DB
-- [ ] Convert times to guest timezone for display/scheduling
-- [ ] Fix callback_at scheduling to respect guest timezone
+- [ ] Use guest timezone for callback scheduling
+- [ ] Display times in guest's local timezone
+- [ ] Fix callback_at to respect guest timezone
 
-### 14. Mobile Optimization
+### 15. Mobile Optimization
 - [ ] Test GuestContact form on mobile
 - [ ] Simplify to 2-3 fields (phone, room, optional notes)
 - [ ] One-click submit
 - [ ] Voice input for phone number
 
-### 15. Monitoring & Alerting Setup
-- [ ] Sentry integration for error tracking
+### 16. Monitoring & Alerting Setup
+- [ ] Sentry error tracking integration
 - [ ] Prometheus metrics for API costs
 - [ ] Grafana dashboard
-- [ ] PagerDuty/Slack alerts
+- [ ] PagerDuty/Slack alerts for cost overages
 
 ---
 
