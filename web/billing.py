@@ -104,6 +104,88 @@ PLAN_INFO: dict[str, dict] = {
     },
 }
 
+# Voice AI Add-On Pricing (Premium Feature)
+# Ensures voice calling is profitable with 9.6x+ markup on costs
+VOICE_ADD_ON_PRICING: dict[str, dict] = {
+    "light": {
+        "name": "Voice Light",
+        "price": "$39/month",
+        "minutes_included": 100,
+        "overage_per_minute": 0.049,  # $0.049/min for overages (170% markup on $0.018 cost)
+        "features": [
+            "100 AI voice calls/month",
+            "Deepgram speech-to-text",
+            "OpenAI GPT-4o responses",
+            "ElevenLabs text-to-speech",
+            "Call recording & storage",
+            "Sentiment detection",
+        ],
+        "best_for": "Testing, small properties (1-3 units)",
+        "cost_basis": 1.80,  # Actual API cost (100 mins × $0.018)
+        "markup": 21.7,  # Revenue/cost ratio
+    },
+    "standard": {
+        "name": "Voice Standard",
+        "price": "$79/month",
+        "minutes_included": 300,
+        "overage_per_minute": 0.049,
+        "surge_threshold": 0.5,  # Apply 15% surge if >50% over limit
+        "surge_multiplier": 1.15,
+        "features": [
+            "300 AI voice calls/month",
+            "Smart call routing (first-time vs repeat guests)",
+            "Call analytics & insights",
+            "Guest sentiment tracking",
+            "Deepgram + OpenAI + ElevenLabs included",
+            "Call recording & storage",
+            "Priority call handling",
+        ],
+        "best_for": "Growing hosts (6-12 units)",
+        "cost_basis": 5.40,
+        "markup": 14.6,
+    },
+    "professional": {
+        "name": "Voice Professional",
+        "price": "$129/month",
+        "minutes_included": 750,
+        "overage_per_minute": 0.049,
+        "surge_threshold": 0.5,
+        "surge_multiplier": 1.15,
+        "features": [
+            "750 AI voice calls/month",
+            "Everything in Standard PLUS:",
+            "Advanced voice routing by guest history",
+            "Real-time sentiment alerts",
+            "Automatic escalation to humans",
+            "Post-call summary via SMS",
+            "Call quality analytics",
+            "White-glove onboarding",
+        ],
+        "best_for": "Large hosts (15-25 units)",
+        "cost_basis": 13.50,
+        "markup": 9.6,
+    },
+    "unlimited": {
+        "name": "Voice Unlimited",
+        "price": "$199/month",
+        "minutes_included": None,  # Unlimited
+        "overage_per_minute": 0.0,  # No overages, everything included
+        "features": [
+            "UNLIMITED AI voice calls",
+            "Everything in Professional PLUS:",
+            "Dedicated support channel (Slack)",
+            "Custom voice prompts & training",
+            "Advanced analytics & reporting",
+            "API access for integrations",
+            "SLA: 99.9% uptime guarantee",
+            "Priority engineering support",
+        ],
+        "best_for": "Enterprise hosts (25+ units)",
+        "cost_basis": 36.0,  # Estimate for 2000 mins
+        "markup": 5.5,
+    },
+}
+
 _ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
 _ALLOW_INSECURE_DEFAULTS = _ENVIRONMENT in {"development", "dev", "test"}
 
@@ -143,6 +225,81 @@ def require_channel(cfg: TenantConfig, channel: str) -> None:
             status_code=402,
             detail=f"Your current plan does not include the '{channel}' channel. "
                    f"Upgrade at /billing"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Voice AI Add-On Pricing Helpers
+# ---------------------------------------------------------------------------
+
+def calculate_voice_overage(voice_tier: str, actual_minutes: int) -> dict:
+    """
+    Calculate voice call overage charges for a given tier and actual usage.
+
+    Returns dict with:
+      - minutes_included: How many minutes are free in this tier
+      - actual_minutes: Actual usage
+      - overage_minutes: Actual - included (max 0)
+      - overage_cost: overage_minutes × overage_rate (with surge if applicable)
+      - total_monthly_cost: Base price of tier (overage not included in base)
+    """
+    if voice_tier == "unlimited" or voice_tier not in VOICE_ADD_ON_PRICING:
+        return {
+            "tier": voice_tier,
+            "minutes_included": None,
+            "actual_minutes": actual_minutes,
+            "overage_minutes": 0,
+            "overage_cost": 0.0,
+            "total_monthly_cost": VOICE_ADD_ON_PRICING.get("unlimited", {}).get("price", "$199"),
+            "status": "unlimited"
+        }
+
+    tier_info = VOICE_ADD_ON_PRICING[voice_tier]
+    included = tier_info["minutes_included"]
+    overage_rate = tier_info["overage_per_minute"]
+
+    overage_mins = max(0, actual_minutes - included)
+
+    # Apply surge pricing if usage exceeds threshold
+    overage_cost = 0.0
+    surge_applied = False
+    if overage_mins > 0 and "surge_threshold" in tier_info:
+        usage_pct = actual_minutes / included
+        if usage_pct > tier_info["surge_threshold"]:
+            overage_cost = overage_mins * overage_rate * tier_info["surge_multiplier"]
+            surge_applied = True
+        else:
+            overage_cost = overage_mins * overage_rate
+    else:
+        overage_cost = overage_mins * overage_rate
+
+    return {
+        "tier": voice_tier,
+        "tier_name": tier_info["name"],
+        "minutes_included": included,
+        "actual_minutes": actual_minutes,
+        "overage_minutes": overage_mins,
+        "overage_rate": overage_rate,
+        "surge_applied": surge_applied,
+        "overage_cost": round(overage_cost, 2),
+        "base_price": tier_info["price"],
+        "total_monthly_cost": tier_info["price"],  # Plus overage_cost
+    }
+
+
+def require_voice_add_on(cfg: TenantConfig, voice_tier: str) -> None:
+    """Raise HTTP 402 if tenant does not have voice add-on for the given tier."""
+    if not cfg.voice_add_on_enabled:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Your plan does not include voice calling. "
+                   f"Add voice to your account at /billing/voice"
+        )
+    if cfg.voice_tier and cfg.voice_tier != voice_tier:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Your current voice tier is '{cfg.voice_tier}'. "
+                   f"This feature requires '{voice_tier}' or higher."
         )
 
 
