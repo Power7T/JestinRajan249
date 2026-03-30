@@ -7,7 +7,7 @@ import os
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
-from web.models import GuestContact, TenantConfig
+from web.models import GuestContact, TenantConfig, Reservation
 from web import logger
 
 log = logger.get_logger(__name__)
@@ -25,6 +25,17 @@ async def create_guest_contact(
     db: Session = None,
 ) -> GuestContact:
     """Create a guest contact and send welcome messages."""
+
+    # Auto-link to Reservation if phone matches and no reservation_id provided
+    if not reservation_id and guest_phone:
+        matching_reservation = db.query(Reservation).filter(
+            Reservation.tenant_id == tenant_id,
+            Reservation.guest_phone == guest_phone,
+            Reservation.status == "confirmed",
+        ).first()
+        if matching_reservation:
+            reservation_id = matching_reservation.id
+            log.info(f"[{tenant_id}] Auto-linked guest contact {guest_phone} to reservation {reservation_id}")
 
     guest_contact = GuestContact(
         tenant_id=tenant_id,

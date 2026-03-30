@@ -99,6 +99,7 @@ class VoiceAIService:
         tenant_config: dict,
         conversation_history: list[dict],
         guest_name: Optional[str] = None,
+        guest_language: str = "en",
     ) -> tuple[str, Optional[dict], Optional[str]]:
         """
         Generate AI response using OpenAI.
@@ -109,6 +110,7 @@ class VoiceAIService:
         - unanswered_question = None | str
           Set when the AI genuinely doesn't have the answer.
           Caller should create a VoiceKnowledgeGap and alert the host.
+        - guest_language: language code (e.g., 'en', 'es', 'fr', 'de', 'zh', 'ja')
 
         In MOCK_MODE returns demo values.
         """
@@ -176,8 +178,38 @@ class VoiceAIService:
 
             guest_label = f"Guest: {guest_name}" if guest_name else "Guest"
 
-            system_prompt = f"""You are a helpful AI concierge answering phone calls for a property.
+            # Language instruction
+            lang_instruction = ""
+            if guest_language != "en":
+                lang_names = {
+                    "es": "Spanish",
+                    "fr": "French",
+                    "de": "German",
+                    "zh": "Mandarin Chinese",
+                    "ja": "Japanese",
+                    "pt": "Portuguese",
+                    "it": "Italian",
+                    "nl": "Dutch",
+                }
+                lang_name = lang_names.get(guest_language, "the guest's language")
+                lang_instruction = f"\n⚠️ IMPORTANT: The guest is speaking {lang_name}. Respond ENTIRELY in {lang_name}, not English. Translate your entire response.\n"
 
+            # Guest-specific context
+            guest_room = cfg.get('guest_room', '')
+            guest_property = cfg.get('guest_property', '')
+            guest_reservation = cfg.get('guest_reservation', '')
+
+            guest_info_section = ""
+            if guest_room or guest_property or guest_reservation:
+                guest_info_section = "\nGUEST INFO:"
+                if guest_room:
+                    guest_info_section += f"\n- Room/Unit: {guest_room}"
+                if guest_property:
+                    guest_info_section += f"\n- Property: {guest_property}"
+                if guest_reservation:
+                    guest_info_section += f"\n- Stay: {guest_reservation}"
+
+            system_prompt = f"""You are a helpful AI concierge answering phone calls for a property.{lang_instruction}
 PROPERTY INFO:
 - Type: {cfg.get('property_type', 'property')}
 - City/Address: {address}
@@ -189,7 +221,7 @@ PROPERTY INFO:
 - Pet policy: {cfg.get('pet_policy', 'N/A')}
 - Parking: {parking[:200] if parking else 'N/A'}
 - FAQ: {faq_text[:500] if faq_text else ''}
-- Custom instructions: {custom_instructions[:300] if custom_instructions else ''}
+- Custom instructions: {custom_instructions[:300] if custom_instructions else ''}{guest_info_section}
 
 {guest_label} is on the phone.
 
@@ -201,8 +233,10 @@ RULES:
 2. If the guest asks you to "send", "text", "WhatsApp", "share", or "message" any specific info, set send.content with the relevant details formatted nicely with emojis.
 3. If nothing should be sent, set send to null.
 4. Respond in the same language the guest is speaking.
-5. IMPORTANT: If the guest asks a specific question you genuinely cannot answer from the property info above, set unknown to true and unanswered_question to exactly what the guest asked. Tell them: "I don't have that info right now, but I'll make sure the host is aware and can update their listing."
-6. Only set unknown=true for real knowledge gaps (missing facts about the property). Do NOT set it for greetings, chit-chat, or questions you can answer.
+5. If the guest mentions wanting a callback ("call me back", "ring me later", etc.), acknowledge and say you'll arrange it.
+6. When referencing property amenities or rules, personalize to the guest's room/unit if known. E.g., "The WiFi password for your room is..." or "Parking for your unit is...".
+7. IMPORTANT: If the guest asks a specific question you genuinely cannot answer from the property info above, set unknown to true and unanswered_question to exactly what the guest asked. Tell them: "I don't have that info right now, but I'll make sure the host is aware and can update their listing."
+8. Only set unknown=true for real knowledge gaps (missing facts about the property). Do NOT set it for greetings, chit-chat, or questions you can answer.
 
 RESPONSE FORMAT — always respond with valid JSON only, no markdown:
 {{"voice": "<what you say out loud>", "send": null, "unknown": false, "unanswered_question": null}}

@@ -774,6 +774,7 @@ class VoiceCall(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
     guest_contact_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("guest_contacts.id"), nullable=True, index=True)
+    reservation_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
 
     # Twilio info
     twilio_call_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
@@ -795,6 +796,17 @@ class VoiceCall(Base):
     duration_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     recording_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
 
+    # Guest contact info
+    guest_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    guest_language: Mapped[str] = mapped_column(String(16), default="en")
+
+    # Post-call feedback
+    guest_rating: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1-5
+
+    # Callback scheduling
+    callback_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    callback_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -802,6 +814,7 @@ class VoiceCall(Base):
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="voice_calls")
     guest_contact: Mapped[Optional["GuestContact"]] = relationship("GuestContact", back_populates="voice_calls")
+    reservation: Mapped[Optional["Reservation"]] = relationship("Reservation")
     knowledge_gaps: Mapped[list["VoiceKnowledgeGap"]] = relationship("VoiceKnowledgeGap", back_populates="call", cascade="all, delete-orphan")
 
 
@@ -815,6 +828,7 @@ class VoiceKnowledgeGap(Base):
     id:          Mapped[str]           = mapped_column(String(36), primary_key=True, default=_uuid)
     tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
     call_id:     Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("voice_calls.id"), nullable=True, index=True)
+    issue_ticket_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("issue_tickets.id"), nullable=True)
 
     # Guest who asked (copied from voice_call at creation time for easy access)
     guest_phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
@@ -837,3 +851,4 @@ class VoiceKnowledgeGap(Base):
 
     call:   Mapped[Optional["VoiceCall"]] = relationship("VoiceCall", back_populates="knowledge_gaps")
     tenant: Mapped["Tenant"]              = relationship("Tenant")
+    issue_ticket: Mapped[Optional["IssueTicket"]] = relationship("IssueTicket")

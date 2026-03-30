@@ -139,6 +139,63 @@ tailwind.config = {
     </div>
   </div>
 
+  <!-- Filters -->
+  <div class="glass-card rounded-3xl overflow-hidden mb-6">
+    <div class="p-6 border-b border-white/5">
+      <h3 class="text-lg font-bold text-white mb-4">Filter Calls</h3>
+      <form method="get" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <!-- Date Range -->
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">From</label>
+            <input type="date" name="date_from" value="{{ date_from or '' }}" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">To</label>
+            <input type="date" name="date_to" value="{{ date_to or '' }}" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
+          </div>
+
+          <!-- Status Filter -->
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Status</label>
+            <select name="status" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
+              <option value="">All Status</option>
+              <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>Completed</option>
+              <option value="answered" {% if request.args.get('status') == 'answered' %}selected{% endif %}>Answered</option>
+              <option value="ringing" {% if request.args.get('status') == 'ringing' %}selected{% endif %}>Ringing</option>
+              <option value="failed" {% if request.args.get('status') == 'failed' %}selected{% endif %}>Failed</option>
+            </select>
+          </div>
+
+          <!-- Sentiment Filter -->
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Sentiment</label>
+            <select name="sentiment" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
+              <option value="">All Sentiments</option>
+              <option value="positive" {% if request.args.get('sentiment') == 'positive' %}selected{% endif %}>😊 Positive</option>
+              <option value="neutral" {% if request.args.get('sentiment') == 'neutral' %}selected{% endif %}>😐 Neutral</option>
+              <option value="negative" {% if request.args.get('sentiment') == 'negative' %}selected{% endif %}>😟 Negative</option>
+            </select>
+          </div>
+
+          <!-- Search -->
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Search</label>
+            <input type="text" name="search" placeholder="Phone, guest name, topic..." value="{{ search or '' }}" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button type="submit" class="flex items-center gap-2 px-4 py-2 bg-[#5B8DEF]/20 text-[#5B8DEF] hover:bg-[#5B8DEF]/30 rounded-lg text-sm font-semibold transition-colors">
+            <span class="material-symbols-outlined text-sm">search</span>Filter
+          </button>
+          <a href="/voice-calls" class="flex items-center gap-2 px-4 py-2 bg-white/5 text-slate-300 hover:bg-white/10 rounded-lg text-sm font-semibold transition-colors">
+            <span class="material-symbols-outlined text-sm">clear</span>Clear
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Call Log Table -->
   <div class="glass-card rounded-3xl overflow-hidden">
     <div class="p-6 border-b border-white/5">

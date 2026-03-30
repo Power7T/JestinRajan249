@@ -374,6 +374,71 @@ def _voice_scheduled_calls_job():
                 except Exception as e:
                     log.error(f"[VOICE] Scheduled call failed for {guest.guest_name}: {e}")
 
+        # Process pending callback requests
+        pending_callbacks = db.query(VoiceCall).filter(
+            VoiceCall.callback_requested.is_(True),
+            VoiceCall.callback_at <= now,
+            VoiceCall.status == "completed",
+        ).all()
+
+        for call in pending_callbacks:
+            try:
+                tenant = db.query(Tenant).filter(Tenant.id == call.tenant_id).first()
+                cfg = tenant.config if tenant else None
+
+                if not tenant or not tenant.voice_enabled or not call.guest_phone_number or not cfg:
+                    continue
+
+                guest_name = call.guest_contact.guest_name if call.guest_contact else "Guest"
+                message = f"Hi {guest_name.split()[0]}! This is your scheduled callback from us. How can we help?"
+
+                try:
+                    voice_id = cfg.voice_elevenlabs_voice_id if cfg else None
+                    audio_bytes, s3_url = asyncio.run(VoiceAIService.synthesize_speech(message, voice_id=voice_id))
+                    if not s3_url:
+                        log.warning(f"[VOICE] Failed to synthesize callback audio for {guest_name}")
+                        continue
+
+                    from twilio.rest import Client as TwilioClient
+                    from web.crypto import decrypt
+                    sid   = cfg.voice_twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
+                    token = decrypt(cfg.voice_twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
+                    frm   = cfg.voice_twilio_from_number or tenant.voice_phone_number
+                    if not (sid and token and frm):
+                        continue
+
+                    twilio_client = TwilioClient(sid, token)
+                    app_url = os.getenv("APP_BASE_URL", "")
+                    callback = twilio_client.calls.create(
+                        from_=frm,
+                        to=call.guest_phone_number,
+                        url=f"{app_url}/api/calls/outbound-twiml?s3_url={s3_url}",
+                    )
+                    log.info(f"[VOICE] Callback placed to {guest_name} ({call.guest_phone_number[-4:]}): {callback.sid}")
+
+                    # Create new VoiceCall record for callback
+                    callback_call = VoiceCall(
+                        id=str(uuid4()),
+                        tenant_id=call.tenant_id,
+                        guest_contact_id=call.guest_contact_id,
+                        twilio_call_id=callback.sid,
+                        twilio_phone_number=frm,
+                        guest_phone_number=call.guest_phone_number,
+                        call_type="scheduled_callback",
+                        status="ringing",
+                        created_at=datetime.now(timezone.utc),
+                    )
+                    db.add(callback_call)
+
+                    # Mark original callback as processed
+                    call.callback_requested = False
+                    db.commit()
+
+                except Exception as e:
+                    log.error(f"[VOICE] Callback failed for {guest_name}: {e}")
+            except Exception as e:
+                log.error(f"[VOICE] Error in callback loop: {e}")
+
         log.info("[VOICE] Scheduled call job completed")
     except Exception as e:
         log.error(f"[VOICE] _voice_scheduled_calls_job error: {e}")
@@ -5240,7 +5305,20 @@ async def resolve_voice_gap(
             gap.reply_channel = reply_channel
             log.info(f"[VOICE] Gap reply sent to {effective_phone[-4:]} via {reply_channel}")
 
-    # ── 4. Activity log ───────────────────────────────────────────────────────
+    # ── 4. Close related issue ticket (if exists) ──────────────────────────────
+    if gap.issue_ticket_id:
+        try:
+            from web.models import IssueTicket
+            ticket = db.query(IssueTicket).filter(IssueTicket.id == gap.issue_ticket_id).first()
+            if ticket:
+                ticket.status = "closed"
+                ticket.resolution_notes = answer
+                ticket.resolved_at = now
+                log.info(f"[VOICE] Closed issue ticket #{ticket.id} for gap {gap_id}")
+        except Exception as e:
+            log.error(f"[VOICE] Error closing ticket: {e}")
+
+    # ── 5. Activity log ───────────────────────────────────────────────────────
     detail = f"saved to {save_to}"
     if reply_sent:
         detail += f", replied to guest via {reply_channel}"
@@ -5258,6 +5336,11 @@ async def resolve_voice_gap(
 @app.get("/voice-calls", response_class=HTMLResponse)
 def voice_calls_page(request: Request,
                      page: int = 1,
+                     date_from: str = None,
+                     date_to: str = None,
+                     status: str = None,
+                     sentiment: str = None,
+                     search: str = None,
                      db: Session = Depends(get_db)):
     try:
         tenant_id = get_current_tenant_id(request)
@@ -5270,10 +5353,44 @@ def voice_calls_page(request: Request,
     from web.models import VoiceCall
     per_page = 25
     offset = (page - 1) * per_page
-    total = db.query(VoiceCall).filter(VoiceCall.tenant_id == tenant_id).count()
+
+    # Build query with filters
+    query = db.query(VoiceCall).filter(VoiceCall.tenant_id == tenant_id)
+
+    # Date range filter
+    if date_from:
+        try:
+            from_dt = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
+            query = query.filter(VoiceCall.created_at >= from_dt)
+        except:
+            pass
+
+    if date_to:
+        try:
+            to_dt = datetime.fromisoformat(date_to).replace(tzinfo=timezone.utc, hour=23, minute=59, second=59)
+            query = query.filter(VoiceCall.created_at <= to_dt)
+        except:
+            pass
+
+    # Status filter
+    if status:
+        query = query.filter(VoiceCall.status == status)
+
+    # Sentiment filter
+    if sentiment:
+        query = query.filter(VoiceCall.sentiment == sentiment)
+
+    # Search filter (phone, name, transcript)
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            (VoiceCall.guest_phone_number.ilike(search_term)) |
+            (VoiceCall.full_transcript.ilike(search_term))
+        )
+
+    total = query.count()
     calls = (
-        db.query(VoiceCall)
-        .filter(VoiceCall.tenant_id == tenant_id)
+        query
         .order_by(VoiceCall.created_at.desc())
         .offset(offset)
         .limit(per_page)
@@ -5297,6 +5414,9 @@ def voice_calls_page(request: Request,
         "per_page": per_page,
         "total_pages": max(1, (total + per_page - 1) // per_page),
         "open_gaps_count": open_gaps_count,
+        "date_from": date_from,
+        "date_to": date_to,
+        "search": search,
     })
 
 
@@ -7803,6 +7923,9 @@ def _handle_knowledge_gap(db, tenant, cfg, voice_call, question: str) -> None:
     db.commit()
     db.refresh(gap)
 
+    # Create an IssueTicket for this gap (for integration with ticket system)
+    _create_voice_ticket(tenant.id, gap, db)
+
     # Alert host (SMS to notify number if configured)
     if cfg and cfg.sms_notify_number:
         app_url = os.getenv("APP_BASE_URL", "")
@@ -7814,6 +7937,124 @@ def _handle_knowledge_gap(db, tenant, cfg, voice_call, question: str) -> None:
         )
         _send_voice_message(cfg, cfg.sms_notify_number, alert, "sms")
         log.info(f"[VOICE] Knowledge gap alert sent for: {question[:60]}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Voice Helper Functions
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _get_guest_call_history(tenant_id: str, guest_phone: str, db: Session, limit: int = 3) -> str:
+    """
+    Fetch previous calls for this guest phone and summarize key topics.
+    Returns a brief summary for AI context.
+    """
+    try:
+        previous_calls = (
+            db.query(VoiceCall)
+            .filter(
+                VoiceCall.tenant_id == tenant_id,
+                VoiceCall.guest_phone_number == guest_phone,
+                VoiceCall.id != None,
+            )
+            .order_by(VoiceCall.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        if not previous_calls:
+            return ""
+
+        # Summarize key topics from previous calls
+        topics = set()
+        for call in previous_calls:
+            if call.ai_responses:
+                for resp in call.ai_responses:
+                    text = resp.get("text", "").lower()
+                    if "wifi" in text:
+                        topics.add("WiFi")
+                    if "checkout" in text or "check-out" in text:
+                        topics.add("Checkout")
+                    if "check-in" in text or "checkin" in text:
+                        topics.add("Check-in")
+                    if "maintenance" in text or "broken" in text or "fix" in text:
+                        topics.add("Maintenance")
+                    if "parking" in text:
+                        topics.add("Parking")
+
+        if topics:
+            return f"Guest previously asked about: {', '.join(sorted(topics))}"
+        return ""
+    except Exception as e:
+        log.error(f"[VOICE] Error fetching call history: {e}")
+        return ""
+
+
+def _detect_language(text: str) -> str:
+    """
+    Detect guest language from transcribed text.
+    Uses heuristics to identify common non-English patterns.
+    Returns language code (e.g., 'en', 'es', 'fr', 'de', 'zh', 'ja').
+    """
+    if not text:
+        return "en"
+
+    text_lower = text.lower()
+
+    # Common Spanish words
+    if any(word in text_lower for word in ["gracias", "hola", "si", "no", "por favor", "agua", "baño"]):
+        return "es"
+
+    # Common French words
+    if any(word in text_lower for word in ["merci", "bonjour", "oui", "non", "s'il vous", "toilette"]):
+        return "fr"
+
+    # Common German words
+    if any(word in text_lower for word in ["danke", "guten", "ja", "nein", "bitte", "bad"]):
+        return "de"
+
+    # Common Mandarin/Chinese patterns (simplified detection)
+    if any(ord(char) >= 0x4E00 and ord(char) <= 0x9FFF for char in text):
+        return "zh"
+
+    # Common Japanese patterns
+    if any(ord(char) >= 0x3040 and ord(char) <= 0x309F for char in text):
+        return "ja"
+
+    return "en"
+
+
+def _create_voice_ticket(tenant_id: str, knowledge_gap: VoiceKnowledgeGap, db: Session) -> Optional[int]:
+    """
+    Create an IssueTicket from a VoiceKnowledgeGap.
+    Returns the ticket ID if created successfully.
+    """
+    try:
+        from web.models import IssueTicket
+
+        ticket = IssueTicket(
+            tenant_id=tenant_id,
+            category="voice_faq",
+            priority="medium",
+            status="open",
+            title=f"Voice FAQ: {knowledge_gap.question[:100]}",
+            description=knowledge_gap.question,
+            guest_phone=knowledge_gap.guest_phone,
+            guest_name=knowledge_gap.guest_name,
+            unit_identifier=knowledge_gap.guest_room,
+        )
+        db.add(ticket)
+        db.commit()
+        db.refresh(ticket)
+
+        # Link gap to ticket
+        knowledge_gap.issue_ticket_id = ticket.id
+        db.commit()
+
+        log.info(f"[VOICE] Created ticket #{ticket.id} for gap {knowledge_gap.id}")
+        return ticket.id
+    except Exception as e:
+        log.error(f"[VOICE] Error creating ticket for gap: {e}")
+        return None
 
 
 @app.post("/api/calls/incoming")
@@ -7839,22 +8080,43 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         if not tenant or not tenant.voice_enabled:
             return _voice_twiml_error("Sorry, this number is not configured for voice support.")
 
-        # Try to identify the guest
+        # Try to identify the guest from GuestContact (current stay only)
+        now = datetime.now(timezone.utc)
         guest_contact = (
             db.query(GuestContact)
             .filter(
                 GuestContact.tenant_id == tenant.id,
                 GuestContact.guest_phone == from_number,
+                GuestContact.status.in_(["active", "pending"]),
+                GuestContact.check_in <= now + timedelta(days=1),
+                GuestContact.check_out >= now,
             )
             .order_by(GuestContact.check_in.desc())
             .first()
         )
+
+        # Fallback: check Reservation table (CSV imports, PMS syncs)
+        reservation = None
+        if not guest_contact:
+            reservation = (
+                db.query(Reservation)
+                .filter(
+                    Reservation.tenant_id == tenant.id,
+                    Reservation.guest_phone == from_number,
+                    Reservation.status == "confirmed",
+                    Reservation.checkin <= (now + timedelta(days=1)).date(),
+                    Reservation.checkout >= now.date(),
+                )
+                .order_by(Reservation.checkin.desc())
+                .first()
+            )
 
         # Create VoiceCall record
         voice_call = VoiceCall(
             id=str(uuid4()),
             tenant_id=tenant.id,
             guest_contact_id=guest_contact.id if guest_contact else None,
+            reservation_id=reservation.id if reservation else None,
             twilio_call_id=call_sid,
             twilio_phone_number=to_number,
             guest_phone_number=from_number,
@@ -7867,8 +8129,14 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         db.refresh(voice_call)
 
         property_name = (tenant.config.property_names or "our property") if tenant.config else "our property"
+        guest_name_for_greeting = None
         if guest_contact:
-            greeting = f"Hello {guest_contact.guest_name.split()[0]}, welcome back to {property_name}! How can I help you today?"
+            guest_name_for_greeting = guest_contact.guest_name.split()[0]
+        elif reservation:
+            guest_name_for_greeting = reservation.guest_name.split()[0]
+
+        if guest_name_for_greeting:
+            greeting = f"Hello {guest_name_for_greeting}, welcome back to {property_name}! How can I help you today?"
         else:
             greeting = f"Hello, welcome to {property_name}. How can I help you today?"
 
@@ -7928,6 +8196,11 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
             "confidence": confidence,
         })
 
+        # ── Step 1b: Detect guest language ────────────────────────────────────
+        detected_lang = _detect_language(guest_message)
+        voice_call.guest_language = detected_lang
+        log.info(f"[VOICE] Detected language: {detected_lang}")
+
         # ── Step 2: Build full tenant context ────────────────────────────────
         tenant = voice_call.tenant
         cfg    = tenant.config
@@ -7962,16 +8235,85 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
             "late_checkout_policy": cfg.late_checkout_policy if cfg else "",
             "refund_policy":        cfg.refund_policy        if cfg else "",
         }
+
+        # Enrich with GuestContact room/property info
+        if guest_contact:
+            if guest_contact.room_identifier:
+                tenant_config_dict["guest_room"] = guest_contact.room_identifier
+            if guest_contact.property_name:
+                tenant_config_dict["guest_property"] = guest_contact.property_name
+
         # Inject reservation details if available
         if active_reservation:
             res = active_reservation
             tenant_config_dict["guest_reservation"] = (
                 f"Confirmation: {res.confirmation_code}, "
-                f"Check-in: {res.check_in.strftime('%b %d %Y') if hasattr(res, 'check_in') and res.check_in else 'N/A'}, "
-                f"Check-out: {res.check_out.strftime('%b %d %Y') if hasattr(res, 'check_out') and res.check_out else 'N/A'}"
+                f"Check-in: {res.checkin.strftime('%b %d') if res.checkin else 'N/A'}, "
+                f"Check-out: {res.checkout.strftime('%b %d') if res.checkout else 'N/A'}"
             )
+            if res.unit_identifier:
+                tenant_config_dict["guest_room"] = res.unit_identifier
+            if res.listing_name:
+                tenant_config_dict["guest_property"] = res.listing_name
+        # Fallback: if no GuestContact but we have voice_call.reservation_id, fetch that reservation
+        elif voice_call.reservation_id:
+            res = db.query(Reservation).filter(Reservation.id == voice_call.reservation_id).first()
+            if res:
+                tenant_config_dict["guest_reservation"] = (
+                    f"Confirmation: {res.confirmation_code}, "
+                    f"Check-in: {res.checkin.strftime('%b %d') if res.checkin else 'N/A'}, "
+                    f"Check-out: {res.checkout.strftime('%b %d') if res.checkout else 'N/A'}"
+                )
+                if res.unit_identifier:
+                    tenant_config_dict["guest_room"] = res.unit_identifier
+                if res.listing_name:
+                    tenant_config_dict["guest_property"] = res.listing_name
 
         guest_name = guest_contact.guest_name if guest_contact else None
+
+        # ── Step 2b: Add conversation history and guest email ─────────────────
+        call_history = _get_guest_call_history(tenant.id, voice_call.guest_phone_number, db)
+        if call_history:
+            tenant_config_dict["guest_call_history"] = call_history
+
+        # Try to capture guest email from GuestContact or Reservation
+        if guest_contact and guest_contact.guest_email:
+            voice_call.guest_email = guest_contact.guest_email
+        elif active_reservation and hasattr(active_reservation, 'guest_email') and active_reservation.guest_email:
+            voice_call.guest_email = active_reservation.guest_email
+
+        # ── Step 2c: Detect callback requests ────────────────────────────────
+        callback_keywords = ["callback", "call me", "call back", "ring me", "call later", "later time"]
+        if any(kw in guest_message.lower() for kw in callback_keywords):
+            voice_call.callback_requested = True
+            tenant_config_dict["callback_requested"] = True
+
+            # Try to extract time from message (e.g., "30 minutes", "in an hour", "at 5pm")
+            import re
+            msg_lower = guest_message.lower()
+            callback_at = datetime.now(timezone.utc)
+
+            # Check for "in X minutes/hours"
+            match = re.search(r"in (\d+)\s*(minute|hour)s?", msg_lower)
+            if match:
+                amount = int(match.group(1))
+                unit = match.group(2)
+                if unit == "hour":
+                    callback_at = callback_at + timedelta(hours=amount)
+                else:
+                    callback_at = callback_at + timedelta(minutes=amount)
+                voice_call.callback_at = callback_at
+                log.info(f"[VOICE] Guest requested callback in {amount} {unit}(s)")
+            # Check for "tomorrow", "in the morning", etc.
+            elif "tomorrow" in msg_lower or "next" in msg_lower:
+                callback_at = callback_at + timedelta(days=1)
+                callback_at = callback_at.replace(hour=10, minute=0, second=0)  # Default to 10am
+                voice_call.callback_at = callback_at
+                log.info(f"[VOICE] Guest requested callback tomorrow")
+            else:
+                # Default: 1 hour from now
+                voice_call.callback_at = callback_at + timedelta(hours=1)
+                log.info(f"[VOICE] Guest requested callback (default 1 hour)")
 
         # ── Step 3: Generate response ─────────────────────────────────────────
         ai_text, send_action, unanswered_question = await VoiceAIService.generate_response(
@@ -7979,6 +8321,7 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
             tenant_config_dict,
             voice_call.guest_messages,
             guest_name=guest_name,
+            guest_language=voice_call.guest_language,
         )
         log.info(f"[VOICE] Response: '{ai_text[:80]}' | send={send_action} | gap={unanswered_question}")
 
@@ -8116,6 +8459,16 @@ async def handle_hangup(request: Request, db: Session = Depends(get_db)):
                 send_channel = cfg.voice_send_channel if cfg.voice_send_channel != "disabled" else "sms"
                 _send_voice_message(cfg, notify_phone, summary, send_channel)
 
+        # Post-call satisfaction survey (send SMS with rating request)
+        if cfg and voice_call.call_type == "incoming":
+            survey_msg = (
+                f"👋 Thanks for calling! Quick question: How was your experience? "
+                f"Reply with a number 1-5 (1=Poor, 5=Excellent). "
+                f"Your feedback helps us improve. 🙏"
+            )
+            send_channel = cfg.voice_send_channel if cfg.voice_send_channel != "disabled" else "sms"
+            _send_voice_message(cfg, voice_call.guest_phone_number, survey_msg, send_channel)
+
         # Activity log
         db.add(ActivityLog(
             tenant_id=voice_call.tenant_id,
@@ -8134,6 +8487,50 @@ async def handle_hangup(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         log.error(f"[VOICE] Error in handle_hangup: {e}\n{traceback.format_exc()}")
         return {"error": str(e)}
+
+
+@app.post("/api/calls/rating")
+def receive_rating(request: Request, phone: str = None, rating: int = None, db: Session = Depends(get_db)):
+    """
+    Receive satisfaction rating from guest (typically via webhook from SMS handler).
+    Updates the most recent VoiceCall record with the rating.
+    """
+    try:
+        if not phone or not rating or rating < 1 or rating > 5:
+            return {"status": "invalid"}
+
+        # Find the most recent completed call from this phone number
+        from web.models import VoiceCall
+        recent_call = (
+            db.query(VoiceCall)
+            .filter(VoiceCall.guest_phone_number == phone)
+            .order_by(VoiceCall.created_at.desc())
+            .first()
+        )
+
+        if recent_call:
+            recent_call.guest_rating = rating
+            db.commit()
+            log.info(f"[VOICE] Rating {rating}/5 recorded for {phone}")
+
+            # If rating is 1-star, escalate to host
+            if rating == 1:
+                cfg = recent_call.tenant.config if recent_call.tenant else None
+                if cfg and cfg.sms_notify_number:
+                    alert = (
+                        f"⚠️ Low satisfaction rating on voice call\n"
+                        f"Guest: {phone}\n"
+                        f"Rating: 1/5 ⭐\n"
+                        f"Consider following up with this guest."
+                    )
+                    _send_voice_message(cfg, cfg.sms_notify_number, alert, "sms")
+
+            return {"status": "recorded", "rating": rating}
+        return {"status": "call_not_found"}
+
+    except Exception as e:
+        log.error(f"[VOICE] Error processing rating: {e}")
+        return {"status": "error"}
 
 
 @app.post("/api/calls/send-voice")

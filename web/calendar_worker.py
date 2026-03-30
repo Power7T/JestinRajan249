@@ -17,7 +17,7 @@ from typing import Optional
 from icalendar import Calendar
 
 from web.db import SessionLocal
-from web.models import Draft, CalendarState, ActivityLog
+from web.models import Draft, CalendarState, ActivityLog, Reservation
 from web.classifier import generate_draft, make_draft_id, build_property_context
 from web.crypto import decrypt
 
@@ -145,6 +145,34 @@ def check_booking_confirmed(cfg: CalendarConfig, booking: dict, label: str):
     draft_id = make_draft_id("calendar")
     _save_draft(cfg.tenant_id, draft_id, f"{guest} — new booking",
                 "New booking confirmation", draft_text, "booking")
+
+    # Also create/upsert Reservation record from iCal event
+    db = SessionLocal()
+    try:
+        existing_res = db.query(Reservation).filter(
+            Reservation.tenant_id == cfg.tenant_id,
+            Reservation.confirmation_code == booking['uid']
+        ).first()
+
+        if not existing_res:
+            res = Reservation(
+                tenant_id=cfg.tenant_id,
+                confirmation_code=booking['uid'],
+                guest_name=guest,
+                listing_name=label,
+                checkin=booking['checkin'],
+                checkout=booking['checkout'],
+                nights=nights,
+                status="confirmed",
+            )
+            db.add(res)
+            db.commit()
+            log.info("[%s] Reservation created from iCal for %s (uid=%s)", cfg.tenant_id, guest, booking['uid'])
+    except Exception as exc:
+        log.error("[%s] Error creating reservation from iCal: %s", cfg.tenant_id, exc)
+    finally:
+        db.close()
+
     _fire_state(cfg.tenant_id, key)
     log.info("[%s] New booking for %s noted", cfg.tenant_id, guest)
 
