@@ -3036,6 +3036,34 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
     })
 
 
+def _save_voice_ai_settings(
+    tenant: Tenant,
+    cfg: TenantConfig,
+    *,
+    voice_enabled: str,
+    voice_phone_number: str,
+    voice_twilio_account_sid: str,
+    voice_twilio_auth_token: str,
+    voice_twilio_from_number: str,
+    voice_elevenlabs_voice_id: str,
+    voice_send_channel: str,
+    voice_post_call_summary: str,
+    voice_scheduled_calls_enabled: str,
+    sms_notify_number: str,
+) -> None:
+    tenant.voice_enabled = voice_enabled.strip().lower() == "true"
+    tenant.voice_phone_number = voice_phone_number.strip() or None
+    cfg.voice_twilio_account_sid = voice_twilio_account_sid.strip() or None
+    cfg.voice_twilio_from_number = voice_twilio_from_number.strip() or None
+    if voice_twilio_auth_token.strip():
+        cfg.voice_twilio_auth_token_enc = encrypt(voice_twilio_auth_token.strip())
+    cfg.voice_elevenlabs_voice_id = voice_elevenlabs_voice_id.strip() or "EXAVITQu4vr4xnSDxMaL"
+    cfg.voice_send_channel = voice_send_channel.strip() or "disabled"
+    cfg.voice_post_call_summary = voice_post_call_summary.strip().lower() == "true"
+    cfg.voice_scheduled_calls_enabled = voice_scheduled_calls_enabled.strip().lower() == "true"
+    cfg.sms_notify_number = sms_notify_number.strip() or None
+
+
 @app.post("/api/tenant/delete")
 def api_gdpr_delete_tenant(
     req: Request,
@@ -3106,17 +3134,6 @@ async def settings_save(
     twilio_account_sid:    str = Form(""),
     twilio_auth_token:     str = Form(""),
     twilio_from_number:    str = Form(""),
-    sms_notify_number:     str = Form(""),
-    # Voice AI
-    voice_enabled:                   str = Form("false"),
-    voice_phone_number:              str = Form(""),
-    voice_twilio_account_sid:        str = Form(""),
-    voice_twilio_auth_token:         str = Form(""),
-    voice_twilio_from_number:        str = Form(""),
-    voice_elevenlabs_voice_id:       str = Form("EXAVITQu4vr4xnSDxMaL"),
-    voice_send_channel:              str = Form("disabled"),
-    voice_post_call_summary:         str = Form("false"),
-    voice_scheduled_calls_enabled:   str = Form("false"),
     csrf_token:            str = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -3188,22 +3205,8 @@ async def settings_save(
         cfg.sms_mode           = sms_mode.strip() or "none"
         cfg.twilio_account_sid = twilio_account_sid.strip() or None
         cfg.twilio_from_number = twilio_from_number.strip() or None
-        cfg.sms_notify_number  = sms_notify_number.strip() or None
         if twilio_auth_token.strip():
             cfg.twilio_auth_token_enc = encrypt(twilio_auth_token.strip())
-
-    # Voice AI settings
-    tenant.voice_enabled      = voice_enabled.strip().lower() == "true"
-    tenant.voice_phone_number = voice_phone_number.strip() or None
-    cfg.voice_twilio_account_sid = voice_twilio_account_sid.strip() or None
-    cfg.voice_twilio_from_number = voice_twilio_from_number.strip() or None
-    if voice_twilio_auth_token.strip():
-        cfg.voice_twilio_auth_token_enc = encrypt(voice_twilio_auth_token.strip())
-    cfg.sms_notify_number = sms_notify_number.strip() or None
-    cfg.voice_elevenlabs_voice_id = voice_elevenlabs_voice_id.strip() or "EXAVITQu4vr4xnSDxMaL"
-    cfg.voice_send_channel           = voice_send_channel.strip() or "disabled"
-    cfg.voice_post_call_summary      = voice_post_call_summary.strip().lower() == "true"
-    cfg.voice_scheduled_calls_enabled = voice_scheduled_calls_enabled.strip().lower() == "true"
 
     db.add(ActivityLog(tenant_id=tenant_id, event_type="settings_saved",
                        message="Settings updated"))
@@ -3249,6 +3252,51 @@ async def settings_save(
             inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
         ),
     })
+
+
+@app.post("/voice-calls/settings", response_class=HTMLResponse)
+async def voice_ai_settings_save(
+    request: Request,
+    voice_enabled: str = Form("false"),
+    voice_phone_number: str = Form(""),
+    voice_twilio_account_sid: str = Form(""),
+    voice_twilio_auth_token: str = Form(""),
+    voice_twilio_from_number: str = Form(""),
+    voice_elevenlabs_voice_id: str = Form("EXAVITQu4vr4xnSDxMaL"),
+    voice_send_channel: str = Form("disabled"),
+    voice_post_call_summary: str = Form("false"),
+    voice_scheduled_calls_enabled: str = Form("false"),
+    sms_notify_number: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"voice-settings:{tenant_id}", max_requests=30, window_seconds=3600)
+
+    cfg = _get_or_create_config(tenant_id, db)
+    tenant = _get_tenant(tenant_id, db)
+    _save_voice_ai_settings(
+        tenant,
+        cfg,
+        voice_enabled=voice_enabled,
+        voice_phone_number=voice_phone_number,
+        voice_twilio_account_sid=voice_twilio_account_sid,
+        voice_twilio_auth_token=voice_twilio_auth_token,
+        voice_twilio_from_number=voice_twilio_from_number,
+        voice_elevenlabs_voice_id=voice_elevenlabs_voice_id,
+        voice_send_channel=voice_send_channel,
+        voice_post_call_summary=voice_post_call_summary,
+        voice_scheduled_calls_enabled=voice_scheduled_calls_enabled,
+        sms_notify_number=sms_notify_number,
+    )
+    db.add(ActivityLog(tenant_id=tenant_id, event_type="voice_ai_settings_saved", message="Voice AI settings updated"))
+    db.commit()
+    worker_manager.restart_worker(tenant_id)
+    return RedirectResponse(url="/voice-calls?saved=1#voice-ai-setup", status_code=303)
 
 
 @app.post("/settings/automation")
@@ -5538,6 +5586,7 @@ def voice_calls_page(request: Request,
                      status: str = None,
                      sentiment: str = None,
                      search: str = None,
+                     saved: bool = False,
                      db: Session = Depends(get_db)):
     try:
         tenant_id = get_current_tenant_id(request)
@@ -5625,6 +5674,8 @@ def voice_calls_page(request: Request,
         "status": status,
         "sentiment": sentiment,
         "search": search,
+        "saved": saved,
+        "app_base_url": APP_BASE_URL,
         "voice_calls_error": voice_calls_error,
     })
 

@@ -27,6 +27,7 @@ def test_settings_page_renders_for_authenticated_user(client):
 
     assert response.status_code == 200
     assert b"Settings" in response.content
+    assert b"Twilio Webhook URL (for incoming calls)" not in response.content
 
 
 def test_guest_contacts_page_renders_for_authenticated_user(client):
@@ -38,13 +39,14 @@ def test_guest_contacts_page_renders_for_authenticated_user(client):
     assert b"Guest Check-ins" in response.content
 
 
-def test_voice_calls_page_renders_for_authenticated_user(client):
-    _signup(client, email="voice-calls-page@example.com")
+def test_voice_ai_page_renders_for_authenticated_user(client):
+    _signup(client, email="voice-ai-page@example.com")
 
     response = client.get("/voice-calls", follow_redirects=False)
 
     assert response.status_code == 200
-    assert b"Voice Calls" in response.content
+    assert b"Voice AI" in response.content
+    assert b"Voice AI Settings" in response.content
 
 
 def test_voice_calls_page_preserves_filter_state(client):

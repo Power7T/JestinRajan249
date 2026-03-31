@@ -163,7 +163,7 @@ Once integrated into the dashboard UI:
 
 ```
 1. Admin enables voice for a tenant:
-   - Settings → Voice Calling → Enable
+   - Settings → Voice AI → Enable
    - Enter Twilio phone number (+1-650-555-6789)
 
 2. Guest calls the number
@@ -173,7 +173,7 @@ Once integrated into the dashboard UI:
    - Can ask another question or hang up
 
 3. Host sees call record in dashboard:
-   - Voice Calls → Call logs
+   - Voice AI → Call logs
    - Duration: 45 seconds
    - Transcript: "What time is checkout? → Checkout is at 11 AM"
 ```

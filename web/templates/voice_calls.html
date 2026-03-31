@@ -1,5 +1,5 @@
 {%- extends "base.html" %}
-{%- block title %}Voice Calls — HostAI{%- endblock %}
+{%- block title %}Voice AI — HostAI{%- endblock %}
 
 {%- block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
@@ -59,7 +59,7 @@ tailwind.config = {
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
 <span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>ROI Dashboard</a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>Voice Calls</a>
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>Voice AI</a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
 <span class="material-symbols-outlined" data-icon="hub">hub</span>Workflow Center</a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
@@ -92,7 +92,7 @@ tailwind.config = {
 <main class="ml-[260px] pt-8 pb-12 px-8 min-h-screen">
   <div class="mb-8 flex items-center justify-between">
     <div>
-      <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">Voice Calls</h1>
+      <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">Voice AI</h1>
       <p class="text-slate-400 text-sm">AI-powered phone support call log</p>
     </div>
     <div class="flex items-center gap-3">
@@ -104,7 +104,7 @@ tailwind.config = {
         {% endif %}
       </a>
       {% if not tenant.voice_enabled %}
-      <a href="/settings#voice" class="flex items-center gap-2 px-4 py-2 bg-[#5B8DEF]/20 text-[#5B8DEF] rounded-xl text-sm font-semibold hover:bg-[#5B8DEF]/30 transition-colors">
+      <a href="#voice-ai-setup" class="flex items-center gap-2 px-4 py-2 bg-[#5B8DEF]/20 text-[#5B8DEF] rounded-xl text-sm font-semibold hover:bg-[#5B8DEF]/30 transition-colors">
         <span class="material-symbols-outlined text-base">settings</span>
         Enable Voice AI
       </a>
@@ -128,6 +128,117 @@ tailwind.config = {
     </div>
   </div>
   {% endif %}
+
+  {% if saved %}
+  <div class="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-100">
+    <div class="flex items-start gap-3">
+      <span class="material-symbols-outlined text-emerald-300">check_circle</span>
+      <div>
+        <p class="font-semibold text-emerald-200">Voice AI settings saved</p>
+        <p class="mt-1 text-emerald-100/90">The new configuration is active for this tenant.</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div id="voice-ai-setup" class="glass-card rounded-3xl p-6 mb-8 border border-[#5B8DEF]/15">
+    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+      <div>
+        <p class="text-[0.65rem] font-bold text-[#aec6ff] uppercase tracking-[0.3em] mb-2">Setup</p>
+        <h2 class="text-2xl font-bold text-white">Voice AI Settings</h2>
+        <p class="text-slate-400 text-sm mt-2 max-w-2xl">
+          Configure Twilio, ElevenLabs, host alerts, and pre-check-in calls here. These settings now live on the Voice AI page.
+        </p>
+      </div>
+      <span class="self-start px-3 py-1.5 rounded-full text-xs font-bold {% if tenant.voice_enabled %}bg-green-500/10 text-green-400{% else %}bg-white/5 text-slate-400{% endif %}">
+        {% if tenant.voice_enabled %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </div>
+
+    <form method="post" action="/voice-calls/settings" class="space-y-5">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Enable Voice AI</label>
+          <select name="voice_enabled" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
+            <option value="false" {% if not tenant.voice_enabled %}selected{% endif %}>Disabled</option>
+            <option value="true" {% if tenant.voice_enabled %}selected{% endif %}>Enabled</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Voice Phone Number</label>
+          <input type="text" name="voice_phone_number" value="{{ tenant.voice_phone_number or '' }}" placeholder="+15550001234" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Twilio Account SID</label>
+          <input type="text" name="voice_twilio_account_sid" value="{{ cfg.voice_twilio_account_sid or '' }}" placeholder="ACxxxxxxxx" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Twilio Auth Token</label>
+          <input type="password" name="voice_twilio_auth_token" placeholder="••••••••" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Twilio From Number</label>
+          <input type="text" name="voice_twilio_from_number" value="{{ cfg.voice_twilio_from_number or '' }}" placeholder="+15550001234" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Host Alert Phone Number</label>
+          <input type="text" name="sms_notify_number" value="{{ cfg.sms_notify_number or '' }}" placeholder="+15550009999" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Voice Selection</label>
+          <select name="voice_elevenlabs_voice_id" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
+            <option value="EXAVITQu4vr4xnSDxMaL" {% if (cfg.voice_elevenlabs_voice_id or 'EXAVITQu4vr4xnSDxMaL') == 'EXAVITQu4vr4xnSDxMaL' %}selected{% endif %}>Rachel - Female (Default)</option>
+            <option value="VR6AewLTigWG4xSOukaG" {% if cfg.voice_elevenlabs_voice_id == 'VR6AewLTigWG4xSOukaG' %}selected{% endif %}>Arnold - Male</option>
+            <option value="pNInz6obpgDQGcFmaJgB" {% if cfg.voice_elevenlabs_voice_id == 'pNInz6obpgDQGcFmaJgB' %}selected{% endif %}>Adam - Male</option>
+            <option value="MF3mGyEYCl7XYWbV9V6O" {% if cfg.voice_elevenlabs_voice_id == 'MF3mGyEYCl7XYWbV9V6O' %}selected{% endif %}>Elli - Female</option>
+            <option value="AZnzlk1XvdvUeBnXmlld" {% if cfg.voice_elevenlabs_voice_id == 'AZnzlk1XvdvUeBnXmlld' %}selected{% endif %}>Domi - Female</option>
+            <option value="ErXwobaYiN019PkySvjV" {% if cfg.voice_elevenlabs_voice_id == 'ErXwobaYiN019PkySvjV' %}selected{% endif %}>Antoni - Male</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Send Info During Call Via</label>
+          <select name="voice_send_channel" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
+            <option value="disabled" {% if (cfg.voice_send_channel or 'disabled') == 'disabled' %}selected{% endif %}>Disabled (don't send)</option>
+            <option value="sms" {% if cfg.voice_send_channel == 'sms' %}selected{% endif %}>SMS (Twilio)</option>
+            <option value="whatsapp" {% if cfg.voice_send_channel == 'whatsapp' %}selected{% endif %}>WhatsApp</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Post-call Summary</label>
+          <select name="voice_post_call_summary" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
+            <option value="false" {% if not cfg.voice_post_call_summary %}selected{% endif %}>Disabled</option>
+            <option value="true" {% if cfg.voice_post_call_summary %}selected{% endif %}>Send to host after each call</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Scheduled Pre-checkin Calls</label>
+          <select name="voice_scheduled_calls_enabled" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
+            <option value="false" {% if not cfg.voice_scheduled_calls_enabled %}selected{% endif %}>Disabled</option>
+            <option value="true" {% if cfg.voice_scheduled_calls_enabled %}selected{% endif %}>Auto-call guests 24h before check-in</option>
+          </select>
+        </div>
+      </div>
+      <div class="rounded-2xl bg-white/5 border border-white/5 p-4">
+        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-2">Twilio webhook URL</p>
+        <div class="flex flex-col md:flex-row gap-3">
+          <input type="text" readonly value="{{ app_base_url }}/api/calls/incoming" id="voice-webhook-url" class="flex-1 px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm">
+          <button type="button" class="copy-btn flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-slate-200 hover:bg-white/15 transition-colors" data-target="voice-webhook-url">
+            Copy
+          </button>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">Use this URL in Twilio Console for incoming voice calls.</p>
+      </div>
+      <div class="flex items-center justify-between gap-4">
+        <p class="text-xs text-slate-500">Changes take effect after saving and restarting the worker.</p>
+        <button type="submit" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
+          Save Voice AI
+        </button>
+      </div>
+    </form>
+  </div>
 
   <!-- Stats Row -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -326,7 +437,7 @@ tailwind.config = {
         Once guests call your Twilio number, AI-powered conversations will appear here with full transcripts.
       </p>
       {% if not tenant.voice_enabled %}
-      <a href="/settings#voice" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
+      <a href="#voice-ai-setup" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
         <span class="material-symbols-outlined text-base">settings</span>
         Set Up Voice AI
       </a>
@@ -343,4 +454,13 @@ function toggleTranscript(id) {
   const el = document.getElementById('transcript-' + id);
   if (el) el.classList.toggle('hidden');
 }
+
+document.addEventListener('click', function (event) {
+  const button = event.target.closest('.copy-btn');
+  if (!button) return;
+  const targetId = button.getAttribute('data-target');
+  const element = document.getElementById(targetId);
+  if (!element || !navigator.clipboard) return;
+  navigator.clipboard.writeText(element.value || element.textContent || '');
+});
 </script>

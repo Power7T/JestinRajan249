@@ -321,11 +321,11 @@ DELETE /reservations/{id}
 
 ---
 
-## Voice Calls
+## Voice AI
 
-Manage voice call records and analytics.
+Manage voice AI call records and analytics.
 
-### List Voice Calls
+### List Voice AI Calls
 
 ```bash
 GET /voice-calls
