@@ -65,6 +65,7 @@ from fastapi.responses import (
 )
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from web.db import get_db, init_db, SessionLocal
@@ -5549,56 +5550,65 @@ def voice_calls_page(request: Request,
     from web.models import VoiceCall
     per_page = 25
     offset = (page - 1) * per_page
+    calls = []
+    total = 0
+    open_gaps_count = 0
+    voice_calls_error = None
 
-    # Build query with filters
-    query = db.query(VoiceCall).filter(VoiceCall.tenant_id == tenant_id)
+    try:
+        # Build query with filters
+        query = db.query(VoiceCall).filter(VoiceCall.tenant_id == tenant_id)
 
-    # Date range filter
-    if date_from:
-        try:
-            from_dt = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
-            query = query.filter(VoiceCall.created_at >= from_dt)
-        except:
-            pass
+        # Date range filter
+        if date_from:
+            try:
+                from_dt = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
+                query = query.filter(VoiceCall.created_at >= from_dt)
+            except Exception:
+                pass
 
-    if date_to:
-        try:
-            to_dt = datetime.fromisoformat(date_to).replace(tzinfo=timezone.utc, hour=23, minute=59, second=59)
-            query = query.filter(VoiceCall.created_at <= to_dt)
-        except:
-            pass
+        if date_to:
+            try:
+                to_dt = datetime.fromisoformat(date_to).replace(tzinfo=timezone.utc, hour=23, minute=59, second=59)
+                query = query.filter(VoiceCall.created_at <= to_dt)
+            except Exception:
+                pass
 
-    # Status filter
-    if status:
-        query = query.filter(VoiceCall.status == status)
+        # Status filter
+        if status:
+            query = query.filter(VoiceCall.status == status)
 
-    # Sentiment filter
-    if sentiment:
-        query = query.filter(VoiceCall.sentiment == sentiment)
+        # Sentiment filter
+        if sentiment:
+            query = query.filter(VoiceCall.sentiment == sentiment)
 
-    # Search filter (phone, name, transcript)
-    if search:
-        search_term = f"%{search}%"
-        query = query.filter(
-            (VoiceCall.guest_phone_number.ilike(search_term)) |
-            (VoiceCall.full_transcript.ilike(search_term))
+        # Search filter (phone, name, transcript)
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                (VoiceCall.guest_phone_number.ilike(search_term)) |
+                (VoiceCall.full_transcript.ilike(search_term))
+            )
+
+        total = query.count()
+        calls = (
+            query
+            .order_by(VoiceCall.created_at.desc())
+            .offset(offset)
+            .limit(per_page)
+            .all()
         )
 
-    total = query.count()
-    calls = (
-        query
-        .order_by(VoiceCall.created_at.desc())
-        .offset(offset)
-        .limit(per_page)
-        .all()
-    )
-
-    from web.models import VoiceKnowledgeGap
-    open_gaps_count = (
-        db.query(VoiceKnowledgeGap)
-        .filter(VoiceKnowledgeGap.tenant_id == tenant_id, VoiceKnowledgeGap.resolved.is_(False))
-        .count()
-    )
+        from web.models import VoiceKnowledgeGap
+        open_gaps_count = (
+            db.query(VoiceKnowledgeGap)
+            .filter(VoiceKnowledgeGap.tenant_id == tenant_id, VoiceKnowledgeGap.resolved.is_(False))
+            .count()
+        )
+    except SQLAlchemyError:
+        db.rollback()
+        log.exception("Voice calls page failed to load for tenant %s", tenant_id)
+        voice_calls_error = "Voice calling data is temporarily unavailable. Run the latest database migrations, then reload this page."
 
     return templates.TemplateResponse("voice_calls.html", {
         "request": request,
@@ -5612,7 +5622,10 @@ def voice_calls_page(request: Request,
         "open_gaps_count": open_gaps_count,
         "date_from": date_from,
         "date_to": date_to,
+        "status": status,
+        "sentiment": sentiment,
         "search": search,
+        "voice_calls_error": voice_calls_error,
     })
 
 

@@ -117,6 +117,18 @@ tailwind.config = {
     </div>
   </div>
 
+  {% if voice_calls_error %}
+  <div class="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-5 py-4 text-sm text-amber-100">
+    <div class="flex items-start gap-3">
+      <span class="material-symbols-outlined text-amber-300">warning</span>
+      <div>
+        <p class="font-semibold text-amber-200">Voice call data could not be loaded</p>
+        <p class="mt-1 text-amber-100/90">{{ voice_calls_error }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Stats Row -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="glass-card rounded-2xl p-5">
@@ -172,10 +184,10 @@ tailwind.config = {
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Status</label>
             <select name="status" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
               <option value="">All Status</option>
-              <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>Completed</option>
-              <option value="answered" {% if request.args.get('status') == 'answered' %}selected{% endif %}>Answered</option>
-              <option value="ringing" {% if request.args.get('status') == 'ringing' %}selected{% endif %}>Ringing</option>
-              <option value="failed" {% if request.args.get('status') == 'failed' %}selected{% endif %}>Failed</option>
+              <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+              <option value="answered" {% if status == 'answered' %}selected{% endif %}>Answered</option>
+              <option value="ringing" {% if status == 'ringing' %}selected{% endif %}>Ringing</option>
+              <option value="failed" {% if status == 'failed' %}selected{% endif %}>Failed</option>
             </select>
           </div>
 
@@ -184,9 +196,9 @@ tailwind.config = {
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Sentiment</label>
             <select name="sentiment" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
               <option value="">All Sentiments</option>
-              <option value="positive" {% if request.args.get('sentiment') == 'positive' %}selected{% endif %}>😊 Positive</option>
-              <option value="neutral" {% if request.args.get('sentiment') == 'neutral' %}selected{% endif %}>😐 Neutral</option>
-              <option value="negative" {% if request.args.get('sentiment') == 'negative' %}selected{% endif %}>😟 Negative</option>
+              <option value="positive" {% if sentiment == 'positive' %}selected{% endif %}>😊 Positive</option>
+              <option value="neutral" {% if sentiment == 'neutral' %}selected{% endif %}>😐 Neutral</option>
+              <option value="negative" {% if sentiment == 'negative' %}selected{% endif %}>😟 Negative</option>
             </select>
           </div>
 
