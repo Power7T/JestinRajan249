@@ -207,6 +207,8 @@ _ADMIN_EMAILS: set = {
 if _IS_DEV_ENV:
     _ADMIN_EMAILS.add("chandan@hostai.local")
 templates.env.globals["is_admin"] = lambda email: bool(email) and email.lower() in _ADMIN_EMAILS
+templates.env.globals["max"] = max
+templates.env.globals["min"] = min
 
 _APP_BASE_URL_RAW = os.getenv("APP_BASE_URL", "").strip().rstrip("/")
 if not _APP_BASE_URL_RAW or _APP_BASE_URL_RAW == "https://your-domain.com":
