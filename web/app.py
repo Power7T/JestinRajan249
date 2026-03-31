@@ -9079,6 +9079,7 @@ def admin_voice_analytics_view(request: Request, days: int = 30, db: Session = D
         "admin_voice_analytics.html",
         {
             "request": request,
+            "admin": tenant,
             "tenant": tenant,
             "analytics_data": analytics_data,
             "active_page": "voice_analytics"
@@ -9101,6 +9102,7 @@ def admin_voice_routing_view(request: Request, db: Session = Depends(get_db)):
         "admin_voice_routing.html",
         {
             "request": request,
+            "admin": tenant,
             "tenant": tenant,
             "routing_config": config,
             "routing_rules": rules,
@@ -9208,6 +9210,7 @@ def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
         "admin_saas_dashboard.html",
         {
             "request": request,
+            "admin": tenant,
             "total_cost_30d": total_cost_30d,
             "total_calls_30d": total_calls_30d,
             "costs_by_service": costs_by_service,
