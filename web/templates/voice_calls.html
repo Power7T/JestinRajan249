@@ -130,12 +130,24 @@ tailwind.config = {
     <div class="glass-card rounded-2xl p-5">
       <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Avg Duration</p>
       {% set durations = calls | selectattr('duration_seconds') | map(attribute='duration_seconds') | list %}
-      <p class="text-3xl font-extrabold text-[#aec6ff]">{{ ((durations | sum) / (durations | length) | round(0)) | int if durations else 0 }}s</p>
+      <p class="text-3xl font-extrabold text-[#aec6ff]">
+        {% if durations and durations|length > 0 %}
+          {{ ((durations | sum) / (durations | length) | round(0)) | int }}s
+        {% else %}
+          0s
+        {% endif %}
+      </p>
     </div>
     <div class="glass-card rounded-2xl p-5">
       <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Avg Confidence</p>
       {% set confidences = calls | selectattr('confidence_avg') | map(attribute='confidence_avg') | list %}
-      <p class="text-3xl font-extrabold text-[#aec6ff]">{{ ((confidences | sum) / (confidences | length) * 100) | round(0) | int if confidences else 0 }}%</p>
+      <p class="text-3xl font-extrabold text-[#aec6ff]">
+        {% if confidences and confidences|length > 0 %}
+          {{ (((confidences | sum) / (confidences | length)) * 100) | round(0) | int }}%
+        {% else %}
+          0%
+        {% endif %}
+      </p>
     </div>
   </div>
 
@@ -279,7 +291,7 @@ tailwind.config = {
     <!-- Pagination -->
     {% if total_pages > 1 %}
     <div class="flex items-center justify-between p-6 border-t border-white/5">
-      <p class="text-slate-500 text-sm">Showing {{ (page-1)*per_page + 1 }}–{{ [page*per_page, total] | min }} of {{ total }}</p>
+      <p class="text-slate-500 text-sm">Showing {{ (page-1)*per_page + 1 }}–{{ min(page*per_page, total) }} of {{ total }}</p>
       <div class="flex gap-2">
         {% if page > 1 %}
         <a href="?page={{ page - 1 }}" class="px-4 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 text-sm transition-colors">← Prev</a>
