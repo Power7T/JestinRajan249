@@ -76,7 +76,7 @@ from web.models import (
     AutomationRule, TeamMember, GuestTimelineEvent, ArrivalActivation, IssueTicket, TenantKpiSnapshot,
     PMSIntegration, PMSProcessedMessage,
     ProcessedEmail, PlanConfig, VoicePricingConfig, FailedDraftLog,
-    VoiceCall, APIUsageLog, TenantRateLimit, RateLimitCounter, FeatureFlag, FeatureFlagOverride,
+    VoiceCall, VoiceKnowledgeGap, APIUsageLog, TenantRateLimit, RateLimitCounter, FeatureFlag, FeatureFlagOverride,
     PLAN_FREE, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
     PLAN_STARTER, PLAN_GROWTH,
 )
