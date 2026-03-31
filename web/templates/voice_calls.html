@@ -104,7 +104,7 @@ tailwind.config = {
         {% endif %}
       </a>
       {% if not tenant.voice_enabled %}
-      <a href="#voice-ai-setup" class="flex items-center gap-2 px-4 py-2 bg-[#5B8DEF]/20 text-[#5B8DEF] rounded-xl text-sm font-semibold hover:bg-[#5B8DEF]/30 transition-colors">
+      <a href="/voice-calls?tab=settings#voice-ai-setup" class="flex items-center gap-2 px-4 py-2 bg-[#5B8DEF]/20 text-[#5B8DEF] rounded-xl text-sm font-semibold hover:bg-[#5B8DEF]/30 transition-colors">
         <span class="material-symbols-outlined text-base">settings</span>
         Enable Voice AI
       </a>
@@ -117,7 +117,21 @@ tailwind.config = {
     </div>
   </div>
 
-  {% if voice_calls_error %}
+  <div class="mb-6 flex items-center justify-between gap-4">
+    <div class="inline-flex items-center gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
+      <a href="/voice-calls?tab=panel" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab != 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+        Voice AI Panel
+      </a>
+      <a href="/voice-calls?tab=settings#voice-ai-setup" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab == 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+        Voice AI Settings
+      </a>
+    </div>
+    <div class="text-xs text-slate-500 hidden md:block">
+      Panel = call logs. Settings = Twilio and Voice configuration.
+    </div>
+  </div>
+
+  {% if tab != 'settings' and voice_calls_error %}
   <div class="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-5 py-4 text-sm text-amber-100">
     <div class="flex items-start gap-3">
       <span class="material-symbols-outlined text-amber-300">warning</span>
@@ -129,7 +143,7 @@ tailwind.config = {
   </div>
   {% endif %}
 
-  {% if saved %}
+  {% if tab == 'settings' and saved %}
   <div class="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-100">
     <div class="flex items-start gap-3">
       <span class="material-symbols-outlined text-emerald-300">check_circle</span>
@@ -141,6 +155,7 @@ tailwind.config = {
   </div>
   {% endif %}
 
+  {% if tab == 'settings' %}
   <div id="voice-ai-setup" class="glass-card rounded-3xl p-6 mb-8 border border-[#5B8DEF]/15">
     <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
       <div>
@@ -239,7 +254,9 @@ tailwind.config = {
       </div>
     </form>
   </div>
+  {% endif %}
 
+  {% if tab != 'settings' %}
   <!-- Stats Row -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="glass-card rounded-2xl p-5">
@@ -437,7 +454,7 @@ tailwind.config = {
         Once guests call your Twilio number, AI-powered conversations will appear here with full transcripts.
       </p>
       {% if not tenant.voice_enabled %}
-      <a href="#voice-ai-setup" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
+      <a href="/voice-calls?tab=settings#voice-ai-setup" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
         <span class="material-symbols-outlined text-base">settings</span>
         Set Up Voice AI
       </a>
@@ -445,6 +462,7 @@ tailwind.config = {
     </div>
     {% endif %}
   </div>
+  {% endif %}
 </main>
 {%- endblock %}
 {%- endblock %}

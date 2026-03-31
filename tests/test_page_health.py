@@ -46,7 +46,19 @@ def test_voice_ai_page_renders_for_authenticated_user(client):
 
     assert response.status_code == 200
     assert b"Voice AI" in response.content
+    assert b"Voice AI Panel" in response.content
     assert b"Voice AI Settings" in response.content
+    assert b"Filter Calls" in response.content
+
+
+def test_voice_ai_settings_tab_renders_for_authenticated_user(client):
+    _signup(client, email="voice-ai-settings-page@example.com")
+
+    response = client.get("/voice-calls?tab=settings", follow_redirects=False)
+
+    assert response.status_code == 200
+    assert b"Voice AI Settings" in response.content
+    assert b'action="/voice-calls/settings"' in response.content
 
 
 def test_voice_calls_page_preserves_filter_state(client):

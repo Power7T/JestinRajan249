@@ -3296,7 +3296,7 @@ async def voice_ai_settings_save(
     db.add(ActivityLog(tenant_id=tenant_id, event_type="voice_ai_settings_saved", message="Voice AI settings updated"))
     db.commit()
     worker_manager.restart_worker(tenant_id)
-    return RedirectResponse(url="/voice-calls?saved=1#voice-ai-setup", status_code=303)
+    return RedirectResponse(url="/voice-calls?tab=settings&saved=1#voice-ai-setup", status_code=303)
 
 
 @app.post("/settings/automation")
@@ -5586,6 +5586,7 @@ def voice_calls_page(request: Request,
                      status: str = None,
                      sentiment: str = None,
                      search: str = None,
+                     tab: str = "panel",
                      saved: bool = False,
                      db: Session = Depends(get_db)):
     try:
@@ -5604,60 +5605,67 @@ def voice_calls_page(request: Request,
     open_gaps_count = 0
     voice_calls_error = None
 
-    try:
-        # Build query with filters
-        query = db.query(VoiceCall).filter(VoiceCall.tenant_id == tenant_id)
+    tab_normalized = (tab or "").strip().lower()
+    if tab_normalized not in {"panel", "settings"}:
+        tab_normalized = "panel"
 
-        # Date range filter
-        if date_from:
-            try:
-                from_dt = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
-                query = query.filter(VoiceCall.created_at >= from_dt)
-            except Exception:
-                pass
+    # Only load call-log tables when on the Panel tab. This keeps Settings usable
+    # even if voice call tables are behind migrations.
+    if tab_normalized == "panel":
+        try:
+            # Build query with filters
+            query = db.query(VoiceCall).filter(VoiceCall.tenant_id == tenant_id)
 
-        if date_to:
-            try:
-                to_dt = datetime.fromisoformat(date_to).replace(tzinfo=timezone.utc, hour=23, minute=59, second=59)
-                query = query.filter(VoiceCall.created_at <= to_dt)
-            except Exception:
-                pass
+            # Date range filter
+            if date_from:
+                try:
+                    from_dt = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
+                    query = query.filter(VoiceCall.created_at >= from_dt)
+                except Exception:
+                    pass
 
-        # Status filter
-        if status:
-            query = query.filter(VoiceCall.status == status)
+            if date_to:
+                try:
+                    to_dt = datetime.fromisoformat(date_to).replace(tzinfo=timezone.utc, hour=23, minute=59, second=59)
+                    query = query.filter(VoiceCall.created_at <= to_dt)
+                except Exception:
+                    pass
 
-        # Sentiment filter
-        if sentiment:
-            query = query.filter(VoiceCall.sentiment == sentiment)
+            # Status filter
+            if status:
+                query = query.filter(VoiceCall.status == status)
 
-        # Search filter (phone, name, transcript)
-        if search:
-            search_term = f"%{search}%"
-            query = query.filter(
-                (VoiceCall.guest_phone_number.ilike(search_term)) |
-                (VoiceCall.full_transcript.ilike(search_term))
+            # Sentiment filter
+            if sentiment:
+                query = query.filter(VoiceCall.sentiment == sentiment)
+
+            # Search filter (phone, name, transcript)
+            if search:
+                search_term = f"%{search}%"
+                query = query.filter(
+                    (VoiceCall.guest_phone_number.ilike(search_term)) |
+                    (VoiceCall.full_transcript.ilike(search_term))
+                )
+
+            total = query.count()
+            calls = (
+                query
+                .order_by(VoiceCall.created_at.desc())
+                .offset(offset)
+                .limit(per_page)
+                .all()
             )
 
-        total = query.count()
-        calls = (
-            query
-            .order_by(VoiceCall.created_at.desc())
-            .offset(offset)
-            .limit(per_page)
-            .all()
-        )
-
-        from web.models import VoiceKnowledgeGap
-        open_gaps_count = (
-            db.query(VoiceKnowledgeGap)
-            .filter(VoiceKnowledgeGap.tenant_id == tenant_id, VoiceKnowledgeGap.resolved.is_(False))
-            .count()
-        )
-    except SQLAlchemyError:
-        db.rollback()
-        log.exception("Voice calls page failed to load for tenant %s", tenant_id)
-        voice_calls_error = "Voice calling data is temporarily unavailable. Run the latest database migrations, then reload this page."
+            from web.models import VoiceKnowledgeGap
+            open_gaps_count = (
+                db.query(VoiceKnowledgeGap)
+                .filter(VoiceKnowledgeGap.tenant_id == tenant_id, VoiceKnowledgeGap.resolved.is_(False))
+                .count()
+            )
+        except SQLAlchemyError:
+            db.rollback()
+            log.exception("Voice calls page failed to load for tenant %s", tenant_id)
+            voice_calls_error = "Voice calling data is temporarily unavailable. Run the latest database migrations, then reload this page."
 
     return templates.TemplateResponse("voice_calls.html", {
         "request": request,
@@ -5674,6 +5682,7 @@ def voice_calls_page(request: Request,
         "status": status,
         "sentiment": sentiment,
         "search": search,
+        "tab": tab_normalized,
         "saved": saved,
         "app_base_url": APP_BASE_URL,
         "voice_calls_error": voice_calls_error,
