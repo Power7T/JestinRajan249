@@ -9437,6 +9437,181 @@ def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
     )
 
 
+# ---------------------------------------------------------------------------
+# Escalation Rules API — manage per-property escalation rules
+# ---------------------------------------------------------------------------
+
+@app.get("/api/properties/{property_id}/escalation-rules")
+async def get_escalation_rules(property_id: str, request: Request, db: Session = Depends(get_db)):
+    """Get escalation rules for a specific property."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    from web.models import EscalationRule
+
+    rules = db.query(EscalationRule).filter(
+        EscalationRule.property_id == property_id,
+        EscalationRule.tenant_id == tenant_id,
+    ).order_by(EscalationRule.priority.desc(), EscalationRule.created_at.desc()).all()
+
+    return JSONResponse({
+        "status": 200,
+        "rules": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "description": r.description,
+                "condition_type": r.condition_type,
+                "action": r.action,
+                "escalation_priority": r.escalation_priority,
+                "is_active": r.is_active,
+                "priority": r.priority,
+            }
+            for r in rules
+        ]
+    })
+
+
+@app.post("/api/properties/{property_id}/escalation-rules")
+async def create_escalation_rule(property_id: str, request: Request, db: Session = Depends(get_db)):
+    """Create a new escalation rule for a property."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    from web.models import EscalationRule
+
+    # Verify property ownership
+    property_obj = db.query(Property).filter(
+        Property.id == property_id,
+        Property.tenant_id == tenant_id
+    ).first()
+
+    if not property_obj:
+        return JSONResponse({"error": "Property not found"}, status_code=404)
+
+    try:
+        data = await request.json()
+
+        rule = EscalationRule(
+            property_id=property_id,
+            tenant_id=tenant_id,
+            name=data.get("name", "New Rule"),
+            description=data.get("description"),
+            priority=data.get("priority", 100),
+            is_active=data.get("is_active", True),
+            condition_type=data.get("condition_type", "confidence_below"),
+            confidence_threshold=data.get("confidence_threshold"),
+            keywords=data.get("keywords"),
+            min_repeat_count=data.get("min_repeat_count"),
+            time_window_minutes=data.get("time_window_minutes"),
+            channels=data.get("channels"),
+            action=data.get("action", "escalate"),
+            escalation_priority=data.get("escalation_priority", "high"),
+            assign_to_team_member=data.get("assign_to_team_member"),
+        )
+
+        db.add(rule)
+        db.commit()
+        db.refresh(rule)
+
+        return JSONResponse({
+            "status": 201,
+            "rule": {
+                "id": rule.id,
+                "name": rule.name,
+                "condition_type": rule.condition_type,
+                "action": rule.action,
+            }
+        })
+    except Exception as e:
+        log.error(f"Error creating escalation rule: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.post("/api/escalation-rules/{rule_id}")
+async def update_escalation_rule(rule_id: str, request: Request, db: Session = Depends(get_db)):
+    """Update an escalation rule."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    from web.models import EscalationRule
+
+    rule = db.query(EscalationRule).filter(
+        EscalationRule.id == rule_id,
+        EscalationRule.tenant_id == tenant_id
+    ).first()
+
+    if not rule:
+        return JSONResponse({"error": "Rule not found"}, status_code=404)
+
+    try:
+        data = await request.json()
+
+        # Update fields
+        if "name" in data:
+            rule.name = data["name"]
+        if "description" in data:
+            rule.description = data["description"]
+        if "priority" in data:
+            rule.priority = data["priority"]
+        if "is_active" in data:
+            rule.is_active = data["is_active"]
+        if "condition_type" in data:
+            rule.condition_type = data["condition_type"]
+        if "confidence_threshold" in data:
+            rule.confidence_threshold = data["confidence_threshold"]
+        if "keywords" in data:
+            rule.keywords = data["keywords"]
+        if "action" in data:
+            rule.action = data["action"]
+        if "escalation_priority" in data:
+            rule.escalation_priority = data["escalation_priority"]
+
+        db.commit()
+        db.refresh(rule)
+
+        return JSONResponse({
+            "status": 200,
+            "rule": {"id": rule.id, "name": rule.name}
+        })
+    except Exception as e:
+        log.error(f"Error updating escalation rule: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.delete("/api/escalation-rules/{rule_id}")
+async def delete_escalation_rule(rule_id: str, request: Request, db: Session = Depends(get_db)):
+    """Delete an escalation rule."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    from web.models import EscalationRule
+
+    rule = db.query(EscalationRule).filter(
+        EscalationRule.id == rule_id,
+        EscalationRule.tenant_id == tenant_id
+    ).first()
+
+    if not rule:
+        return JSONResponse({"error": "Rule not found"}, status_code=404)
+
+    try:
+        db.delete(rule)
+        db.commit()
+        return JSONResponse({"status": 200})
+    except Exception as e:
+        log.error(f"Error deleting escalation rule: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
 @app.post("/api/admin/rate-limits")
 async def api_admin_set_rate_limits(request: Request, db: Session = Depends(get_db)):
     """Set rate limits for a tenant."""

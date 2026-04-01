@@ -1181,3 +1181,44 @@ class RoutingRule(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
     tenant: Mapped["Tenant"] = relationship("Tenant")
+
+
+# ---------------------------------------------------------------------------
+# EscalationRule — rules for escalating messages per property
+# ---------------------------------------------------------------------------
+
+class EscalationRule(Base):
+    __tablename__ = "escalation_rules"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    property_id: Mapped[str] = mapped_column(String(36), ForeignKey("properties.id"), index=True, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True, nullable=False)
+
+    # Rule metadata
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    priority: Mapped[int] = mapped_column(Integer, default=100)  # Higher = applied first
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+    # ========== CONDITION ==========
+    condition_type: Mapped[str] = mapped_column(String(32), index=True)  # confidence_below | keyword_detected | voice_unclear | repeat_question | time_based | pattern_detected
+
+    # Condition parameters (JSON for flexibility)
+    confidence_threshold: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # For confidence_below: escalate if confidence < this value
+    keywords: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Comma-separated keywords for keyword_detected (e.g., "emergency,police,help")
+    min_repeat_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # For pattern_detected: escalate if same issue appears N times
+    time_window_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # For time_based: check within last N minutes
+    channels: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)  # Apply to specific channels: email,whatsapp,sms,voice (comma-separated, or empty for all)
+
+    # ========== ACTION ==========
+    action: Mapped[str] = mapped_column(String(32))  # escalate | notify_host | assign_team_member
+    escalation_priority: Mapped[str] = mapped_column(String(16), default="high")  # critical | high | medium | low
+    assign_to_team_member: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("team_members.id"), nullable=True)  # Optionally auto-assign
+
+    # ========== METADATA ==========
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    # Relationships
+    property: Mapped["Property"] = relationship("Property")
+    tenant: Mapped["Tenant"] = relationship("Tenant")
