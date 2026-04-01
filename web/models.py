@@ -786,6 +786,12 @@ class TeamMember(Base):
     password_hash: Mapped[Optional[str]]      = mapped_column(String(128), nullable=True)  # bcrypt; null until invite accepted
     invite_token:  Mapped[Optional[str]]      = mapped_column(String(64), nullable=True, index=True)
     invite_token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # ========== DELEGATION & SKILLS ==========
+    expertise_areas: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Comma-separated: maintenance, billing, guest_relations, voice_support
+    max_concurrent_tasks: Mapped[int] = mapped_column(Integer, default=10)  # Workload limit
+    is_available_for_assignment: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
     created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
     updated_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
@@ -795,6 +801,38 @@ class TeamMember(Base):
     created_issues: Mapped[list["IssueTicket"]] = relationship("IssueTicket", back_populates="created_by_member", foreign_keys="IssueTicket.created_by_member_id")
     created_timeline_events: Mapped[list["GuestTimelineEvent"]] = relationship("GuestTimelineEvent", back_populates="created_by_member")
     created_activations: Mapped[list["ArrivalActivation"]] = relationship("ArrivalActivation", back_populates="created_by_member")
+
+
+# ---------------------------------------------------------------------------
+# TeamMemberWorkload — track task assignments and workload for team members
+# ---------------------------------------------------------------------------
+
+class TeamMemberWorkload(Base):
+    __tablename__ = "team_member_workloads"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    team_member_id: Mapped[int] = mapped_column(Integer, ForeignKey("team_members.id"), index=True, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True, nullable=False)
+
+    # Task reference
+    escalated_message_id: Mapped[str] = mapped_column(String(36), ForeignKey("escalated_messages.id"), index=True, nullable=False)
+    property_id: Mapped[str] = mapped_column(String(36), ForeignKey("properties.id"), index=True, nullable=False)
+
+    # Status
+    status: Mapped[str] = mapped_column(String(32), default="assigned", index=True)  # assigned | in_progress | completed | cancelled
+    assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Notes & resolution
+    internal_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    resolution_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Relationships
+    team_member: Mapped["TeamMember"] = relationship("TeamMember")
+    escalated_message: Mapped["EscalatedMessage"] = relationship("EscalatedMessage")
+    property: Mapped["Property"] = relationship("Property")
+    tenant: Mapped["Tenant"] = relationship("Tenant")
 
 
 # ---------------------------------------------------------------------------

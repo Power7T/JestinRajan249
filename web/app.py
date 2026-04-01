@@ -9733,6 +9733,189 @@ async def batch_update_priority(request: Request, db: Session = Depends(get_db))
         return JSONResponse({"error": str(e)}, status_code=400)
 
 
+# ---------------------------------------------------------------------------
+# Team Member Delegation — smart task assignment and workload management
+# ---------------------------------------------------------------------------
+
+@app.get("/api/team-members/available")
+async def get_available_team_members(request: Request, db: Session = Depends(get_db)):
+    """Get available team members with their current workload."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    from web.models import TeamMember, TeamMemberWorkload
+
+    # Get active team members available for assignment
+    team_members = db.query(TeamMember).filter(
+        TeamMember.tenant_id == tenant_id,
+        TeamMember.is_active == True,
+        TeamMember.is_available_for_assignment == True
+    ).all()
+
+    members_data = []
+    for tm in team_members:
+        # Count current active assignments
+        active_tasks = db.query(TeamMemberWorkload).filter(
+            TeamMemberWorkload.team_member_id == tm.id,
+            TeamMemberWorkload.status.in_(["assigned", "in_progress"])
+        ).count()
+
+        workload_percent = (active_tasks / tm.max_concurrent_tasks * 100) if tm.max_concurrent_tasks > 0 else 0
+
+        members_data.append({
+            "id": tm.id,
+            "name": tm.display_name,
+            "role": tm.role,
+            "expertise_areas": (tm.expertise_areas or "").split(",") if tm.expertise_areas else [],
+            "current_tasks": active_tasks,
+            "max_tasks": tm.max_concurrent_tasks,
+            "workload_percent": round(workload_percent, 1),
+            "available": active_tasks < tm.max_concurrent_tasks,
+        })
+
+    return JSONResponse({
+        "status": 200,
+        "team_members": members_data
+    })
+
+
+@app.post("/api/escalated-messages/{message_id}/assign-smart")
+async def smart_assign_escalation(message_id: str, request: Request, db: Session = Depends(get_db)):
+    """Intelligently assign escalated message to best-fit team member based on skills and workload."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    from web.models import EscalatedMessage, TeamMember, TeamMemberWorkload
+
+    # Get the escalated message
+    message = db.query(EscalatedMessage).filter(
+        EscalatedMessage.id == message_id,
+        EscalatedMessage.tenant_id == tenant_id
+    ).first()
+
+    if not message:
+        return JSONResponse({"error": "Message not found"}, status_code=404)
+
+    try:
+        # Find best matching team member
+        # Priority: availability > expertise match > lowest workload
+        available_members = db.query(TeamMember).filter(
+            TeamMember.tenant_id == tenant_id,
+            TeamMember.is_active == True,
+            TeamMember.is_available_for_assignment == True
+        ).all()
+
+        if not available_members:
+            return JSONResponse({"error": "No available team members"}, status_code=400)
+
+        best_member = None
+        best_score = -1
+
+        for member in available_members:
+            # Check workload
+            active_tasks = db.query(TeamMemberWorkload).filter(
+                TeamMemberWorkload.team_member_id == member.id,
+                TeamMemberWorkload.status.in_(["assigned", "in_progress"])
+            ).count()
+
+            if active_tasks >= member.max_concurrent_tasks:
+                continue  # Member at capacity
+
+            # Score based on expertise and workload
+            expertise_match = 0
+            if member.expertise_areas:
+                # Simple keyword matching on message reason
+                expertise_list = [e.strip().lower() for e in member.expertise_areas.split(",")]
+                reason_words = message.reason.lower().split("_")
+                expertise_match = sum(1 for word in reason_words if any(word in exp for exp in expertise_list))
+
+            workload_score = 1 - (active_tasks / member.max_concurrent_tasks)
+            score = expertise_match * 2 + workload_score
+
+            if score > best_score:
+                best_score = score
+                best_member = member
+
+        if not best_member:
+            return JSONResponse({"error": "No suitable team member found"}, status_code=400)
+
+        # Create workload record and update message
+        workload = TeamMemberWorkload(
+            team_member_id=best_member.id,
+            tenant_id=tenant_id,
+            escalated_message_id=message_id,
+            property_id=message.property_id,
+            status="assigned"
+        )
+
+        message.assigned_to = best_member.id
+        message.status = "in_progress"
+
+        db.add(workload)
+        db.commit()
+        db.refresh(message)
+
+        return JSONResponse({
+            "status": 200,
+            "assigned_to": best_member.id,
+            "team_member_name": best_member.display_name,
+            "message": {
+                "id": message.id,
+                "status": message.status,
+            }
+        })
+    except Exception as e:
+        log.error(f"Error in smart assignment: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.post("/api/team-member-workload/{workload_id}/mark-completed")
+async def mark_workload_completed(workload_id: str, request: Request, db: Session = Depends(get_db)):
+    """Mark a team member's task as completed."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    from web.models import TeamMemberWorkload
+
+    workload = db.query(TeamMemberWorkload).filter(
+        TeamMemberWorkload.id == workload_id,
+        TeamMemberWorkload.tenant_id == tenant_id
+    ).first()
+
+    if not workload:
+        return JSONResponse({"error": "Workload not found"}, status_code=404)
+
+    try:
+        data = await request.json()
+
+        workload.status = "completed"
+        workload.completed_at = datetime.now(timezone.utc)
+        workload.resolution_notes = data.get("resolution_notes", "")
+
+        # Also mark the escalated message as resolved
+        if workload.escalated_message:
+            workload.escalated_message.status = "resolved"
+            workload.escalated_message.resolved_at = datetime.now(timezone.utc)
+            workload.escalated_message.host_response = data.get("resolution_notes", "")
+
+        db.commit()
+
+        return JSONResponse({
+            "status": 200,
+            "workload_id": workload_id,
+            "completed_at": workload.completed_at.isoformat()
+        })
+    except Exception as e:
+        log.error(f"Error marking workload complete: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
 @app.post("/api/admin/rate-limits")
 async def api_admin_set_rate_limits(request: Request, db: Session = Depends(get_db)):
     """Set rate limits for a tenant."""
