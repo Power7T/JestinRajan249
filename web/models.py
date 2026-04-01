@@ -381,6 +381,7 @@ class EscalatedMessage(Base):
     # Relationships
     property: Mapped["Property"] = relationship("Property", back_populates="escalated_messages")
     tenant: Mapped["Tenant"] = relationship("Tenant")
+    assigned_to_member: Mapped[Optional["TeamMember"]] = relationship("TeamMember", foreign_keys=[assigned_to])
 
 
 # ---------------------------------------------------------------------------
@@ -1260,3 +1261,4 @@ class EscalationRule(Base):
     # Relationships
     property: Mapped["Property"] = relationship("Property")
     tenant: Mapped["Tenant"] = relationship("Tenant")
+    team_member: Mapped[Optional["TeamMember"]] = relationship("TeamMember", foreign_keys=[assign_to_team_member])
