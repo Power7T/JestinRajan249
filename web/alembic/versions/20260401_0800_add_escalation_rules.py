@@ -37,7 +37,7 @@ def upgrade() -> None:
         sa.Column('channels', sa.String(128), nullable=True),
         sa.Column('action', sa.String(32), nullable=False),
         sa.Column('escalation_priority', sa.String(16), nullable=False, server_default='high'),
-        sa.Column('assign_to_team_member', sa.String(36), nullable=True),
+        sa.Column('assign_to_team_member', sa.Integer(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(['property_id'], ['properties.id'], ),

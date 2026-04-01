@@ -1251,7 +1251,7 @@ class EscalationRule(Base):
     # ========== ACTION ==========
     action: Mapped[str] = mapped_column(String(32))  # escalate | notify_host | assign_team_member
     escalation_priority: Mapped[str] = mapped_column(String(16), default="high")  # critical | high | medium | low
-    assign_to_team_member: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("team_members.id"), nullable=True)  # Optionally auto-assign
+    assign_to_team_member: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("team_members.id"), nullable=True)  # Optionally auto-assign
 
     # ========== METADATA ==========
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
