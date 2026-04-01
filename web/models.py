@@ -132,6 +132,7 @@ class Tenant(Base):
     reset_token_expires:  Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     config:   Mapped[Optional["TenantConfig"]] = relationship("TenantConfig", back_populates="tenant", uselist=False)
+    properties: Mapped[list["Property"]]      = relationship("Property", foreign_keys="Property.tenant_id")
     drafts:   Mapped[list["Draft"]]            = relationship("Draft", back_populates="tenant")
     reservations: Mapped[list["Reservation"]]  = relationship("Reservation", back_populates="tenant")
     vendors:  Mapped[list["Vendor"]]           = relationship("Vendor", back_populates="tenant")
@@ -259,6 +260,166 @@ class TenantConfig(Base):
     internal_token: Mapped[str] = mapped_column(String(64), default=lambda: str(uuid.uuid4()))
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="config")
+
+
+# ---------------------------------------------------------------------------
+# Property — represents a single property managed by a tenant
+# ---------------------------------------------------------------------------
+
+class Property(Base):
+    __tablename__ = "properties"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True, nullable=False)
+
+    # Property metadata
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)  # "Villa A", "Beachfront", etc.
+    property_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # apartment/villa/bnb/hotel
+    city: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    ical_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # PMS calendar integration
+
+    # Status
+    status: Mapped[str] = mapped_column(String(32), default="active", index=True)  # active/inactive
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    # Relationships
+    config: Mapped[Optional["PropertyConfig"]] = relationship("PropertyConfig", back_populates="property", uselist=False)
+    escalated_messages: Mapped[list["EscalatedMessage"]] = relationship("EscalatedMessage", back_populates="property")
+    message_logs: Mapped[list["MessageLog"]] = relationship("MessageLog", back_populates="property")
+    tenant: Mapped["Tenant"] = relationship("Tenant")
+
+
+# ---------------------------------------------------------------------------
+# PropertyConfig — per-property settings (voice AI, amenities, rules, etc.)
+# ---------------------------------------------------------------------------
+
+class PropertyConfig(Base):
+    __tablename__ = "property_configs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    property_id: Mapped[str] = mapped_column(String(36), ForeignKey("properties.id"), unique=True, nullable=False, index=True)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True, nullable=False)
+
+    # ========== VOICE AI SETTINGS (Per Property) ==========
+    voice_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    voice_phone_number: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, unique=True)  # Unique per property
+
+    # Twilio credentials (encrypted)
+    voice_twilio_account_sid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    voice_twilio_auth_token_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # encrypted
+    voice_twilio_from_number: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+
+    # ElevenLabs voice selection
+    voice_elevenlabs_voice_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, default="EXAVITQu4vr4xnSDxMaL")
+
+    # Call forwarding
+    voice_forward_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    voice_forward_number: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)  # Host's phone for this property
+
+    # ========== VOICE ROUTING STRATEGY ==========
+    voice_routing_mode: Mapped[str] = mapped_column(String(32), default="per_property")  # per_property | shared_routing | mixed
+    shared_voice_number: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)  # For shared routing mode
+    voice_routing_webhook_param: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)  # How to identify property (e.g., "property_key", "ivr_digit")
+
+    # ========== GENERAL SETTINGS ==========
+    amenities: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # comma-separated or newline-separated
+    house_rules: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    check_in_time: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)  # e.g. "15:00"
+    check_out_time: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)  # e.g. "11:00"
+    max_guests: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    faq: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # free-form Q&A
+    food_menu: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    nearby_restaurants: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    parking_policy: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    pet_policy: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    wifi_password: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    wifi_network_name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
+    # ========== METADATA ==========
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    # Relationships
+    property: Mapped["Property"] = relationship("Property", back_populates="config")
+    tenant: Mapped["Tenant"] = relationship("Tenant")
+
+
+# ---------------------------------------------------------------------------
+# EscalatedMessage — messages needing host attention per property
+# ---------------------------------------------------------------------------
+
+class EscalatedMessage(Base):
+    __tablename__ = "escalated_messages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    property_id: Mapped[str] = mapped_column(String(36), ForeignKey("properties.id"), index=True, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True, nullable=False)
+
+    # Message details
+    guest_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    guest_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    message_type: Mapped[str] = mapped_column(String(32), index=True)  # email | whatsapp | voice | sms
+    content: Mapped[Text] = mapped_column(Text)
+
+    # Escalation details
+    reason: Mapped[str] = mapped_column(String(64), index=True)  # ai_low_confidence | keyword_escalation | guest_request | voice_unclear | pattern_detected
+    priority: Mapped[str] = mapped_column(String(16), default="medium", index=True)  # critical | high | medium | low
+    confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # 0.0-1.0
+
+    # Status tracking
+    status: Mapped[str] = mapped_column(String(32), default="pending", index=True)  # pending | in_progress | resolved | delegated
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Resolution
+    host_response: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    assigned_to: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("team_members.id"), nullable=True, index=True)  # TeamMember ID
+
+    # Source tracking
+    source_message_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)  # Reference to original message
+
+    # Relationships
+    property: Mapped["Property"] = relationship("Property", back_populates="escalated_messages")
+    tenant: Mapped["Tenant"] = relationship("Tenant")
+
+
+# ---------------------------------------------------------------------------
+# MessageLog — log of all messages per property (for analytics/history)
+# ---------------------------------------------------------------------------
+
+class MessageLog(Base):
+    __tablename__ = "message_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    property_id: Mapped[str] = mapped_column(String(36), ForeignKey("properties.id"), index=True, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True, nullable=False)
+
+    # Message identification
+    guest_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    guest_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Message details
+    direction: Mapped[str] = mapped_column(String(16), index=True)  # inbound | outbound
+    channel: Mapped[str] = mapped_column(String(32), index=True)  # email | whatsapp | voice | sms
+    content: Mapped[Text] = mapped_column(Text)
+
+    # AI processing
+    ai_handled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    ai_response: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # 0.0-1.0
+
+    # Escalation tracking
+    escalated: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    escalated_message_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("escalated_messages.id"), nullable=True, index=True)
+
+    # Status
+    status: Mapped[str] = mapped_column(String(32), default="pending", index=True)  # pending | ai_response | escalated | resolved
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    # Relationships
+    property: Mapped["Property"] = relationship("Property", back_populates="message_logs")
+    tenant: Mapped["Tenant"] = relationship("Tenant")
 
 
 # ---------------------------------------------------------------------------
