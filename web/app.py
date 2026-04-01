@@ -1107,9 +1107,14 @@ def login_page(request: Request, db: Session = Depends(get_db)):
     try:
         tenant_id = get_current_tenant_id(request)
         tenant = _get_tenant(tenant_id, db)
-    except Exception:
-        pass
-    return templates.TemplateResponse("login.html", {"request": request, "error": None, "tenant": tenant})
+    except Exception as exc:
+        log.debug("login_page: No valid session [%s]", exc)
+
+    try:
+        return templates.TemplateResponse("login.html", {"request": request, "error": None, "tenant": tenant})
+    except Exception as exc:
+        log.error("Failed to render login template: %s\n%s", exc, traceback.format_exc())
+        raise
 
 
 @app.post("/login", response_class=HTMLResponse)
