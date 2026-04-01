@@ -75,7 +75,7 @@ tailwind.config = {
   <div class="p-6 space-y-3">
     <div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
       <div class="w-9 h-9 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold flex-shrink-0">
-        {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+        {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
       </div>
       <div class="min-w-0">
         <p class="text-white font-bold text-sm truncate">{{ tenant.name or tenant.email if tenant else 'Host' }}</p>
