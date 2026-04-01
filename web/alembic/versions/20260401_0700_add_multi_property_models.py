@@ -98,7 +98,7 @@ def upgrade() -> None:
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('resolved_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('host_response', sa.Text(), nullable=True),
-        sa.Column('assigned_to', sa.String(36), nullable=True),
+        sa.Column('assigned_to', sa.Integer(), nullable=True),
         sa.Column('source_message_id', sa.String(128), nullable=True),
         sa.ForeignKeyConstraint(['assigned_to'], ['team_members.id'], ),
         sa.ForeignKeyConstraint(['property_id'], ['properties.id'], ),

@@ -373,7 +373,7 @@ class EscalatedMessage(Base):
 
     # Resolution
     host_response: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    assigned_to: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("team_members.id"), nullable=True, index=True)  # TeamMember ID
+    assigned_to: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("team_members.id"), nullable=True, index=True)  # TeamMember ID
 
     # Source tracking
     source_message_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)  # Reference to original message
