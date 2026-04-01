@@ -9612,6 +9612,127 @@ async def delete_escalation_rule(rule_id: str, request: Request, db: Session = D
         return JSONResponse({"error": str(e)}, status_code=400)
 
 
+# ---------------------------------------------------------------------------
+# Batch Operations — handle multiple escalated messages/alerts
+# ---------------------------------------------------------------------------
+
+@app.post("/api/batch/escalated-messages/resolve")
+async def batch_resolve_escalations(request: Request, db: Session = Depends(get_db)):
+    """Resolve multiple escalated messages at once."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    from web.models import EscalatedMessage
+
+    try:
+        data = await request.json()
+        message_ids = data.get("message_ids", [])
+        host_response = data.get("host_response", "")
+
+        if not message_ids:
+            return JSONResponse({"error": "No messages provided"}, status_code=400)
+
+        # Update all messages
+        updated = db.query(EscalatedMessage).filter(
+            EscalatedMessage.id.in_(message_ids),
+            EscalatedMessage.tenant_id == tenant_id
+        ).update({
+            EscalatedMessage.status: "resolved",
+            EscalatedMessage.resolved_at: datetime.now(timezone.utc),
+            EscalatedMessage.host_response: host_response,
+        }, synchronize_session=False)
+
+        db.commit()
+
+        return JSONResponse({
+            "status": 200,
+            "resolved_count": updated,
+        })
+    except Exception as e:
+        log.error(f"Error in batch resolve: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.post("/api/batch/escalated-messages/assign")
+async def batch_assign_escalations(request: Request, db: Session = Depends(get_db)):
+    """Assign multiple escalated messages to a team member."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    from web.models import EscalatedMessage
+
+    try:
+        data = await request.json()
+        message_ids = data.get("message_ids", [])
+        team_member_id = data.get("team_member_id")
+
+        if not message_ids or not team_member_id:
+            return JSONResponse({"error": "Missing required fields"}, status_code=400)
+
+        # Update all messages
+        updated = db.query(EscalatedMessage).filter(
+            EscalatedMessage.id.in_(message_ids),
+            EscalatedMessage.tenant_id == tenant_id
+        ).update({
+            EscalatedMessage.assigned_to: team_member_id,
+            EscalatedMessage.status: "in_progress",
+        }, synchronize_session=False)
+
+        db.commit()
+
+        return JSONResponse({
+            "status": 200,
+            "assigned_count": updated,
+        })
+    except Exception as e:
+        log.error(f"Error in batch assign: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.post("/api/batch/escalated-messages/update-priority")
+async def batch_update_priority(request: Request, db: Session = Depends(get_db)):
+    """Update priority for multiple escalated messages."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    from web.models import EscalatedMessage
+
+    try:
+        data = await request.json()
+        message_ids = data.get("message_ids", [])
+        priority = data.get("priority", "medium")
+
+        if not message_ids:
+            return JSONResponse({"error": "No messages provided"}, status_code=400)
+
+        if priority not in ["critical", "high", "medium", "low"]:
+            return JSONResponse({"error": "Invalid priority"}, status_code=400)
+
+        # Update all messages
+        updated = db.query(EscalatedMessage).filter(
+            EscalatedMessage.id.in_(message_ids),
+            EscalatedMessage.tenant_id == tenant_id
+        ).update({
+            EscalatedMessage.priority: priority,
+        }, synchronize_session=False)
+
+        db.commit()
+
+        return JSONResponse({
+            "status": 200,
+            "updated_count": updated,
+        })
+    except Exception as e:
+        log.error(f"Error in batch update priority: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
 @app.post("/api/admin/rate-limits")
 async def api_admin_set_rate_limits(request: Request, db: Session = Depends(get_db)):
     """Set rate limits for a tenant."""
