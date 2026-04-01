@@ -1566,13 +1566,22 @@ def dashboard(request: Request,
     except HTTPException:
         return _redirect_login()
 
-    tenant = _get_tenant(tenant_id, db)
-    cfg = _get_or_create_config(tenant_id, db)
+    try:
+        tenant = _get_tenant(tenant_id, db)
+        cfg = _get_or_create_config(tenant_id, db)
+    except Exception as exc:
+        log.error("Failed to load tenant/config [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        raise
+
     selected_property = request.query_params.get("property", "").strip()
     search_query = request.query_params.get("q", "").strip().lower()
 
     # Build base query
-    query = rdb.query(Draft).filter_by(tenant_id=tenant_id)
+    try:
+        query = rdb.query(Draft).filter_by(tenant_id=tenant_id)
+    except Exception as exc:
+        log.error("Failed to build Draft query [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        raise
 
     # Apply search filter
     if search_query:
@@ -1582,39 +1591,62 @@ def dashboard(request: Request,
             (Draft.thread_key.ilike(f"%{search_query}%"))
         )
 
-    draft_rows_all = (
-        query
-        .order_by(Draft.created_at.desc())
-        .limit(500)
-        .all()
-    )
-    status = worker_manager.worker_status(tenant_id)
-    now = datetime.now(timezone.utc)
-    today = now.date()
+    try:
+        draft_rows_all = (
+            query
+            .order_by(Draft.created_at.desc())
+            .limit(500)
+            .all()
+        )
+    except Exception as exc:
+        log.error("Failed to query drafts [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        draft_rows_all = []
 
-    sync_log = db.query(ReservationSyncLog).filter_by(tenant_id=tenant_id).first()
-    all_reservations = db.query(Reservation).filter_by(tenant_id=tenant_id).all()
-    workflow_rules = db.query(AutomationRule).filter_by(tenant_id=tenant_id).order_by(AutomationRule.priority.asc()).all()
-    team_members_all = db.query(TeamMember).filter_by(tenant_id=tenant_id).order_by(TeamMember.role.asc(), TeamMember.display_name.asc()).all()
-    open_issues_all = (
-        db.query(IssueTicket)
-        .filter(IssueTicket.tenant_id == tenant_id, IssueTicket.status != "resolved")
-        .order_by(IssueTicket.created_at.desc())
-        .all()
-    )
-    timeline_events_all = (
-        db.query(GuestTimelineEvent)
-        .filter_by(tenant_id=tenant_id)
-        .order_by(GuestTimelineEvent.created_at.desc())
-        .limit(40)
-        .all()
-    )
+    try:
+        status = worker_manager.worker_status(tenant_id)
+        now = datetime.now(timezone.utc)
+        today = now.date()
 
-    property_options = _collect_property_options(cfg, all_reservations, draft_rows_all, open_issues_all, team_members_all)
+        sync_log = db.query(ReservationSyncLog).filter_by(tenant_id=tenant_id).first()
+        all_reservations = db.query(Reservation).filter_by(tenant_id=tenant_id).all()
+        workflow_rules = db.query(AutomationRule).filter_by(tenant_id=tenant_id).order_by(AutomationRule.priority.asc()).all()
+        team_members_all = db.query(TeamMember).filter_by(tenant_id=tenant_id).order_by(TeamMember.role.asc(), TeamMember.display_name.asc()).all()
+        open_issues_all = (
+            db.query(IssueTicket)
+            .filter(IssueTicket.tenant_id == tenant_id, IssueTicket.status != "resolved")
+            .order_by(IssueTicket.created_at.desc())
+            .all()
+        )
+        timeline_events_all = (
+            db.query(GuestTimelineEvent)
+            .filter_by(tenant_id=tenant_id)
+            .order_by(GuestTimelineEvent.created_at.desc())
+            .limit(40)
+            .all()
+        )
+    except Exception as exc:
+        log.error("Failed to query entities [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        sync_log = None
+        all_reservations = []
+        workflow_rules = []
+        team_members_all = []
+        open_issues_all = []
+        timeline_events_all = []
+
+    try:
+        property_options = _collect_property_options(cfg, all_reservations, draft_rows_all, open_issues_all, team_members_all)
+    except Exception as exc:
+        log.error("Failed to collect property options [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        property_options = []
+
     if selected_property and selected_property not in property_options:
         selected_property = ""
 
-    draft_rows = [draft for draft in draft_rows_all if _property_match(selected_property, _draft_property_name(draft))]
+    try:
+        draft_rows = [draft for draft in draft_rows_all if _property_match(selected_property, _draft_property_name(draft))]
+    except Exception as exc:
+        log.error("Failed to filter draft_rows [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        draft_rows = draft_rows_all
     pending = [draft for draft in draft_rows if draft.status == "pending"]
     recent_sent_drafts = [draft for draft in draft_rows if draft.status == "approved"][:12]
     filtered_reservations = [
@@ -1640,19 +1672,46 @@ def dashboard(request: Request,
     upcoming_count = len(upcoming_rows)
     next_checkin = sorted(upcoming_rows, key=lambda row: row.checkin)[0] if upcoming_rows else None
 
-    kpis = derive_dashboard_kpis(draft_rows, filtered_reservations, now=now)
-    approval_streak = kpis["drafts"].get("approval_streak", 0)
-    occupancy_gaps = kpis["reservations"].get("occupancy_gaps", [])
-    review_velocity = compute_review_velocity(filtered_reservations)
-    sentiment_summary = _sentiment_summary(draft_rows, filtered_reservations)
-    activation_checklist = build_activation_checklist(
-        cfg,
-        reservations=filtered_reservations or all_reservations,
-        inbound_email_address=_tenant_inbound_email_address(cfg),
-        inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
-    )
-    exception_queue = surface_exception_queue(pending, filtered_reservations, now=now, stale_minutes=60, limit=8)
-    recent_timeline = build_guest_timeline(reversed(timeline_events), limit=8)
+    try:
+        kpis = derive_dashboard_kpis(draft_rows, filtered_reservations, now=now)
+        approval_streak = kpis["drafts"].get("approval_streak", 0)
+        occupancy_gaps = kpis["reservations"].get("occupancy_gaps", [])
+    except Exception as exc:
+        log.error("Failed to derive KPIs [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        kpis = {"drafts": {}, "reservations": {}}
+        approval_streak = 0
+        occupancy_gaps = []
+
+    try:
+        review_velocity = compute_review_velocity(filtered_reservations)
+    except Exception as exc:
+        log.error("Failed to compute review velocity [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        review_velocity = None
+
+    try:
+        sentiment_summary = _sentiment_summary(draft_rows, filtered_reservations)
+    except Exception as exc:
+        log.error("Failed to compute sentiment summary [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        sentiment_summary = {}
+
+    try:
+        activation_checklist = build_activation_checklist(
+            cfg,
+            reservations=filtered_reservations or all_reservations,
+            inbound_email_address=_tenant_inbound_email_address(cfg),
+            inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
+        )
+    except Exception as exc:
+        log.error("Failed to build activation checklist [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        activation_checklist = []
+
+    try:
+        exception_queue = surface_exception_queue(pending, filtered_reservations, now=now, stale_minutes=60, limit=8)
+        recent_timeline = build_guest_timeline(reversed(timeline_events), limit=8)
+    except Exception as exc:
+        log.error("Failed to build exception queue/timeline [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        exception_queue = []
+        recent_timeline = []
     if not selected_property:
         try:
             _upsert_tenant_kpi_snapshot(db, tenant_id, kpis, open_issues, now)
@@ -1660,31 +1719,36 @@ def dashboard(request: Request,
             log.warning("[%s] KPI snapshot update failed: %s", tenant_id, exc)
             db.rollback()
 
-    response_seconds = _average_response_seconds([draft for draft in draft_rows if draft.status == "approved"])
-    response_peer_values = []
-    review_peer_values = []
-    for property_name in property_options:
-        property_drafts = [
-            draft for draft in draft_rows_all
-            if _property_match(property_name, _draft_property_name(draft)) and draft.status == "approved"
-        ]
-        property_response = _average_response_seconds(property_drafts)
-        if property_response is not None:
-            response_peer_values.append(property_response)
-        property_ratings = [
-            float(reservation.review_rating)
-            for reservation in all_reservations
-            if _property_match(property_name, reservation.listing_name or "") and reservation.review_rating is not None
-        ]
-        if property_ratings:
-            review_peer_values.append(round(sum(property_ratings) / len(property_ratings), 2))
-    response_benchmark = compute_portfolio_benchmark(response_seconds, response_peer_values, lower_is_better=True)
-    response_benchmark["hours"] = round(response_seconds / 3600.0, 2) if response_seconds is not None else None
-    review_benchmark = compute_portfolio_benchmark(
-        kpis["reservations"].get("avg_review_rating"),
-        review_peer_values,
-        lower_is_better=False,
-    )
+    try:
+        response_seconds = _average_response_seconds([draft for draft in draft_rows if draft.status == "approved"])
+        response_peer_values = []
+        review_peer_values = []
+        for property_name in property_options:
+            property_drafts = [
+                draft for draft in draft_rows_all
+                if _property_match(property_name, _draft_property_name(draft)) and draft.status == "approved"
+            ]
+            property_response = _average_response_seconds(property_drafts)
+            if property_response is not None:
+                response_peer_values.append(property_response)
+            property_ratings = [
+                float(reservation.review_rating)
+                for reservation in all_reservations
+                if _property_match(property_name, reservation.listing_name or "") and reservation.review_rating is not None
+            ]
+            if property_ratings:
+                review_peer_values.append(round(sum(property_ratings) / len(property_ratings), 2))
+        response_benchmark = compute_portfolio_benchmark(response_seconds, response_peer_values, lower_is_better=True)
+        response_benchmark["hours"] = round(response_seconds / 3600.0, 2) if response_seconds is not None else None
+        review_benchmark = compute_portfolio_benchmark(
+            kpis["reservations"].get("avg_review_rating"),
+            review_peer_values,
+            lower_is_better=False,
+        )
+    except Exception as exc:
+        log.error("Failed to compute benchmarks [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        response_benchmark = {}
+        review_benchmark = {}
 
     # Stale CSV warning: > 12 hours since last upload
     csv_stale = False
@@ -1695,25 +1759,29 @@ def dashboard(request: Request,
         csv_stale = (datetime.now(timezone.utc) - last).total_seconds() > 43200
 
     # Group pending drafts into conversations by thread_key
-    from collections import defaultdict
-    conv_map = defaultdict(lambda: {
-        "guest_name": "", "reply_to": "", "reservation": None,
-        "thread_key": None, "drafts": [], "last_at": None,
-    })
-    res_by_id = {r.id: r for r in filtered_reservations}
-    _dt_min = datetime.min.replace(tzinfo=timezone.utc)
-    for d in sorted(pending, key=lambda x: x.created_at or _dt_min):
-        key = d.thread_key or f"solo:{d.id}"
-        c = conv_map[key]
-        c["guest_name"] = d.guest_name
-        c["reply_to"] = d.reply_to
-        c["thread_key"] = d.thread_key
-        c["last_at"] = d.created_at
-        if d.reservation_id and not c["reservation"]:
-            c["reservation"] = res_by_id.get(d.reservation_id)
-        c["drafts"].append(d)
-    conversations = sorted(conv_map.values(),
-                          key=lambda c: c["last_at"] or _dt_min, reverse=True)
+    try:
+        from collections import defaultdict
+        conv_map = defaultdict(lambda: {
+            "guest_name": "", "reply_to": "", "reservation": None,
+            "thread_key": None, "drafts": [], "last_at": None,
+        })
+        res_by_id = {r.id: r for r in filtered_reservations}
+        _dt_min = datetime.min.replace(tzinfo=timezone.utc)
+        for d in sorted(pending, key=lambda x: x.created_at or _dt_min):
+            key = d.thread_key or f"solo:{d.id}"
+            c = conv_map[key]
+            c["guest_name"] = d.guest_name
+            c["reply_to"] = d.reply_to
+            c["thread_key"] = d.thread_key
+            c["last_at"] = d.created_at
+            if d.reservation_id and not c["reservation"]:
+                c["reservation"] = res_by_id.get(d.reservation_id)
+            c["drafts"].append(d)
+        conversations = sorted(conv_map.values(),
+                              key=lambda c: c["last_at"] or _dt_min, reverse=True)
+    except Exception as exc:
+        log.error("Failed to build conversations [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
+        conversations = []
 
     # Show one-time tour overlay after onboarding completion (cookie-based)
     show_tour = request.cookies.get("show_tour") == "1"
