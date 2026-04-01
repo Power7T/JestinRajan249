@@ -14,6 +14,12 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Check if table already exists (in case of database corruption/reset)
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    if 'escalation_rules' in inspector.get_table_names():
+        return
+
     op.create_table(
         'escalation_rules',
         sa.Column('id', sa.String(36), nullable=False),

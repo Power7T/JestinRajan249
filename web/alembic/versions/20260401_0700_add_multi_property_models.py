@@ -14,6 +14,15 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Check if tables already exist
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_tables = inspector.get_table_names()
+
+    # Only create if not already present
+    if 'properties' in existing_tables:
+        return
+
     # Create properties table
     op.create_table(
         'properties',

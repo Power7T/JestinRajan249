@@ -14,11 +14,36 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add columns to tenant table using proper Alembic DDL
-    op.add_column('tenant', sa.Column('voice_forward_enabled', sa.Boolean(), nullable=False, server_default='false'))
-    op.add_column('tenant', sa.Column('voice_forward_number', sa.String(32), nullable=True))
+    # Check if tenant table exists before adding columns
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+
+    if 'tenant' not in inspector.get_table_names():
+        # Tenant table doesn't exist yet, skip this migration
+        # It will be created by earlier migrations if database is rebuilt
+        return
+
+    # Check if columns already exist
+    tenant_columns = {col['name'] for col in inspector.get_columns('tenant')}
+
+    if 'voice_forward_enabled' not in tenant_columns:
+        op.add_column('tenant', sa.Column('voice_forward_enabled', sa.Boolean(), nullable=False, server_default='false'))
+
+    if 'voice_forward_number' not in tenant_columns:
+        op.add_column('tenant', sa.Column('voice_forward_number', sa.String(32), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column('tenant', 'voice_forward_number')
-    op.drop_column('tenant', 'voice_forward_enabled')
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+
+    if 'tenant' not in inspector.get_table_names():
+        return
+
+    tenant_columns = {col['name'] for col in inspector.get_columns('tenant')}
+
+    if 'voice_forward_number' in tenant_columns:
+        op.drop_column('tenant', 'voice_forward_number')
+
+    if 'voice_forward_enabled' in tenant_columns:
+        op.drop_column('tenant', 'voice_forward_enabled')
