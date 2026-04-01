@@ -26,16 +26,37 @@ PropertyConfig
 ├── id (uuid)
 ├── property_id (fk)
 ├── tenant_id (fk)
+│
+├── 🎤 VOICE AI SETTINGS (Per Property)
+├── voice_enabled (bool)
+├── voice_phone_number (string) - Unique per property
 ├── voice_twilio_account_sid (encrypted)
 ├── voice_twilio_auth_token (encrypted)
-├── voice_twilio_from_number
+├── voice_twilio_from_number (string)
+├── voice_elevenlabs_voice_id (string)
 ├── voice_forward_enabled (bool)
-├── voice_forward_number
+├── voice_forward_number (string) - Host's phone for this property
+│
+├── 📱 VOICE ROUTING OPTION (Host Choice)
+├── voice_routing_mode (enum)
+│   ├─ "per_property" → Each property has OWN Twilio number
+│   ├─ "shared_routing" → One Twilio number routes to all properties
+│   └─ "mixed" → Some properties shared, some dedicated
+├── shared_voice_number (optional) - If using shared routing
+├── voice_routing_webhook_param (string) - How to identify property
+│
+├── 📋 GENERAL SETTINGS
 ├── amenities (text)
 ├── house_rules (text)
 ├── check_in_time
 ├── check_out_time
-└── ...other property-specific settings
+├── property_type
+├── max_guests
+├── faq
+├── food_menu
+├── nearby_restaurants
+├── parking_policy
+└── ...other settings
 ```
 
 ### Message/Conversation Escalation Model
@@ -236,7 +257,158 @@ MessageLog
 
 ---
 
-## 3. ESCALATION RULES (Per Property)
+## 3. VOICE AI ROUTING OPTIONS
+
+Host can choose how to manage phone numbers across properties:
+
+### Option A: Per-Property Dedicated Numbers (RECOMMENDED)
+```
+Villa A → +1-555-111-1111 (Twilio SID-A, Token-A)
+Villa B → +1-555-222-2222 (Twilio SID-B, Token-B)
+Beachfront → +1-555-333-3333 (Twilio SID-C, Token-C)
+
+Advantages:
+✓ Each property has unique phone number
+✓ Guests see property-specific number
+✓ Clear routing (no confusion)
+✓ Each property independent Twilio account
+✓ Per-property analytics separate
+✓ Can disable one property without affecting others
+
+Disadvantages:
+✗ Multiple Twilio accounts/numbers to manage
+✗ Higher Twilio costs
+```
+
+### Option B: Shared Routing (One Number for All)
+```
+All Properties → +1-555-999-9999 (One Twilio SID/Token)
+                 ↓
+                 How to identify which property?
+                 ├─ Phone number pressed during IVR
+                 ├─ Guest account lookup
+                 ├─ Caller ID matching
+                 └─ Message metadata (email, whatsapp, sms)
+
+Advantages:
+✓ Single phone number for all properties
+✓ One Twilio account (cheaper)
+✓ Easier setup
+✓ Simpler to maintain
+
+Disadvantages:
+✗ Routing logic needed (IVR menu or lookup)
+✗ Shared phone number across properties
+✗ If number blocked/down, affects all properties
+✗ Routing errors possible
+```
+
+### Option C: Mixed Mode (Hybrid)
+```
+Villa A → +1-555-111-1111 (Dedicated)
+Villa B → +1-555-999-9999 (Shared)
+Beachfront → +1-555-999-9999 (Shared)
+City Apt → +1-555-222-2222 (Dedicated)
+
+Advantages:
+✓ Flexibility for different property types
+✓ Share numbers for similar properties
+✓ Scale gradually
+
+Disadvantages:
+✗ Complex routing logic
+✗ Harder to manage
+```
+
+### Host Settings UI for Voice AI
+```
+┌──────────────────────────────────────────────────┐
+│ 🎤 VOICE AI PHONE NUMBER STRATEGY                │
+├──────────────────────────────────────────────────┤
+│                                                   │
+│ How do you want to manage phone numbers?         │
+│                                                   │
+│ ◉ Per-Property Dedicated Numbers (Recommended)   │
+│   Each property gets its own Twilio number       │
+│   Properties managed independently               │
+│   [Recommended for 2+ properties]                │
+│                                                   │
+│ ○ Shared Number for All Properties              │
+│   One number routes to all properties            │
+│   Guests press: 1=Villa A, 2=Villa B, etc       │
+│   Saves on Twilio costs                          │
+│                                                   │
+│ ○ Mixed Mode (Some shared, some dedicated)      │
+│   Flexibility for different setups               │
+│                                                   │
+└──────────────────────────────────────────────────┘
+
+Then per property:
+┌──────────────────────────────────────────────────┐
+│ VILLA A - Voice AI Settings                       │
+├──────────────────────────────────────────────────┤
+│                                                   │
+│ ✓ Voice AI Enabled                              │
+│                                                   │
+│ Phone Number Strategy: Per-Property Dedicated    │
+│                                                   │
+│ 📱 Your Twilio Number for Villa A:              │
+│ +1 (555) 111-1111                               │
+│ [Change Number]                                 │
+│                                                   │
+│ 🔐 Twilio Account SID:                          │
+│ ACxxxxxxxxxxxxxxxxxxxxxxxx                       │
+│                                                   │
+│ 🔐 Twilio Auth Token:                           │
+│ [••••••••••••••••••••••••]                      │
+│                                                   │
+│ 🎙️ Voice Selection:                             │
+│ Rachel — Female (Friendly)                      │
+│                                                   │
+│ 📞 Call Forwarding to Your Phone:               │
+│ ✓ Enabled                                       │
+│ Phone: +1 (555) 444-4444                        │
+│                                                   │
+│ [Save Changes]                                  │
+│                                                   │
+└──────────────────────────────────────────────────┘
+```
+
+### Routing Logic in Backend
+```python
+# When a call comes in to Twilio webhook
+@app.post("/api/calls/incoming")
+async def handle_incoming_call(request: Request, db: Session):
+
+    # Get Twilio phone number called
+    to_number = request.form.get("To")  # +1-555-111-1111
+
+    # Find which property this number belongs to
+    property_config = db.query(PropertyConfig)\
+        .filter(PropertyConfig.voice_twilio_from_number == to_number)\
+        .first()
+
+    if not property_config:
+        # If shared routing, determine property from other context
+        property_config = determine_property_from_context(request)
+
+    property_id = property_config.property_id
+
+    # Get property-specific AI config
+    # - Voice ID (Rachel, Arnold, etc.)
+    # - Forward number (if enabled)
+    # - Custom instructions
+    # - FAQ/knowledge base specific to property
+
+    # Route call to property-specific AI
+    response = await route_to_property_voice_ai(property_config)
+
+    return response
+```
+
+---
+
+## 4. ESCALATION RULES (Per Property)
 
 ```
 Property Escalation Rules
