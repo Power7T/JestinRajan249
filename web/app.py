@@ -61,7 +61,7 @@ from urllib.parse import urlsplit, urlunsplit
 import uvicorn
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, Header, UploadFile, File
 from fastapi.responses import (
-    HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
+    HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse, Response
 )
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -355,8 +355,8 @@ def _voice_scheduled_calls_job():
                     # Create outbound Twilio call with audio URL
                     from twilio.rest import Client as TwilioClient
                     from web.crypto import decrypt
-                    sid   = cfg.voice_twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
-                    token = decrypt(cfg.voice_twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
+                    sid   = cfg.voice_twilio_account_sid
+                    token = decrypt(cfg.voice_twilio_auth_token_enc or "")
                     frm   = cfg.voice_twilio_from_number or tenant.voice_phone_number
                     if not (sid and token and frm):
                         continue
@@ -415,8 +415,8 @@ def _voice_scheduled_calls_job():
 
                     from twilio.rest import Client as TwilioClient
                     from web.crypto import decrypt
-                    sid   = cfg.voice_twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
-                    token = decrypt(cfg.voice_twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
+                    sid   = cfg.voice_twilio_account_sid
+                    token = decrypt(cfg.voice_twilio_auth_token_enc or "")
                     frm   = cfg.voice_twilio_from_number or tenant.voice_phone_number
                     if not (sid and token and frm):
                         continue
@@ -6024,6 +6024,55 @@ def api_workers(request: Request):
     return worker_manager.worker_status(tenant_id)
 
 
+@app.post("/api/twilio/phone-numbers")
+async def fetch_twilio_phone_numbers(request: Request, db: Session = Depends(get_db)):
+    """Fetch available phone numbers from Twilio account"""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    try:
+        data = await request.json()
+        account_sid = data.get("account_sid")
+        auth_token = data.get("auth_token")
+
+        if not account_sid or not auth_token:
+            return JSONResponse({
+                "status": 400,
+                "error": "Missing Account SID or Auth Token"
+            })
+
+        from twilio.rest import Client as TwilioClient
+
+        client = TwilioClient(account_sid, auth_token)
+        incoming_numbers = client.incoming_phone_numbers.stream()
+
+        numbers = []
+        for phone in incoming_numbers:
+            numbers.append({
+                "number": phone.phone_number,
+                "friendly_name": phone.friendly_name or "Unnamed"
+            })
+
+        if not numbers:
+            return JSONResponse({
+                "status": 400,
+                "error": "No phone numbers found. Create one in Twilio Console first."
+            })
+
+        return JSONResponse({
+            "status": 200,
+            "numbers": numbers
+        })
+    except Exception as e:
+        log.error(f"Twilio fetch error: {str(e)}")
+        return JSONResponse({
+            "status": 400,
+            "error": f"Invalid credentials or Twilio error: {str(e)}"
+        })
+
+
 @app.get("/api/service-status")
 def api_service_status(request: Request):
     """Rich service status for dashboard widget."""
@@ -8111,10 +8160,10 @@ def _send_voice_message(cfg, guest_phone: str, content: str, channel: str) -> bo
         if channel == "sms":
             from twilio.rest import Client as TwilioClient
             from web.crypto import decrypt
-            # Try voice Twilio creds first, then SMS creds, then env vars
-            sid   = cfg.voice_twilio_account_sid or cfg.twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
-            token = decrypt(cfg.voice_twilio_auth_token_enc or cfg.twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
-            frm   = cfg.voice_twilio_from_number or cfg.twilio_from_number or os.getenv("TWILIO_PHONE_NUMBER", "")
+            # Try voice Twilio creds first, then SMS creds
+            sid   = cfg.voice_twilio_account_sid or cfg.twilio_account_sid
+            token = decrypt(cfg.voice_twilio_auth_token_enc or cfg.twilio_auth_token_enc or "")
+            frm   = cfg.voice_twilio_from_number or cfg.twilio_from_number
             if not (sid and token and frm):
                 log.warning("[VOICE] SMS send skipped — Twilio not fully configured")
                 return False
@@ -8136,10 +8185,10 @@ def _send_voice_message(cfg, guest_phone: str, content: str, channel: str) -> bo
                 # Fall back to Twilio WhatsApp
                 from twilio.rest import Client as TwilioClient
                 from web.crypto import decrypt
-                # Try voice Twilio creds first, then SMS creds, then env vars
-                sid   = cfg.voice_twilio_account_sid or cfg.twilio_account_sid or os.getenv("TWILIO_ACCOUNT_SID", "")
-                token = decrypt(cfg.voice_twilio_auth_token_enc or cfg.twilio_auth_token_enc or "") or os.getenv("TWILIO_AUTH_TOKEN", "")
-                frm   = f"whatsapp:{cfg.voice_twilio_from_number or cfg.twilio_from_number or os.getenv('TWILIO_PHONE_NUMBER', '')}"
+                # Try voice Twilio creds first, then SMS creds
+                sid   = cfg.voice_twilio_account_sid or cfg.twilio_account_sid
+                token = decrypt(cfg.voice_twilio_auth_token_enc or cfg.twilio_auth_token_enc or "")
+                frm   = f"whatsapp:{cfg.voice_twilio_from_number or cfg.twilio_from_number}"
                 if sid and token and frm:
                     client = TwilioClient(sid, token)
                     client.messages.create(from_=frm, to=f"whatsapp:{guest_phone}", body=content)
@@ -9067,6 +9116,10 @@ async def send_outbound_voice(
         if not tenant or not tenant.voice_enabled:
             return {"error": "Voice not enabled"}, 400
 
+        cfg = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant_id).first()
+        if not cfg or not cfg.voice_twilio_account_sid or not decrypt(cfg.voice_twilio_auth_token_enc or ""):
+            return {"error": "Twilio not configured for voice"}, 400
+
         # Synthesize message
         audio_bytes, s3_url = await VoiceAIService.synthesize_speech(message)
         if not s3_url:
@@ -9074,14 +9127,16 @@ async def send_outbound_voice(
 
         # Create Twilio call
         from twilio.rest import Client as TwilioClient
-        twilio_client = TwilioClient(
-            os.getenv("TWILIO_ACCOUNT_SID"),
-            os.getenv("TWILIO_AUTH_TOKEN")
-        )
+        from web.crypto import decrypt
+        sid = cfg.voice_twilio_account_sid
+        token = decrypt(cfg.voice_twilio_auth_token_enc or "")
+        frm = cfg.voice_twilio_from_number or tenant.voice_phone_number
 
-        app_url = os.getenv("APP_URL", "http://localhost:8000")
+        twilio_client = TwilioClient(sid, token)
+
+        app_url = os.getenv("APP_BASE_URL", "http://localhost:8000")
         call = twilio_client.calls.create(
-            from_=tenant.config.twilio_from_number if tenant.config else os.getenv("TWILIO_PHONE_NUMBER"),
+            from_=frm,
             to=guest_phone,
             url=f"{app_url}/api/calls/outbound-twiml?s3_url={s3_url}"
         )
@@ -9091,7 +9146,7 @@ async def send_outbound_voice(
             id=str(uuid4()),
             tenant_id=tenant_id,
             twilio_call_id=call.sid,
-            twilio_phone_number=tenant.config.twilio_from_number if tenant.config else os.getenv("TWILIO_PHONE_NUMBER"),
+            twilio_phone_number=frm,
             guest_phone_number=guest_phone,
             call_type="outbound",
             status="ringing",

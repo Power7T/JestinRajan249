@@ -16,8 +16,6 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-MOCK_MODE = os.getenv("VOICE_MOCK_MODE", "true").lower() == "true"
-
 # Detectable send types and the config keys that supply them
 SENDABLE_KEYS = {
     "wifi":           "amenities",          # host puts wifi info in amenities
@@ -55,16 +53,11 @@ class VoiceAIService:
         """
         Transcribe audio from URL using Deepgram STT with timeout protection.
         Returns (transcribed_text, confidence_score).
-        In MOCK_MODE returns demo text.
 
         Timeout: 8 seconds (Deepgram should respond within this)
         Fallback on timeout: ("", 0.0) — guest message marked as "[audio unclear]"
         """
         import asyncio
-
-        if MOCK_MODE:
-            logger.info(f"[MOCK] Transcribing audio from {audio_url}")
-            return "What time can I check in?", 0.95
 
         async def _call_deepgram():
             async with httpx.AsyncClient(timeout=30) as client:
@@ -124,40 +117,7 @@ class VoiceAIService:
           Set when the AI genuinely doesn't have the answer.
           Caller should create a VoiceKnowledgeGap and alert the host.
         - guest_language: language code (e.g., 'en', 'es', 'fr', 'de', 'zh', 'ja')
-
-        In MOCK_MODE returns demo values.
         """
-        if MOCK_MODE:
-            logger.info(f"[MOCK] Generating response for: {guest_message}")
-            low = guest_message.lower()
-            if any(w in low for w in ("send", "text", "whatsapp", "share", "message")):
-                if "wifi" in low or "password" in low:
-                    return (
-                        "Sure! I'll send the WiFi details to your phone right now.",
-                        {"type": "wifi", "content": "📶 WiFi: GuestNetwork\nPassword: Welcome2024"},
-                        None,
-                    )
-                if "location" in low or "address" in low:
-                    return (
-                        "Sending you the address now!",
-                        {"type": "location", "content": "📍 123 Main Street, Beach City\nGoogle Maps: https://maps.google.com"},
-                        None,
-                    )
-                if "code" in low or "pin" in low or "door" in low:
-                    return (
-                        "I'll send your entry code to your phone.",
-                        {"type": "checkin_code", "content": "🔑 Door Code: 4829\nValid for your stay."},
-                        None,
-                    )
-            # Simulate unknown question
-            if "pool" in low or "gym" in low or "spa" in low:
-                return (
-                    "I'm sorry, I don't have that information yet. I'll let the host know you asked — they'll get back to you shortly.",
-                    None,
-                    guest_message,
-                )
-            return "Check-in is at 3 PM. You can enter using code 1234 at the main door.", None, None
-
         try:
             # Build property context block
             cfg = tenant_config
@@ -325,19 +285,12 @@ or when you don't know:
         """
         Convert text to speech using ElevenLabs with timeout protection.
         Returns (audio_bytes, audio_url).
-        In MOCK_MODE returns dummy bytes and mock URL.
         voice_id: optional voice ID (defaults to class ELEVENLABS_VOICE_ID)
 
         Timeout: 5 seconds for ElevenLabs TTS
         Fallback on timeout: (b"", "") — no audio, guest won't hear response
         """
         import asyncio
-
-        if MOCK_MODE:
-            logger.info(f"[MOCK] Synthesizing speech: {text[:60]}")
-            dummy_mp3 = b"ID3\x04\x00\x00\x00\x00\x00\x00"
-            mock_url = f"https://mock-r2.example.com/voice_{uuid.uuid4()}.mp3"
-            return dummy_mp3, mock_url
 
         async def _call_elevenlabs():
             vid = voice_id or VoiceAIService.ELEVENLABS_VOICE_ID
@@ -379,10 +332,6 @@ or when you don't know:
     @staticmethod
     async def upload_to_r2(file_data: bytes, file_name: str) -> str:
         """Upload audio to Cloudflare R2 and return public URL."""
-        if MOCK_MODE:
-            logger.info(f"[MOCK] Uploading to R2: {file_name}")
-            return f"https://mock-r2.example.com/{file_name}"
-
         try:
             import boto3
 
@@ -426,8 +375,6 @@ or when you don't know:
         Classify call transcript sentiment.
         Returns 'positive', 'neutral', or 'negative'.
         """
-        if MOCK_MODE:
-            return "positive"
         if not transcript or not VoiceAIService.OPENAI_API_KEY:
             return "neutral"
         try:
