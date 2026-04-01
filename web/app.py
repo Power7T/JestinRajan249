@@ -1131,11 +1131,15 @@ def login_post(
         validate_csrf(request, csrf_token)
 
         try:
+            log.info("Attempting to query tenant by email: %s", email)
             tenant = db.query(Tenant).filter_by(email=email.lower().strip()).first()
+            log.info("Tenant query result: %s", "found" if tenant else "not found")
         except Exception as exc:
-            log.error("Failed to query tenant by email [%s]: %s\n%s", email, exc, traceback.format_exc())
+            log.error("CRITICAL: Failed to query tenant by email [%s]: %s\n%s", email, str(exc), traceback.format_exc())
+            # Return detailed error for debugging
+            error_msg = f"DB Error: {type(exc).__name__}: {str(exc)[:100]}"
             return templates.TemplateResponse("login.html",
-                                              {"request": request, "error": "Database error. Please try again."})
+                                              {"request": request, "error": error_msg})
 
         if not tenant or not tenant.is_active or not verify_password(password, tenant.password_hash):
             # HIGH severity fix #10: Track failed login attempts for audit
