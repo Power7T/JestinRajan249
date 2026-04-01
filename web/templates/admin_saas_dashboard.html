@@ -181,7 +181,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
             <tbody class="divide-y divide-white/5">
               {% for tenant in top_tenants_today %}
               <tr>
-                <td class="py-4 font-bold text-slate-200 truncate max-w-[120px]">{{ tenant.name }}</td>
+                <td class="py-4 font-bold text-slate-200 truncate max-w-[120px]">{{ tenant.first_name or tenant.email }}</td>
                 <td class="py-4 text-slate-200">${{ tenant.cost_today | round(2) }}</td>
                 <td class="py-4">
                   {% set pct = (tenant.cost_today / max(tenant.daily_limit, 1)) * 100 %}

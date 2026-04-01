@@ -78,7 +78,7 @@ tailwind.config = {
         {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
       </div>
       <div class="min-w-0">
-        <p class="text-white font-bold text-sm truncate">{{ tenant.name or tenant.email if tenant else 'Host' }}</p>
+        <p class="text-white font-bold text-sm truncate">{{ tenant.first_name or tenant.email if tenant else 'Host' }}</p>
         <p class="text-slate-500 text-xs">Host</p>
       </div>
     </div>

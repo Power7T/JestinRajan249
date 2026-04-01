@@ -192,7 +192,7 @@ body {
 <div class="mb-12 relative">
 <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
 <h1 class="text-5xl font-extrabold tracking-tight text-white mb-2 font-headline">Dashboard</h1>
-<p class="text-slate-400 font-medium">Welcome back{% if tenant %}, {{ tenant.name or tenant.email.split('@')[0] | title }}{% endif %}. {% if drafts %}Your AI agents have drafted {{ drafts|length }} response{{ 's' if drafts|length != 1 else '' }} awaiting review.{% else %}All caught up — no pending drafts.{% endif %}</p>
+<p class="text-slate-400 font-medium">Welcome back{% if tenant %}, {{ tenant.first_name or tenant.email.split('@')[0] | title }}{% endif %}. {% if drafts %}Your AI agents have drafted {{ drafts|length }} response{{ 's' if drafts|length != 1 else '' }} awaiting review.{% else %}All caught up — no pending drafts.{% endif %}</p>
 </div>
 
 {% if cfg and not cfg.onboarding_complete %}
