@@ -119,6 +119,8 @@ class Tenant(Base):
     # Voice calling
     voice_enabled:     Mapped[bool]           = mapped_column(Boolean, default=False)
     voice_phone_number: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    voice_forward_enabled: Mapped[bool]       = mapped_column(Boolean, default=False)
+    voice_forward_number: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
 
     # Email verification
     email_verified:      Mapped[bool]           = mapped_column(Boolean, default=False)
