@@ -177,6 +177,29 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; 
 </div>
 </div>
 <div class="flex items-center gap-6">
+<!-- Property Switcher -->
+<div class="relative group">
+  <button class="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-all active:scale-95">
+    <span class="material-symbols-outlined text-lg">apartment</span>
+    <span id="current-property-name" class="text-sm font-medium">All Properties</span>
+    <span class="material-symbols-outlined text-sm">expand_more</span>
+  </button>
+  <!-- Dropdown Menu -->
+  <div class="absolute right-0 mt-1 w-48 bg-[#0d0e14] border border-white/10 rounded-lg shadow-lg hidden group-hover:block z-50">
+    <div class="p-2 max-h-64 overflow-y-auto">
+      <div class="px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-500">
+        Properties
+      </div>
+      <button class="w-full text-left px-3 py-2 text-slate-300 hover:text-white hover:bg-white/5 rounded transition-colors text-sm property-option" data-property-id="all">
+        All Properties
+      </button>
+      <div id="properties-list" class="space-y-1">
+        <!-- Properties will be loaded here via JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
 <button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
 <span class="material-symbols-outlined" data-icon="notifications">notifications</span>
 <span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
@@ -372,8 +395,76 @@ async function loadConversations(filter = 'all') {
   }
 }
 
+// ── Property Switcher ──────────────────────────────────────
+async function loadProperties() {
+  try {
+    const res = await fetch('/api/properties');
+    if (!res.ok) {
+      console.warn('Could not load properties');
+      return;
+    }
+
+    const data = await res.json();
+    const properties = data.properties || [];
+
+    if (properties.length === 0) {
+      // No multi-property setup yet
+      return;
+    }
+
+    // Load saved property preference from localStorage
+    const savedPropertyId = localStorage.getItem('selected-property-id');
+
+    // Populate the dropdown
+    const listEl = document.getElementById('properties-list');
+    if (listEl) {
+      properties.forEach(prop => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left px-3 py-2 text-slate-300 hover:text-white hover:bg-white/5 rounded transition-colors text-sm property-option';
+        btn.dataset.propertyId = prop.id;
+        btn.dataset.propertyName = prop.name;
+        btn.textContent = `🏠 ${prop.name}${prop.city ? ` (${prop.city})` : ''}`;
+        listEl.appendChild(btn);
+      });
+
+      // Set current property display
+      if (savedPropertyId && savedPropertyId !== 'all') {
+        const selectedProp = properties.find(p => p.id === savedPropertyId);
+        if (selectedProp) {
+          document.getElementById('current-property-name').textContent = selectedProp.name;
+        }
+      }
+    }
+
+    // Attach click handlers to property options
+    document.querySelectorAll('.property-option').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const propertyId = btn.dataset.propertyId;
+        const propertyName = btn.dataset.propertyName || 'All Properties';
+
+        // Save preference
+        localStorage.setItem('selected-property-id', propertyId);
+
+        // Update display
+        document.getElementById('current-property-name').textContent = propertyName;
+
+        // Close dropdown (will auto-close due to group-hover)
+        // Optionally reload content for this property
+        if (propertyId !== 'all') {
+          showToast(`Switched to ${propertyName}`, 'info');
+          // TODO: Reload conversations/data filtered to this property
+        }
+      });
+    });
+  } catch(e) {
+    console.warn('Error loading properties:', e);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadConversations();
+  loadProperties();
 });
 </script>
 {%- endblock %}

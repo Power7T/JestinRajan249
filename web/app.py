@@ -6073,6 +6073,36 @@ async def fetch_twilio_phone_numbers(request: Request, db: Session = Depends(get
         })
 
 
+@app.get("/api/properties")
+async def get_properties(request: Request, db: Session = Depends(get_db)):
+    """Get list of properties for the current tenant"""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401)
+
+    from web.models import Property
+
+    properties = db.query(Property).filter(
+        Property.tenant_id == tenant_id,
+        Property.status == "active"
+    ).order_by(Property.created_at).all()
+
+    return JSONResponse({
+        "status": 200,
+        "properties": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "type": p.property_type,
+                "city": p.city,
+                "status": p.status,
+            }
+            for p in properties
+        ]
+    })
+
+
 @app.get("/api/service-status")
 def api_service_status(request: Request):
     """Rich service status for dashboard widget."""
