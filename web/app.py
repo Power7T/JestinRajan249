@@ -1120,37 +1120,65 @@ def login_post(
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
-    # CRITICAL severity fix #2: Rate limit login attempts
-    rate_limit(f"login:{client_ip(request)}", max_requests=10, window_seconds=900)
-    validate_csrf(request, csrf_token)
-    tenant = db.query(Tenant).filter_by(email=email.lower().strip()).first()
-    if not tenant or not tenant.is_active or not verify_password(password, tenant.password_hash):
-        # HIGH severity fix #10: Track failed login attempts for audit
-        if tenant:
-            _audit_log_action(db, tenant.id, email, "failed_login_attempt")
+    try:
+        # CRITICAL severity fix #2: Rate limit login attempts
+        rate_limit(f"login:{client_ip(request)}", max_requests=10, window_seconds=900)
+        validate_csrf(request, csrf_token)
+
+        try:
+            tenant = db.query(Tenant).filter_by(email=email.lower().strip()).first()
+        except Exception as exc:
+            log.error("Failed to query tenant by email [%s]: %s\n%s", email, exc, traceback.format_exc())
+            return templates.TemplateResponse("login.html",
+                                              {"request": request, "error": "Database error. Please try again."})
+
+        if not tenant or not tenant.is_active or not verify_password(password, tenant.password_hash):
+            # HIGH severity fix #10: Track failed login attempts for audit
+            if tenant:
+                try:
+                    _audit_log_action(db, tenant.id, email, "failed_login_attempt")
+                except Exception as e:
+                    log.warning("Failed to audit failed login: %s", e)
+            return templates.TemplateResponse("login.html",
+                                              {"request": request, "error": "Invalid email or password"})
+
+        token = create_token(tenant.id, tenant_session_version(tenant))
+        is_secure = is_request_secure(request)
+
+        # MEDIUM severity fix #13: Use consistent TOKEN_HOURS for session cookie
+        from web.auth import TOKEN_HOURS
+
+        # Resume onboarding if not yet complete
+        try:
+            cfg = db.query(TenantConfig).filter_by(tenant_id=tenant.id).first()
+            if not cfg:
+                log.info("Creating missing TenantConfig for tenant [%s]", tenant.id)
+                cfg = TenantConfig(tenant_id=tenant.id)
+                db.add(cfg)
+                db.commit()
+        except Exception as exc:
+            log.error("Failed to get/create TenantConfig [%s]: %s\n%s", tenant.id, exc, traceback.format_exc())
+            cfg = None
+
+        if tenant.email.lower().strip() in _ADMIN_EMAILS:
+            redirect_to = "/admin"
+        else:
+            redirect_to = "/dashboard"
+
+        # HIGH severity fix #10: Audit successful login
+        try:
+            _audit_log_action(db, tenant.id, email, "login_success")
+        except Exception as e:
+            log.warning("Failed to audit successful login: %s", e)
+
+        resp = RedirectResponse(redirect_to, status_code=303)
+        resp.set_cookie("session", token, httponly=True,
+                        samesite="strict", secure=is_secure, max_age=TOKEN_HOURS * 3600)
+        return resp
+    except Exception as exc:
+        log.error("Unexpected error in login_post: %s\n%s", exc, traceback.format_exc())
         return templates.TemplateResponse("login.html",
-                                          {"request": request, "error": "Invalid email or password"})
-
-    token = create_token(tenant.id, tenant_session_version(tenant))
-    is_secure = is_request_secure(request)
-
-    # MEDIUM severity fix #13: Use consistent TOKEN_HOURS for session cookie
-    from web.auth import TOKEN_HOURS
-    # Resume onboarding if not yet complete
-    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant.id).first()
-
-    if tenant.email.lower().strip() in _ADMIN_EMAILS:
-        redirect_to = "/admin"
-    else:
-        redirect_to = "/dashboard"
-
-    # HIGH severity fix #10: Audit successful login
-    _audit_log_action(db, tenant.id, email, "login_success")
-
-    resp = RedirectResponse(redirect_to, status_code=303)
-    resp.set_cookie("session", token, httponly=True,
-                    samesite="strict", secure=is_secure, max_age=TOKEN_HOURS * 3600)
-    return resp
+                                          {"request": request, "error": "An error occurred. Please try again."})
 
 
 @app.get("/signup", response_class=HTMLResponse)
