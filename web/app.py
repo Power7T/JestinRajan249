@@ -7930,6 +7930,63 @@ def conversations_page(
 
 
 # ---------------------------------------------------------------------------
+# Mission Control — unified property management dashboard
+# ---------------------------------------------------------------------------
+
+@app.get("/mission-control", response_class=HTMLResponse)
+def mission_control_dashboard(request: Request, db: Session = Depends(get_db)):
+    """Unified dashboard for managing multiple properties."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    from web.models import Property, PropertyConfig, EscalatedMessage
+
+    tenant = _get_tenant(tenant_id, db)
+
+    # Get all properties for this tenant
+    properties = db.query(Property).filter(
+        Property.tenant_id == tenant_id,
+        Property.status == "active"
+    ).order_by(Property.name).all()
+
+    # Get escalated messages grouped by property
+    escalated_all = db.query(EscalatedMessage).filter(
+        EscalatedMessage.tenant_id == tenant_id,
+        EscalatedMessage.status != "resolved"
+    ).order_by(EscalatedMessage.priority.desc(), EscalatedMessage.created_at.desc()).all()
+
+    # Group by property and priority
+    alerts_by_property = {}
+    for alert in escalated_all:
+        if alert.property_id not in alerts_by_property:
+            alerts_by_property[alert.property_id] = {
+                "critical": [],
+                "high": [],
+                "medium": [],
+                "low": []
+            }
+        alerts_by_property[alert.property_id][alert.priority].append(alert)
+
+    # Calculate summary stats
+    total_alerts = len(escalated_all)
+    critical_count = sum(len(v["critical"]) for v in alerts_by_property.values())
+    high_count = sum(len(v["high"]) for v in alerts_by_property.values())
+
+    return templates.TemplateResponse("mission_control.html", {
+        "request": request,
+        "tenant": tenant,
+        "properties": properties,
+        "escalated_alerts": escalated_all,
+        "alerts_by_property": alerts_by_property,
+        "total_alerts": total_alerts,
+        "critical_count": critical_count,
+        "high_count": high_count,
+    })
+
+
+# ---------------------------------------------------------------------------
 # Guest Contacts — bot whitelisting for guests
 # ---------------------------------------------------------------------------
 

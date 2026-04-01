@@ -1,0 +1,366 @@
+{%- extends "base.html" %}
+{%- block title %}Mission Control — HostAI{%- endblock %}
+
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-highest": "#34343b",
+              "on-tertiary-container": "#3e2400",
+              "on-secondary": "#00363d",
+              "on-tertiary-fixed": "#2a1700",
+              "on-secondary-container": "#00616d",
+              "on-error-container": "#ffdad6",
+              "surface-tint": "#aec6ff",
+              "surface-container-high": "#292930",
+              "outline-variant": "#424752",
+              "inverse-on-surface": "#2f3037",
+              "on-primary-fixed-variant": "#004397",
+              "surface-container-low": "#1a1b22",
+              "surface-bright": "#383940",
+              "primary-container": "#5d8ef1",
+              "background": "#121319",
+              "on-primary": "#002e6b",
+              "secondary-container": "#00e3fd",
+              "tertiary": "#ffb960",
+              "primary-fixed-dim": "#aec6ff",
+              "on-primary-container": "#00275e",
+              "surface-container": "#1e1f26",
+              "secondary-fixed": "#9cf0ff",
+              "tertiary-fixed-dim": "#ffb960",
+              "error": "#ffb4ab",
+              "on-secondary-fixed": "#001f24",
+              "surface-container-lowest": "#0d0e14",
+              "secondary": "#bdf4ff",
+              "on-surface-variant": "#c3c6d4",
+              "tertiary-container": "#ca8103",
+              "primary": "#aec6ff",
+              "on-primary-fixed": "#001a43",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-error": "#690005",
+              "on-background": "#e3e1eb",
+              "on-secondary-fixed-variant": "#004f58",
+              "error-container": "#93000a",
+              "tertiary-fixed": "#ffddb8",
+              "surface-dim": "#121319",
+              "secondary-fixed-dim": "#00daf3",
+              "surface-variant": "#34343b",
+              "surface": "#121319",
+              "primary-fixed": "#d8e2ff",
+              "outline": "#8d909e",
+              "on-tertiary": "#472a00",
+              "on-surface": "#e3e1eb",
+              "inverse-surface": "#e3e1eb",
+              "inverse-primary": "#1e5bba"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+</script>
+<style>
+body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; }
+.glass-card { background: rgba(26, 27, 34, 0.7); backdrop-filter: blur(24px); }
+.specular-highlight { border-top: 1px solid rgba(174, 198, 255, 0.1); border-left: 1px solid rgba(174, 198, 255, 0.1); }
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24; }
+.active-glow { box-shadow: 0 0 15px rgba(93, 142, 241, 0.15); }
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #292930;
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #424752;
+}
+.alert-critical { border-left: 4px solid #dc2626; }
+.alert-high { border-left: 4px solid #f97316; }
+.alert-medium { border-left: 4px solid #eab308; }
+.alert-low { border-left: 4px solid #3b82f6; }
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
+<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
+</div>
+<span>HostAI</span>
+</a>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+Dashboard
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+Conversations
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/mission-control' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/mission-control">
+<span class="material-symbols-outlined" data-icon="military_tech">military_tech</span>
+Mission Control
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+Reservations
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+Activity
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+Voice AI
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+Settings
+</a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+Admin
+</a>
+{% endif %}
+</nav>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+{{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ current_user.name if current_user else "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+</div>
+</div>
+<form method="post" action="/logout">
+<input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+<button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+<span class="material-symbols-outlined text-sm">logout</span>
+Sign Out
+</button>
+</form>
+</div>
+</aside>
+
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search alerts, properties..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
+</button>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+{{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
+</div>
+</div>
+</header>
+
+<!-- Main Viewport -->
+<main class="ml-[260px] pt-16 h-screen flex flex-col overflow-hidden">
+<div class="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-[#08090F]/80 backdrop-blur-xl">
+<div>
+<h1 class="text-3xl font-extrabold tracking-tight text-white">🎖️ Mission Control</h1>
+<p class="text-slate-400 text-sm mt-1">Manage properties, handle escalations, and batch operations</p>
+</div>
+</div>
+
+<!-- Content -->
+<div class="flex-1 overflow-y-auto custom-scrollbar">
+<div class="p-8 space-y-8">
+<!-- Alert Summary Cards -->
+<div class="grid grid-cols-4 gap-4">
+<div class="bg-[#0d0e14] border border-red-500/20 rounded-lg p-6">
+<div class="flex items-center justify-between">
+<div>
+<p class="text-slate-500 text-sm uppercase tracking-widest">Critical Alerts</p>
+<p class="text-4xl font-bold text-red-400 mt-2">{{ critical_count }}</p>
+</div>
+<span class="material-symbols-outlined text-4xl text-red-500/50">priority_high</span>
+</div>
+</div>
+
+<div class="bg-[#0d0e14] border border-orange-500/20 rounded-lg p-6">
+<div class="flex items-center justify-between">
+<div>
+<p class="text-slate-500 text-sm uppercase tracking-widest">High Priority</p>
+<p class="text-4xl font-bold text-orange-400 mt-2">{{ high_count }}</p>
+</div>
+<span class="material-symbols-outlined text-4xl text-orange-500/50">warning</span>
+</div>
+</div>
+
+<div class="bg-[#0d0e14] border border-blue-500/20 rounded-lg p-6">
+<div class="flex items-center justify-between">
+<div>
+<p class="text-slate-500 text-sm uppercase tracking-widest">Total Alerts</p>
+<p class="text-4xl font-bold text-blue-400 mt-2">{{ total_alerts }}</p>
+</div>
+<span class="material-symbols-outlined text-4xl text-blue-500/50">dashboard_alert</span>
+</div>
+</div>
+
+<div class="bg-[#0d0e14] border border-slate-500/20 rounded-lg p-6">
+<div class="flex items-center justify-between">
+<div>
+<p class="text-slate-500 text-sm uppercase tracking-widest">Properties</p>
+<p class="text-4xl font-bold text-slate-300 mt-2">{{ properties|length }}</p>
+</div>
+<span class="material-symbols-outlined text-4xl text-slate-500/50">apartment</span>
+</div>
+</div>
+</div>
+
+<!-- Alerts by Priority -->
+{% if total_alerts > 0 %}
+<div class="bg-[#0d0e14] border border-white/5 rounded-lg overflow-hidden">
+<div class="px-6 py-4 border-b border-white/5 bg-[#08090F]">
+<h2 class="text-xl font-bold text-white">🚨 Active Alerts</h2>
+</div>
+
+<div class="divide-y divide-white/5 max-h-96 overflow-y-auto custom-scrollbar">
+{% for alert in escalated_alerts|slice(0, 20) %}
+<div class="p-6 hover:bg-white/2 transition-colors {% if alert.priority == 'critical' %}alert-critical bg-red-500/5{% elif alert.priority == 'high' %}alert-high bg-orange-500/5{% elif alert.priority == 'medium' %}alert-medium bg-yellow-500/5{% else %}alert-low bg-blue-500/5{% endif %}">
+<div class="flex items-start justify-between gap-4">
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-2">
+<span class="inline-block px-2 py-1 rounded text-xs font-bold {% if alert.priority == 'critical' %}bg-red-500/20 text-red-400{% elif alert.priority == 'high' %}bg-orange-500/20 text-orange-400{% elif alert.priority == 'medium' %}bg-yellow-500/20 text-yellow-400{% else %}bg-blue-500/20 text-blue-400{% endif %}">
+{{ alert.priority.upper() }}
+</span>
+<span class="text-slate-500 text-xs">{{ alert.message_type.upper() }}</span>
+<span class="text-slate-600 text-xs">{{ alert.created_at.strftime('%b %d, %H:%M') }}</span>
+</div>
+<p class="text-white font-semibold">{{ alert.guest_name or 'Unknown Guest' }}</p>
+<p class="text-slate-400 text-sm mt-1 line-clamp-2">{{ alert.content }}</p>
+<p class="text-slate-500 text-xs mt-2">Reason: {{ alert.reason.replace('_', ' ').title() }}</p>
+</div>
+<div class="flex gap-2 flex-shrink-0">
+<button class="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs rounded hover:bg-blue-500/30 transition-colors">View</button>
+</div>
+</div>
+</div>
+{% endfor %}
+{% if escalated_alerts|length > 20 %}
+<div class="p-4 text-center text-slate-500 text-sm">
++{{ escalated_alerts|length - 20 }} more alerts
+</div>
+{% endif %}
+</div>
+</div>
+{% else %}
+<div class="bg-[#0d0e14] border border-white/5 rounded-lg p-12 text-center">
+<span class="material-symbols-outlined text-5xl text-slate-600 mb-4 inline-block">check_circle</span>
+<h3 class="text-xl font-bold text-white mb-2">No Active Alerts</h3>
+<p class="text-slate-400">All your properties are running smoothly!</p>
+</div>
+{% endif %}
+
+<!-- Properties Overview -->
+{% if properties %}
+<div class="bg-[#0d0e14] border border-white/5 rounded-lg overflow-hidden">
+<div class="px-6 py-4 border-b border-white/5 bg-[#08090F]">
+<h2 class="text-xl font-bold text-white">🏠 Properties Overview</h2>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+{% for prop in properties %}
+<div class="bg-[#08090F] border border-white/5 rounded-lg p-4 hover:border-primary/50 transition-colors">
+<div class="flex items-start justify-between mb-3">
+<div>
+<h3 class="text-white font-bold">{{ prop.name }}</h3>
+<p class="text-slate-500 text-xs">{{ prop.property_type or 'Property' }}{% if prop.city %} • {{ prop.city }}{% endif %}</p>
+</div>
+<span class="material-symbols-outlined text-lg text-slate-500">apartment</span>
+</div>
+
+<div class="space-y-2 text-sm">
+<div class="flex justify-between">
+<span class="text-slate-500">Alerts</span>
+<span class="font-semibold text-white">
+{%- set prop_alerts = alerts_by_property.get(prop.id, {}) -%}
+{%- set total = (prop_alerts.critical|length) + (prop_alerts.high|length) + (prop_alerts.medium|length) + (prop_alerts.low|length) -%}
+{{ total }}
+</span>
+</div>
+<div class="flex justify-between">
+<span class="text-slate-500">Critical</span>
+<span class="text-red-400">{{ prop_alerts.critical|length }}</span>
+</div>
+<div class="flex justify-between">
+<span class="text-slate-500">Voice AI</span>
+<span class="text-slate-400">
+{%- set config = prop.config -%}
+{% if config and config.voice_enabled %}✓ Enabled{% else %}○ Disabled{% endif %}
+</span>
+</div>
+</div>
+
+<a href="/conversations?property={{ prop.id }}" class="inline-block mt-4 px-3 py-1 bg-primary/20 text-primary text-xs rounded hover:bg-primary/30 transition-colors">
+View Property
+</a>
+</div>
+{% endfor %}
+</div>
+</div>
+{% endif %}
+
+</div>
+</div>
+
+</main>
+{%- endblock %}
+{%- endblock %}
+
+<script nonce="{{ request.state.csp_nonce }}">
+// Mission Control initialization
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('Mission Control dashboard loaded');
+  // TODO: Add real-time updates via SSE or WebSocket
+});
+</script>
+
+<style>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #292930;
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #424752;
+}
+</style>
