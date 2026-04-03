@@ -296,20 +296,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <div style="display:flex;flex-direction:column;gap:0.5rem">
       {% if cfg.subscription_plan != 'baileys' %}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
-        <form method="post" action="/billing/subscribe/baileys">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-          <button type="submit" class="btn btn-outline" style="width:100%;text-align:left;font-size:0.76rem">
-            🟢 Baileys — $19/mo
-          </button>
-        </form>
-        <form method="post" action="/billing/paypal/subscribe/starter">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-          <button type="submit" class="btn btn-outline" style="width:100%;text-align:left;font-size:0.76rem" title="Subscribe via PayPal">
-            💳 PayPal — $19/mo
-          </button>
-        </form>
-      </div>
+      <form method="post" action="/billing/subscribe/baileys">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
+          🟢 Baileys (Local Bot) — $19/mo
+        </button>
+      </form>
       {% endif %}
 
       {% if cfg.subscription_plan != 'meta_cloud' %}
