@@ -599,13 +599,20 @@ def run_for_tenant(tenant_id: str, stop_flag: threading.Event):
             if fail_streak == 3:
                 try:
                     from web.mailer import send_integration_alert
-                    _cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
-                    _tenant = db.query(Tenant).filter_by(id=tenant_id).first()
-                    if _cfg and _tenant:
-                        send_integration_alert(
-                            _cfg.escalation_email or _tenant.email,
-                            "PMS", fail_streak, str(exc)
-                        )
+                    from web.db import SessionLocal
+                    from web.models import Tenant, TenantConfig
+
+                    alert_db = SessionLocal()
+                    try:
+                        _cfg = alert_db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+                        _tenant = alert_db.query(Tenant).filter_by(id=tenant_id).first()
+                        if _cfg and _tenant:
+                            send_integration_alert(
+                                _cfg.escalation_email or _tenant.email,
+                                "PMS", fail_streak, str(exc)
+                            )
+                    finally:
+                        alert_db.close()
                 except Exception as _ae:
                     log.warning("[%s] PMS alert send failed: %s", tenant_id, _ae)
             stop_flag.wait(backoff)
