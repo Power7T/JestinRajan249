@@ -169,12 +169,13 @@ body {
         </div>
     </div>
     <div class="space-y-1.5">
-        <input name="password" minlength="8" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Create Password" type="password" required/>
+        <input name="password" minlength="12" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Create Password" type="password" required/>
+        <p class="text-[11px] text-on-surface-variant/60 leading-relaxed">Use 12+ characters with uppercase, lowercase, a number, and a symbol.</p>
     </div>
     
     <div class="flex items-start gap-2 pt-2">
         <input type="checkbox" name="terms" id="terms" required class="mt-1 accent-primary">
-        <label for="terms" class="text-xs text-on-surface-variant leading-relaxed">I agree to the <a href="#" class="text-primary hover:underline">Terms of Service</a> & <a href="#" class="text-primary hover:underline">Privacy Policy</a>.</label>
+        <label for="terms" class="text-xs text-on-surface-variant leading-relaxed">I agree to the <a href="/terms" class="text-primary hover:underline">Terms of Service</a> & <a href="/privacy" class="text-primary hover:underline">Privacy Policy</a>.</label>
     </div>
 
     <!-- Submit Button -->

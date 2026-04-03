@@ -49,12 +49,12 @@
   <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center mx-auto mb-6">
     <svg class="w-8 h-8 text-[#002e6b]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
   </div>
-  {% if status == "verified" %}
+  {% if (success is defined and success) or (status is defined and status == "verified") %}
   <h1 class="text-2xl font-extrabold text-white mb-2">Email confirmed!</h1>
   <p class="text-slate-400 text-sm mb-6">Your account is fully active. You're ready to go.</p>
   <div class="alert-success mb-4">✓ Your email address has been confirmed. Your account is fully active.</div>
   <a href="/dashboard" class="inline-block btn-primary font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-all">Go to Dashboard &rarr;</a>
-  {% elif status == "expired" %}
+  {% elif (expired is defined and expired) or (status is defined and status == "expired") %}
   <h1 class="text-2xl font-extrabold text-white mb-2">Link expired</h1>
   <p class="text-slate-400 text-sm mb-4">Verification links are valid for 24 hours.</p>
   <div class="alert-error mb-4">This verification link has expired. Sign in and request a new one.</div>

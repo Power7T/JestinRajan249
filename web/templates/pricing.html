@@ -130,401 +130,197 @@ tailwind.config = {
 </nav>
 <main class="pt-32 pb-24">
 <!-- Hero Section -->
-<section class="max-w-7xl mx-auto px-6 text-center mb-24">
+<section class="max-w-7xl mx-auto px-6 text-center mb-16">
 <h1 class="text-5xl md:text-[56px] font-headline font-extrabold tracking-tight text-white mb-6 leading-tight">
-                Simple, transparent pricing.
+                Simple pricing for the way hosts actually work.
             </h1>
 <p class="text-xl text-on-surface-variant max-w-2xl mx-auto">
-                Choose the plan that fits your portfolio size.
+                Pick the messaging channel that fits your workflow. Free covers web, email, and iCal; paid plans unlock guest messaging channels.
             </p>
-<!-- Pricing Toggle -->
-<div class="flex justify-center gap-4 mt-8">
-  <button class="toggle-btn active px-6 py-2 rounded-lg font-semibold transition-all" data-tab="fixed" onclick="togglePricingTab('fixed')">
-    Fixed Plans
-  </button>
-  <button class="toggle-btn px-6 py-2 rounded-lg font-semibold transition-all" data-tab="flexible" onclick="togglePricingTab('flexible')">
-    Pay Per Unit
-  </button>
-</div>
-<style>
-  .toggle-btn {
-    background: transparent;
-    color: #c3c6d4;
-    border: 1px solid #424752;
-  }
-  .toggle-btn.active {
-    background: #5d8ef1;
-    color: white;
-    border-color: #5d8ef1;
-  }
-  .toggle-btn:hover {
-    color: white;
-    border-color: #5B8DEF;
-  }
-</style>
 </section>
-<!-- Fixed Pricing Cards -->
-<section id="fixed-pricing" class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-<!-- Starter Plan -->
-<div class="glass-card p-10 rounded-xl flex flex-col hover:bg-surface-container transition-all duration-500 group">
-<div class="mb-8">
-<h3 class="text-white font-bold text-lg mb-2">Starter</h3>
+<!-- Pricing Cards -->
+<section class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+<div class="glass-card p-8 rounded-xl flex flex-col hover:bg-surface-container transition-all duration-300 group">
+<div class="mb-6">
+<div class="flex items-center justify-between gap-3 mb-2">
+<h3 class="text-white font-bold text-lg">Free</h3>
+<span class="text-xs uppercase tracking-[0.2em] text-primary">Core</span>
+</div>
+<div class="flex items-baseline gap-1 mb-2">
+<span class="text-4xl font-extrabold text-white">$0</span>
+<span class="text-on-surface-variant">/mo</span>
+</div>
+<p class="text-sm font-medium text-primary uppercase tracking-wider">Web, email, and iCal</p>
+</div>
+<ul class="space-y-4 mb-8 flex-grow">
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">Web dashboard</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">AI email drafts</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">iCal calendar sync</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">Unlimited properties</span>
+</li>
+</ul>
+<a href="/signup" class="w-full py-3 rounded-lg border border-outline-variant/30 text-primary font-bold text-center hover:bg-surface-container-high transition-all duration-300 active:scale-95">
+Start free
+</a>
+</div>
+
+<div class="glass-card p-8 rounded-xl flex flex-col hover:bg-surface-container transition-all duration-300 group">
+<div class="mb-6">
+<div class="flex items-center justify-between gap-3 mb-2">
+<h3 class="text-white font-bold text-lg">Baileys</h3>
+<span class="text-xs uppercase tracking-[0.2em] text-primary">Local bot</span>
+</div>
+<div class="flex items-baseline gap-1 mb-2">
+<span class="text-4xl font-extrabold text-white">$19</span>
+<span class="text-on-surface-variant">/mo</span>
+</div>
+<p class="text-sm font-medium text-primary uppercase tracking-wider">WhatsApp via your own PC</p>
+</div>
+<ul class="space-y-4 mb-8 flex-grow">
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">Everything in Free</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">WhatsApp via your own PC</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">Guest + vendor WhatsApp flows</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm">One-click bot installer</span>
+</li>
+</ul>
+<a href="/signup" class="w-full py-3 rounded-lg border border-outline-variant/30 text-primary font-bold text-center hover:bg-surface-container-high transition-all duration-300 active:scale-95">
+Choose Baileys
+</a>
+</div>
+
+<div class="glass-card p-8 rounded-xl flex flex-col relative scale-105 border-primary/20 shadow-[0_0_40px_rgba(93,142,241,0.1)] ring-1 ring-primary-container/30">
+<div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-tertiary-container text-on-tertiary-container text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest uppercase">
+Most popular
+</div>
+<div class="mb-6">
+<div class="flex items-center justify-between gap-3 mb-2">
+<h3 class="text-white font-bold text-lg">Meta Cloud API</h3>
+<span class="text-xs uppercase tracking-[0.2em] text-primary">Official</span>
+</div>
 <div class="flex items-baseline gap-1 mb-2">
 <span class="text-4xl font-extrabold text-white">$29</span>
 <span class="text-on-surface-variant">/mo</span>
 </div>
-<p class="text-sm font-medium text-primary uppercase tracking-wider">1-2 properties</p>
+<p class="text-sm font-medium text-primary uppercase tracking-wider">WhatsApp Business Cloud API</p>
 </div>
-<ul class="space-y-4 mb-10 flex-grow">
-<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<ul class="space-y-4 mb-8 flex-grow">
+<li class="flex items-center gap-3 text-on-surface">
 <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">Automated Messaging</span>
+<span class="text-sm">Everything in Free</span>
 </li>
-<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<li class="flex items-center gap-3 text-on-surface">
 <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">Guest Sentiment Analysis</span>
+<span class="text-sm font-bold">Official WhatsApp Business Cloud API</span>
 </li>
-<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
+<li class="flex items-center gap-3 text-on-surface">
 <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">Basic Integrations</span>
+<span class="text-sm font-bold">No hardware needed</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm font-bold">Scales to 10,000+ msgs/day</span>
 </li>
 </ul>
-<button class="w-full py-3 rounded-lg border border-outline-variant/30 text-primary font-bold hover:bg-surface-container-high transition-all duration-300 active:scale-95">
-                    Get Started
-                </button>
+<a href="/signup" class="w-full py-4 rounded-lg bg-gradient-to-br from-primary to-primary-container text-on-primary font-extrabold glow-primary text-center hover:opacity-90 transition-all duration-300 active:scale-95">
+Choose Meta Cloud
+</a>
 </div>
-<!-- Pro Plan -->
-<div class="glass-card p-10 rounded-xl flex flex-col relative scale-105 border-primary/20 shadow-[0_0_40px_rgba(93,142,241,0.1)] ring-1 ring-primary-container/30">
-<div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-tertiary-container text-on-tertiary-container text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest uppercase">
-                    MOST POPULAR
-                </div>
-<div class="mb-8">
-<h3 class="text-white font-bold text-lg mb-2">Pro</h3>
+
+<div class="glass-card p-8 rounded-xl flex flex-col hover:bg-surface-container transition-all duration-300 group">
+<div class="mb-6">
+<div class="flex items-center justify-between gap-3 mb-2">
+<h3 class="text-white font-bold text-lg">SMS</h3>
+<span class="text-xs uppercase tracking-[0.2em] text-primary">Twilio</span>
+</div>
 <div class="flex items-baseline gap-1 mb-2">
-<span class="text-4xl font-extrabold text-white">$79</span>
+<span class="text-4xl font-extrabold text-white">$19</span>
 <span class="text-on-surface-variant">/mo</span>
 </div>
-<p class="text-sm font-medium text-primary uppercase tracking-wider">3-10 properties</p>
+<p class="text-sm font-medium text-primary uppercase tracking-wider">SMS for guests and host alerts</p>
 </div>
-<ul class="space-y-4 mb-10 flex-grow">
-<li class="flex items-center gap-3 text-on-surface">
+<ul class="space-y-4 mb-8 flex-grow">
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
 <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">All Starter features</span>
+<span class="text-sm">Everything in Free</span>
 </li>
-<li class="flex items-center gap-3 text-on-surface">
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
 <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-bold">AI Response Control</span>
+<span class="text-sm">SMS via Twilio</span>
 </li>
-<li class="flex items-center gap-3 text-on-surface">
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
 <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-bold">Smart Context</span>
+<span class="text-sm">Host alerts via SMS</span>
 </li>
-<li class="flex items-center gap-3 text-on-surface">
+<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
 <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-bold">Custom Workflow</span>
+<span class="text-sm">Bring your own Twilio number</span>
 </li>
 </ul>
-<button class="w-full py-4 rounded-lg bg-gradient-to-br from-primary to-primary-container text-on-primary font-extrabold glow-primary hover:opacity-90 transition-all duration-300 active:scale-95">
-                    Get Started
-                </button>
+<a href="/signup" class="w-full py-3 rounded-lg border border-outline-variant/30 text-primary font-bold text-center hover:bg-surface-container-high transition-all duration-300 active:scale-95">
+Choose SMS
+</a>
 </div>
-<!-- Scale Plan -->
-<div class="glass-card p-10 rounded-xl flex flex-col hover:bg-surface-container transition-all duration-500 group">
-<div class="mb-8">
-<h3 class="text-white font-bold text-lg mb-2">Scale</h3>
+
+<div class="glass-card p-8 rounded-xl flex flex-col hover:bg-surface-container transition-all duration-300 group md:col-span-2 xl:col-span-1">
+<div class="mb-6">
+<div class="flex items-center justify-between gap-3 mb-2">
+<h3 class="text-white font-bold text-lg">Pro</h3>
+<span class="text-xs uppercase tracking-[0.2em] text-primary">All channels</span>
+</div>
 <div class="flex items-baseline gap-1 mb-2">
-<span class="text-4xl font-extrabold text-white">$199</span>
+<span class="text-4xl font-extrabold text-white">$49</span>
 <span class="text-on-surface-variant">/mo</span>
 </div>
-<p class="text-sm font-medium text-primary uppercase tracking-wider">10+ properties</p>
+<p class="text-sm font-medium text-primary uppercase tracking-wider">Best value for multi-channel hosts</p>
 </div>
-<ul class="space-y-4 mb-10 flex-grow">
+<ul class="space-y-4 mb-8 flex-grow">
 <li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
 <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">All Pro features</span>
+<span class="text-sm">Everything in Free</span>
 </li>
 <li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
 <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">White-labeling</span>
+<span class="text-sm">Baileys + Meta Cloud + SMS</span>
 </li>
 <li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
 <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">API Access</span>
+<span class="text-sm">Priority support</span>
 </li>
 <li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
 <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">24/7 Dedicated Support</span>
+<span class="text-sm">Best value</span>
 </li>
 </ul>
-<button class="w-full py-3 rounded-lg border border-outline-variant/30 text-primary font-bold hover:bg-surface-container-high transition-all duration-300 active:scale-95">
-                    Contact Sales
-                </button>
+<a href="/signup" class="w-full py-3 rounded-lg border border-outline-variant/30 text-primary font-bold text-center hover:bg-surface-container-high transition-all duration-300 active:scale-95">
+Choose Pro
+</a>
 </div>
 </section>
-
-<!-- Flexible Pricing Section (Hidden by default) -->
-<section id="flexible-pricing" class="max-w-7xl mx-auto px-6 hidden">
-<div class="bg-surface-container rounded-xl p-12">
-<h3 class="text-white font-bold text-2xl mb-4">Pay Only For What You Use</h3>
-<p class="text-on-surface-variant mb-8">Perfect for growing hosts who want to scale incrementally without long-term commitments.</p>
-
-<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-<!-- Per Property Unit -->
-<div class="glass-card p-8 rounded-xl flex flex-col">
-<h4 class="text-white font-bold text-lg mb-3">Per Property</h4>
-<div class="flex items-baseline gap-2 mb-4">
-<span class="text-3xl font-extrabold text-white">$19</span>
-<span class="text-on-surface-variant">/property/mo</span>
-</div>
-<ul class="space-y-3 flex-grow">
-<li class="flex items-center gap-2 text-on-surface-variant text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-AI messaging & automation
-</li>
-<li class="flex items-center gap-2 text-on-surface-variant text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-Guest sentiment analysis
-</li>
-<li class="flex items-center gap-2 text-on-surface-variant text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-Basic integrations
-</li>
-<li class="flex items-center gap-2 text-on-surface-variant text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-Unlimited properties
-</li>
-</ul>
-<p class="text-xs text-on-surface-variant mt-4 pt-4 border-t border-outline-variant/30">
-Add as many properties as you need. Only pay for what you use.
+<p class="text-center text-sm text-on-surface-variant mt-8">
+  Voice AI add-ons are billed separately from the core messaging plans.
 </p>
-<button class="w-full py-3 rounded-lg border border-outline-variant/30 text-primary font-bold hover:bg-surface-container-high transition-all mt-6">
-Get Started
-</button>
-</div>
-
-<!-- Per Room Unit -->
-<div class="glass-card p-8 rounded-xl flex flex-col relative scale-105 border-primary/20 shadow-[0_0_40px_rgba(93,142,241,0.1)] ring-1 ring-primary-container/30">
-<div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-tertiary-container text-on-tertiary-container text-[10px] font-black px-3 py-1 rounded-full tracking-widest">
-MOST FLEXIBLE
-</div>
-<h4 class="text-white font-bold text-lg mb-3">Per Room/Unit</h4>
-<div class="flex items-baseline gap-2 mb-4">
-<span class="text-3xl font-extrabold text-white">$4</span>
-<span class="text-on-surface-variant">/room/mo</span>
-</div>
-<ul class="space-y-3 flex-grow">
-<li class="flex items-center gap-2 text-on-surface text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-All Per Property features +
-</li>
-<li class="flex items-center gap-2 text-on-surface text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-Per-room AI assistant
-</li>
-<li class="flex items-center gap-2 text-on-surface text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-Room-specific responses
-</li>
-<li class="flex items-center gap-2 text-on-surface text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-Per-room analytics
-</li>
-</ul>
-<p class="text-xs text-on-surface mt-4 pt-4 border-t border-outline-variant/30">
-Example: 10 properties × 4 rooms = $160/mo. Perfect for growing portfolios.
-</p>
-<button class="w-full py-4 rounded-lg bg-gradient-to-br from-primary to-primary-container text-on-primary font-extrabold glow-primary hover:opacity-90 transition-all mt-6">
-Get Started
-</button>
-</div>
-
-<!-- Voice AI Per Unit -->
-<div class="glass-card p-8 rounded-xl flex flex-col">
-<h4 class="text-white font-bold text-lg mb-3">Voice AI Per Unit</h4>
-<div class="flex items-baseline gap-2 mb-4">
-<span class="text-3xl font-extrabold text-white">$12</span>
-<span class="text-on-surface-variant">/unit/mo</span>
-</div>
-<ul class="space-y-3 flex-grow">
-<li class="flex items-center gap-2 text-on-surface-variant text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-24/7 AI phone support
-</li>
-<li class="flex items-center gap-2 text-on-surface-variant text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-Call forwarding to your phone
-</li>
-<li class="flex items-center gap-2 text-on-surface-variant text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-SMS info delivery
-</li>
-<li class="flex items-center gap-2 text-on-surface-variant text-sm">
-<span class="material-symbols-outlined text-primary-container text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-Call transcripts & sentiment
-</li>
-</ul>
-<p class="text-xs text-on-surface-variant mt-4 pt-4 border-t border-outline-variant/30">
-Add to any property. Scale as you grow.
-</p>
-<button class="w-full py-3 rounded-lg border border-outline-variant/30 text-primary font-bold hover:bg-surface-container-high transition-all mt-6">
-Get Started
-</button>
-</div>
-</div>
-
-<div class="mt-8 text-center text-sm text-on-surface-variant">
-<p><strong>Flexible Pricing Examples:</strong></p>
-<p class="mt-2">1 property with 4 rooms = $23/mo | 5 properties with 20 rooms = $95/mo + Voice AI as needed</p>
-</div>
-</div>
-</section>
-
-<!-- Voice AI Add-ons Section -->
-<section class="max-w-7xl mx-auto px-6 mt-20">
-<div class="text-center mb-12">
-<h2 class="text-4xl font-headline font-extrabold tracking-tight text-white mb-4">
-Add Voice AI to Any Plan
-</h2>
-<p class="text-lg text-on-surface-variant max-w-2xl mx-auto">
-24/7 AI-powered phone support for your guests. Built-in call forwarding, sentiment analysis, and more.
-</p>
-</div>
-
-<!-- Voice AI Add-on Cards -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-<!-- Basic Voice AI -->
-<div class="glass-card p-10 rounded-xl flex flex-col hover:bg-surface-container transition-all duration-500 group">
-<div class="mb-8">
-<h3 class="text-white font-bold text-lg mb-2">🎤 Voice AI Lite</h3>
-<div class="flex items-baseline gap-1 mb-2">
-<span class="text-4xl font-extrabold text-white">+$99</span>
-<span class="text-on-surface-variant">/mo</span>
-</div>
-<p class="text-sm font-medium text-primary uppercase tracking-wider">Per property</p>
-</div>
-<ul class="space-y-4 mb-10 flex-grow">
-<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
-<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">AI answers guest calls 24/7</span>
-</li>
-<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
-<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">Incoming call handling</span>
-</li>
-<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
-<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">Property info auto-responses</span>
-</li>
-<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
-<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">Guest sentiment tracking</span>
-</li>
-<li class="flex items-center gap-3 text-on-surface-variant group-hover:text-on-surface transition-colors">
-<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm">Call transcripts & analytics</span>
-</li>
-</ul>
-<button class="w-full py-3 rounded-lg border border-outline-variant/30 text-primary font-bold hover:bg-surface-container-high transition-all duration-300 active:scale-95">
-Get Started
-</button>
-</div>
-
-<!-- Premium Voice AI -->
-<div class="glass-card p-10 rounded-xl flex flex-col relative scale-105 border-primary/20 shadow-[0_0_40px_rgba(93,142,241,0.1)] ring-1 ring-primary-container/30">
-<div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-tertiary-container text-on-tertiary-container text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest uppercase">
-RECOMMENDED
-</div>
-<div class="mb-8">
-<h3 class="text-white font-bold text-lg mb-2">🎤 Voice AI Pro</h3>
-<div class="flex items-baseline gap-1 mb-2">
-<span class="text-4xl font-extrabold text-white">+$249</span>
-<span class="text-on-surface-variant">/mo</span>
-</div>
-<p class="text-sm font-medium text-primary uppercase tracking-wider">Per property</p>
-</div>
-<ul class="space-y-4 mb-10 flex-grow">
-<li class="flex items-center gap-3 text-on-surface">
-<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-bold">All Lite features +</span>
-</li>
-<li class="flex items-center gap-3 text-on-surface">
-<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-bold">Call forwarding to your phone</span>
-</li>
-<li class="flex items-center gap-3 text-on-surface">
-<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-bold">AI-to-SMS info delivery</span>
-</li>
-<li class="flex items-center gap-3 text-on-surface">
-<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-bold">Custom voice selection</span>
-</li>
-<li class="flex items-center gap-3 text-on-surface">
-<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-bold">Post-call summaries via SMS</span>
-</li>
-<li class="flex items-center gap-3 text-on-surface">
-<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-bold">Knowledge gap tracking</span>
-</li>
-</ul>
-<button class="w-full py-4 rounded-lg bg-gradient-to-br from-primary to-primary-container text-on-primary font-extrabold glow-primary hover:opacity-90 transition-all duration-300 active:scale-95">
-Get Started
-</button>
-</div>
-</div>
-
-<!-- Pricing Comparison Table -->
-<div class="mt-16 bg-surface-container rounded-xl p-8">
-<h3 class="text-white font-bold text-xl mb-8 text-center">Total Monthly Cost by Combination</h3>
-<div class="overflow-x-auto">
-<table class="w-full text-sm">
-<thead>
-<tr class="border-b border-outline-variant/30">
-<th class="text-left py-4 px-4 text-on-surface-variant font-semibold">Plan</th>
-<th class="text-left py-4 px-4 text-on-surface-variant font-semibold">Base</th>
-<th class="text-left py-4 px-4 text-on-surface-variant font-semibold">+ Voice AI Lite</th>
-<th class="text-left py-4 px-4 text-on-surface-variant font-semibold">+ Voice AI Pro</th>
-</tr>
-</thead>
-<tbody>
-<tr class="border-b border-outline-variant/10 hover:bg-surface-container-high/50 transition-colors">
-<td class="py-4 px-4 text-white font-semibold">Starter</td>
-<td class="py-4 px-4 text-white"><span class="text-primary">$29</span>/mo</td>
-<td class="py-4 px-4 text-white"><span class="text-primary">$128</span>/mo <span class="text-on-surface-variant text-xs">($29 + $99)</span></td>
-<td class="py-4 px-4 text-white"><span class="text-primary">$278</span>/mo <span class="text-on-surface-variant text-xs">($29 + $249)</span></td>
-</tr>
-<tr class="border-b border-outline-variant/10 hover:bg-surface-container-high/50 transition-colors">
-<td class="py-4 px-4 text-white font-semibold">Pro</td>
-<td class="py-4 px-4 text-white"><span class="text-primary">$79</span>/mo</td>
-<td class="py-4 px-4 text-white"><span class="text-primary">$178</span>/mo <span class="text-on-surface-variant text-xs">($79 + $99)</span></td>
-<td class="py-4 px-4 text-white"><span class="text-primary">$328</span>/mo <span class="text-on-surface-variant text-xs">($79 + $249)</span></td>
-</tr>
-<tr class="hover:bg-surface-container-high/50 transition-colors">
-<td class="py-4 px-4 text-white font-semibold">Scale</td>
-<td class="py-4 px-4 text-white"><span class="text-primary">$199</span>/mo</td>
-<td class="py-4 px-4 text-white"><span class="text-primary">$298</span>/mo <span class="text-on-surface-variant text-xs">($199 + $99)</span></td>
-<td class="py-4 px-4 text-white"><span class="text-primary">$448</span>/mo <span class="text-on-surface-variant text-xs">($199 + $249)</span></td>
-</tr>
-</tbody>
-</table>
-</div>
-<p class="text-on-surface-variant text-sm text-center mt-6">
-<strong>Per property pricing:</strong> Add Voice AI to one or multiple properties as needed.
-</p>
-</div>
-
-<!-- Info Section -->
-<div class="mt-12 text-center">
-<p class="text-on-surface-variant text-sm mb-4">
-<strong>Voice AI works with all plans:</strong> Add to Starter, Pro, or Scale whenever you're ready.
-</p>
-<p class="text-on-surface-variant text-sm">
-Questions? <a href="mailto:sales@hostai.io" class="text-primary hover:text-primary-container transition-colors">Contact our sales team</a>
-</p>
-</div>
-</section>
-
 </main>
 <!-- Footer -->
 <footer class="bg-[#08090F] w-full py-12 mt-24 border-t border-white/5">
@@ -533,32 +329,17 @@ Questions? <a href="mailto:sales@hostai.io" class="text-primary hover:text-prima
                 HostAI
             </div>
 <div class="flex flex-wrap justify-center gap-8 font-['Plus_Jakarta_Sans'] text-sm text-slate-500">
-<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">Product</a>
-<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">Features</a>
-<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">Pricing</a>
-<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">Company</a>
-<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">About</a>
-<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="#">Contact</a>
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="/#features">Product</a>
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="/#features">Features</a>
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="/pricing">Pricing</a>
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="/terms">Company</a>
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="/privacy">About</a>
+<a class="text-slate-500 hover:text-[#5B8DEF] transition-colors cursor-pointer" href="mailto:support@hostai.app">Contact</a>
 </div>
 <div class="font-['Plus_Jakarta_Sans'] text-sm text-slate-500">
                 © 2024 HostAI Inc. All rights reserved.
             </div>
 </div>
 </footer>
-
-<script>
-function togglePricingTab(tab) {
-  // Update button states
-  document.querySelectorAll('.toggle-btn').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-
-  // Toggle sections
-  document.getElementById('fixed-pricing').style.display = tab === 'fixed' ? 'grid' : 'none';
-  document.getElementById('flexible-pricing').style.display = tab === 'flexible' ? 'block' : 'none';
-}
-</script>
-
 {%- endblock %}
 {%- endblock %}

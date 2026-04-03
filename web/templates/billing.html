@@ -156,6 +156,16 @@
 .compat-layer .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
 .compat-layer .card-meta{font-size:0.75rem;color:#8d909e}
 .compat-layer .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.compat-layer .billing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1rem;margin-bottom:1rem}
+.compat-layer .plan-price-lg{font-size:2rem;font-weight:800;line-height:1.1;color:#aec6ff}
+.compat-layer .plan-badge-lg{display:inline-flex;align-items:center;padding:0.25rem 0.7rem;border-radius:999px;font-size:0.72rem;font-weight:700;background:rgba(39,201,63,0.12);color:#27c93f;border:1px solid rgba(39,201,63,0.25)}
+.compat-layer .plan-badge-lg.past_due{background:rgba(255,189,46,0.12);color:#ffbd2e;border-color:rgba(255,189,46,0.25)}
+.compat-layer .plan-badge-lg.inactive{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
+.compat-layer .channel-pill{display:inline-flex;align-items:center;padding:0.28rem 0.68rem;border-radius:999px;font-size:0.7rem;font-weight:700;border:1px solid rgba(174,198,255,0.14);background:rgba(174,198,255,0.06);color:#aec6ff;margin-right:0.3rem;margin-bottom:0.3rem}
+.compat-layer .pill-meta{background:rgba(91,141,239,0.12);color:#5B8DEF;border-color:rgba(91,141,239,0.22)}
+.compat-layer .pill-sms{background:rgba(255,189,46,0.12);color:#ffbd2e;border-color:rgba(255,189,46,0.22)}
+.compat-layer .pill-baileys{background:rgba(39,201,63,0.12);color:#27c93f;border-color:rgba(39,201,63,0.22)}
+.compat-layer .pill-none{background:rgba(66,71,82,0.28);color:#c3c6d4;border-color:rgba(66,71,82,0.35)}
 .compat-layer details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
 .compat-layer code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
 </style>
@@ -288,12 +298,15 @@
     <div style="font-size:1.1rem;font-weight:700;margin:0.4rem 0 0.75rem">{{ current_plan.name }}</div>
 
     <div style="margin-bottom:0.75rem">
-      {% for ch in current_plan.channels %}
-        {% if ch == 'meta_cloud' %}<span class="channel-pill pill-meta">Meta Cloud API</span>{% endif %}
-        {% if ch == 'sms' %}<span class="channel-pill pill-sms">SMS / Twilio</span>{% endif %}
+      {% if current_plan.channels %}
+        {% for ch in current_plan.channels %}
+          {% if ch == 'baileys' %}<span class="channel-pill pill-baileys">Baileys / WhatsApp</span>{% endif %}
+          {% if ch == 'meta_cloud' %}<span class="channel-pill pill-meta">Meta Cloud API</span>{% endif %}
+          {% if ch == 'sms' %}<span class="channel-pill pill-sms">SMS / Twilio</span>{% endif %}
+        {% endfor %}
       {% else %}
         <span class="channel-pill pill-none">Email &amp; iCal only</span>
-      {% endfor %}
+      {% endif %}
     </div>
 
     {% if cfg.subscription_expires_at %}
@@ -312,9 +325,18 @@
 
   <div class="card">
     <div class="card-header"><span class="card-title">Change plan</span></div>
-    <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">Upgrade or switch your messaging channel.</p>
+    <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">Choose the messaging channel stack that matches your property workflow.</p>
 
     <div style="display:flex;flex-direction:column;gap:0.5rem">
+      {% if cfg.subscription_plan != 'baileys' %}
+      <form method="post" action="/billing/subscribe/baileys">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
+          🟢 Baileys (Local Bot) — $19/mo
+        </button>
+      </form>
+      {% endif %}
+
       {% if cfg.subscription_plan != 'meta_cloud' %}
       <form method="post" action="/billing/subscribe/meta_cloud">
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">

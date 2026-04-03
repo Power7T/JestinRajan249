@@ -18,7 +18,15 @@ class TestSignup:
         csrf = resp.cookies.get("csrf_token", "")
         signup_resp = client.post(
             "/signup",
-            data={"email": "newuser@example.com", "password": "securepassword1", "csrf_token": csrf},
+            data={
+                "first_name": "New",
+                "last_name": "User",
+                "email": "newuser@example.com",
+                "country": "US",
+                "phone": "+15550001111",
+                "password": "SecurePass123!",
+                "csrf_token": csrf,
+            },
             follow_redirects=False,
         )
         assert signup_resp.status_code in (302, 303)
@@ -29,14 +37,30 @@ class TestSignup:
         csrf = resp.cookies.get("csrf_token", "")
         client.post(
             "/signup",
-            data={"email": "dup@example.com", "password": "securepassword1", "csrf_token": csrf},
+            data={
+                "first_name": "Dup",
+                "last_name": "User",
+                "email": "dup@example.com",
+                "country": "US",
+                "phone": "+15550002222",
+                "password": "SecurePass123!",
+                "csrf_token": csrf,
+            },
             follow_redirects=False,
         )
         resp2 = client.get("/login")
         csrf2 = resp2.cookies.get("csrf_token", "")
         dup_resp = client.post(
             "/signup",
-            data={"email": "dup@example.com", "password": "anotherpassword", "csrf_token": csrf2},
+            data={
+                "first_name": "Dup",
+                "last_name": "User",
+                "email": "dup@example.com",
+                "country": "US",
+                "phone": "+15550002222",
+                "password": "SecurePass123!",
+                "csrf_token": csrf2,
+            },
             follow_redirects=False,
         )
         assert dup_resp.status_code == 200
@@ -47,11 +71,19 @@ class TestSignup:
         csrf = resp.cookies.get("csrf_token", "")
         weak_resp = client.post(
             "/signup",
-            data={"email": "weak@example.com", "password": "short", "csrf_token": csrf},
+            data={
+                "first_name": "Weak",
+                "last_name": "User",
+                "email": "weak@example.com",
+                "country": "US",
+                "phone": "+15550003333",
+                "password": "short",
+                "csrf_token": csrf,
+            },
             follow_redirects=False,
         )
         assert weak_resp.status_code == 200
-        assert b"8+" in weak_resp.content or b"characters" in weak_resp.content
+        assert b"12 characters" in weak_resp.content or b"uppercase letter" in weak_resp.content
 
 
 class TestLogin:

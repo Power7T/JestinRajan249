@@ -6,7 +6,15 @@ def _signup_and_get_csrf(client, email="effortless@example.com"):
     csrf = resp.cookies.get("csrf_token", "")
     signup_resp = client.post(
         "/signup",
-        data={"email": email, "password": "securepassword1", "csrf_token": csrf},
+        data={
+            "first_name": "Effortless",
+            "last_name": "Host",
+            "email": email,
+            "country": "US",
+            "phone": "+15550005555",
+            "password": "SecurePass123!",
+            "csrf_token": csrf,
+        },
         follow_redirects=False,
     )
     assert signup_resp.status_code in (302, 303)

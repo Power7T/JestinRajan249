@@ -11,8 +11,12 @@ def _signup(client, email: str = "page-health@example.com") -> None:
     response = client.post(
         "/signup",
         data={
+            "first_name": "Page",
+            "last_name": "Health",
             "email": email,
-            "password": "securepassword1",
+            "country": "US",
+            "phone": "+15550004444",
+            "password": "SecurePass123!",
             "csrf_token": csrf,
         },
         follow_redirects=False,
