@@ -1,5 +1,5 @@
 {%- extends "base.html" %}
-{%- block title %}ROI Dashboard — HostAI{%- endblock %}
+{%- block title %}Revenue & ROI — HostAI{%- endblock %}
 
 {%- block head %}
 <script src="https://cdn.js.mux.ai/v1/chart.js" nonce="{{ request.state.csp_nonce }}"></script>
@@ -52,11 +52,11 @@ tailwind.config = {
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
 <span class="material-symbols-outlined" data-icon="analytics">analytics</span>Analytics</a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
-<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>ROI Dashboard</a>
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>Revenue & ROI</a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
 <span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>Voice AI</a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
-<span class="material-symbols-outlined" data-icon="hub">hub</span>Workflow Center</a>
+<span class="material-symbols-outlined" data-icon="hub">hub</span>Operations</a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>Settings</a>
 {% if tenant is defined and tenant and is_admin(tenant.email) %}
@@ -86,7 +86,7 @@ tailwind.config = {
 <!-- Main -->
 <main class="ml-[260px] pt-8 pb-12 px-8 min-h-screen">
     <div class="mb-10">
-      <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">ROI Dashboard</h1>
+      <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">Revenue & ROI</h1>
       <p class="text-slate-400 text-sm">Value delivered by your AI assistant</p>
     </div>
 

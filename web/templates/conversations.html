@@ -128,7 +128,7 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; 
             </a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
 <span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
-                ROI Dashboard
+                Revenue & ROI
             </a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
 <span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
@@ -136,7 +136,7 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; 
             </a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
 <span class="material-symbols-outlined" data-icon="hub">hub</span>
-                Workflow Center
+                Operations
             </a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
@@ -206,7 +206,7 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; 
 </button>
 <div class="h-8 w-px bg-white/10"></div>
 <div class="flex items-center gap-3 cursor-pointer group">
-<span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
+<span class="text-slate-200 group-hover:text-white transition-colors">Account</span>
 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
   {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
 </div>
@@ -273,7 +273,31 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; 
         <p class="text-slate-500 text-xs font-mono" id="detailGuestPhone">{{ conversations[0].guest_phone }}</p>
       </div>
     </div>
-    <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-3" id="messageThread"></div>
+    <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-3" id="messageThread">
+      {% if initial_messages %}
+        {% set ns = namespace(last_date='') %}
+        {% for msg in initial_messages %}
+          {% if msg.display_date != ns.last_date %}
+            <div class="day-sep">{{ msg.display_date }}</div>
+            {% set ns.last_date = msg.display_date %}
+          {% endif %}
+          <div class="msg-row {{ 'outbound' if msg.direction == 'outbound' else 'inbound' }}">
+            <div class="msg-bubble">{{ msg.body }}</div>
+            <div class="msg-meta">
+              <span>{{ msg.display_time }}</span>
+              {% if msg.channel %}<span>{{ msg.channel.upper() }}</span>{% endif %}
+              {% if msg.badge %}<span>{{ msg.badge }}</span>{% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+      <div class="chat-empty">
+        <div class="chat-empty-icon">📭</div>
+        <h3>No messages</h3>
+        <p>No messages found in this conversation.</p>
+      </div>
+      {% endif %}
+    </div>
     {% else %}
     <div class="flex-1 flex flex-col items-center justify-center text-center p-8">
       <span class="material-symbols-outlined text-5xl text-slate-600 mb-4">chat_bubble_outline</span>

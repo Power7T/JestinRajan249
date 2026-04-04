@@ -133,7 +133,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           </button>
         </form>
         {% if t.is_active %}
-        <form method="post" action="/admin/tenants/{{ t.id }}/deactivate" onsubmit="return confirm('Deactivate {{ t.email }}? Their workers will stop.')">
+        <form method="post" action="/admin/tenants/{{ t.id }}/deactivate" data-confirm="Deactivate {{ t.email }}? Their workers will stop.">
           <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
           <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-rose-400 border border-rose-400/20 bg-rose-400/5 hover:bg-rose-400/10 transition-colors">
             <span class="material-symbols-outlined text-sm">block</span> Deactivate

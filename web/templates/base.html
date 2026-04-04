@@ -197,6 +197,90 @@
       }
     }
   </style>
+  <style>
+    .host-shell-toggle {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 1rem);
+      left: 1rem;
+      width: 2.9rem;
+      height: 2.9rem;
+      border: 1px solid rgba(174, 198, 255, 0.15);
+      border-radius: 0.95rem;
+      background: rgba(13, 14, 20, 0.9);
+      color: #e3e1eb;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(18px);
+      z-index: 95;
+    }
+    .host-shell-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 9, 15, 0.65);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 75;
+      display: none;
+    }
+    @media (max-width: 1023px) {
+      body.host-shell-page .host-shell-toggle {
+        display: inline-flex;
+      }
+      body.host-shell-page .host-shell-overlay {
+        display: block;
+      }
+      body.host-shell-page .host-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.22s ease;
+        z-index: 85 !important;
+        max-width: min(86vw, 320px);
+      }
+      body.host-shell-page.host-shell-open .host-sidebar {
+        transform: translateX(0);
+      }
+      body.host-shell-page.host-shell-open .host-shell-overlay {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      body.host-shell-page .host-header {
+        left: 0 !important;
+        right: 0 !important;
+        width: auto !important;
+        padding-left: 4.6rem !important;
+        padding-right: 1rem !important;
+        gap: 0.75rem;
+      }
+      body.host-shell-page .host-main {
+        margin-left: 0 !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        padding-top: 5.25rem !important;
+        min-height: 100vh !important;
+      }
+      body.host-shell-page .host-main [class*="grid-cols-4"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 767px) {
+      body.host-shell-page .host-header {
+        padding-left: 4.4rem !important;
+        padding-right: 0.8rem !important;
+      }
+      body.host-shell-page .host-main {
+        padding-left: 0.85rem !important;
+        padding-right: 0.85rem !important;
+      }
+    }
+    @media (min-width: 1024px) {
+      .host-shell-toggle,
+      .host-shell-overlay {
+        display: none !important;
+      }
+    }
+  </style>
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -326,6 +410,108 @@ function hideSpinner() {
   document.getElementById('spinner-overlay').classList.remove('show');
 }
 
+// ── Host Shell Helpers ───────────────────────────────────────────────
+function initializeHostShell() {
+  if (window.location.pathname.startsWith('/admin')) return;
+
+  const sidebar = Array.from(document.querySelectorAll('aside')).find((el) => {
+    return el.querySelector('a[href="/dashboard"]') && !el.id.startsWith('admin');
+  });
+  const main = Array.from(document.querySelectorAll('main')).find((el) => /ml-\[260px\]/.test(el.className));
+  const header = Array.from(document.querySelectorAll('header')).find((el) => /w-\[calc\(100%-260px\)\]/.test(el.className));
+
+  if (!sidebar || !main) return;
+
+  document.body.classList.add('host-shell-page');
+  sidebar.classList.add('host-sidebar');
+  main.classList.add('host-main');
+  if (header) header.classList.add('host-header');
+
+  if (!document.querySelector('.host-shell-overlay')) {
+    const overlay = document.createElement('button');
+    overlay.type = 'button';
+    overlay.className = 'host-shell-overlay';
+    overlay.setAttribute('aria-label', 'Close navigation');
+    overlay.addEventListener('click', () => {
+      document.body.classList.remove('host-shell-open');
+    });
+    document.body.appendChild(overlay);
+  }
+
+  if (!document.querySelector('.host-shell-toggle')) {
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'host-shell-toggle';
+    toggle.setAttribute('aria-label', 'Open navigation');
+    toggle.innerHTML = '<span class="material-symbols-outlined">menu</span>';
+    toggle.addEventListener('click', () => {
+      document.body.classList.toggle('host-shell-open');
+    });
+    document.body.appendChild(toggle);
+  }
+
+  sidebar.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', () => {
+      document.body.classList.remove('host-shell-open');
+    });
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 1024) {
+      document.body.classList.remove('host-shell-open');
+    }
+  });
+}
+
+function initializeHeaderSearch() {
+  const targetForPath = () => {
+    if (window.location.pathname.startsWith('/reservations')) return '/reservations';
+    if (window.location.pathname.startsWith('/conversations')) return '/conversations';
+    return '/dashboard';
+  };
+  const currentQuery = new URLSearchParams(window.location.search).get('q') || '';
+
+  document.querySelectorAll('input[type="text"][placeholder*="Search"], input[name="q"]').forEach((input) => {
+    input.setAttribute('aria-label', 'Search');
+    if (!input.value && currentQuery) input.value = currentQuery;
+    const form = input.closest('form');
+    if (form && form.getAttribute('action')) return;
+
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      const q = input.value.trim();
+      const target = targetForPath();
+      const url = new URL(target, window.location.origin);
+      if (q) url.searchParams.set('q', q);
+      window.location.assign(url.toString());
+    });
+  });
+}
+
+function initializeConfirmSubmits() {
+  document.addEventListener('submit', async (event) => {
+    const submitter = event.submitter;
+    const target = (submitter && submitter.dataset.confirm) ? submitter : event.target;
+    const message = target.dataset.confirm;
+    if (!message) return;
+
+    if ((submitter && submitter.dataset.confirmed === 'true') || event.target.dataset.confirmed === 'true') {
+      if (submitter) submitter.dataset.confirmed = '';
+      event.target.dataset.confirmed = '';
+      return;
+    }
+
+    event.preventDefault();
+    const confirmed = await showConfirm(message);
+    if (!confirmed) return;
+
+    event.target.dataset.confirmed = 'true';
+    if (submitter) submitter.dataset.confirmed = 'true';
+    event.target.requestSubmit(submitter || undefined);
+  });
+}
+
 // ── Keyboard Shortcuts ───────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
   // Cmd+K / Ctrl+K: focus search
@@ -365,6 +551,12 @@ document.addEventListener('keydown', (e) => {
       focusEl.focus();
     }
   }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  initializeHostShell();
+  initializeHeaderSearch();
+  initializeConfirmSubmits();
 });
 
 // ── SSE Real-time Notifications ──────────────────────────────────────

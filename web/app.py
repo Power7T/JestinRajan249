@@ -1739,29 +1739,20 @@ def accept_invite(token: str, request: Request,
 # Conversation API
 # ---------------------------------------------------------------------------
 
-@app.get("/api/conversation/{thread_key}")
-def api_conversation(thread_key: str, request: Request, db: Session = Depends(get_db), _=Depends(require_flag("CONVERSATION_VIEW"))):
-    """Get all messages for a thread (both inbound and outbound, including auto-sent)."""
-    try:
-        tenant_id = get_current_tenant_id(request)
-    except HTTPException:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    # Get all drafts for this thread
-    all_drafts = db.query(Draft).filter(
-        Draft.tenant_id == tenant_id,
-        Draft.thread_key == thread_key,
-    ).order_by(Draft.created_at).all()
-
+def _serialize_conversation_messages(all_drafts: list[Draft]) -> list[dict]:
     messages = []
     for d in all_drafts:
+        created_at = d.created_at or datetime.utcnow()
+
         # Inbound message (guest message)
         messages.append({
             "id": f"{d.id}-inbound",
             "direction": "inbound",
             "body": d.message,
             "channel": d.source,
-            "timestamp": d.created_at.isoformat(),
+            "timestamp": created_at.isoformat(),
+            "display_time": created_at.strftime("%I:%M %p").lstrip("0"),
+            "display_date": created_at.strftime("%a, %b %d"),
             "status": d.status,
         })
 
@@ -1773,14 +1764,34 @@ def api_conversation(thread_key: str, request: Request, db: Session = Depends(ge
                 "direction": "outbound",
                 "body": d.final_text,
                 "channel": d.source,
-                "timestamp": d.created_at.isoformat(),
+                "timestamp": created_at.isoformat(),
+                "display_time": created_at.strftime("%I:%M %p").lstrip("0"),
+                "display_date": created_at.strftime("%a, %b %d"),
                 "status": d.status,
                 "badge": auto_sent_badge,
             })
+    return messages
+
+
+def _conversation_messages_for_thread(db: Session, tenant_id: str, thread_key: str) -> list[dict]:
+    all_drafts = db.query(Draft).filter(
+        Draft.tenant_id == tenant_id,
+        Draft.thread_key == thread_key,
+    ).order_by(Draft.created_at).all()
+    return _serialize_conversation_messages(all_drafts)
+
+
+@app.get("/api/conversation/{thread_key}")
+def api_conversation(thread_key: str, request: Request, db: Session = Depends(get_db), _=Depends(require_flag("CONVERSATION_VIEW"))):
+    """Get all messages for a thread (both inbound and outbound, including auto-sent)."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
     return {
         "thread_key": thread_key,
-        "messages": messages,
+        "messages": _conversation_messages_for_thread(db, tenant_id, thread_key),
     }
 
 
@@ -8223,6 +8234,7 @@ def metrics_prometheus(request: Request, db: Session = Depends(get_db)):
 @app.get("/conversations", response_class=HTMLResponse)
 def conversations_page(
     request: Request,
+    q: str = None,
     db: Session = Depends(get_db),
     _=Depends(require_flag("CONVERSATION_VIEW")),
 ):
@@ -8236,12 +8248,19 @@ def conversations_page(
 
     # Get unique conversations grouped by thread_key
     # We'll get the most recent draft for each conversation
-    all_drafts = (
+    query = (
         db.query(Draft)
         .filter(Draft.tenant_id == tenant_id, Draft.source.in_(["whatsapp", "sms", "email"]))
-        .order_by(Draft.created_at.desc())
-        .all()
     )
+    if q:
+        search_term = f"%{q.strip()}%"
+        query = query.filter(
+            (Draft.guest_name.ilike(search_term))
+            | (Draft.reply_to.ilike(search_term))
+            | (Draft.thread_key.ilike(search_term))
+        )
+
+    all_drafts = query.order_by(Draft.created_at.desc()).all()
 
     # Group by thread_key and guest phone
     conversations = {}
@@ -8273,9 +8292,13 @@ def conversations_page(
     # Convert to list and sort by last activity
     conv_list = sorted(conversations.values(), key=lambda x: x["last_at"], reverse=True)
 
+    initial_messages = _conversation_messages_for_thread(db, tenant_id, conv_list[0]["thread_key"]) if conv_list else []
+
     return templates.TemplateResponse("conversations.html", {
         "request": request,
         "conversations": conv_list,
+        "initial_messages": initial_messages,
+        "search_query": q or "",
     })
 
 

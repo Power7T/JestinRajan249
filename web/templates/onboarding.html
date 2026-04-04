@@ -151,17 +151,30 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 <div class="step-labels">
   <div class="step-label {% if step == 1 %}active{% elif step > 1 %}done{% endif %}">Property</div>
   <div style="width:60px"></div>
-  <div class="step-label {% if step == 2 %}active{% elif step > 2 %}done{% endif %}">Rules</div>
+  <div class="step-label {% if step == 2 %}active{% elif step > 2 %}done{% endif %}">Policies</div>
   <div style="width:60px"></div>
-  <div class="step-label {% if step == 3 %}active{% elif step > 3 %}done{% endif %}">Food</div>
+  <div class="step-label {% if step == 3 %}active{% elif step > 3 %}done{% endif %}">Guide</div>
   <div style="width:60px"></div>
-  <div class="step-label {% if step == 4 %}active{% elif step > 4 %}done{% endif %}">FAQ</div>
+  <div class="step-label {% if step == 4 %}active{% elif step > 4 %}done{% endif %}">Replies</div>
   <div style="width:60px"></div>
-  <div class="step-label {% if step == 5 %}active{% endif %}">Connect</div>
+  <div class="step-label {% if step == 5 %}active{% endif %}">Go Live</div>
 </div>
 
 {% if saved %}
 <div class="alert alert-success">Saved! Continuing to the next step…</div>
+{% endif %}
+
+{% if step < 5 %}
+<div class="card" style="background:var(--bg-2);border:1px solid var(--border-2);margin-bottom:1.25rem">
+  <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap">
+    <div>
+      <p style="font-size:0.72rem;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent-2);margin-bottom:0.45rem">Recommended Order</p>
+      <p style="font-size:0.9rem;color:var(--text-1);margin-bottom:0.35rem">Connect reservations and your guest inbox before polishing every detail.</p>
+      <p class="help-text" style="margin:0">That gets HostAI useful faster: import stays, receive guest messages, then refine policies and responses.</p>
+    </div>
+    <a href="/onboarding?step=5" class="btn btn-outline" style="white-space:nowrap">Jump to Go Live</a>
+  </div>
+</div>
 {% endif %}
 
 <!-- ─────────────────────────────────────────────────────────
@@ -324,11 +337,11 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 {% endif %}
 
 <!-- ─────────────────────────────────────────────────────────
-     STEP 3 — Food & Services
+     STEP 3 — Local Guide & Extras
 ────────────────────────────────────────────────────────── -->
 {% if step == 3 %}
 <div class="card">
-  <h2>Step 3 — Food & services</h2>
+  <h2>Step 3 — Local guide & extras</h2>
   <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
     If you have a restaurant or breakfast service, paste or upload your menu — the AI will
     describe it to guests accurately when asked.
@@ -380,11 +393,11 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 {% endif %}
 
 <!-- ─────────────────────────────────────────────────────────
-     STEP 4 — FAQ & Custom Instructions
+     STEP 4 — Replies & Instructions
 ────────────────────────────────────────────────────────── -->
 {% if step == 4 %}
 <div class="card">
-  <h2>Step 4 — FAQ & custom instructions</h2>
+  <h2>Step 4 — Replies & custom instructions</h2>
   <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
     Give the AI answers to your most common questions and any special instructions.
   </p>
@@ -395,17 +408,17 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 
     <label>Frequently asked questions & answers</label>
     <p class="help-text" style="margin-bottom:0.4rem">Write each Q&A on its own lines. The AI will reference these exactly.</p>
-    <textarea name="faq" rows="8" placeholder="Q: What is the WiFi password?&#10;A: The password is BeachHouse2024&#10;&#10;Q: Is there parking?&#10;A: Yes, free parking in the underground garage, space #12&#10;&#10;Q: Where do I find the key?&#10;A: The lockbox is on the right of the front door. Code is 4729.">{{ cfg.faq or '' }}</textarea>
+    <textarea name="faq" rows="8" placeholder="Q: What is the WiFi password?&#10;A: [add your answer]&#10;&#10;Q: Is there parking?&#10;A: [add your answer]&#10;&#10;Q: Where do I find the key?&#10;A: [add your answer]">{{ cfg.faq or '' }}</textarea>
 
     <label style="margin-top:0.5rem">Emergency contacts</label>
-    <textarea name="emergency_contacts" rows="3" placeholder="Local doctor: Dr. Patel, +1 305 555 0001&#10;Hospital: Miami General, 5 min drive, 123 Main St&#10;Police: 911 / +1 305 555 0099">{{ '' }}</textarea>
+    <textarea name="emergency_contacts" rows="3" placeholder="Local contact: [name and phone]&#10;Nearest hospital: [name and address]&#10;Emergency services: [number]">{{ '' }}</textarea>
     <p class="help-text">Will be included in the AI context for emergencies.</p>
 
     <label>Special AI instructions (optional)</label>
     <p class="help-text" style="margin-bottom:0.4rem">
       Anything you always want the AI to do or avoid. Examples: tone, upsells, what to mention.
     </p>
-    <textarea name="custom_instructions" rows="4" placeholder="Always mention the rooftop terrace when guests ask about facilities.&#10;Never offer refunds directly — say you'll check with the host.&#10;Respond in a warm, friendly tone with the guest's first name.">{{ cfg.custom_instructions or '' }}</textarea>
+    <textarea name="custom_instructions" rows="4" placeholder="Mention the unit name when giving directions.&#10;Escalate refund requests to the host.&#10;Match the guest's tone and keep answers concise.">{{ cfg.custom_instructions or '' }}</textarea>
     <div class="help-text" style="margin-top:0.5rem;line-height:1.8">
       Guests can use the bot for WiFi, check-in, check-out, parking, directions, food, local recommendations, late arrival, extra towels, and issue reporting.
       When you later map a guest phone number to a reservation and room / unit / property number, HostAI uses that stay context automatically in WhatsApp and SMS replies.
@@ -430,11 +443,11 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 {% endif %}
 
 <!-- ─────────────────────────────────────────────────────────
-     STEP 5 — Connect Channels
+     STEP 5 — Go Live
 ────────────────────────────────────────────────────────── -->
 {% if step == 5 %}
 <div class="card">
-  <h2>Step 5 — Connect your channels</h2>
+  <h2>Step 5 — Connect reservations and channels</h2>
   <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
     Preferred setup: forward Airbnb guest emails to your private HostAI inbox below. IMAP remains available as a fallback if you want direct mailbox polling.
   </p>

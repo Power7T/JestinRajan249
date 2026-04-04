@@ -217,7 +217,7 @@
             </a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
 <span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
-                ROI Dashboard
+                Revenue & ROI
             </a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
 <span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
@@ -225,7 +225,7 @@
             </a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
 <span class="material-symbols-outlined" data-icon="hub">hub</span>
-                Workflow Center
+                Operations
             </a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
@@ -277,7 +277,7 @@
 </button>
 <div class="h-8 w-px bg-white/10"></div>
 <div class="flex items-center gap-3 cursor-pointer group">
-<span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
+<span class="text-slate-200 group-hover:text-white transition-colors">Account</span>
 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
   {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
 </div>
@@ -362,13 +362,13 @@
     </h3>
     <p class="help-text">These fields are used to validate drafts so HostAI does not promise something that conflicts with house policy.</p>
     <label>Pet policy</label>
-    <textarea name="pet_policy" placeholder="No pets allowed, or dogs under 20kg with a $25 cleaning fee.">{{ cfg.pet_policy or '' }}</textarea>
+    <textarea name="pet_policy" placeholder="Describe whether pets are allowed and any fee or size limit.">{{ cfg.pet_policy or '' }}</textarea>
     <label>Refund policy</label>
-    <textarea name="refund_policy" placeholder="No refunds inside 48 hours of check-in unless there is a verified property issue.">{{ cfg.refund_policy or '' }}</textarea>
+    <textarea name="refund_policy" placeholder="Describe when refunds are allowed and when they are not.">{{ cfg.refund_policy or '' }}</textarea>
     <div class="form-row">
       <div>
         <label>Early check-in policy</label>
-        <textarea name="early_checkin_policy" placeholder="Subject to availability after 1pm.">{{ cfg.early_checkin_policy or '' }}</textarea>
+        <textarea name="early_checkin_policy" placeholder="Describe when early check-in is possible.">{{ cfg.early_checkin_policy or '' }}</textarea>
       </div>
       <div>
         <label>Early check-in fee</label>
@@ -378,7 +378,7 @@
     <div class="form-row">
       <div>
         <label>Late checkout policy</label>
-        <textarea name="late_checkout_policy" placeholder="Subject to availability until 1pm.">{{ cfg.late_checkout_policy or '' }}</textarea>
+        <textarea name="late_checkout_policy" placeholder="Describe when late checkout is possible.">{{ cfg.late_checkout_policy or '' }}</textarea>
       </div>
       <div>
         <label>Late checkout fee</label>
@@ -388,22 +388,22 @@
     <div class="form-row">
       <div>
         <label>Parking policy</label>
-        <textarea name="parking_policy" placeholder="One street parking spot only. No oversized vehicles.">{{ cfg.parking_policy or '' }}</textarea>
+        <textarea name="parking_policy" placeholder="Describe parking availability, location, and any restrictions.">{{ cfg.parking_policy or '' }}</textarea>
       </div>
       <div>
         <label>Smoking policy</label>
-        <textarea name="smoking_policy" placeholder="No smoking indoors.">{{ cfg.smoking_policy or '' }}</textarea>
+        <textarea name="smoking_policy" placeholder="Describe where smoking is or is not allowed.">{{ cfg.smoking_policy or '' }}</textarea>
       </div>
     </div>
 
     <label>House rules</label>
-    <textarea name="house_rules" placeholder="No parties. Respect neighbors.">{{ cfg.house_rules or '' }}</textarea>
+    <textarea name="house_rules" placeholder="List the rules guests need to follow during the stay.">{{ cfg.house_rules or '' }}</textarea>
     <label>Amenities</label>
-    <textarea name="amenities" placeholder="Wi-Fi, pool, gym, washer">{{ cfg.amenities or '' }}</textarea>
+    <textarea name="amenities" placeholder="List the amenities available to guests.">{{ cfg.amenities or '' }}</textarea>
     <label>FAQ / Guest guide</label>
-    <textarea name="faq" placeholder="Q: Wi-Fi password? A: See the welcome card.">{{ cfg.faq or '' }}</textarea>
+    <textarea name="faq" placeholder="Add the questions guests ask most often and the answers you want HostAI to use.">{{ cfg.faq or '' }}</textarea>
     <label>Custom instructions for HostAI</label>
-    <textarea name="custom_instructions" placeholder="Always mention the unit number when giving directions.">{{ cfg.custom_instructions or '' }}</textarea>
+    <textarea name="custom_instructions" placeholder="Add any tone, escalation, or response rules you want the AI to follow.">{{ cfg.custom_instructions or '' }}</textarea>
   </div>
 
   <!-- ── Guest Messaging ────────────────────────────────────────────────────── -->
@@ -1114,13 +1114,15 @@ async function testPMS() {
 }
 
 async function deletePMS(id, type) {
-  if (!confirm('Remove ' + type + ' integration?')) return;
+  const confirmed = await showConfirm('Remove ' + type + ' integration?');
+  if (!confirmed) return;
   const csrf = document.querySelector('[name=csrf_token]').value;
   await fetch('/settings/pms/' + id, {
     method: 'DELETE',
     headers: { 'X-CSRF-Token': csrf },
   });
-  location.reload();
+  showToast(type + ' integration removed', 'success');
+  setTimeout(() => location.reload(), 500);
 }
 
 function toggleVendorEdit(id) {
@@ -1152,20 +1154,6 @@ document.addEventListener('click', (e) => {
     // Test PMS
     if (e.target.id === 'test-pms-btn') {
         testPMS();
-    }
-});
-
-// Confirmation handlers
-document.addEventListener('submit', (e) => {
-    if (e.target.classList.contains('confirm-submit')) {
-        const msg = e.target.getAttribute('data-confirm');
-        if (!confirm(msg)) e.preventDefault();
-    }
-    // Handle the Remove vendor button which might be a button inside a form
-    const submitBtn = e.submitter;
-    if (submitBtn && submitBtn.classList.contains('confirm-submit')) {
-        const msg = submitBtn.getAttribute('data-confirm');
-        if (!confirm(msg)) e.preventDefault();
     }
 });
 

@@ -57,11 +57,11 @@ tailwind.config = {
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
 <span class="material-symbols-outlined" data-icon="analytics">analytics</span>Analytics</a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
-<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>ROI Dashboard</a>
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>Revenue & ROI</a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
 <span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>Voice AI</a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
-<span class="material-symbols-outlined" data-icon="hub">hub</span>Workflow Center</a>
+<span class="material-symbols-outlined" data-icon="hub">hub</span>Operations</a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>Settings</a>
 {% if tenant is defined and tenant and is_admin(tenant.email) %}
@@ -168,6 +168,50 @@ tailwind.config = {
       <span class="self-start px-3 py-1.5 rounded-full text-xs font-bold {% if tenant.voice_enabled %}bg-green-500/10 text-green-400{% else %}bg-white/5 text-slate-400{% endif %}">
         {% if tenant.voice_enabled %}Enabled{% else %}Disabled{% endif %}
       </span>
+    </div>
+
+    {% set voice_has_twilio = (cfg.voice_twilio_account_sid or '') and (cfg.voice_twilio_auth_token or '') %}
+    {% set voice_has_number = (tenant.voice_phone_number or cfg.voice_twilio_from_number or '') %}
+    {% set voice_has_alert_number = (cfg.sms_notify_number or '') %}
+    {% set voice_has_public_url = app_base_url %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
+        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Twilio Credentials</p>
+        <p class="text-sm font-semibold {% if voice_has_twilio %}text-emerald-300{% else %}text-amber-300{% endif %}">
+          {% if voice_has_twilio %}Configured{% else %}Missing{% endif %}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">Add the account SID and auth token before turning voice on.</p>
+      </div>
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
+        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Phone Number</p>
+        <p class="text-sm font-semibold {% if voice_has_number %}text-emerald-300{% else %}text-amber-300{% endif %}">
+          {% if voice_has_number %}Ready{% else %}Missing{% endif %}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">This is the guest-facing number HostAI answers and uses for follow-up.</p>
+      </div>
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
+        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Host Alerts</p>
+        <p class="text-sm font-semibold {% if voice_has_alert_number %}text-emerald-300{% else %}text-slate-300{% endif %}">
+          {% if voice_has_alert_number %}Configured{% else %}Optional{% endif %}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">Use this to get escalation or summary messages after calls.</p>
+      </div>
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
+        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Webhook URL</p>
+        <p class="text-sm font-semibold {% if voice_has_public_url %}text-emerald-300{% else %}text-amber-300{% endif %}">
+          {% if voice_has_public_url %}Available{% else %}Missing{% endif %}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">Twilio needs a public URL for inbound voice webhooks.</p>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-[#5B8DEF]/15 bg-[#5B8DEF]/6 p-4 mb-6">
+      <p class="text-sm font-semibold text-white mb-2">Before you enable Voice AI</p>
+      <ol class="list-decimal pl-5 space-y-1 text-sm text-slate-300">
+        <li>Save your Twilio credentials and voice number.</li>
+        <li>Copy the webhook URL below into your Twilio phone number settings.</li>
+        <li>Place one real test call and confirm the transcript appears on the panel.</li>
+      </ol>
     </div>
 
     <form method="post" action="/voice-calls/settings" class="space-y-5">
