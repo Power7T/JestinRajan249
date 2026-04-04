@@ -119,7 +119,6 @@ def extract_inbound(body: dict) -> list[dict]:
                             "from": msg["from"],
                             "text": msg["text"]["body"],
                             "phone_number_id": metadata.get("phone_number_id", ""),
-                            "message_id": msg.get("id", ""),  # Meta message ID for deduplication
                         })
     except Exception as exc:
         log.warning("Failed to parse Meta webhook body: %s", exc)

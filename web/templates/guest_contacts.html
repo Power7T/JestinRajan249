@@ -502,19 +502,23 @@ async function submitAddContact(event) {
 }
 
 async function resendWelcome(gcId, guestName) {
-  const confirmed = await showConfirm(`Resend welcome message to ${guestName}?`);
-  if (!confirmed) return;
-
-  try {
-    const csrf = document.querySelector('[name="csrf_token"]')?.value || '';
-    const response = await fetch(`/api/guest-contacts/${gcId}/resend`, {
-      method: 'POST',
-      headers: { 'X-CSRF-Token': csrf },
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      showToast(error.detail || 'Failed to resend', 'error');
-      return;
+  if (confirm(`Resend welcome message to ${guestName}?`)) {
+    try {
+      const csrf = document.querySelector('[name="csrf_token"]')?.value || '';
+      const response = await fetch(`/api/guest-contacts/${gcId}/resend`, {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': csrf },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        alert('Error: ' + (error.detail || 'Failed to resend'));
+        return;
+      }
+      const result = await response.json();
+      alert('✓ Message resent to ' + guestName);
+      location.reload();
+    } catch (err) {
+      alert('Error: ' + err.message);
     }
     await response.json();
     showToast('Message resent to ' + guestName, 'success');
