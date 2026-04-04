@@ -38,7 +38,7 @@ hostai/
 │   │   └── error_handler.py      # Error handling
 │   │
 │   ├── calendar_worker.py        # Background iCal sync
-│   ├── worker.py                 # RQ job worker
+│   ├── worker_manager.py         # Embedded worker lifecycle + leader locks
 │   ├── alembic/                  # Database migrations
 │   │   ├── env.py
 │   │   ├── script.py.mako
@@ -47,34 +47,15 @@ hostai/
 │   │       ├── 002_add_voice_calls.py
 │   │       └── ...
 │   │
-│   ├── tests/                    # Unit and integration tests
-│   │   ├── test_voice.py
-│   │   ├── test_messages.py
-│   │   ├── test_billing.py
-│   │   └── ...
-│   │
-│   └── static/                   # Frontend assets (compiled)
-│       └── dist/                 # React build output
+│   ├── templates/                # Server-rendered Jinja pages
+│   ├── static/                   # Static assets served by FastAPI
+│   └── integrations/             # Channel / provider integrations
 │
-├── worker/                       # Background job processor
-│   ├── tasks/
-│   │   ├── email_polling.py
-│   │   ├── voice_cleanup.py
-│   │   ├── billing_tasks.py
-│   │   └── ...
-│   └── config.py
-│
-├── frontend/                     # React application (source)
-│   ├── src/
-│   │   ├── App.jsx               # Root component
-│   │   ├── components/           # Reusable components
-│   │   ├── pages/                # Page components
-│   │   ├── hooks/                # Custom React hooks
-│   │   ├── services/             # API client functions
-│   │   ├── store/                # State management (Zustand)
-│   │   └── styles/               # CSS (Tailwind)
-│   │
-│   └── package.json
+├── tests/                        # Unit + integration tests
+│   ├── conftest.py
+│   ├── test_auth.py
+│   ├── test_page_health.py
+│   └── ...
 │
 ├── docs/                         # Documentation (this folder)
 │   ├── README.md
@@ -92,7 +73,7 @@ hostai/
 ├── docker-compose.dev.yml        # Local development
 ├── docker-compose.prod.yml       # Production
 ├── Dockerfile                    # Web service
-├── Dockerfile.worker             # Worker service
+├── entrypoint.sh                 # Web startup + migrations
 ├── requirements.txt              # Python dependencies
 ├── .env.example                  # Environment template
 └── .gitignore

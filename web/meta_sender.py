@@ -94,18 +94,21 @@ def verify_request_signature(payload: bytes, signature_header: str, app_secret: 
 def extract_inbound(body: dict) -> list[dict]:
     """
     Parse a Meta webhook POST body and return a list of
-    {'from': phone_str, 'text': str} dicts (one per inbound text message).
+    {'from': phone_str, 'text': str, 'phone_number_id': str} dicts
+    (one per inbound text message).
     """
     results = []
     try:
         for entry in body.get("entry", []):
             for change in entry.get("changes", []):
                 value = change.get("value", {})
+                metadata = value.get("metadata", {}) or {}
                 for msg in value.get("messages", []):
                     if msg.get("type") == "text":
                         results.append({
                             "from": msg["from"],
                             "text": msg["text"]["body"],
+                            "phone_number_id": metadata.get("phone_number_id", ""),
                         })
     except Exception as exc:
         log.warning("Failed to parse Meta webhook body: %s", exc)

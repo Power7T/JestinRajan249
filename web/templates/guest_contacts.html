@@ -446,9 +446,13 @@ async function submitAddContact(event) {
 
   try {
     const formData = new FormData(document.getElementById('addContactForm'));
+    const csrf = document.querySelector('[name="csrf_token"]')?.value || '';
     const response = await fetch('/api/guest-contacts/add', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrf,
+      },
       body: JSON.stringify({
         guest_name: formData.get('guest_name'),
         guest_phone: formData.get('guest_phone'),
@@ -480,8 +484,10 @@ async function submitAddContact(event) {
 async function resendWelcome(gcId, guestName) {
   if (confirm(`Resend welcome message to ${guestName}?`)) {
     try {
+      const csrf = document.querySelector('[name="csrf_token"]')?.value || '';
       const response = await fetch(`/api/guest-contacts/${gcId}/resend`, {
         method: 'POST',
+        headers: { 'X-CSRF-Token': csrf },
       });
       if (!response.ok) {
         const error = await response.json();
@@ -536,9 +542,13 @@ async function submitEditContact(event) {
   btn.innerHTML = '<span class="spinner"></span> Saving...';
 
   try {
+    const csrf = document.querySelector('[name="csrf_token"]')?.value || '';
     const response = await fetch(`/api/guest-contacts/${gcId}/edit`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrf,
+      },
       body: JSON.stringify({
         guest_name: document.getElementById('editGuestName').value,
         guest_phone: document.getElementById('editGuestPhone').value,

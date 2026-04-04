@@ -233,7 +233,7 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; 
     {% if conversations %}
     <div class="overflow-y-auto flex-1">
       {% for conv in conversations %}
-      <div class="px-4 py-4 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors {% if loop.first %}bg-primary/5 border-l-2 border-l-primary{% endif %}"
+      <div class="conv-item px-4 py-4 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors {% if loop.first %}bg-primary/5 border-l-2 border-l-primary{% endif %}"
            onclick="selectConversation(this, '{{ conv.thread_key }}', '{{ conv.guest_name }}', '{{ conv.guest_phone }}')"
            data-thread="{{ conv.thread_key }}" data-name="{{ conv.guest_name }}" data-phone="{{ conv.guest_phone }}">
         <div class="flex items-center gap-3">

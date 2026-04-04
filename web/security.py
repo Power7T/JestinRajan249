@@ -94,6 +94,21 @@ def validate_csrf(request: Request, form_token: str | None) -> None:
         raise HTTPException(status_code=403, detail="CSRF validation failed — please refresh and try again")
 
 
+def validate_csrf_header(request: Request, header_name: str = "X-CSRF-Token") -> None:
+    """
+    Call from JSON/XHR handlers that send the CSRF token in a request header.
+    Raises HTTP 403 on failure.
+    """
+    cookie_token = request.cookies.get(CSRF_COOKIE, "")
+    if not cookie_token or not _verify_csrf_token(cookie_token):
+        raise HTTPException(status_code=403, detail="Session expired — please refresh and try again")
+    header_token = request.headers.get(header_name, "")
+    if not header_token:
+        raise HTTPException(status_code=403, detail="CSRF token missing from request header")
+    if not hmac.compare_digest(cookie_token, header_token):
+        raise HTTPException(status_code=403, detail="CSRF validation failed — please refresh and try again")
+
+
 # ---------------------------------------------------------------------------
 # CSRF Middleware — sets cookie + request.state.csrf_token on every request
 # ---------------------------------------------------------------------------
@@ -283,4 +298,3 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if is_request_secure(request):
             h["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         return response
-

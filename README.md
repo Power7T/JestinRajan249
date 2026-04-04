@@ -4,7 +4,7 @@
 
 HostAI is a complete SaaS solution that automates guest communication, manages properties, handles billing, and provides AI-powered voice calling—all designed for hosting businesses and property managers.
 
-![Status](https://img.shields.io/badge/status-production-green) ![Tech](https://img.shields.io/badge/stack-FastAPI%20%7C%20React%20%7C%20PostgreSQL-blue)
+![Status](https://img.shields.io/badge/status-production-green) ![Tech](https://img.shields.io/badge/stack-FastAPI%20%7C%20Jinja%20%7C%20PostgreSQL-blue)
 
 ---
 
@@ -31,7 +31,7 @@ HostAI is a complete SaaS solution that automates guest communication, manages p
 - **Activity timeline**: Guest interactions, reservations, and workflows
 
 ### Billing & Monetization
-- **Multi-tier pricing**: Starter ($20), Growth ($20), Pro ($20) based on units
+- **Channel-based plans**: Free, WhatsApp Cloud, SMS, and Pro channel bundles
 - **Voice add-ons**: Light ($39), Standard ($79), Professional ($129), Unlimited ($199)
 - **Usage tracking**: Real-time API cost monitoring per tenant
 - **Admin pricing panel**: Adjust voice pricing dynamically without code
@@ -92,30 +92,27 @@ See **[Pricing Documentation](docs/PRICING.md)** for strategy and margin analysi
 ## 🏗️ Architecture
 
 ```
-Frontend (React) → FastAPI Backend → PostgreSQL
-                 ↘ WebSocket      ↘ Redis (cache/queue)
-                 ↘ Webhooks       ↘ R2 (storage)
-                                  ↘ IMAP (email)
+Server-rendered Jinja UI → FastAPI app → PostgreSQL
+                         ↘ Webhooks    ↘ Redis (rate limits / leader locks)
+                         ↘ IMAP/SMTP   ↘ Stripe / Twilio / Meta / PMS APIs
 
-Background Worker → Email polling, Task scheduling, PMS sync
+Embedded workers → email polling, iCal sync, PMS sync, reservation scheduling
 ```
 
 **Tech Stack:**
-- **Frontend**: React + Tailwind CSS (Obsidian dark theme)
+- **Frontend**: FastAPI + Jinja templates + Tailwind CSS
 - **Backend**: FastAPI + SQLAlchemy
 - **Database**: PostgreSQL + Redis
 - **Voice**: Twilio + Deepgram + OpenAI/Llama + ElevenLabs
 - **Storage**: Cloudflare R2
 - **Billing**: Stripe
-- **Deployment**: Docker + Railway + Nginx
-
-See **[Architecture Documentation](docs/ARCHITECTURE.md)** for detailed system design.
+- **Deployment**: Docker + Railway / local Docker Compose
 
 ## 📚 Documentation
 
 Complete documentation in the `/docs` directory:
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design, data flow, tech stack
+- **[INDEX.md](docs/INDEX.md)** - Documentation index
 - **[FEATURES.md](docs/FEATURES.md)** - Complete feature list and capabilities
 - **[VOICE_AI.md](docs/VOICE_AI.md)** - Voice calling system, pricing, usage
 - **[PRICING.md](docs/PRICING.md)** - Billing strategy, pricing structure, margin analysis
@@ -244,10 +241,10 @@ alembic upgrade head
 alembic revision --autogenerate -m "description"
 
 # Run tests
-pytest web/tests/ -v
+pytest tests/ -v
 
 # Code formatting
-black web/ worker/
+black web/ tests/
 
 # Linting
 pylint web/

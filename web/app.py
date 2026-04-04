@@ -47,7 +47,9 @@ import logging
 import os
 import re
 import secrets
+import socket
 import time
+import threading
 import traceback
 import zipfile
 from html import escape
@@ -97,7 +99,7 @@ from web.billing import (
 )
 from web.security import (
     CSRFMiddleware, SecurityHeadersMiddleware,
-    validate_csrf, rate_limit, client_ip, is_request_secure,
+    validate_csrf, validate_csrf_header, rate_limit, client_ip, is_request_secure,
 )
 from web.request_safety import ensure_public_hostname, ensure_public_url
 from web.workflow import (
@@ -466,44 +468,52 @@ async def lifespan(app: FastAPI):
     init_db()
     validate_smtp_config()  # Validate SMTP at startup — fail fast, not on first email send
     worker_manager.start_all_workers()
+    scheduler: Optional[BackgroundScheduler] = None
+    scheduler_started = False
 
-    # Start background scheduler for GDPR cleanup
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(
-        _gdpr_data_retention_job,
-        CronTrigger(hour=2, minute=0, timezone="UTC"),  # Daily at 2:00 AM UTC
-        id="gdpr_retention_cleanup",
-        name="GDPR Data Retention",
-        replace_existing=True,
-    )
-    scheduler.add_job(
-        _voice_scheduled_calls_job,
-        CronTrigger(hour=9, minute=0, timezone="UTC"),  # Daily at 9:00 AM UTC
-        id="voice_scheduled_calls",
-        name="Voice Pre-checkin Calls",
-        replace_existing=True,
-    )
-    # Add APScheduler event listeners for job failures (Failure gap fix #5)
-    from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED
+    if _embedded_scheduler_enabled() and _acquire_scheduler_lock():
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            _gdpr_data_retention_job,
+            CronTrigger(hour=2, minute=0, timezone="UTC"),  # Daily at 2:00 AM UTC
+            id="gdpr_retention_cleanup",
+            name="GDPR Data Retention",
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            _voice_scheduled_calls_job,
+            CronTrigger(hour=9, minute=0, timezone="UTC"),  # Daily at 9:00 AM UTC
+            id="voice_scheduled_calls",
+            name="Voice Pre-checkin Calls",
+            replace_existing=True,
+        )
+        # Add APScheduler event listeners for job failures (Failure gap fix #5)
+        from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED
 
-    def _scheduler_error_listener(event):
-        log.error("Scheduled job crashed: job_id=%s exception=%s",
-                  event.job_id, event.exception)
+        def _scheduler_error_listener(event):
+            log.error("Scheduled job crashed: job_id=%s exception=%s",
+                      event.job_id, event.exception)
 
-    def _scheduler_missed_listener(event):
-        log.warning("Scheduled job missed: job_id=%s scheduled_run_time=%s",
-                    event.job_id, event.scheduled_run_time)
+        def _scheduler_missed_listener(event):
+            log.warning("Scheduled job missed: job_id=%s scheduled_run_time=%s",
+                        event.job_id, event.scheduled_run_time)
 
-    scheduler.add_listener(_scheduler_error_listener, EVENT_JOB_ERROR)
-    scheduler.add_listener(_scheduler_missed_listener, EVENT_JOB_MISSED)
+        scheduler.add_listener(_scheduler_error_listener, EVENT_JOB_ERROR)
+        scheduler.add_listener(_scheduler_missed_listener, EVENT_JOB_MISSED)
 
-    scheduler.start()
-    log.info("Scheduled background jobs started (cleanup at 02:00 UTC daily)")
+        scheduler.start()
+        _start_scheduler_leader_refresh()
+        scheduler_started = True
+        log.info("Scheduled background jobs started (cleanup at 02:00 UTC daily)")
+    else:
+        log.info("Embedded scheduler disabled or already running in another process")
 
     flags.log_state()  # Log all feature flag values at startup
     log.info("Airbnb Host Assistant web app started")
     yield
-    scheduler.shutdown()
+    if scheduler_started and scheduler is not None:
+        scheduler.shutdown()
+    _release_scheduler_lock()
     worker_manager.stop_all_workers()
     log.info("Airbnb Host Assistant web app stopped")
 
@@ -1026,6 +1036,159 @@ def _find_tenant_by_token(db: Session, column: str, token: str) -> Optional[Tena
     return db.query(Tenant).filter(col == token).first()
 
 
+def _find_team_member_by_invite_token(db: Session, token: str) -> Optional[TeamMember]:
+    """Lookup a team member invite token, supporting legacy plaintext rows."""
+    token_digest = _token_digest(token)
+    member = db.query(TeamMember).filter(TeamMember.invite_token == token_digest).first()
+    if member:
+        return member
+    return db.query(TeamMember).filter(TeamMember.invite_token == token).first()
+
+
+def _find_reservation_by_checkin_token(db: Session, token: str) -> Optional[Reservation]:
+    """Lookup a reservation check-in token, supporting legacy plaintext rows."""
+    token_digest = _token_digest(token)
+    reservation = db.query(Reservation).filter(Reservation.checkin_token == token_digest).first()
+    if reservation:
+        return reservation
+    return db.query(Reservation).filter(Reservation.checkin_token == token).first()
+
+
+def _require_authenticated_tenant_actor(request: Request, db: Session, *, action: str) -> Tenant:
+    """
+    Require an authenticated tenant owner/admin/manager-like actor and return the tenant.
+    Accepts owner tenant sessions and privileged team-member sessions.
+    """
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        tenant_id, _member_id, role = get_current_member(request, db)
+        if role not in ("owner", "admin", "manager"):
+            raise HTTPException(status_code=403, detail=f"You do not have permission to {action}")
+
+    tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+    if not tenant or not tenant.is_active:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return tenant
+
+
+def _require_internal_webhook_secret(
+    request: Request,
+    *,
+    env_name: str,
+    header_name: str = "X-Internal-Webhook-Secret",
+) -> None:
+    """
+    Require a shared-secret header for internal callbacks.
+    In development, missing configuration is tolerated to keep local iteration easy.
+    """
+    configured = os.getenv(env_name, "").strip()
+    supplied = request.headers.get(header_name, "").strip()
+    if not configured:
+        if _IS_DEV_ENV:
+            return
+        raise HTTPException(status_code=403, detail=f"{env_name} is required in production")
+    if not supplied or not secrets.compare_digest(supplied, configured):
+        raise HTTPException(status_code=403, detail="Webhook authentication failed")
+
+
+_SCHEDULER_LEADER_LOCK_KEY = os.getenv("SCHEDULER_LEADER_LOCK_KEY", "hostai:scheduler:leader")
+_SCHEDULER_LEADER_LOCK_TTL = int(os.getenv("SCHEDULER_LEADER_LOCK_TTL", "120"))
+_SCHEDULER_LEADER_REFRESH_INTERVAL = max(15, _SCHEDULER_LEADER_LOCK_TTL // 3)
+_SCHEDULER_LEADER_TOKEN = f"{socket.gethostname()}:{os.getpid()}"
+_scheduler_leader_refresh_stop = threading.Event()
+_scheduler_leader_refresh_thread: Optional[threading.Thread] = None
+_scheduler_lock_owned = False
+
+
+def _embedded_scheduler_enabled() -> bool:
+    raw = os.getenv("RUN_EMBEDDED_SCHEDULER", "").strip().lower()
+    if not raw:
+        return True
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _acquire_scheduler_lock() -> bool:
+    """Ensure only one web process owns APScheduler jobs when Redis is available."""
+    global _scheduler_lock_owned
+    from web.redis_client import get_redis
+
+    redis_client = get_redis()
+    if redis_client is None:
+        _scheduler_lock_owned = True
+        return True
+    try:
+        acquired = bool(redis_client.set(_SCHEDULER_LEADER_LOCK_KEY, _SCHEDULER_LEADER_TOKEN, nx=True, ex=_SCHEDULER_LEADER_LOCK_TTL))
+        if acquired:
+            _scheduler_lock_owned = True
+            return True
+        owner = redis_client.get(_SCHEDULER_LEADER_LOCK_KEY)
+        if owner == _SCHEDULER_LEADER_TOKEN:
+            redis_client.expire(_SCHEDULER_LEADER_LOCK_KEY, _SCHEDULER_LEADER_LOCK_TTL)
+            _scheduler_lock_owned = True
+            return True
+        log.info("Embedded scheduler already owned by %s; skipping duplicate startup", owner)
+        _scheduler_lock_owned = False
+        return False
+    except Exception as exc:
+        log.warning("Scheduler leader lock unavailable (%s); continuing without coordination", exc)
+        _scheduler_lock_owned = True
+        return True
+
+
+def _scheduler_leader_refresh_loop():
+    from web.redis_client import get_redis
+
+    redis_client = get_redis()
+    if redis_client is None:
+        return
+    while not _scheduler_leader_refresh_stop.wait(timeout=_SCHEDULER_LEADER_REFRESH_INTERVAL):
+        try:
+            if redis_client.get(_SCHEDULER_LEADER_LOCK_KEY) == _SCHEDULER_LEADER_TOKEN:
+                redis_client.expire(_SCHEDULER_LEADER_LOCK_KEY, _SCHEDULER_LEADER_LOCK_TTL)
+            else:
+                log.warning("Lost scheduler leadership; no longer refreshing lock")
+                return
+        except Exception as exc:
+            log.warning("Scheduler leader lock refresh failed: %s", exc)
+
+
+def _start_scheduler_leader_refresh():
+    global _scheduler_leader_refresh_thread
+    from web.redis_client import get_redis
+
+    if get_redis() is None:
+        return
+    _scheduler_leader_refresh_stop.clear()
+    _scheduler_leader_refresh_thread = threading.Thread(
+        target=_scheduler_leader_refresh_loop,
+        name="scheduler-leader-refresh",
+        daemon=True,
+    )
+    _scheduler_leader_refresh_thread.start()
+
+
+def _release_scheduler_lock():
+    global _scheduler_lock_owned, _scheduler_leader_refresh_thread
+    from web.redis_client import get_redis
+
+    _scheduler_leader_refresh_stop.set()
+    if _scheduler_leader_refresh_thread and _scheduler_leader_refresh_thread.is_alive():
+        _scheduler_leader_refresh_thread.join(timeout=5)
+    _scheduler_leader_refresh_thread = None
+
+    redis_client = get_redis()
+    if redis_client is None or not _scheduler_lock_owned:
+        _scheduler_lock_owned = False
+        return
+    try:
+        if redis_client.get(_SCHEDULER_LEADER_LOCK_KEY) == _SCHEDULER_LEADER_TOKEN:
+            redis_client.delete(_SCHEDULER_LEADER_LOCK_KEY)
+    except Exception as exc:
+        log.warning("Failed to release scheduler leader lock: %s", exc)
+    _scheduler_lock_owned = False
+
+
 # _auth_bot and _bot_token_expiry_warning removed — Baileys integration discontinued
 
 
@@ -1058,15 +1221,24 @@ def _validate_meta_signature(request_body: bytes, signature_header: str) -> bool
     return verify_request_signature(request_body, signature_header, app_secret)
 
 
-def _validate_twilio_signature(request: Request, form_data: dict, cfg: TenantConfig) -> bool:
+def _validate_twilio_signature(
+    request: Request,
+    form_data: dict,
+    cfg: TenantConfig,
+    *,
+    channel: str = "sms",
+) -> bool:
     """
     Validate Twilio webhook signatures against the tenant's auth token.
     """
-    auth_token = decrypt(cfg.twilio_auth_token_enc or "").strip()
+    if channel == "voice":
+        auth_token = decrypt(cfg.voice_twilio_auth_token_enc or cfg.twilio_auth_token_enc or "").strip()
+    else:
+        auth_token = decrypt(cfg.twilio_auth_token_enc or "").strip()
     if not auth_token:
         if _IS_DEV_ENV:
             return True
-        log.error("[%s] Twilio auth token missing; rejecting webhook", cfg.tenant_id)
+        log.error("[%s] Twilio %s auth token missing; rejecting webhook", cfg.tenant_id, channel)
         return False
 
     try:
@@ -1076,7 +1248,7 @@ def _validate_twilio_signature(request: Request, form_data: dict, cfg: TenantCon
         candidate_urls = [_public_request_url(request), str(request.url)]
         return any(validator.validate(url, form_data, signature) for url in dict.fromkeys(candidate_urls))
     except Exception as exc:
-        log.warning("[%s] Twilio webhook validation error: %s", cfg.tenant_id, exc)
+        log.warning("[%s] Twilio %s webhook validation error: %s", cfg.tenant_id, channel, exc)
         return False
 
 
@@ -1354,6 +1526,8 @@ def reset_password_post(
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
+    from web.auth import validate_password_strength
+
     rate_limit(f"reset:{client_ip(request)}", max_requests=10, window_seconds=3600)
     validate_csrf(request, csrf_token)
     tenant = _find_tenant_by_token(db, "reset_token", token)
@@ -1367,9 +1541,10 @@ def reset_password_post(
     if password != confirm:
         return templates.TemplateResponse("reset_password.html",
                                           {"request": request, "invalid": False, "success": False, "token": token, "error": "Passwords do not match"})
-    if len(password) < 8:
+    is_valid, error_msg = validate_password_strength(password)
+    if not is_valid:
         return templates.TemplateResponse("reset_password.html",
-                                          {"request": request, "invalid": False, "success": False, "token": token, "error": "Password must be at least 8 characters"})
+                                          {"request": request, "invalid": False, "success": False, "token": token, "error": error_msg})
     tenant.password_hash = hash_password(password)
     tenant.reset_token = None
     tenant.reset_token_expires = None
@@ -1463,7 +1638,7 @@ def send_team_invite(member_id: int, request: Request,
     invite_token = secrets.token_urlsafe(32)
     expires_at = datetime.now(timezone.utc) + timedelta(hours=48)
 
-    member.invite_token = invite_token
+    member.invite_token = _store_token(invite_token)
     member.invite_token_expires_at = expires_at
     db.add(member)
     db.commit()
@@ -1482,7 +1657,7 @@ def send_team_invite(member_id: int, request: Request,
 
 @app.get("/invite/{token}", response_class=HTMLResponse)
 def invite_accept_page(token: str, request: Request, db: Session = Depends(get_db)):
-    member = db.query(TeamMember).filter_by(invite_token=token).first()
+    member = _find_team_member_by_invite_token(db, token)
     if not member or not member.invite_token_expires_at:
         raise HTTPException(status_code=404, detail="Invite not found or expired")
 
@@ -1502,19 +1677,38 @@ def accept_invite(token: str, request: Request,
                   password_confirm: str = Form(...),
                   csrf_token: str = Form(None),
                   db: Session = Depends(get_db)):
+    from web.auth import validate_password_strength
+
     validate_csrf(request, csrf_token)
 
-    if password != password_confirm:
-        raise HTTPException(status_code=400, detail="Passwords do not match")
-    if len(password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
-
-    member = db.query(TeamMember).filter_by(invite_token=token).first()
+    member = _find_team_member_by_invite_token(db, token)
     if not member or not member.invite_token_expires_at:
-        raise HTTPException(status_code=404, detail="Invite not found or expired")
+        return templates.TemplateResponse(
+            "invite_accept.html",
+            {"request": request, "token": token, "member_name": None, "invalid_token": True, "error": None},
+            status_code=404,
+        )
 
     if datetime.now(timezone.utc) > member.invite_token_expires_at:
-        raise HTTPException(status_code=404, detail="Invite link has expired")
+        return templates.TemplateResponse(
+            "invite_accept.html",
+            {"request": request, "token": token, "member_name": member.display_name, "invalid_token": True, "error": None},
+            status_code=404,
+        )
+
+    if password != password_confirm:
+        return templates.TemplateResponse(
+            "invite_accept.html",
+            {"request": request, "token": token, "member_name": member.display_name, "invalid_token": False, "error": "Passwords do not match"},
+            status_code=400,
+        )
+    is_valid, error_msg = validate_password_strength(password)
+    if not is_valid:
+        return templates.TemplateResponse(
+            "invite_accept.html",
+            {"request": request, "token": token, "member_name": member.display_name, "invalid_token": False, "error": error_msg},
+            status_code=400,
+        )
 
     # Set password and clear invite
     member.password_hash = hash_password(password)
@@ -1528,7 +1722,7 @@ def accept_invite(token: str, request: Request,
     is_sec = is_request_secure(request)
     resp = RedirectResponse("/dashboard", status_code=302)
     resp.set_cookie("session", token_jwt, httponly=True, samesite="strict",
-                    secure=is_sec, max_age=72*3600)
+                    secure=is_sec, max_age=TOKEN_HOURS * 3600)
 
     member.last_login_at = datetime.now(timezone.utc)
     db.add(ActivityLog(
@@ -2012,7 +2206,7 @@ def _execute_draft(
     reservation: Optional[Reservation] = None,
     automation_rule: Optional[AutomationRule] = None,
 ):
-    """Send reply via the appropriate channel and mark draft approved."""
+    """Send reply via the appropriate channel and mark the final delivery state."""
     if draft.status != "pending":
         return
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
@@ -2020,6 +2214,8 @@ def _execute_draft(
         db.query(Reservation).filter_by(id=draft.reservation_id, tenant_id=tenant_id).first()
         if draft.reservation_id else None
     )
+    send_ok = False
+    failure_reason = "No configured delivery path for draft"
 
     if draft.source == "email" and draft.reply_to and cfg and cfg.email_address:
         try:
@@ -2036,8 +2232,10 @@ def _execute_draft(
             _send_smtp_reply(ecfg, draft.reply_to,
                              f"Re: Airbnb message from {draft.guest_name}", final_text)
             log.info("[%s] Email reply sent to %s", tenant_id, draft.reply_to)
+            send_ok = True
         except Exception as exc:
             log.error("[%s] SMTP send failed: %s", tenant_id, exc)
+            failure_reason = f"SMTP send failed: {exc}"
 
     elif draft.source == "whatsapp" and draft.reply_to and cfg:
         guest_phone = draft.reply_to
@@ -2048,6 +2246,13 @@ def _execute_draft(
                 ok = send_whatsapp(cfg.whatsapp_phone_id, token, guest_phone, final_text)
                 if not ok:
                     log.warning("[%s] Meta WA send failed for ***%s", tenant_id, guest_phone[-4:] if guest_phone else "")
+                    failure_reason = "Meta WhatsApp delivery failed"
+                else:
+                    send_ok = True
+            else:
+                failure_reason = "Meta WhatsApp is not fully configured"
+        else:
+            failure_reason = "Tenant plan does not include WhatsApp delivery"
         # Note: Baileys channel check removed (Baileys integration discontinued)
         # elif tenant_has_channel(cfg, PLAN_BAILEYS):
         #     _queue_baileys_outbound(tenant_id, guest_phone, final_text, db)
@@ -2062,6 +2267,13 @@ def _execute_draft(
                               cfg.twilio_from_number, guest_phone, final_text)
                 if not ok:
                     log.warning("[%s] Twilio SMS send failed for ***%s", tenant_id, guest_phone[-4:] if guest_phone else "")
+                    failure_reason = "Twilio SMS delivery failed"
+                else:
+                    send_ok = True
+            else:
+                failure_reason = "Twilio SMS is not fully configured"
+        else:
+            failure_reason = "Tenant plan does not include SMS delivery"
 
     elif draft.source == "pms" and draft.reply_to:
         # reply_to format: "{integration_id}:{reservation_id}"
@@ -2084,16 +2296,39 @@ def _execute_draft(
                     if not ok:
                         log.warning("[%s] PMS reply send failed for reservation %s",
                                     tenant_id, parts[1])
+                        failure_reason = f"PMS delivery failed for reservation {parts[1]}"
                     else:
                         log.info("[%s] PMS reply sent via %s for reservation %s",
                                  tenant_id, integration.pms_type, parts[1])
+                        send_ok = True
                 else:
                     log.warning("[%s] PMS integration %s not found or inactive", tenant_id, parts[0])
+                    failure_reason = f"PMS integration {parts[0]} not found or inactive"
             except Exception as exc:
                 log.error("[%s] PMS reply error: %s", tenant_id, exc)
+                failure_reason = f"PMS reply error: {exc}"
+        else:
+            failure_reason = "PMS reply target is malformed"
+    else:
+        failure_reason = f"Unsupported draft delivery source: {draft.source or 'unknown'}"
 
-    draft.status      = "approved"
-    draft.final_text  = final_text
+    draft.final_text = final_text
+    if not send_ok:
+        draft.status = "failed"
+        db.add(FailedDraftLog(
+            tenant_id=tenant_id,
+            draft_id=draft.id,
+            error_reason=failure_reason,
+        ))
+        db.add(ActivityLog(
+            tenant_id=tenant_id,
+            event_type="draft_send_failed",
+            message=f"Draft send failed for {draft.guest_name}: {failure_reason}",
+        ))
+        db.commit()
+        return
+
+    draft.status = "approved"
     draft.approved_at = datetime.now(timezone.utc)
     if reservation:
         reservation.last_host_reply_at = draft.approved_at
@@ -3916,6 +4151,15 @@ async def wa_webhook_inbound(tenant_id: str, request: Request, db: Session = Dep
 
     from web.meta_sender import extract_inbound
     for msg in extract_inbound(body):
+        phone_number_id = (msg.get("phone_number_id") or "").strip()
+        if cfg.whatsapp_phone_id and phone_number_id and phone_number_id != cfg.whatsapp_phone_id:
+            log.warning(
+                "[%s] Ignoring Meta inbound for mismatched phone_number_id=%s expected=%s",
+                tenant_id,
+                phone_number_id,
+                cfg.whatsapp_phone_id,
+            )
+            continue
         _handle_inbound_wa(tenant_id, msg["from"], msg["text"], db)
 
     return JSONResponse({"status": "ok"})
@@ -3945,7 +4189,7 @@ async def sms_webhook_inbound(tenant_id: str, request: Request, db: Session = De
         log.warning("[%s] Twilio form parsing error: %s", tenant_id, e)
         return HTMLResponse("<Response/>")
 
-    if not _validate_twilio_signature(request, form_data, cfg):
+    if not _validate_twilio_signature(request, form_data, cfg, channel="sms"):
         return HTMLResponse("<Response/>", status_code=403)
     from web.sms_sender import parse_twilio_inbound
     msg = parse_twilio_inbound(form_data)
@@ -7827,7 +8071,8 @@ def generate_checkin_link(
     if not res:
         raise HTTPException(status_code=404, detail="Reservation not found")
 
-    res.checkin_token = secrets.token_urlsafe(32)
+    raw_checkin_token = secrets.token_urlsafe(32)
+    res.checkin_token = _store_token(raw_checkin_token)
     # Token expires 24 hours after checkout (or now + 30 days if checkout date unknown)
     from datetime import timedelta
     from zoneinfo import ZoneInfo
@@ -7844,13 +8089,13 @@ def generate_checkin_link(
         message=f"Check-in link generated for {res.guest_name} ({res.confirmation_code})",
     ))
     db.commit()
-    return RedirectResponse(f"/reservations?checkin_link={res.checkin_token}", status_code=302)
+    return RedirectResponse(f"/reservations?checkin_link={raw_checkin_token}", status_code=302)
 
 
 @app.get("/checkin/{token}", response_class=HTMLResponse)
 def checkin_portal(token: str, request: Request, db: Session = Depends(get_db)):
     """Public guest check-in page — no auth required, only the token."""
-    res = db.query(Reservation).filter_by(checkin_token=token).first()
+    res = _find_reservation_by_checkin_token(db, token)
     if not res:
         raise HTTPException(status_code=404, detail="Check-in link not found or expired")
 
@@ -8143,6 +8388,7 @@ async def add_guest_contact(
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    validate_csrf_header(request)
 
     data = await request.json()
 
@@ -8242,6 +8488,7 @@ async def resend_guest_welcome(
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    validate_csrf_header(request)
 
     guest_contact = (
         db.query(GuestContact)
@@ -8274,6 +8521,7 @@ async def edit_guest_contact(
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    validate_csrf_header(request)
 
     guest_contact = (
         db.query(GuestContact)
@@ -8708,6 +8956,9 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         )
         if not tenant or not tenant.voice_enabled:
             return _voice_twiml_error("Sorry, this number is not configured for voice support.")
+        if not tenant.config or not _validate_twilio_signature(request, dict(form_data), tenant.config, channel="voice"):
+            log.warning("[VOICE] Rejected inbound call webhook for tenant=%s sid=%s", tenant.id if tenant else "unknown", call_sid)
+            return _voice_twiml_error("Webhook authentication failed.")
 
         # ── Rate limiting: check if tenant exceeded call limits
         rate_limit_check = check_rate_limit(db, tenant.id, "voice_calls")
@@ -8823,6 +9074,10 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
         voice_call = db.query(VoiceCall).filter(VoiceCall.id == call_id).first()
         if not voice_call:
             return _voice_twiml_error("Call record not found.")
+        cfg = voice_call.tenant.config if voice_call.tenant else None
+        if not cfg or not _validate_twilio_signature(request, dict(form_data), cfg, channel="voice"):
+            log.warning("[VOICE] Rejected process-speech webhook for call_id=%s", call_id)
+            return _voice_twiml_error("Webhook authentication failed.")
 
         voice_call.started_at = datetime.now(timezone.utc)
         voice_call.status = "answered"
@@ -9165,6 +9420,10 @@ async def handle_hangup(request: Request, db: Session = Depends(get_db)):
         voice_call = db.query(VoiceCall).filter(VoiceCall.twilio_call_id == call_sid).first()
         if not voice_call:
             return {"status": "not_found"}
+        cfg = voice_call.tenant.config if voice_call.tenant else None
+        if not cfg or not _validate_twilio_signature(request, dict(form_data), cfg, channel="voice"):
+            log.warning("[VOICE] Rejected hangup webhook for call_sid=%s", call_sid)
+            return JSONResponse({"status": "forbidden"}, status_code=403)
 
         voice_call.status   = call_status
         voice_call.ended_at = datetime.now(timezone.utc)
@@ -9251,28 +9510,44 @@ async def handle_hangup(request: Request, db: Session = Depends(get_db)):
 
 
 @app.post("/api/calls/rating")
-def receive_rating(request: Request, phone: str = None, rating: int = None, db: Session = Depends(get_db)):
+def receive_rating(
+    request: Request,
+    phone: str = None,
+    rating: int = None,
+    call_id: str = None,
+    db: Session = Depends(get_db),
+):
     """
     Receive satisfaction rating from guest (typically via webhook from SMS handler).
     Updates the most recent VoiceCall record with the rating.
     """
     try:
-        if not phone or not rating or rating < 1 or rating > 5:
+        _require_internal_webhook_secret(request, env_name="VOICE_RATING_WEBHOOK_SECRET")
+        if not rating or rating < 1 or rating > 5:
+            return {"status": "invalid"}
+        if not phone and not call_id:
             return {"status": "invalid"}
 
-        # Find the most recent completed call from this phone number
-        from web.models import VoiceCall
-        recent_call = (
-            db.query(VoiceCall)
-            .filter(VoiceCall.guest_phone_number == phone)
-            .order_by(VoiceCall.created_at.desc())
-            .first()
-        )
+        recent_call = None
+        if call_id:
+            recent_call = db.query(VoiceCall).filter(VoiceCall.id == call_id).first()
+        if not recent_call and phone:
+            recent_call = (
+                db.query(VoiceCall)
+                .filter(VoiceCall.guest_phone_number == phone)
+                .order_by(VoiceCall.created_at.desc())
+                .first()
+            )
 
         if recent_call:
             recent_call.guest_rating = rating
             db.commit()
-            log.info(f"[VOICE] Rating {rating}/5 recorded for {phone}")
+            log.info(
+                "[VOICE] Rating %s/5 recorded for call=%s phone=%s",
+                rating,
+                recent_call.id,
+                phone or recent_call.guest_phone_number,
+            )
 
             # If rating is 1-star, escalate to host
             if rating == 1:
@@ -9289,6 +9564,8 @@ def receive_rating(request: Request, phone: str = None, rating: int = None, db: 
             return {"status": "recorded", "rating": rating}
         return {"status": "call_not_found"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         log.error(f"[VOICE] Error processing rating: {e}")
         return {"status": "error"}
@@ -9297,38 +9574,48 @@ def receive_rating(request: Request, phone: str = None, rating: int = None, db: 
 @app.post("/api/calls/send-voice")
 async def send_outbound_voice(
     request: Request,
-    tenant_id: str,
     guest_phone: str,
     message: str,
+    tenant_id: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """Initiate outbound call with message synthesis."""
     try:
-        tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+        validate_csrf_header(request)
+        actor_tenant = _require_authenticated_tenant_actor(request, db, action="send outbound voice calls")
+        resolved_tenant_id = actor_tenant.id
+        if tenant_id and tenant_id != actor_tenant.id:
+            _require_admin(request, db)
+            resolved_tenant_id = tenant_id
+        tenant = db.query(Tenant).filter(Tenant.id == resolved_tenant_id).first()
         if not tenant or not tenant.voice_enabled:
-            return {"error": "Voice not enabled"}, 400
-
-        cfg = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant_id).first()
-        if not cfg or not cfg.voice_twilio_account_sid or not decrypt(cfg.voice_twilio_auth_token_enc or ""):
-            return {"error": "Twilio not configured for voice"}, 400
+            return JSONResponse({"error": "Voice not enabled"}, status_code=400)
 
         # Synthesize message
         audio_bytes, s3_url = await VoiceAIService.synthesize_speech(message)
         if not s3_url:
-            return {"error": "Could not synthesize speech"}, 500
+            return JSONResponse({"error": "Could not synthesize speech"}, status_code=500)
 
         # Create Twilio call
         from twilio.rest import Client as TwilioClient
-        from web.crypto import decrypt
-        sid = cfg.voice_twilio_account_sid
-        token = decrypt(cfg.voice_twilio_auth_token_enc or "")
-        frm = cfg.voice_twilio_from_number or tenant.voice_phone_number
+        voice_cfg = tenant.config
+        voice_sid = (voice_cfg.voice_twilio_account_sid if voice_cfg else None) or os.getenv("TWILIO_ACCOUNT_SID")
+        voice_auth_token = decrypt(voice_cfg.voice_twilio_auth_token_enc or "") if voice_cfg and voice_cfg.voice_twilio_auth_token_enc else os.getenv("TWILIO_AUTH_TOKEN")
+        from_number = (
+            voice_cfg.voice_twilio_from_number if voice_cfg else None
+        ) or (
+            voice_cfg.twilio_from_number if voice_cfg else None
+        ) or os.getenv("TWILIO_PHONE_NUMBER")
+        if not voice_sid or not voice_auth_token or not from_number:
+            return JSONResponse({"error": "Voice Twilio is not configured"}, status_code=400)
+        twilio_client = TwilioClient(
+            voice_sid,
+            voice_auth_token,
+        )
 
-        twilio_client = TwilioClient(sid, token)
-
-        app_url = os.getenv("APP_BASE_URL", "http://localhost:8000")
+        app_url = APP_BASE_URL or os.getenv("APP_URL", "http://localhost:8000")
         call = twilio_client.calls.create(
-            from_=frm,
+            from_=from_number,
             to=guest_phone,
             url=f"{app_url}/api/calls/outbound-twiml?s3_url={s3_url}"
         )
@@ -9336,9 +9623,9 @@ async def send_outbound_voice(
         # Log in database
         voice_call = VoiceCall(
             id=str(uuid4()),
-            tenant_id=tenant_id,
+            tenant_id=resolved_tenant_id,
             twilio_call_id=call.sid,
-            twilio_phone_number=frm,
+            twilio_phone_number=from_number,
             guest_phone_number=guest_phone,
             call_type="outbound",
             status="ringing",
@@ -9352,12 +9639,14 @@ async def send_outbound_voice(
 
         return {"call_id": call.sid, "status": "initiated"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         # CRITICAL severity fix #3: Don't expose stack traces in production logs
         log.error(f"[VOICE] Error in send_outbound_voice: {type(e).__name__}")
         if _ENVIRONMENT == "development":
             log.debug(f"[VOICE] Full error: {traceback.format_exc()}")
-        return {"error": "Failed to initiate outbound call"}, 500
+        return JSONResponse({"error": "Failed to initiate outbound call"}, status_code=500)
 
 
 @app.get("/api/calls/outbound-twiml")
@@ -10031,6 +10320,7 @@ async def api_admin_set_rate_limits(request: Request, db: Session = Depends(get_
 
     # CRITICAL severity fix #2: Rate limit admin API access
     rate_limit(f"admin-api:{admin.id}:rate-limits", max_requests=10, window_seconds=60)
+    validate_csrf_header(request)
 
     data = await request.json()
     tenant_id = data.get("tenant_id")
@@ -10086,6 +10376,7 @@ async def api_admin_feature_flag_override(request: Request, db: Session = Depend
 
     # CRITICAL severity fix #2: Rate limit admin API access
     rate_limit(f"admin-api:{admin.id}:feature-flags", max_requests=10, window_seconds=60)
+    validate_csrf_header(request)
 
     data = await request.json()
     flag_name = data.get("flag_name")

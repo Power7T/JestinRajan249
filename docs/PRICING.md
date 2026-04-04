@@ -1,19 +1,20 @@
 # Pricing Strategy & Billing
 
-## Unit-Based Plans
+## Current Messaging Plans
 
-HostAI uses unit-based pricing where each "unit" is one property/listing.
+The live billing model in code is channel-based, not unit-based. Hosts subscribe to the guest communication channels they need, then optionally add Voice AI.
 
-| Plan | Units | Price/Month | Cost per Unit | Best For |
-|------|-------|-------------|---------------|----------|
-| Starter | 1-5 | $20 | $4-20 | Solo hosts |
-| Growth | 6-10 | $20 | $2-3.33 | Growing portfolios |
-| Pro | 11-50 | $20 | $0.40-1.82 | Agencies & managers |
+| Plan | Price / Month | Includes | Best For |
+|------|---------------|----------|----------|
+| Free | $0 | Dashboard, email drafts, iCal sync, reservations, CSV workflow | Trialing the product without guest messaging channels |
+| WhatsApp Cloud | $29 | Official Meta WhatsApp Business Cloud messaging | Hosts who want hosted WhatsApp messaging |
+| SMS | $19 | Twilio SMS messaging and host alerts | Guests who prefer SMS or do not use WhatsApp |
+| Pro | $49 | WhatsApp Cloud + SMS + full channel bundle | Hosts who want every managed outbound channel |
 
-**Examples:**
-- 1 property: Starter plan at $20/month
-- 8 properties: Growth plan at $20/month ($2.50 per property)
-- 25 properties: Pro plan at $20/month ($0.80 per property)
+Notes:
+- The legacy local Baileys plan still exists in code for backward compatibility, but it is not the primary product path.
+- The CSV reservation workflow remains supported on every plan.
+- Voice AI is priced separately as an add-on.
 
 ## Voice AI Add-Ons
 
