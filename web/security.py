@@ -266,7 +266,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     # templates and is lower-risk than script-src.
     _CSP_TEMPLATE = (
         "default-src 'self'; "
-        "script-src 'self' 'nonce-{nonce}' https://unpkg.com https://cdn.tailwindcss.com; "
+        "script-src 'self' 'nonce-{nonce}' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; "
         "img-src 'self' data: https://images.unsplash.com https://cdn.tailwindcss.com; "
         "font-src 'self' https://fonts.gstatic.com; "
