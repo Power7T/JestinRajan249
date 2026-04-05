@@ -4209,59 +4209,58 @@ def api_get_voice_pricing(request: Request, db: Session = Depends(get_db)):
 # Meta WhatsApp Cloud API webhooks
 # ---------------------------------------------------------------------------
 
-@app.get("/wa/webhook/{tenant_id}")
-def wa_webhook_verify(tenant_id: str, request: Request, db: Session = Depends(get_db)):
-    """Meta webhook verification handshake."""
-    rate_limit(f"wa-verify:{tenant_id}:{client_ip(request)}", max_requests=120, window_seconds=60)
-    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
-    if not cfg:
-        raise HTTPException(status_code=404)
-
+@app.get("/whatsapp/webhook")
+def whatsapp_webhook_verify_global(request: Request, db: Session = Depends(get_db)):
+    """Generic Meta webhook verification handshake for cases without tenant_id in URL."""
     from web.meta_sender import verify_webhook
     mode      = request.query_params.get("hub.mode", "")
     token     = request.query_params.get("hub.verify_token", "")
     challenge = request.query_params.get("hub.challenge", "")
-    result    = verify_webhook(cfg.whatsapp_verify_token or "", mode, token, challenge)
-    if result is None:
-        raise HTTPException(status_code=403, detail="Verification failed")
-    return HTMLResponse(content=result)
+
+    # Look for ANY tenant configuration that matches this verify_token
+    # This assumes that the person setting up the app has a unique verify token.
+    if token:
+        cfg = db.query(TenantConfig).filter(TenantConfig.whatsapp_verify_token == token).first()
+        if cfg:
+            result = verify_webhook(cfg.whatsapp_verify_token or "", mode, token, challenge)
+            if result:
+                return HTMLResponse(content=result)
+
+    # Fallback to shared verify token if defined in ENV (optional)
+    system_token = os.environ.get("WHATSAPP_VERIFY_TOKEN", "")
+    if system_token and token == system_token:
+        return HTMLResponse(content=challenge)
+
+    raise HTTPException(status_code=403, detail="Verification failed")
 
 
-@app.post("/wa/webhook/{tenant_id}")
-async def wa_webhook_inbound(tenant_id: str, request: Request, db: Session = Depends(get_db)):
-    """Receive inbound messages from Meta Cloud API."""
-    rate_limit(f"wa-inbound:{tenant_id}:{client_ip(request)}", max_requests=300, window_seconds=60)
-    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
-    if not cfg:
-        return JSONResponse({"status": "ok"})   # always 200 to Meta
-
-    try:
-        require_channel(cfg, PLAN_META_CLOUD)
-    except HTTPException:
-        return JSONResponse({"status": "ok"})
-
+@app.post("/whatsapp/webhook")
+async def whatsapp_webhook_inbound_global(request: Request, db: Session = Depends(get_db)):
+    """Receive inbound messages from Meta Cloud API without tenant_id in URL."""
     raw_body = await request.body()
-    if not _validate_meta_signature(raw_body, request.headers.get("X-Hub-Signature-256", "")):
-        return JSONResponse({"status": "forbidden"}, status_code=403)
-
     try:
         body = json.loads(raw_body.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        log.warning("[%s] Invalid Meta webhook JSON: %s", tenant_id, e)
+    except Exception:
         return JSONResponse({"status": "ok"})
 
     from web.meta_sender import extract_inbound
-    for msg in extract_inbound(body):
+    msgs = extract_inbound(body)
+    if not msgs:
+        return JSONResponse({"status": "ok"})
+
+    # Iterate through all inbound messages extracted from this single webhook
+    for msg in msgs:
         phone_number_id = (msg.get("phone_number_id") or "").strip()
-        if cfg.whatsapp_phone_id and phone_number_id and phone_number_id != cfg.whatsapp_phone_id:
-            log.warning(
-                "[%s] Ignoring Meta inbound for mismatched phone_number_id=%s expected=%s",
-                tenant_id,
-                phone_number_id,
-                cfg.whatsapp_phone_id,
-            )
+        if not phone_number_id: continue
+
+        # Identify which tenant this message belongs to based on the phone_number_id
+        cfg = db.query(TenantConfig).filter(TenantConfig.whatsapp_phone_id == phone_number_id).first()
+        if not cfg:
+            log.warning("[META GLOBAL] No tenant found for phone_number_id=%s", phone_number_id)
             continue
-        _handle_inbound_wa(tenant_id, msg["from"], msg["text"], db)
+
+        # Hand off to handler with the identified tenant_id
+        _handle_inbound_wa(cfg.tenant_id, msg["from"], msg["text"], db)
 
     return JSONResponse({"status": "ok"})
 
