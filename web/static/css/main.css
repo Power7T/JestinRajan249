@@ -115,11 +115,20 @@ body.sidebar-closed #main-content {
   border-radius: var(--radius-lg);
 }
 
-.premium-gradient-text {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
+.bg-surface { background-color: var(--surface); }
+.bg-surface-container { background-color: var(--surface-container); }
+.bg-surface-container-low { background-color: var(--surface-container-low); }
+.bg-surface-container-lowest { background-color: var(--surface-container-lowest); }
+.bg-primary { background-color: var(--primary); }
+.text-primary { color: var(--primary); }
+.text-slate-400 { color: #8898BB; }
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.rounded-xl { border-radius: var(--radius); }
+.rounded-2xl { border-radius: var(--radius-lg); }
+.border { border: 1px solid var(--border); }
+.border-white\/10 { border: 1px solid rgba(255, 255, 255, 0.1); }
+.shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
 .legacy-nav {
   position: sticky;
   top: 0;
