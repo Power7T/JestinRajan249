@@ -281,6 +281,10 @@
       }
     }
 
+    body.admin-shell-page aside.admin-sidebar {
+      overflow-y: visible !important;
+      overscroll-behavior: auto;
+    }
     .admin-shell-overlay {
       position: fixed;
       inset: 0;
@@ -299,14 +303,14 @@
         opacity: 1;
         pointer-events: auto;
       }
-      body.admin-shell-page .admin-sidebar {
+      body.admin-shell-page aside.admin-sidebar {
         transform: translateX(-100%);
         transition: transform 0.22s ease;
         z-index: 85 !important;
-        overflow-y: auto;
+        overflow-y: auto !important;
         overscroll-behavior: contain;
       }
-      body.admin-shell-page.admin-shell-open .admin-sidebar {
+      body.admin-shell-page.admin-shell-open aside.admin-sidebar {
         transform: translateX(0);
       }
       body.admin-shell-page .admin-main {
@@ -318,6 +322,28 @@
       }
     }
   </style>
+  {% if request.url.path.startswith('/admin') %}
+  <script nonce="{{ request.state.csp_nonce }}">
+    try { history.scrollRestoration = 'manual'; } catch (error) {}
+
+    function resetAdminInitialScroll() {
+      window.scrollTo(0, 0);
+      const sidebar = document.getElementById('admin-sidebar');
+      if (sidebar) sidebar.scrollTop = 0;
+    }
+
+    window.addEventListener('load', () => {
+      resetAdminInitialScroll();
+      requestAnimationFrame(resetAdminInitialScroll);
+      setTimeout(resetAdminInitialScroll, 120);
+    });
+
+    window.addEventListener('pageshow', () => {
+      resetAdminInitialScroll();
+      requestAnimationFrame(resetAdminInitialScroll);
+    });
+  </script>
+  {% endif %}
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -589,10 +615,15 @@ function initializeAdminShell() {
   // Admin pages should always land at the top; some browsers restore the last
   // scroll position of these long dashboards, which makes the sidebar look cut off.
   if (window.location.pathname.startsWith('/admin')) {
+    const resetScroll = () => {
+      window.scrollTo(0, 0);
+      sidebar.scrollTop = 0;
+      if (main) main.scrollTop = 0;
+    };
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-    window.scrollTo(0, 0);
-    sidebar.scrollTop = 0;
-    if (main) main.scrollTop = 0;
+    resetScroll();
+    requestAnimationFrame(resetScroll);
+    setTimeout(resetScroll, 100);
   }
 
   window.addEventListener('resize', () => {
