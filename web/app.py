@@ -676,12 +676,32 @@ def _get_tenant(tenant_id: str, db: Session) -> Tenant:
 
 
 def _get_or_create_config(tenant_id: str, db: Session) -> TenantConfig:
-    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    try:
+        cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    except Exception as exc:
+        db.rollback()
+        # Self-healing: if the crash is due to the missing 'digest_enabled' column, try to add it now
+        if "digest_enabled" in str(exc).lower():
+            try:
+                db.execute(text("ALTER TABLE tenant_configs ADD COLUMN digest_enabled BOOLEAN DEFAULT FALSE"))
+                db.commit()
+                cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+            except Exception:
+                db.rollback()
+                raise exc
+        else:
+            raise exc
+
     if not cfg:
-        cfg = TenantConfig(tenant_id=tenant_id)
-        db.add(cfg)
-        db.commit()
-        db.refresh(cfg)
+        # Avoid crashing if the constructor itself finds new columns missing
+        try:
+            cfg = TenantConfig(tenant_id=tenant_id)
+            db.add(cfg)
+            db.commit()
+            db.refresh(cfg)
+        except Exception:
+            db.rollback()
+            raise
     return cfg
 
 
