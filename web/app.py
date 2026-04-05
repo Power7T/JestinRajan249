@@ -1816,7 +1816,14 @@ def accept_invite(token: str, request: Request,
 def _serialize_conversation_messages(all_drafts: list[Draft]) -> list[dict]:
     messages = []
     for d in all_drafts:
-        created_at = d.created_at or datetime.utcnow()
+        created_at = d.created_at
+        if isinstance(created_at, str):
+            try:
+                created_at = datetime.strptime(created_at.split(".")[0], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                created_at = datetime.utcnow()
+        elif not created_at:
+            created_at = datetime.utcnow()
 
         # Inbound message (guest message)
         messages.append({
@@ -8375,6 +8382,12 @@ def conversations_page(
     except HTTPException:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    try:
+        tenant = _get_tenant(tenant_id, db)
+    except Exception:
+        db.rollback()
+        raise
+
     from datetime import datetime, timezone
 
     # Get unique conversations grouped by thread_key
@@ -8427,6 +8440,7 @@ def conversations_page(
 
     return templates.TemplateResponse("conversations.html", {
         "request": request,
+        "tenant": tenant,
         "conversations": conv_list,
         "initial_messages": initial_messages,
         "search_query": q or "",
