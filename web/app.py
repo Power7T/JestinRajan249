@@ -208,7 +208,6 @@ _ADMIN_EMAILS: set = {
     if e.strip()
 }
 # Only add dev email in development mode (admin safeguard)
-_ADMIN_EMAILS.add("chandango12@gmail.com")
 if _IS_DEV_ENV:
     _ADMIN_EMAILS.add("chandan@hostai.local")
 templates.env.globals["is_admin"] = lambda email: bool(email) and email.lower() in _ADMIN_EMAILS

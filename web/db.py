@@ -143,8 +143,9 @@ def db_migrate():
         ("tenant_configs", "subscription_expires_at", datetime_type,  "NULL"),
         ("tenant_configs", "stripe_customer_id",      "VARCHAR(64)",  "NULL"),
         ("tenant_configs", "stripe_subscription_id",  "VARCHAR(64)",  "NULL"),
-        ("tenant_configs", "num_units",               "INTEGER",      "1"),
         ("tenant_configs", "extra_services",          "TEXT",         "NULL"),
+        ("tenant_configs", "digest_enabled",          "BOOLEAN",      false_default),
+        ("tenant_configs", "bot_last_heartbeat",      datetime_type,  "NULL"),
         ("tenant_configs", "guest_welcome_template",  "TEXT",         "NULL"),
         ("tenant_configs", "internal_token",          "VARCHAR(64)",  "NULL"),
         # Tenant profile + voice calling

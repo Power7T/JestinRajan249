@@ -14,7 +14,8 @@
     <h1 class="text-2xl font-extrabold text-white mb-3">{{ title or "Something went wrong" }}</h1>
     <p class="text-slate-400 text-sm mb-8">{{ message or "An unexpected error occurred. Please try again." }}</p>
     
-    {% if debug_detail %}
+    {% set tenant_email = request.state.tenant_email if request.state.tenant_email is defined else '' %}
+    {% if debug_detail and is_admin(tenant_email) %}
     <div class="mt-8 p-4 bg-red-950/20 border border-red-500/20 rounded-xl text-left overflow-x-auto max-w-full">
         <h2 class="text-xs font-bold text-red-400 uppercase tracking-widest mb-2">Internal Error Details</h2>
         <pre class="text-[10px] text-red-300/80 font-mono leading-relaxed">{{ debug_detail }}</pre>
