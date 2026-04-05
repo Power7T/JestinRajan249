@@ -7085,8 +7085,42 @@ def _require_admin(request: Request, db: Session) -> Tenant:
 def admin_overview(request: Request, db: Session = Depends(get_db)):
     admin = _require_admin(request, db)
 
-    tenants = db.query(Tenant).order_by(Tenant.created_at.desc()).all()
-    configs = {c.tenant_id: c for c in db.query(TenantConfig).all()}
+    try:
+        tenants = db.query(Tenant).order_by(Tenant.created_at.desc()).all()
+    except Exception as e:
+        log.error(f"Failed to query tenants: {e}")
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "code": 503,
+            "title": "Database Schema Error",
+            "message": "Database schema is inconsistent. Migrations may still be running.",
+            "debug_detail": str(e)
+        }, status_code=503)
+
+    # Load configs - try ORM first, fall back to raw query
+    configs = {}
+    try:
+        configs = {c.tenant_id: c for c in db.query(TenantConfig).all()}
+    except Exception as e:
+        log.warning(f"ORM query failed for TenantConfig: {e}. Trying raw SQL.")
+        try:
+            # Query only columns that definitely exist
+            result = db.execute(sa.text("""
+                SELECT id, tenant_id, subscription_plan, subscription_status,
+                       onboarding_complete, onboarding_step, imap_host,
+                       email_address FROM tenant_configs
+            """))
+            for row in result:
+                configs[row.tenant_id] = type('Config', (), {
+                    'subscription_plan': row.subscription_plan,
+                    'subscription_status': row.subscription_status,
+                    'onboarding_complete': row.onboarding_complete,
+                    'onboarding_step': row.onboarding_step,
+                    'imap_host': row.imap_host,
+                    'email_address': row.email_address,
+                })()
+        except Exception as e2:
+            log.error(f"Raw SQL query also failed: {e2}")
 
     now_utc = datetime.now(timezone.utc)
     thirty_days_ago  = now_utc - timedelta(days=30)
