@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>Share Your Feedback — {{ property_name }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f7f8fc;
+      color: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 1.25rem;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .property-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6366f1;
+      background: #eef2ff;
+      border-radius: 99px;
+      padding: 0.3rem 0.8rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .property-tag svg {
+      width: 13px;
+      height: 13px;
+      fill: #6366f1;
+    }
+
+    h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #111827;
+      line-height: 1.3;
+      margin-bottom: 0.4rem;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: #6b7280;
+      margin-bottom: 2rem;
+    }
+
+    .section-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #374151;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Star Rating */
+    .stars-wrap {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .star-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 0.5rem;
+      transition: transform 0.15s ease;
+      line-height: 1;
+    }
+
+    .star-btn:hover { transform: scale(1.15); }
+    .star-btn:active { transform: scale(0.95); }
+
+    .star-btn svg {
+      width: 2.4rem;
+      height: 2.4rem;
+      display: block;
+      transition: fill 0.15s ease, stroke 0.15s ease;
+    }
+
+    .star-btn svg .star-path {
+      fill: #e5e7eb;
+      stroke: #d1d5db;
+      stroke-width: 1.5;
+      transition: fill 0.15s ease, stroke 0.15s ease;
+    }
+
+    .star-btn.active svg .star-path,
+    .star-btn.hover-active svg .star-path {
+      fill: #f59e0b;
+      stroke: #f59e0b;
+    }
+
+    .star-label {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-top: 0.5rem;
+      margin-bottom: 1.75rem;
+      min-height: 1.1em;
+      transition: color 0.2s;
+    }
+
+    /* Textarea */
+    textarea {
+      width: 100%;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 0.75rem;
+      padding: 0.85rem 1rem;
+      font-size: 0.92rem;
+      font-family: inherit;
+      color: #111827;
+      background: #fafafa;
+      resize: vertical;
+      min-height: 110px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      margin-bottom: 1.5rem;
+    }
+
+    textarea:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+      background: #fff;
+    }
+
+    textarea::placeholder { color: #9ca3af; }
+
+    /* Submit button */
+    .submit-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+      color: #fff;
+      border: none;
+      border-radius: 0.85rem;
+      padding: 0.9rem 1rem;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      letter-spacing: 0.01em;
+    }
+
+    .submit-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+    .submit-btn:active { transform: translateY(0); }
+
+    .footer-note {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 1.25rem;
+    }
+
+    /* Hidden input for star value */
+    #rating-value { display: none; }
+
+    @media (max-width: 480px) {
+      .card { padding: 2rem 1.25rem; }
+      h1 { font-size: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="property-tag">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      {{ property_name }}
+    </div>
+
+    <h1>How was your stay, {{ guest_name }}?</h1>
+    <p class="subtitle">Your feedback helps us improve every stay.</p>
+
+    <form method="POST" action="/feedback/{{ token }}/submit" id="feedback-form">
+      <input type="hidden" name="rating" id="rating-value" value="">
+
+      <div class="section-label">Your rating</div>
+      <div class="stars-wrap" id="stars-container" role="group" aria-label="Star rating">
+        {% for i in range(1, 6) %}
+        <button type="button" class="star-btn" data-value="{{ i }}" aria-label="{{ i }} star{{ 's' if i != 1 else '' }}" title="{{ i }} star{{ 's' if i != 1 else '' }}">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path class="star-path" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        </button>
+        {% endfor %}
+      </div>
+
+      <p class="star-label" id="star-label"></p>
+
+      <div class="section-label">Comments</div>
+      <textarea name="comment" placeholder="Any comments or suggestions? (optional)" maxlength="1000"></textarea>
+
+      <button type="submit" class="submit-btn">Submit Feedback</button>
+    </form>
+
+    <p class="footer-note">Powered by HostAI &mdash; Your responses are private and secure.</p>
+  </div>
+
+  <script>
+    const labels = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
+    const labelColors = ['', '#ef4444', '#f97316', '#eab308', '#22c55e', '#10b981'];
+    const starBtns = document.querySelectorAll('.star-btn');
+    const ratingInput = document.getElementById('rating-value');
+    const starLabel = document.getElementById('star-label');
+    let selectedRating = 0;
+
+    function updateStars(hoverVal, selectedVal) {
+      const active = hoverVal || selectedVal;
+      starBtns.forEach(btn => {
+        const v = parseInt(btn.dataset.value, 10);
+        if (v <= active) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      if (hoverVal) {
+        starLabel.textContent = labels[hoverVal];
+        starLabel.style.color = labelColors[hoverVal];
+      } else if (selectedVal) {
+        starLabel.textContent = labels[selectedVal];
+        starLabel.style.color = labelColors[selectedVal];
+      } else {
+        starLabel.textContent = '';
+      }
+    }
+
+    starBtns.forEach(btn => {
+      btn.addEventListener('mouseenter', () => {
+        updateStars(parseInt(btn.dataset.value, 10), selectedRating);
+      });
+      btn.addEventListener('mouseleave', () => {
+        updateStars(0, selectedRating);
+      });
+      btn.addEventListener('click', () => {
+        selectedRating = parseInt(btn.dataset.value, 10);
+        ratingInput.value = selectedRating;
+        updateStars(0, selectedRating);
+      });
+    });
+
+    document.getElementById('feedback-form').addEventListener('submit', function(e) {
+      if (!ratingInput.value) {
+        e.preventDefault();
+        starLabel.textContent = 'Please select a rating before submitting.';
+        starLabel.style.color = '#ef4444';
+      }
+    });
+  </script>
+</body>
+</html>

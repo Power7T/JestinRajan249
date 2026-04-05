@@ -33,6 +33,11 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 {%- block main_wrapper %}
 {%- block content %}
 <!-- Sidebar -->
+<!-- Mobile hamburger -->
+<button onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full');document.getElementById('admin-sidebar-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+  <span class="material-symbols-outlined">menu</span>
+</button>
+<div onclick="document.getElementById('admin-sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="admin-sidebar-overlay"></div>
 <aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain">
   <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7 hover:opacity-80 transition-opacity">
 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
@@ -65,7 +70,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   </div>
 </aside>
 
-<main class="ml-[260px] min-h-screen p-8 bg-[#08090F]">
+<main class="md:ml-[260px] min-h-screen pt-[80px] px-4 md:px-8 pb-8 bg-[#08090F]">
   <div class="max-w-7xl mx-auto">
     <div class="mb-8">
       <div class="flex items-center gap-6 mb-6">

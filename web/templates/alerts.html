@@ -1,5 +1,5 @@
 {%- extends "base.html" %}
-{%- block title %}Mission Control — HostAI{%- endblock %}
+{%- block title %}Alert Center — HostAI{%- endblock %}
 
 {%- block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
@@ -75,19 +75,10 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; 
 .specular-highlight { border-top: 1px solid rgba(174, 198, 255, 0.1); border-left: 1px solid rgba(174, 198, 255, 0.1); }
 .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24; }
 .active-glow { box-shadow: 0 0 15px rgba(93, 142, 241, 0.15); }
-.custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #292930;
-    border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #424752;
-}
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #292930; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #424752; }
 .alert-critical { border-left: 4px solid #dc2626; }
 .alert-high { border-left: 4px solid #f97316; }
 .alert-medium { border-left: 4px solid #eab308; }
@@ -130,6 +121,10 @@ Conversations
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/mission-control' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/mission-control">
 <span class="material-symbols-outlined" data-icon="military_tech">military_tech</span>
 Mission Control
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/alerts' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/alerts">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+Alerts
 </a>
 <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
 <span class="material-symbols-outlined" data-icon="event_available">event_available</span>
@@ -189,7 +184,7 @@ Sign Out
 </button>
 <div class="h-8 w-px bg-white/10"></div>
 <div class="flex items-center gap-3 cursor-pointer group">
-<span class="text-slate-200 group-hover:text-white transition-colors">Account</span>
+<span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
 {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
 </div>
@@ -201,177 +196,234 @@ Sign Out
 <main class="md:ml-[260px] pt-16 h-screen flex flex-col overflow-hidden">
 <div class="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-[#08090F]/80 backdrop-blur-xl">
 <div>
-<h1 class="text-3xl font-extrabold tracking-tight text-white">🎖️ Mission Control</h1>
-<p class="text-slate-400 text-sm mt-1">Manage properties, handle escalations, and batch operations</p>
+<h1 class="text-3xl font-extrabold tracking-tight text-white">Alert Center</h1>
+<p class="text-slate-400 text-sm mt-1">All urgent items across your properties</p>
 </div>
 </div>
 
 <!-- Content -->
 <div class="flex-1 overflow-y-auto custom-scrollbar">
-<div class="p-8 space-y-8">
-<!-- Alert Summary Cards -->
-<div class="grid grid-cols-4 gap-4">
-<div class="bg-[#0d0e14] border border-red-500/20 rounded-lg p-6">
-<div class="flex items-center justify-between">
+<div class="p-8 space-y-6">
+
+<!-- Summary Bar -->
+<div class="rounded-lg px-6 py-4 flex items-center gap-4 border
+  {% if total_actions == 0 %}bg-emerald-500/10 border-emerald-500/20{% elif total_actions <= 5 %}bg-yellow-500/10 border-yellow-500/20{% else %}bg-red-500/10 border-red-500/20{% endif %}">
+<span class="material-symbols-outlined text-2xl
+  {% if total_actions == 0 %}text-emerald-400{% elif total_actions <= 5 %}text-yellow-400{% else %}text-red-400{% endif %}"
+  style="font-variation-settings: 'FILL' 1;">
+  {% if total_actions == 0 %}check_circle{% elif total_actions <= 5 %}warning{% else %}error{% endif %}
+</span>
 <div>
-<p class="text-slate-500 text-sm uppercase tracking-widest">Critical Alerts</p>
-<p class="text-4xl font-bold text-red-400 mt-2">{{ critical_count }}</p>
-</div>
-<span class="material-symbols-outlined text-4xl text-red-500/50">priority_high</span>
+  <p class="font-bold text-white text-sm">
+    {% if total_actions == 0 %}
+      All clear — no action items right now
+    {% else %}
+      <span class="{% if total_actions <= 5 %}text-yellow-400{% else %}text-red-400{% endif %}">{{ total_actions }}</span>
+      total action item{{ 's' if total_actions != 1 else '' }} require your attention
+    {% endif %}
+  </p>
 </div>
 </div>
 
-<div class="bg-[#0d0e14] border border-orange-500/20 rounded-lg p-6">
-<div class="flex items-center justify-between">
-<div>
-<p class="text-slate-500 text-sm uppercase tracking-widest">High Priority</p>
-<p class="text-4xl font-bold text-orange-400 mt-2">{{ high_count }}</p>
-</div>
-<span class="material-symbols-outlined text-4xl text-orange-500/50">warning</span>
-</div>
-</div>
-
-<div class="bg-[#0d0e14] border border-blue-500/20 rounded-lg p-6">
-<div class="flex items-center justify-between">
-<div>
-<p class="text-slate-500 text-sm uppercase tracking-widest">Total Alerts</p>
-<p class="text-4xl font-bold text-blue-400 mt-2">{{ total_alerts }}</p>
-</div>
-<span class="material-symbols-outlined text-4xl text-blue-500/50">dashboard_alert</span>
-</div>
-</div>
-
-<div class="bg-[#0d0e14] border border-slate-500/20 rounded-lg p-6">
-<div class="flex items-center justify-between">
-<div>
-<p class="text-slate-500 text-sm uppercase tracking-widest">Properties</p>
-<p class="text-4xl font-bold text-slate-300 mt-2">{{ properties|length }}</p>
-</div>
-<span class="material-symbols-outlined text-4xl text-slate-500/50">apartment</span>
-</div>
-</div>
-</div>
-
-<!-- Alerts by Priority -->
-{% if total_alerts > 0 %}
+<!-- Section 1: Pending Drafts -->
+{% if pending_drafts is defined and pending_drafts > 0 %}
 <div class="bg-[#0d0e14] border border-white/5 rounded-lg overflow-hidden">
-<div class="px-6 py-4 border-b border-white/5 bg-[#08090F]">
-<h2 class="text-xl font-bold text-white">🚨 Active Alerts</h2>
-</div>
-
-<div class="divide-y divide-white/5 max-h-96 overflow-y-auto custom-scrollbar">
-{% for alert in escalated_alerts|slice(0, 20) %}
-<div class="p-6 hover:bg-white/2 transition-colors {% if alert.priority == 'critical' %}alert-critical bg-red-500/5{% elif alert.priority == 'high' %}alert-high bg-orange-500/5{% elif alert.priority == 'medium' %}alert-medium bg-yellow-500/5{% else %}alert-low bg-blue-500/5{% endif %}">
-<div class="flex items-start justify-between gap-4">
-<div class="flex-1">
-<div class="flex items-center gap-3 mb-2">
-<span class="inline-block px-2 py-1 rounded text-xs font-bold {% if alert.priority == 'critical' %}bg-red-500/20 text-red-400{% elif alert.priority == 'high' %}bg-orange-500/20 text-orange-400{% elif alert.priority == 'medium' %}bg-yellow-500/20 text-yellow-400{% else %}bg-blue-500/20 text-blue-400{% endif %}">
-{{ alert.priority.upper() }}
-</span>
-<span class="text-slate-500 text-xs">{{ alert.message_type.upper() }}</span>
-<span class="text-slate-600 text-xs">{{ alert.created_at.strftime('%b %d, %H:%M') }}</span>
-</div>
-<p class="text-white font-semibold">{{ alert.guest_name or 'Unknown Guest' }}</p>
-<p class="text-slate-400 text-sm mt-1 line-clamp-2">{{ alert.content }}</p>
-<p class="text-slate-500 text-xs mt-2">Reason: {{ alert.reason.replace('_', ' ').title() }}</p>
-</div>
-<div class="flex gap-2 flex-shrink-0">
-<button class="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs rounded hover:bg-blue-500/30 transition-colors">View</button>
-</div>
-</div>
-</div>
-{% endfor %}
-{% if escalated_alerts|length > 20 %}
-<div class="p-4 text-center text-slate-500 text-sm">
-+{{ escalated_alerts|length - 20 }} more alerts
-</div>
-{% endif %}
-</div>
-</div>
-{% else %}
-<div class="bg-[#0d0e14] border border-white/5 rounded-lg p-12 text-center">
-<span class="material-symbols-outlined text-5xl text-slate-600 mb-4 inline-block">check_circle</span>
-<h3 class="text-xl font-bold text-white mb-2">No Active Alerts</h3>
-<p class="text-slate-400">All your properties are running smoothly!</p>
+  <div class="px-6 py-4 border-b border-white/5 bg-[#08090F] flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <h2 class="text-lg font-bold text-white">Pending Drafts</h2>
+      <span class="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-bold">{{ pending_drafts }}</span>
+    </div>
+  </div>
+  <div class="p-6 flex items-center justify-between">
+    <p class="text-slate-300 text-sm">
+      {{ pending_drafts }} draft{{ 's' if pending_drafts != 1 else '' }} waiting for your approval
+    </p>
+    <a href="/dashboard" class="px-4 py-2 bg-primary/20 text-primary text-sm font-semibold rounded-lg hover:bg-primary/30 transition-colors flex items-center gap-1">
+      Review Drafts
+      <span class="material-symbols-outlined text-base">arrow_forward</span>
+    </a>
+  </div>
 </div>
 {% endif %}
 
-<!-- Properties Overview -->
-{% if properties %}
+<!-- Section 2: Escalated Messages -->
 <div class="bg-[#0d0e14] border border-white/5 rounded-lg overflow-hidden">
-<div class="px-6 py-4 border-b border-white/5 bg-[#08090F]">
-<h2 class="text-xl font-bold text-white">🏠 Properties Overview</h2>
+  <div class="px-6 py-4 border-b border-white/5 bg-[#08090F] flex items-center gap-3">
+    <h2 class="text-lg font-bold text-white">Escalated Messages</h2>
+    {% if escalations %}
+    <span class="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs font-bold">{{ escalations|length }}</span>
+    {% endif %}
+  </div>
+  {% if escalations %}
+  <div class="divide-y divide-white/5">
+    {% for esc in escalations %}
+    <div class="p-6 hover:bg-white/[0.02] transition-colors
+      {% if esc.priority == 'critical' %}alert-critical bg-red-500/5
+      {% elif esc.priority == 'high' %}alert-high bg-orange-500/5
+      {% elif esc.priority == 'medium' %}alert-medium bg-yellow-500/5
+      {% else %}alert-low bg-blue-500/5{% endif %}">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="inline-block px-2 py-0.5 rounded text-xs font-bold
+              {% if esc.priority == 'critical' %}bg-red-500/20 text-red-400
+              {% elif esc.priority == 'high' %}bg-orange-500/20 text-orange-400
+              {% elif esc.priority == 'medium' %}bg-yellow-500/20 text-yellow-400
+              {% else %}bg-blue-500/20 text-blue-400{% endif %}">
+              {{ esc.priority|upper }}
+            </span>
+            <span class="text-slate-500 text-xs">{{ esc.created_at.strftime('%b %d, %H:%M') if esc.created_at else '' }}</span>
+          </div>
+          <p class="text-white font-semibold text-sm">{{ esc.guest_name or 'Unknown Guest' }}</p>
+          <p class="text-slate-400 text-sm mt-1 truncate">{{ esc.content }}</p>
+        </div>
+        <a href="/mission-control" class="flex-shrink-0 px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded hover:bg-blue-500/30 transition-colors">
+          View
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="p-10 flex flex-col items-center justify-center gap-3 text-center">
+    <span class="material-symbols-outlined text-4xl text-emerald-500" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+    <p class="text-slate-400 text-sm">No escalations — all messages are under control</p>
+  </div>
+  {% endif %}
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-{% for prop in properties %}
-<div class="bg-[#08090F] border border-white/5 rounded-lg p-4 hover:border-primary/50 transition-colors">
-<div class="flex items-start justify-between mb-3">
-<div>
-<h3 class="text-white font-bold">{{ prop.name }}</h3>
-<p class="text-slate-500 text-xs">{{ prop.property_type or 'Property' }}{% if prop.city %} • {{ prop.city }}{% endif %}</p>
-</div>
-<span class="material-symbols-outlined text-lg text-slate-500">apartment</span>
-</div>
-
-<div class="space-y-2 text-sm">
-<div class="flex justify-between">
-<span class="text-slate-500">Alerts</span>
-<span class="font-semibold text-white">
-{%- set prop_alerts = alerts_by_property.get(prop.id, {}) -%}
-{%- set total = (prop_alerts.critical|length) + (prop_alerts.high|length) + (prop_alerts.medium|length) + (prop_alerts.low|length) -%}
-{{ total }}
-</span>
-</div>
-<div class="flex justify-between">
-<span class="text-slate-500">Critical</span>
-<span class="text-red-400">{{ prop_alerts.critical|length }}</span>
-</div>
-<div class="flex justify-between">
-<span class="text-slate-500">Voice AI</span>
-<span class="text-slate-400">
-{%- set config = prop.config -%}
-{% if config and config.voice_enabled %}✓ Enabled{% else %}○ Disabled{% endif %}
-</span>
-</div>
-</div>
-
-<a href="/conversations?property={{ prop.id }}" class="inline-block mt-4 px-3 py-1 bg-primary/20 text-primary text-xs rounded hover:bg-primary/30 transition-colors">
-View Property
-</a>
-</div>
-{% endfor %}
-</div>
-</div>
-{% endif %}
-
-</div>
+<!-- Section 3: Check-ins Today -->
+<div class="bg-[#0d0e14] border border-white/5 rounded-lg overflow-hidden">
+  <div class="px-6 py-4 border-b border-white/5 bg-[#08090F] flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <h2 class="text-lg font-bold text-white">Check-ins Today</h2>
+      {% if checkins_today %}
+      <span class="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-bold">{{ checkins_today|length }}</span>
+      {% endif %}
+    </div>
+    {% if checkins_today %}
+    <a href="/reservations" class="px-4 py-2 bg-primary/20 text-primary text-sm font-semibold rounded-lg hover:bg-primary/30 transition-colors flex items-center gap-1">
+      View Reservations
+      <span class="material-symbols-outlined text-base">arrow_forward</span>
+    </a>
+    {% endif %}
+  </div>
+  {% if checkins_today %}
+  <div class="divide-y divide-white/5">
+    {% for checkin in checkins_today %}
+    <div class="px-6 py-4 flex items-center gap-4 hover:bg-white/[0.02] transition-colors">
+      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm flex-shrink-0">
+        {{ (checkin.guest_name or '?')[0]|upper }}
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-white font-semibold text-sm">{{ checkin.guest_name }}</p>
+        <p class="text-slate-500 text-xs truncate">{{ checkin.listing_name }}</p>
+      </div>
+      <div class="text-right flex-shrink-0">
+        <p class="text-slate-400 text-xs">{{ checkin.checkin }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="p-10 flex flex-col items-center justify-center gap-3 text-center">
+    <span class="material-symbols-outlined text-4xl text-slate-600">event_available</span>
+    <p class="text-slate-400 text-sm">No check-ins today</p>
+  </div>
+  {% endif %}
 </div>
 
+<!-- Section 4: Open Issues -->
+<div class="bg-[#0d0e14] border border-white/5 rounded-lg overflow-hidden">
+  <div class="px-6 py-4 border-b border-white/5 bg-[#08090F] flex items-center gap-3">
+    <h2 class="text-lg font-bold text-white">Open Issues</h2>
+    {% if open_issues %}
+    <span class="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 text-xs font-bold">{{ open_issues|length }}</span>
+    {% endif %}
+  </div>
+  {% if open_issues %}
+  <div class="divide-y divide-white/5">
+    {% for issue in open_issues %}
+    <div class="p-6 hover:bg-white/[0.02] transition-colors
+      {% if issue.priority == 'critical' %}alert-critical bg-red-500/5
+      {% elif issue.priority == 'high' %}alert-high bg-orange-500/5
+      {% elif issue.priority == 'medium' %}alert-medium bg-yellow-500/5
+      {% else %}alert-low bg-blue-500/5{% endif %}">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-2 flex-wrap">
+            <span class="inline-block px-2 py-0.5 rounded text-xs font-bold
+              {% if issue.priority == 'critical' %}bg-red-500/20 text-red-400
+              {% elif issue.priority == 'high' %}bg-orange-500/20 text-orange-400
+              {% elif issue.priority == 'medium' %}bg-yellow-500/20 text-yellow-400
+              {% else %}bg-blue-500/20 text-blue-400{% endif %}">
+              {{ issue.priority|upper }}
+            </span>
+            {% if issue.category %}
+            <span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-white/10 text-slate-300">
+              {{ issue.category }}
+            </span>
+            {% endif %}
+          </div>
+          <p class="text-white font-semibold text-sm">{{ issue.title }}</p>
+          <p class="text-slate-500 text-xs mt-1">{{ issue.property_name }}</p>
+        </div>
+        <a href="#" class="flex-shrink-0 px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded hover:bg-blue-500/30 transition-colors">
+          View
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="p-10 flex flex-col items-center justify-center gap-3 text-center">
+    <span class="material-symbols-outlined text-4xl text-slate-600">task_alt</span>
+    <p class="text-slate-400 text-sm">No open issues</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Section 5: Blocked Voice Calls (24h) -->
+<div class="bg-[#0d0e14] border border-white/5 rounded-lg overflow-hidden">
+  <div class="px-6 py-4 border-b border-white/5 bg-[#08090F] flex items-center gap-3">
+    <h2 class="text-lg font-bold text-white">Blocked Voice Calls <span class="text-slate-500 font-normal text-sm">(last 24h)</span></h2>
+    {% if blocked_calls %}
+    <span class="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs font-bold">{{ blocked_calls|length }}</span>
+    {% endif %}
+  </div>
+  {% if blocked_calls %}
+  <div class="divide-y divide-white/5">
+    {% for call in blocked_calls %}
+    <div class="px-6 py-4 flex items-center gap-4 hover:bg-white/[0.02] transition-colors alert-critical bg-red-500/5">
+      <div class="w-9 h-9 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-red-400 text-lg">block</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-white font-semibold text-sm">{{ call.guest_phone_number }}</p>
+        <p class="text-slate-400 text-xs mt-0.5">Unknown caller tried to access property — failed verification</p>
+      </div>
+      <div class="text-right flex-shrink-0">
+        <p class="text-slate-500 text-xs">{{ call.created_at.strftime('%b %d, %H:%M') if call.created_at else '' }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="p-10 flex flex-col items-center justify-center gap-3 text-center">
+    <span class="material-symbols-outlined text-4xl text-emerald-500" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+    <p class="text-slate-400 text-sm">No suspicious activity</p>
+  </div>
+  {% endif %}
+</div>
+
+</div>
+</div>
 </main>
 {%- endblock %}
 {%- endblock %}
 
 <script nonce="{{ request.state.csp_nonce }}">
-// Mission Control initialization
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('Mission Control dashboard loaded');
-  // TODO: Add real-time updates via SSE or WebSocket
+  console.log('Alert Center loaded');
 });
 </script>
-
-<style>
-.custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #292930;
-    border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #424752;
-}
-</style>

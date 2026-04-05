@@ -92,7 +92,12 @@ body {
 {%- block main_wrapper %}
 {%- block content %}
 <!-- SideNavBar Shell -->
-<aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
+<!-- Mobile hamburger -->
+<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+  <span class="material-symbols-outlined">menu</span>
+</button>
+<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
+<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
 <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
 <span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
@@ -163,7 +168,7 @@ body {
 </div>
 </aside>
 <!-- TopNavBar Shell -->
-<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
 <div class="flex items-center flex-1 max-w-md">
 <form class="w-full" method="get" action="/dashboard">
 <div class="relative w-full">
@@ -187,7 +192,7 @@ body {
 </div>
 </header>
 <!-- Main Content Canvas -->
-<main class="ml-[260px] pt-24 pb-12 px-8 min-h-screen">
+<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen">
 <!-- Page Title Hero -->
 <div class="mb-12 relative">
 <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
