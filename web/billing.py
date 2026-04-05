@@ -210,8 +210,9 @@ def is_plan_active(cfg: TenantConfig) -> bool:
 
 def tenant_has_channel(cfg: TenantConfig, channel: str) -> bool:
     """Return True if the tenant's active plan includes the given channel."""
-    from web.models import PLAN_META_CLOUD, PLAN_SMS
-    if channel in (PLAN_META_CLOUD, PLAN_SMS):
+    # WhatsApp (Meta Cloud) and SMS (Twilio) are now available on all plans.
+    # We use literal strings here to avoid a circular dependency with web.models.
+    if channel in ("meta_cloud", "sms"):
         return True
 
     if not is_plan_active(cfg):

@@ -3420,8 +3420,13 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
     except HTTPException:
         return _redirect_login()
 
-    tenant  = _get_tenant(tenant_id, db)
-    cfg     = _get_or_create_config(tenant_id, db)
+    try:
+        tenant  = _get_tenant(tenant_id, db)
+        cfg     = _get_or_create_config(tenant_id, db)
+    except Exception:
+        db.rollback()
+        raise
+    
     if not cfg.inbound_email_alias:
         _ensure_inbound_email_alias(tenant, cfg, db)
         db.commit()
@@ -7541,7 +7546,11 @@ def admin_system(request: Request, db: Session = Depends(get_db)):
         # Baileys support removed (using official WhatsApp Business API instead)
         bot_heartbeat_age_min = None
         if cfg and cfg.bot_last_heartbeat:
-            bot_heartbeat_age_min = max(0, (now_utc - cfg.bot_last_heartbeat).total_seconds() // 60)
+            # Timezone-aware comparison safety
+            last_hb = cfg.bot_last_heartbeat
+            if last_hb.tzinfo is None:
+                last_hb = last_hb.replace(tzinfo=timezone.utc)
+            bot_heartbeat_age_min = max(0, (now_utc - last_hb).total_seconds() // 60)
 
         system_rows.append({
             "tenant":              t,
