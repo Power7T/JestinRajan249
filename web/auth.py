@@ -156,6 +156,9 @@ def get_current_tenant_id(request: Request) -> str:
             raise HTTPException(status_code=401, detail="Session expired")
         if payload.get("ver") != tenant_session_version(tenant):
             raise HTTPException(status_code=401, detail="Session expired")
+    except Exception as e:
+        db.rollback()
+        raise e
     finally:
         if owns_session:
             db.close()

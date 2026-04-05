@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Error — HostAI{% endblock %}
 {% block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms" nonce="{{ request.state.csp_nonce }}"></script>
+<script src="https://cdn.tailwindcss.com?plugins=forms" nonce="{{ csp_nonce|default('') }}"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>body{background:#08090F;font-family:'Plus Jakarta Sans',sans-serif;color:#e3e1eb;}</style>
 {% endblock %}

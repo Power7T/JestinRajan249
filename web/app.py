@@ -1980,12 +1980,14 @@ def dashboard(request: Request,
     try:
         review_velocity = compute_review_velocity(filtered_reservations)
     except Exception as exc:
+        db.rollback()
         log.error("Failed to compute review velocity [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
         review_velocity = None
 
     try:
         sentiment_summary = _sentiment_summary(draft_rows, filtered_reservations)
     except Exception as exc:
+        db.rollback()
         log.error("Failed to compute sentiment summary [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
         sentiment_summary = {}
 
@@ -1997,6 +1999,7 @@ def dashboard(request: Request,
             inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
         )
     except Exception as exc:
+        db.rollback()
         log.error("Failed to build activation checklist [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
         activation_checklist = []
 
@@ -2004,6 +2007,7 @@ def dashboard(request: Request,
         exception_queue = surface_exception_queue(pending, filtered_reservations, now=now, stale_minutes=60, limit=8)
         recent_timeline = build_guest_timeline(reversed(timeline_events), limit=8)
     except Exception as exc:
+        db.rollback()
         log.error("Failed to build exception queue/timeline [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
         exception_queue = []
         recent_timeline = []
@@ -2041,6 +2045,7 @@ def dashboard(request: Request,
             lower_is_better=False,
         )
     except Exception as exc:
+        db.rollback()
         log.error("Failed to compute benchmarks [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
         response_benchmark = {}
         review_benchmark = {}
@@ -7141,6 +7146,7 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
     try:
         tenants = db.query(Tenant).order_by(Tenant.created_at.desc()).all()
     except Exception as e:
+        db.rollback()
         log.error(f"Failed to query tenants: {e}")
         return templates.TemplateResponse("error.html", {
             "request": request,
@@ -7155,6 +7161,7 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
     try:
         configs = {c.tenant_id: c for c in db.query(TenantConfig).all()}
     except Exception as e:
+        db.rollback()
         log.warning(f"ORM query failed for TenantConfig: {e}. Trying raw SQL.")
         try:
             # Query only columns that definitely exist
@@ -7173,6 +7180,7 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
                     'email_address': row.email_address,
                 })()
         except Exception as e2:
+            db.rollback()
             log.error(f"Raw SQL query also failed: {e2}")
 
     now_utc = datetime.now(timezone.utc)
