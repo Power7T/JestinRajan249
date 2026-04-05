@@ -210,6 +210,10 @@ def is_plan_active(cfg: TenantConfig) -> bool:
 
 def tenant_has_channel(cfg: TenantConfig, channel: str) -> bool:
     """Return True if the tenant's active plan includes the given channel."""
+    from web.models import PLAN_META_CLOUD, PLAN_SMS
+    if channel in (PLAN_META_CLOUD, PLAN_SMS):
+        return True
+
     if not is_plan_active(cfg):
         return False
     plan = cfg.subscription_plan or PLAN_FREE

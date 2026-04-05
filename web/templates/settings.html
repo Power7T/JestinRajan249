@@ -482,17 +482,12 @@
 
 
   <!-- ── WhatsApp: Meta Cloud API ─────────────────────────────────── -->
-  <div class="channel-section {% if not has_meta_cloud %}locked{% endif %}">
+  <div class="channel-section">
     <div class="channel-header">
       <span class="channel-title">💬 WhatsApp — Meta Cloud API (runs on our server)</span>
-      {% if has_meta_cloud %}
-        <span class="active-badge">Plan active</span>
-      {% else %}
-        <a href="/billing" class="lock-badge" style="pointer-events:all">🔒 Upgrade to enable</a>
-      {% endif %}
+      <span class="active-badge">Available</span>
     </div>
 
-    {% if has_meta_cloud %}
     <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">
       Official WhatsApp Business Cloud API — no hardware needed, scales to 10,000+ messages/day.
     </p>
@@ -515,26 +510,15 @@
       Meta Developer Console → Your App → WhatsApp → Configuration → Webhook URL.
       Subscribe to the <code>messages</code> field.
     </p>
-    {% else %}
-    <p style="font-size:0.85rem;color:var(--text-3)">
-      Subscribe to the <strong>Meta Cloud</strong> or <strong>Pro</strong> plan to enable the official WhatsApp Business API.
-      <a href="/billing">View plans →</a>
-    </p>
-    {% endif %}
   </div>
 
   <!-- ── SMS / Twilio ─────────────────────────────────────────────── -->
-  <div class="channel-section {% if not has_sms %}locked{% endif %}">
+  <div class="channel-section">
     <div class="channel-header">
       <span class="channel-title">📟 SMS — Twilio</span>
-      {% if has_sms %}
-        <span class="active-badge">Plan active</span>
-      {% else %}
-        <a href="/billing" class="lock-badge" style="pointer-events:all">🔒 Upgrade to enable</a>
-      {% endif %}
+      <span class="active-badge">Available</span>
     </div>
 
-    {% if has_sms %}
     <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">
       Reach guests who don't use WhatsApp. Bring your own Twilio number.
     </p>

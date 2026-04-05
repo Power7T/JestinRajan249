@@ -3620,23 +3620,21 @@ async def settings_save(
     if max_g.isdigit():
         cfg.max_guests = int(max_g)
 
-    # WhatsApp Meta Cloud (only save if tenant has the right plan)
-    if tenant_has_channel(cfg, PLAN_META_CLOUD):
-        cfg.wa_mode           = wa_mode.strip() or "none"
-        cfg.whatsapp_number   = whatsapp_number.strip() or None
-        cfg.whatsapp_phone_id = whatsapp_phone_id.strip() or None
-        if whatsapp_verify_token.strip():
-            cfg.whatsapp_verify_token = whatsapp_verify_token.strip()
-        if whatsapp_token.strip():
-            cfg.whatsapp_token_enc = encrypt(whatsapp_token.strip())
+    # WhatsApp Meta Cloud
+    cfg.wa_mode           = wa_mode.strip() or "none"
+    cfg.whatsapp_number   = whatsapp_number.strip() or None
+    cfg.whatsapp_phone_id = whatsapp_phone_id.strip() or None
+    if whatsapp_verify_token.strip():
+        cfg.whatsapp_verify_token = whatsapp_verify_token.strip()
+    if whatsapp_token.strip():
+        cfg.whatsapp_token_enc = encrypt(whatsapp_token.strip())
 
-    # SMS / Twilio (only save if tenant has the right plan)
-    if tenant_has_channel(cfg, PLAN_SMS):
-        cfg.sms_mode           = sms_mode.strip() or "none"
-        cfg.twilio_account_sid = twilio_account_sid.strip() or None
-        cfg.twilio_from_number = twilio_from_number.strip() or None
-        if twilio_auth_token.strip():
-            cfg.twilio_auth_token_enc = encrypt(twilio_auth_token.strip())
+    # SMS / Twilio
+    cfg.sms_mode           = sms_mode.strip() or "none"
+    cfg.twilio_account_sid = twilio_account_sid.strip() or None
+    cfg.twilio_from_number = twilio_from_number.strip() or None
+    if twilio_auth_token.strip():
+        cfg.twilio_auth_token_enc = encrypt(twilio_auth_token.strip())
 
     db.add(ActivityLog(tenant_id=tenant_id, event_type="settings_saved",
                        message="Settings updated"))
