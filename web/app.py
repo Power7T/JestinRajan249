@@ -68,6 +68,7 @@ from fastapi.responses import (
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
+import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
 from web.db import get_db, init_db, SessionLocal
@@ -241,10 +242,10 @@ def _startup_checks() -> None:
     # (duplicate subscription creation / double charges).
     workers = int(os.getenv("WORKERS", "2"))
     if workers > 1 and not os.getenv("REDIS_URL", ""):
-        raise RuntimeError(
-            f"REDIS_URL must be set when WORKERS={workers}. Without Redis, Stripe webhook "
-            "idempotency is per-process only, which can cause duplicate subscription charges "
-            "or events. Set REDIS_URL or reduce WORKERS=1."
+        log.error(
+            f"CRITICAL: REDIS_URL not set but WORKERS={workers}. "
+            "Without Redis, Stripe webhook idempotency is not guaranteed across processes. "
+            "This could lead to duplicate subscription events. SET REDIS_URL ASAP."
         )
 
     # STRIPE_SECRET_KEY must be set for any billing operation.
@@ -465,7 +466,11 @@ def _voice_scheduled_calls_job():
 
 async def lifespan(app: FastAPI):
     _startup_checks()
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        log.error(f"Failed to initialize database: {e}")
+        # We don't crash here; let the app start so we can show a schema error page instead of a process crash
     validate_smtp_config()  # Validate SMTP at startup — fail fast, not on first email send
     worker_manager.start_all_workers()
     scheduler: Optional[BackgroundScheduler] = None
@@ -603,11 +608,17 @@ async def server_error_handler(request: Request, exc: Exception):
     log.exception("Unhandled server error: %s", exc)
     if request.url.path.startswith("/api/"):
         return JSONResponse({"detail": "Internal server error"}, status_code=500)
+    nonce = getattr(request.state, "csp_nonce", "")
     return templates.TemplateResponse(
         "error.html",
-        {"request": request, "code": 500, "title": "Server error",
-         "message": "Something went wrong on our end. Please try again in a moment.",
-         "debug_detail": traceback.format_exc()},  # Admin-only via template conditional
+        {
+            "request": request, 
+            "code": 500, 
+            "title": "Server error",
+            "message": "Something went wrong on our end. Please try again in a moment.",
+            "debug_detail": traceback.format_exc(),
+            "csp_nonce": nonce
+        },
         status_code=500,
     )
 
