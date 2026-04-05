@@ -67,6 +67,7 @@ from fastapi.responses import (
 )
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
@@ -9871,7 +9872,7 @@ def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
     except HTTPException:
         raise HTTPException(status_code=401, detail="Admin access required")
 
-    from sqlalchemy import func, desc
+    from sqlalchemy import func, desc, text
     from datetime import timedelta as td
 
     # Get cost summary for last 30 days
