@@ -512,6 +512,19 @@ tr.checkout-today td{background:rgba(255,189,46,0.04)}
   ✓ Reservation guest context saved. HostAI will now use the mapped phone number and room / unit info in guest chat.
 </div>
 {% endif %}
+{% if request.query_params.get('checkin_sent') == 'whatsapp' %}
+<div class="alert alert-success">
+  ✅ Check-in triggered — welcome message sent to the guest via <strong>WhatsApp</strong>.
+</div>
+{% elif request.query_params.get('checkin_sent') == 'sms' %}
+<div class="alert alert-success">
+  ✅ Check-in triggered — welcome message sent to the guest via <strong>SMS</strong>.
+</div>
+{% elif request.query_params.get('checkin_sent') == 'failed' %}
+<div class="alert alert-error">
+  ⚠️ Check-in triggered but the welcome message could not be delivered. Check your WhatsApp/SMS configuration in <a href="/conversations?tab=settings" style="color:#aec6ff">Messaging Settings</a>.
+</div>
+{% endif %}
 
 <!-- Upload card -->
 <div class="upload-card">
@@ -709,6 +722,19 @@ tr.checkout-today td{background:rgba(255,189,46,0.04)}
             </button>
           </form>
         {% endif %}
+        <!-- Check-in Now button -->
+        {% if r.guest_phone and r.status == 'confirmed' %}
+        <button
+          type="button"
+          class="btn btn-success btn-sm"
+          style="margin-top:0.35rem;display:flex;align-items:center;gap:4px"
+          onclick="openCheckinModal({{ r.id }}, '{{ r.guest_name|replace("'", "\\'") }}', '{{ r.guest_phone }}', '{{ request.state.csrf_token }}')"
+          title="Send welcome WhatsApp/SMS to guest now">
+          <span style="font-size:1rem">🏠</span> Check-in Now
+        </button>
+        {% elif r.status == 'confirmed' %}
+        <span style="display:block;margin-top:0.35rem;font-size:0.7rem;color:#8d909e">ℹ Set phone to check-in</span>
+        {% endif %}
         <div style="margin-top:0.4rem;display:flex;gap:0.35rem;flex-wrap:wrap">
           <a href="/reservations/{{ r.id }}/timeline" class="btn btn-outline btn-sm">Timeline</a>
           {% if issue_counts.get(r.id) %}
@@ -742,6 +768,31 @@ tr.checkout-today td{background:rgba(255,189,46,0.04)}
 {% endif %}
 
 {% block scripts %}
+<!-- Check-in Now confirmation modal -->
+<div id="checkin-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+  <div style="background:#1a1b22;border:1px solid rgba(174,198,255,0.15);border-radius:1rem;padding:2rem;max-width:420px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,0.5)">
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem">
+      <span style="font-size:1.8rem">🏠</span>
+      <div>
+        <h3 style="font-size:1rem;font-weight:700;color:#e3e1eb;margin:0">Check-in Now</h3>
+        <p style="font-size:0.78rem;color:#8d909e;margin:0">Send welcome message to guest</p>
+      </div>
+    </div>
+    <div style="background:#0d0e14;border-radius:0.6rem;padding:0.85rem 1rem;margin-bottom:1.25rem;font-size:0.84rem;color:#c3c6d4;line-height:1.7">
+      This will immediately send a <strong style="color:#aec6ff">WhatsApp or SMS</strong> welcome message to:<br>
+      <strong id="modal-guest-name" style="color:#e3e1eb"></strong><br>
+      <span id="modal-guest-phone" style="font-family:monospace;font-size:0.78rem;color:#8d909e"></span>
+    </div>
+    <p style="font-size:0.76rem;color:#8d909e;margin-bottom:1.25rem">The message includes property details, check-out date, and an invitation to chat with the AI host.</p>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end">
+      <button onclick="closeCheckinModal()" class="btn btn-outline btn-sm">Cancel</button>
+      <form id="checkin-now-form" method="post" style="display:inline">
+        <input type="hidden" id="checkin-now-csrf" name="csrf_token" value="">
+        <button type="submit" class="btn btn-success btn-sm" style="font-weight:700">✓ Yes, send welcome message</button>
+      </form>
+    </div>
+  </div>
+</div>
 <script nonce="{{ request.state.csp_nonce }}">
 document.addEventListener('click', (e) => {
     if (e.target.classList.contains('copy-link-btn')) {
@@ -751,6 +802,21 @@ document.addEventListener('click', (e) => {
         e.target.textContent = 'Copied!';
         setTimeout(() => e.target.textContent = oldText, 1500);
     }
+});
+function openCheckinModal(reservationId, guestName, guestPhone, csrfToken) {
+  document.getElementById('modal-guest-name').textContent = guestName;
+  document.getElementById('modal-guest-phone').textContent = guestPhone;
+  document.getElementById('checkin-now-form').action = '/reservations/' + reservationId + '/checkin-now';
+  document.getElementById('checkin-now-csrf').value = csrfToken;
+  const modal = document.getElementById('checkin-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => modal.style.opacity = '1', 10);
+}
+function closeCheckinModal() {
+  document.getElementById('checkin-modal').style.display = 'none';
+}
+document.getElementById('checkin-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeCheckinModal();
 });
 </script>
 {%- endblock %}

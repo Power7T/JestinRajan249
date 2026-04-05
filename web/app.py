@@ -5486,6 +5486,98 @@ def activate_reservation_chat(
     return RedirectResponse(redirect_to, status_code=302)
 
 
+@app.post("/reservations/{reservation_id}/checkin-now")
+def reservation_checkin_now(
+    reservation_id: int,
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Host manually triggers check-in: sends an immediate WhatsApp/SMS welcome message to the guest."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    reservation = db.query(Reservation).filter_by(id=reservation_id, tenant_id=tenant_id).first()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    cfg = _get_or_create_config(tenant_id, db)
+    guest_phone = (reservation.guest_phone or "").strip()
+    guest_name  = reservation.guest_name or "Guest"
+    listing     = reservation.listing_name or "the property"
+    unit        = reservation.unit_identifier or ""
+    checkout    = reservation.checkout.strftime("%b %d, %Y") if reservation.checkout else ""
+
+    unit_line = f" (Room/Unit: {unit})" if unit else ""
+    checkout_line = f" Your checkout is on {checkout}." if checkout else ""
+
+    welcome_msg = (
+        f"Hi {guest_name}! 👋 Welcome to {listing}{unit_line}. "
+        f"You're all checked in!{checkout_line} "
+        f"I'm your AI host assistant — feel free to message me anytime if you need anything during your stay. "
+        f"Enjoy! 🏠"
+    )
+
+    sent_via = None
+    error_msg = None
+
+    if not guest_phone:
+        error_msg = "no_phone"
+    else:
+        # Try WhatsApp first
+        if cfg and cfg.whatsapp_phone_id and cfg.whatsapp_token_enc:
+            from web.meta_sender import send_whatsapp
+            token = decrypt(cfg.whatsapp_token_enc or "")
+            if token:
+                ok = send_whatsapp(cfg.whatsapp_phone_id, token, guest_phone, welcome_msg)
+                if ok:
+                    sent_via = "whatsapp"
+
+        # Fallback: SMS via Twilio
+        if not sent_via and cfg and cfg.twilio_account_sid and cfg.twilio_auth_token_enc and cfg.twilio_from_number:
+            from web.sms_sender import send_sms
+            auth_token = decrypt(cfg.twilio_auth_token_enc or "")
+            if auth_token:
+                ok = send_sms(cfg.twilio_account_sid, auth_token,
+                              cfg.twilio_from_number, guest_phone, welcome_msg)
+                if ok:
+                    sent_via = "sms"
+
+        if not sent_via:
+            error_msg = "send_failed"
+
+    # Record in timeline regardless of outcome
+    _record_timeline_event(
+        db, tenant_id, reservation,
+        event_type="manual_checkin",
+        title=f"Manual check-in triggered for {guest_name}",
+        body=(
+            f"Welcome message sent via {sent_via.upper()}" if sent_via
+            else f"Check-in triggered but message could not be sent ({error_msg})"
+        ),
+        payload_json={"channel": sent_via, "phone": guest_phone},
+    )
+    if sent_via:
+        reservation.pre_arrival_sent = True
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="manual_checkin",
+        message=(
+            f"Check-in now triggered for {guest_name} — sent via {sent_via.upper() if sent_via else 'N/A'}"
+        ),
+    ))
+    db.commit()
+
+    redirect_to = f"/reservations?checkin_sent={sent_via or 'failed'}"
+    selected_property = request.query_params.get("property", "").strip()
+    if selected_property:
+        redirect_to += f"&property={selected_property}"
+    return RedirectResponse(redirect_to, status_code=302)
+
+
 @app.get("/reservations/{reservation_id}/timeline", response_class=HTMLResponse)
 def reservation_timeline(
     reservation_id: int,
