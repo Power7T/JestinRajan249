@@ -7201,6 +7201,7 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
         "plan_breakdown": plan_breakdown,
         "funnel":        funnel,
         "draft_stats":   draft_stats,
+        "drafts":        drafts_30d,
         "response_time_by_tenant": response_time_by_tenant,
         "churn_signals": churn_signals,
         "now":           now_utc,
