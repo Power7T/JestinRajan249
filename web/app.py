@@ -603,24 +603,66 @@ async def rate_limit_handler(request: Request, exc: HTTPException):
     )
 
 
-@app.exception_handler(500)
-async def server_error_handler(request: Request, exc: Exception):
-    log.exception("Unhandled server error: %s", exc)
+@app.exception_handler(403)
+async def forbidden_error_handler(request: Request, exc: HTTPException):
+    """Handle 403 Forbidden errors gracefully."""
     if request.url.path.startswith("/api/"):
-        return JSONResponse({"detail": "Internal server error"}, status_code=500)
+        return JSONResponse({"detail": "Forbidden access"}, status_code=403)
+    
     nonce = getattr(request.state, "csp_nonce", "")
     return templates.TemplateResponse(
         "error.html",
         {
-            "request": request, 
-            "code": 500, 
-            "title": "Server error",
-            "message": "Something went wrong on our end. Please try again in a moment.",
-            "debug_detail": traceback.format_exc(),
+            "request": request,
+            "code": 403,
+            "title": "Access denied",
+            "message": "You don't have permission to view this page.",
             "csp_nonce": nonce
         },
-        status_code=500,
+        status_code=403,
     )
+
+
+@app.exception_handler(500)
+async def server_error_handler(request: Request, exc: Exception):
+    """Deeply robust 500 handler — avoids crashing during error rendering."""
+    log.error(f"FATAL Exception: {exc}", exc_info=True)
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "Internal server error"}, status_code=500)
+    
+    # Safely get variables for template context to avoid fallback crashes
+    nonce = getattr(request.state, "csp_nonce", "")
+    error_msg = str(exc)
+    stack = traceback.format_exc()
+
+    try:
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request, 
+                "code": 500, 
+                "title": "Server error",
+                "message": "Something went wrong on our end. Please try again in a moment.",
+                "debug_detail": f"{error_msg}\n\n{stack}",
+                "csp_nonce": nonce
+            },
+            status_code=500,
+        )
+    except Exception as render_err:
+        log.error(f"Secondary crash in error handler: {render_err}")
+        # Final safety net — NO HTML TEMPLATES
+        from html import escape
+        return HTMLResponse(
+            f"""<html><body style="background:#08090F;color:#e3e1eb;font-family:sans-serif;padding:3rem;text-align:center;">
+            <h1 style="font-size:3rem;color:#aec6ff;">500</h1>
+            <h2>Internal Server Error</h2>
+            <p style="color:#8d909e;">The app could not render its error page. This is usually a template or nonce error.</p>
+            <div style="text-align:left;background:#1a1b22;padding:1rem;border-radius:1rem;font-size:0.8rem;margin-top:2rem;">
+            <code>{escape(error_msg)}</code>
+            </div>
+            </body></html>""",
+            status_code=500
+        )
 
 # ---------------------------------------------------------------------------
 # Helpers
