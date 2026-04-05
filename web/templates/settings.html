@@ -481,74 +481,126 @@
 
 
 
-  <!-- ── WhatsApp: Meta Cloud API ─────────────────────────────────── -->
-  <div class="channel-section">
-    <div class="channel-header">
-      <span class="channel-title">💬 WhatsApp — Meta Cloud API (runs on our server)</span>
-      <span class="active-badge">Available</span>
+  <!-- WhatsApp: Meta Cloud API -->
+  <div style="background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); border-radius: 24px; padding: 24px; margin-bottom: 32px; border: 1px solid rgba(93,141,241,0.15)">
+    <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; line-height: 1.5">
+      <div>
+        <p style="font-size:0.65rem;font-weight:700;color:#aec6ff;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px">Setup</p>
+        <h2 style="font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:8px">WhatsApp Configuration</h2>
+        <p style="font-size:0.875rem;color:#9ca3af;max-width:50rem">Official WhatsApp Business Cloud API — no hardware needed, scales to 10,000+ messages/day.</p>
+      </div>
+      <span style="align-self:flex-start;padding:6px 12px;border-radius:9999px;font-size:0.75rem;font-weight:700;background:{% if cfg and cfg.wa_mode == 'meta_cloud' %}rgba(34,197,94,0.1){% else %}rgba(255,255,255,0.05){% endif %};color:{% if cfg and cfg.wa_mode == 'meta_cloud' %}#4ade80{% else %}#9ca3af{% endif %}">
+        {% if cfg and cfg.wa_mode == 'meta_cloud' %}Configured{% else %}Not Setup{% endif %}
+      </span>
     </div>
 
-    <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">
-      Official WhatsApp Business Cloud API — no hardware needed, scales to 10,000+ messages/day.
-    </p>
-
-    <label>WA Phone Number ID</label>
-    <input type="text" name="whatsapp_phone_id" value="{{ cfg.whatsapp_phone_id or '' }}" placeholder="123456789012345">
-
-    <label>Permanent access token <span style="color:var(--text-3);font-weight:400">(leave blank to keep existing)</span></label>
-    <input type="password" name="whatsapp_token" placeholder="EAA...">
-
-    <label>Webhook verify token <span style="color:var(--text-3);font-weight:400">(you choose any string)</span></label>
-    <input type="text" name="whatsapp_verify_token" value="{{ cfg.whatsapp_verify_token or '' }}" placeholder="my-secret-token-123">
-
-    <label>Your webhook URL (paste this into Meta Developer Console)</label>
-    <div class="copy-box">
-      <input type="text" readonly value="{{ app_base_url }}/wa/webhook/{{ cfg.tenant_id }}" id="wa-webhook-url">
-      <button type="button" class="btn btn-outline copy-btn" data-target="wa-webhook-url">Copy</button>
+    {% set wa_has_token = cfg and cfg.whatsapp_token_enc %}
+    {% set wa_has_number = cfg and (cfg.whatsapp_number or '') %}
+    {% set wa_has_phone_id = cfg and (cfg.whatsapp_phone_id or '') %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px">
+      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
+        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">Access Token</p>
+        <p style="font-size:0.875rem;font-weight:600;color:{% if wa_has_token %}#4ade80{% else %}#fbbf24{% endif %}">{% if wa_has_token %}Configured{% else %}Missing{% endif %}</p>
+        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">From Meta Cloud API</p>
+      </div>
+      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
+        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">Phone Number</p>
+        <p style="font-size:0.875rem;font-weight:600;color:{% if wa_has_number %}#4ade80{% else %}#fbbf24{% endif %}">{% if wa_has_number %}Ready{% else %}Missing{% endif %}</p>
+        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Your WhatsApp Business number</p>
+      </div>
+      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
+        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">Phone ID</p>
+        <p style="font-size:0.875rem;font-weight:600;color:{% if wa_has_phone_id %}#4ade80{% else %}#fbbf24{% endif %}">{% if wa_has_phone_id %}Ready{% else %}Missing{% endif %}</p>
+        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Required for API connectivity</p>
+      </div>
     </div>
-    <p class="help-text">
-      Meta Developer Console → Your App → WhatsApp → Configuration → Webhook URL.
-      Subscribe to the <code>messages</code> field.
-    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+      <div>
+        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">WhatsApp Number</label>
+        <input type="text" name="whatsapp_number" value="{{ cfg.whatsapp_number or '' }}" placeholder="+15550001234" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div>
+        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Access Token</label>
+        <input type="password" name="whatsapp_token" placeholder="••••••••" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div>
+        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Phone ID</label>
+        <input type="text" name="whatsapp_phone_id" value="{{ cfg.whatsapp_phone_id or '' }}" placeholder="123456789" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div style="grid-column: span 2">
+        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Webhook Verify Token</label>
+        <input type="text" name="whatsapp_verify_token" value="{{ cfg.whatsapp_verify_token or '' }}" placeholder="your_verify_token" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Required for Meta to verify webhook requests</p>
+      </div>
+    </div>
   </div>
 
   <!-- ── SMS / Twilio ─────────────────────────────────────────────── -->
-  <div class="channel-section">
-    <div class="channel-header">
-      <span class="channel-title">📟 SMS — Twilio</span>
-      <span class="active-badge">Available</span>
-    </div>
-
-    <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">
-      Reach guests who don't use WhatsApp. Bring your own Twilio number.
-    </p>
-
-    <div class="form-row">
+  <div style="background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); border-radius: 24px; padding: 24px; margin-bottom: 32px; border: 1px solid rgba(93,141,241,0.15)">
+    <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
       <div>
-        <label>Twilio Account SID</label>
-        <input type="text" name="twilio_account_sid" value="{{ cfg.twilio_account_sid or '' }}" placeholder="ACxxxxxxxx">
+        <p style="font-size:0.65rem;font-weight:700;color:#aec6ff;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px">Setup</p>
+        <h2 style="font-size:1.5rem;font-weight:700;color:#fff;">SMS — Twilio</h2>
       </div>
-      <div>
-        <label>Auth token <span style="color:var(--text-3);font-weight:400">(leave blank to keep)</span></label>
-        <input type="password" name="twilio_auth_token" placeholder="••••••••">
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Twilio from number</label>
-        <input type="text" name="twilio_from_number" value="{{ cfg.twilio_from_number or '' }}" placeholder="+15550001234">
+      <p style="font-size:0.875rem;color:#b4c9ff;line-height:1.5">
+        Reach guests who don't use WhatsApp. Bring your own Twilio number.
+      </p>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <div style="padding: 4px 12px; border-radius: 12px; background: {% if cfg.twilio_account_sid %}rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3){% else %}rgba(107,114,128,0.15); border: 1px solid rgba(107,114,128,0.3){% endif %}">
+          <p style="font-size:0.75rem;font-weight:700;color:{% if cfg.twilio_account_sid %}#4ade80{% else %}#9ca3af{% endif %};text-transform:uppercase;letter-spacing:0.05em;margin:0">{% if cfg.twilio_account_sid %}Configured{% else %}Not Setup{% endif %}</p>
+        </div>
       </div>
     </div>
 
-    <label>Your Twilio webhook URL (paste into Twilio Console)</label>
-    <div class="copy-box">
-      <input type="text" readonly value="{{ app_base_url }}/sms/webhook/{{ cfg.tenant_id }}" id="sms-webhook-url">
-      <button type="button" class="btn btn-outline copy-btn" data-target="sms-webhook-url">Copy</button>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px">
+      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
+        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">Twilio Credentials</p>
+        <p style="font-size:0.875rem;font-weight:600;color:{% if cfg.twilio_account_sid %}#4ade80{% else %}#fbbf24{% endif %}">{% if cfg.twilio_account_sid %}Configured{% else %}Missing{% endif %}</p>
+        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Account SID & Auth Token</p>
+      </div>
+      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
+        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">From Number</p>
+        <p style="font-size:0.875rem;font-weight:600;color:{% if cfg.twilio_from_number %}#4ade80{% else %}#fbbf24{% endif %}">{% if cfg.twilio_from_number %}Ready{% else %}Missing{% endif %}</p>
+        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Your Twilio phone number</p>
+      </div>
+      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
+        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">Mode</p>
+        <p style="font-size:0.875rem;font-weight:600;color:{% if cfg.sms_notify_number %}#4ade80{% else %}#fbbf24{% endif %}">{% if cfg.sms_notify_number %}Enabled{% else %}Disabled{% endif %}</p>
+        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Notification number</p>
+      </div>
     </div>
-    <p class="help-text">
-      Twilio Console → Phone Numbers → Active Numbers → your number → Messaging → Webhook URL (HTTP POST).
-    </p>
 
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+      <div>
+        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Twilio Account SID</label>
+        <input type="text" name="twilio_account_sid" value="{{ cfg.twilio_account_sid or '' }}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div>
+        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Auth Token</label>
+        <input type="password" name="twilio_auth_token" placeholder="••••••••" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Leave blank to keep current</p>
+      </div>
+      <div>
+        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">From Number</label>
+        <input type="text" name="twilio_from_number" value="{{ cfg.twilio_from_number or '' }}" placeholder="+15550001234" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div>
+        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Notify Number</label>
+        <input type="text" name="sms_notify_number" value="{{ cfg.sms_notify_number or '' }}" placeholder="+15550001234" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Where to send incoming SMS alerts</p>
+      </div>
+    </div>
+
+    <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08)">
+      <p style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:12px">Webhook Configuration</p>
+      <p style="font-size:0.875rem;color:#b4c9ff;margin-bottom:12px">Copy this URL into Twilio Console for incoming message webhooks:</p>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px">
+        <input type="text" readonly value="{{ app_base_url }}/sms/webhook/{{ cfg.tenant_id }}" id="sms-webhook-url" style="padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;font-family:monospace">
+        <button type="button" class="copy-btn" data-target="sms-webhook-url" style="padding:8px 16px;background:rgba(93,141,241,0.2);border:1px solid rgba(93,141,241,0.3);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Copy</button>
+      </div>
+      <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Phone Numbers → Active Numbers → Messaging → Webhook URL (POST)</p>
+    </div>
   </div>
 
   <div class="channel-section" style="margin-top:1.5rem">
