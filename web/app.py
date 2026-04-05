@@ -7190,6 +7190,11 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
             "contribution": cnt * _PLAN_MRR.get(pk, 0),
         })
 
+    # Ensure response_time_by_tenant has all required keys for aggregation
+    for row in tenant_rows:
+        if row["tenant"].id not in response_time_by_tenant:
+            response_time_by_tenant[row["tenant"].id] = {"avg": 0, "p50": 0, "p95": 0, "count": 0}
+
     return templates.TemplateResponse("admin_overview.html", {
         "request":       request,
         "admin":         admin,
@@ -7201,7 +7206,7 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
         "plan_breakdown": plan_breakdown,
         "funnel":        funnel,
         "draft_stats":   draft_stats,
-        "drafts":        drafts_30d,
+        "drafts":        drafts_30d if drafts_30d else [],
         "response_time_by_tenant": response_time_by_tenant,
         "churn_signals": churn_signals,
         "now":           now_utc,
