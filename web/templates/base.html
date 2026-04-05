@@ -280,6 +280,43 @@
         display: none !important;
       }
     }
+
+    .admin-shell-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 9, 15, 0.68);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 70;
+      display: none;
+    }
+    @media (max-width: 767px) {
+      body.admin-shell-page .admin-shell-overlay {
+        display: block;
+      }
+      body.admin-shell-page.admin-shell-open .admin-shell-overlay {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      body.admin-shell-page .admin-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.22s ease;
+        z-index: 85 !important;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
+      body.admin-shell-page.admin-shell-open .admin-sidebar {
+        transform: translateX(0);
+      }
+      body.admin-shell-page .admin-main {
+        margin-left: 0 !important;
+        padding-top: 5rem !important;
+      }
+      body.admin-shell-page .admin-sidebar-toggle {
+        display: inline-flex !important;
+      }
+    }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -512,6 +549,59 @@ function initializeConfirmSubmits() {
   });
 }
 
+function initializeAdminShell() {
+  const sidebar = document.getElementById('admin-sidebar');
+  if (!sidebar) return;
+
+  document.body.classList.add('admin-shell-page');
+  sidebar.classList.add('admin-sidebar');
+
+  const main = document.querySelector('main');
+  if (main) main.classList.add('admin-main');
+
+  const toggle = document.getElementById('sidebar-toggle');
+  if (toggle) {
+    toggle.classList.add('admin-sidebar-toggle');
+    toggle.style.display = '';
+    toggle.onclick = null;
+    toggle.addEventListener('click', () => {
+      document.body.classList.toggle('admin-shell-open');
+    });
+  }
+
+  if (!document.querySelector('.admin-shell-overlay')) {
+    const overlay = document.createElement('button');
+    overlay.type = 'button';
+    overlay.className = 'admin-shell-overlay';
+    overlay.setAttribute('aria-label', 'Close admin navigation');
+    overlay.addEventListener('click', () => {
+      document.body.classList.remove('admin-shell-open');
+    });
+    document.body.appendChild(overlay);
+  }
+
+  sidebar.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', () => {
+      document.body.classList.remove('admin-shell-open');
+    });
+  });
+
+  // Admin pages should always land at the top; some browsers restore the last
+  // scroll position of these long dashboards, which makes the sidebar look cut off.
+  if (window.location.pathname.startsWith('/admin')) {
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    window.scrollTo(0, 0);
+    sidebar.scrollTop = 0;
+    if (main) main.scrollTop = 0;
+  }
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 768) {
+      document.body.classList.remove('admin-shell-open');
+    }
+  });
+}
+
 // ── Keyboard Shortcuts ───────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
   // Cmd+K / Ctrl+K: focus search
@@ -555,6 +645,7 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('DOMContentLoaded', () => {
   initializeHostShell();
+  initializeAdminShell();
   initializeHeaderSearch();
   initializeConfirmSubmits();
 });

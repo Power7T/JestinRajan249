@@ -38,7 +38,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 {%- block main_wrapper %}
 {%- block content %}
 <!-- Sidebar -->
-<aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col -translate-x-full md:translate-x-0 transition-transform duration-300 md:relative">
+<aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300 md:relative">
   <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7 hover:opacity-80 transition-opacity">
 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
 <span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
@@ -108,7 +108,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     <p class="text-slate-400 text-sm">Monitor costs, rate limits, and feature rollouts.</p>
     
     <!-- Tabs -->
-    <div class="flex items-center gap-6 mt-6 border-b border-white/10">
+    <div class="flex items-center gap-6 mt-6 border-b border-white/10 overflow-x-auto pb-1 whitespace-nowrap">
       <button onclick="switchTab('costs')" class="admin-tab active" id="tabbtn-costs">💰 Cost Tracking</button>
       <button onclick="switchTab('limits')" class="admin-tab" id="tabbtn-limits">⚡ Rate Limits</button>
       <button onclick="switchTab('flags')" class="admin-tab" id="tabbtn-flags">🚀 Feature Flags</button>
