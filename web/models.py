@@ -259,6 +259,9 @@ class TenantConfig(Base):
     # Internal token (auto-generated) for service-to-service auth
     internal_token: Mapped[str] = mapped_column(String(64), default=lambda: str(uuid.uuid4()))
 
+    # Digest / daily summary email
+    digest_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
+
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="config")
 
 
@@ -1219,7 +1222,67 @@ class RoutingRule(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="routing_rules")
+
+
+# ---------------------------------------------------------------------------
+# AutomatedMessage — host-configured automated message rules (pre/post stay, etc.)
+# ---------------------------------------------------------------------------
+
+class AutomatedMessage(Base):
+    __tablename__ = "automated_messages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), nullable=False, index=True)
+    property_name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)  # None = all properties
+
+    # Trigger: pre_arrival | post_checkout | mid_stay | custom
+    trigger: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+
+    # Channel: whatsapp | sms | email
+    channel: Mapped[str] = mapped_column(String(32), nullable=False, server_default="whatsapp", default="whatsapp")
+
+    # Message body (supports Jinja-like placeholders like {{guest_name}})
+    message_template: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Controls
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true", default=True)
+    send_hour: Mapped[int] = mapped_column(Integer, nullable=False, server_default="9", default=9)  # 24h UTC
+    last_run_date: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)  # "YYYY-MM-DD" dedup key
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
     tenant: Mapped["Tenant"] = relationship("Tenant")
+
+
+# ---------------------------------------------------------------------------
+# GuestFeedback — post-stay star rating + comment submitted via token link
+# ---------------------------------------------------------------------------
+
+class GuestFeedback(Base):
+    __tablename__ = "guest_feedback"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), nullable=False, index=True)
+    reservation_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
+
+    # Public token used in the feedback URL  (e.g. /feedback/{token})
+    feedback_token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+
+    # Guest info (copied at send time for privacy)
+    guest_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    guest_phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    property_name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+
+    # Submitted values (null until the guest actually submits)
+    rating: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1-5
+    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant")
+    reservation: Mapped[Optional["Reservation"]] = relationship("Reservation")
 
 
 # ---------------------------------------------------------------------------

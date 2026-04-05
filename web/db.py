@@ -78,6 +78,9 @@ def init_db():
         IdempotencyKey, TenantRateLimit, RateLimitCounter,
         FeatureFlag, FeatureFlagOverride,
         VoiceRoutingConfig, RoutingRule,
+        AutomatedMessage, GuestFeedback,
+        Property, PropertyConfig, EscalatedMessage, MessageLog,
+        TeamMemberWorkload, EscalationRule,
     )
     if _AUTO_CREATE_TABLES:
         Base.metadata.create_all(bind=engine)
@@ -221,6 +224,15 @@ def db_migrate():
         ("drafts", "host_feedback_at",       datetime_type,  "NULL"),
         ("drafts", "context_sources",        "TEXT",         "NULL"),
         ("drafts", "archived_at",            datetime_type,  "NULL"),
+        # digest_enabled on tenant_configs (migration 20260403_0200)
+        ("tenant_configs", "digest_enabled",  "BOOLEAN",      false_default),
+        # Voice forwarding on tenants (migration 20260401_0600)
+        ("tenants", "voice_forward_enabled",  "BOOLEAN",      false_default),
+        ("tenants", "voice_forward_number",   "VARCHAR(32)",  "NULL"),
+        # Team member delegation (migration 20260401_0900)
+        ("team_members", "expertise_areas",           "TEXT",    "NULL"),
+        ("team_members", "max_concurrent_tasks",      "INTEGER", "10"),
+        ("team_members", "is_available_for_assignment","BOOLEAN", false_default),
     ]
     inspector = inspect(engine)
     existing_tables = set(inspector.get_table_names())
@@ -240,6 +252,31 @@ def db_migrate():
             except Exception as exc:
                 conn.rollback()
                 log.warning("Failed to add missing column %s.%s on %s: %s", table, col, dialect, exc)
+
+    # Ensure new tables exist (safe fallback if Alembic migrations haven't run)
+    # These tables were added post-initial-schema and may not exist on older production DBs.
+    tables_to_ensure = [
+        "automated_messages",
+        "guest_feedback",
+        "voice_routing_configs",
+        "routing_rules",
+        "escalation_rules",
+        "team_member_workloads",
+        "properties",
+        "property_configs",
+        "escalated_messages",
+        "message_logs",
+    ]
+    inspector2 = inspect(engine)
+    existing_tables2 = set(inspector2.get_table_names())
+    missing_tables = [t for t in tables_to_ensure if t not in existing_tables2]
+    if missing_tables:
+        try:
+            from web.models import Base as _Base  # noqa: F811
+            _Base.metadata.create_all(bind=engine)
+            log.info("Created missing tables: %s", missing_tables)
+        except Exception as exc:
+            log.warning("Failed to create missing tables %s: %s", missing_tables, exc)
 
     # Seed default PlanConfig rows
     db = SessionLocal()
