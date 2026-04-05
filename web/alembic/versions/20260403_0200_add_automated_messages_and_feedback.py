@@ -1,14 +1,14 @@
 """Add automated_messages and guest_feedback tables
 
 Revision ID: 20260403_0200
-Revises: 20260403_0100
+Revises: 20260402_0100
 Create Date: 2026-04-03 02:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = '20260403_0200'
-down_revision = '20260403_0100'
+down_revision = '20260402_0100'
 branch_labels = None
 depends_on = None
 
