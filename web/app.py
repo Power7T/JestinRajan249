@@ -8366,6 +8366,61 @@ def metrics_prometheus(request: Request, db: Session = Depends(get_db)):
 
 
 # ---------------------------------------------------------------------------
+# Conversations Settings — manage SMS / WhatsApp Cloud integrations
+# ---------------------------------------------------------------------------
+
+@app.post("/conversations/settings", response_class=HTMLResponse)
+async def conversations_settings_save(
+    request: Request,
+    wa_mode: str = Form("none"),
+    whatsapp_number: str = Form(""),
+    whatsapp_token: str = Form(""),
+    whatsapp_phone_id: str = Form(""),
+    whatsapp_verify_token: str = Form(""),
+    sms_mode: str = Form("none"),
+    twilio_account_sid: str = Form(""),
+    twilio_auth_token: str = Form(""),
+    twilio_from_number: str = Form(""),
+    sms_notify_number: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"conv-settings:{tenant_id}", max_requests=30, window_seconds=3600)
+
+    cfg = _get_or_create_config(tenant_id, db)
+    
+    # WhatsApp Meta Cloud
+    cfg.wa_mode           = wa_mode.strip() or "none"
+    cfg.whatsapp_number   = whatsapp_number.strip() or None
+    cfg.whatsapp_phone_id = whatsapp_phone_id.strip() or None
+    if whatsapp_verify_token.strip():
+        cfg.whatsapp_verify_token = whatsapp_verify_token.strip()
+    if whatsapp_token.strip():
+        cfg.whatsapp_token_enc = encrypt(whatsapp_token.strip())
+
+    # SMS / Twilio
+    cfg.sms_mode           = sms_mode.strip() or "none"
+    cfg.twilio_account_sid = twilio_account_sid.strip() or None
+    cfg.twilio_from_number = twilio_from_number.strip() or None
+    if sms_notify_number.strip():
+        cfg.sms_notify_number = sms_notify_number.strip()
+    if twilio_auth_token.strip():
+        cfg.twilio_auth_token_enc = encrypt(twilio_auth_token.strip())
+
+    db.add(ActivityLog(tenant_id=tenant_id, event_type="settings_saved",
+                       message="Messaging settings updated"))
+    db.commit()
+    worker_manager.restart_worker(tenant_id)
+
+    return RedirectResponse("/conversations?tab=settings&saved=true", status_code=303)
+
+
+# ---------------------------------------------------------------------------
 # Conversations — view guest message threads
 # ---------------------------------------------------------------------------
 
@@ -8373,6 +8428,7 @@ def metrics_prometheus(request: Request, db: Session = Depends(get_db)):
 def conversations_page(
     request: Request,
     q: str = None,
+    tab: str = "panel",
     db: Session = Depends(get_db),
     _=Depends(require_flag("CONVERSATION_VIEW")),
 ):
@@ -8388,6 +8444,7 @@ def conversations_page(
         db.rollback()
         raise
 
+    cfg = _get_or_create_config(tenant_id, db)
     from datetime import datetime, timezone
 
     # Get unique conversations grouped by thread_key
@@ -8441,9 +8498,13 @@ def conversations_page(
     return templates.TemplateResponse("conversations.html", {
         "request": request,
         "tenant": tenant,
+        "cfg": cfg,
+        "tab": tab,
+        "saved": request.query_params.get("saved") == "true",
         "conversations": conv_list,
         "initial_messages": initial_messages,
         "search_query": q or "",
+        "app_base_url": APP_BASE_URL,
     })
 
 
