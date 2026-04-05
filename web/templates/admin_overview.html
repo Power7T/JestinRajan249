@@ -212,8 +212,10 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
         {% set global_avg = (total_response_time / total_count) | round(1) if total_count > 0 else 0 %}
         {% set p50_vals = response_time_by_tenant.values() | map(attribute='p50') | list %}
         {% set p95_vals = response_time_by_tenant.values() | map(attribute='p95') | list %}
-        {% set global_p50 = (p50_vals | sum / p50_vals | length) | round(1) if p50_vals | length > 0 else 0 %}
-        {% set global_p95 = (p95_vals | sum / p95_vals | length) | round(1) if p95_vals | length > 0 else 0 %}
+        {% set p50_count = p50_vals | length %}
+        {% set p95_count = p95_vals | length %}
+        {% set global_p50 = ((p50_vals | sum) / p50_count) | round(1) if p50_count > 0 else 0 %}
+        {% set global_p95 = ((p95_vals | sum) / p95_count) | round(1) if p95_count > 0 else 0 %}
 
         <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Average time</span><span class="font-bold text-[#5B8DEF]">{{ global_avg }}s</span></div>
         <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Median (p50)</span><span class="font-bold text-white">{{ global_p50 }}s</span></div>
