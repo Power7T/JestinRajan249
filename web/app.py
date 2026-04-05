@@ -3415,6 +3415,7 @@ async def test_ical(
 
 @app.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request, db: Session = Depends(get_db)):
+    db.rollback() # Ensure safe start for multi-query route
     try:
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
@@ -7529,6 +7530,7 @@ def admin_unimpersonate(
 
 @app.get("/admin/system", response_class=HTMLResponse)
 def admin_system(request: Request, db: Session = Depends(get_db)):
+    db.rollback() # Ensure safe start for system inventory
     admin = _require_admin(request, db)
 
     tenants = db.query(Tenant).order_by(Tenant.email).all()
