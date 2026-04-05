@@ -17,11 +17,28 @@ depends_on = None
 
 
 def upgrade() -> None:
-    """Create any missing tables that ORM models expect."""
+    """Create any missing tables and columns that ORM models expect."""
     conn = op.get_bind()
     inspector = sa.inspect(conn)
     existing_tables = set(inspector.get_table_names())
-    
+
+    # Fix tenant_configs - add digest_enabled if missing
+    if 'tenant_configs' in existing_tables:
+        existing_cols = {col['name'] for col in inspector.get_columns('tenant_configs')}
+        if 'digest_enabled' not in existing_cols:
+            op.add_column('tenant_configs',
+                sa.Column('digest_enabled', sa.Boolean, nullable=False, server_default='false'))
+
+    # Fix tenants - add voice_forward columns if missing
+    if 'tenants' in existing_tables:
+        existing_cols = {col['name'] for col in inspector.get_columns('tenants')}
+        if 'voice_forward_enabled' not in existing_cols:
+            op.add_column('tenants',
+                sa.Column('voice_forward_enabled', sa.Boolean(), nullable=False, server_default='false'))
+        if 'voice_forward_number' not in existing_cols:
+            op.add_column('tenants',
+                sa.Column('voice_forward_number', sa.String(32), nullable=True))
+
     # Properties table (multi-property support)
     if 'properties' not in existing_tables:
         op.create_table(
