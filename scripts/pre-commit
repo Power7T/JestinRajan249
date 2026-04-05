@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# ============================================================
+# .git/hooks/pre-commit
+# Runs automatically on every `git commit`.
+# Blocks the commit if any check fails.
+#
+# Install: bash scripts/install_hooks.sh
+# ============================================================
+
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+PASS=0
+FAIL=0
+
+run_check() {
+    local name="$1"
+    shift
+    printf "  %-40s" "$name"
+    if "$@" >/tmp/hostai_check_out 2>&1; then
+        echo -e "${GREEN}✅ PASS${NC}"
+    else
+        echo -e "${RED}❌ FAIL${NC}"
+        cat /tmp/hostai_check_out | sed 's/^/    /'
+        FAIL=$((FAIL + 1))
+    fi
+}
+
+echo ""
+echo -e "${YELLOW}╔══════════════════════════════════════╗${NC}"
+echo -e "${YELLOW}║   HostAI Pre-Commit Safety Checks    ║${NC}"
+echo -e "${YELLOW}╚══════════════════════════════════════╝${NC}"
+echo ""
+
+# ── Python syntax check ──────────────────────────────────────
+echo "🔍 Syntax Checks"
+run_check "Python syntax (web/)" python3 -m py_compile web/app.py web/models.py web/db.py
+
+# ── Import check ─────────────────────────────────────────────
+echo ""
+echo "📦 Import Checks"
+run_check "models.py imports cleanly" python3 -c "
+import sys; sys.path.insert(0, '.')
+from web.models import Base
+print(f'OK — {len(Base.metadata.tables)} tables registered')
+"
+
+run_check "db.py imports cleanly" python3 -c "
+import sys; sys.path.insert(0, '.')
+from web.db import init_db, db_migrate
+print('OK')
+"
+
+# ── Migration chain ──────────────────────────────────────────
+echo ""
+echo "🗃️  Migration Checks"
+run_check "Alembic chain valid" python3 scripts/check_migrations.py --fast
+
+# ── Model consistency ────────────────────────────────────────
+echo ""
+echo "🧬 Model Checks"
+run_check "No duplicate models/tables" python3 scripts/check_models.py
+
+# ── Template checks ──────────────────────────────────────────
+echo ""
+echo "🎨 Template Checks"
+run_check "Templates: mobile responsive" python3 scripts/check_templates.py
+
+# ── Sensitive patterns ───────────────────────────────────────
+echo ""
+echo "🔒 Security Checks"
+run_check "No 'current_user' in templates" bash -c '
+count=$(grep -rl "current_user" web/templates/ 2>/dev/null | wc -l)
+if [ "$count" -gt 0 ]; then
+  echo "Found current_user in $count templates (should be tenant):"
+  grep -rl "current_user" web/templates/
+  exit 1
+fi
+'
+
+run_check "No hardcoded API keys" bash -c '
+if grep -rn "sk-[a-zA-Z0-9]\{32,\}" web/*.py 2>/dev/null | grep -v "_enc\|os.getenv\|os.environ\|#"; then
+  echo "Potential plaintext API key detected above"
+  exit 1
+fi
+'
+
+# ── Results ──────────────────────────────────────────────────
+echo ""
+echo "══════════════════════════════════════════"
+if [ $FAIL -gt 0 ]; then
+    echo -e "${RED}❌ $FAIL check(s) failed — commit blocked.${NC}"
+    echo "   Fix the issues above and try again."
+    echo "   To skip (EMERGENCY ONLY): git commit --no-verify"
+    echo ""
+    exit 1
+else
+    echo -e "${GREEN}✅ All checks passed — committing!${NC}"
+    echo ""
+    exit 0
+fi

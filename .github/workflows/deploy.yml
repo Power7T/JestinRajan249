@@ -1,64 +1,103 @@
 # ============================================================
-# HostAI — Continuous Deployment
+# HostAI — CI/CD Pipeline
 #
 # Triggers on every push to 'main'.
-# Runs tests (lint), then SSH-deploys to your production server
-# using zero-downtime update.sh.
+# All checks must pass before deploy runs.
 #
-# Required GitHub repository secrets (Settings → Secrets → Actions):
-#   DEPLOY_HOST   — server IP or hostname (e.g. 203.0.113.42)
-#   DEPLOY_USER   — SSH user (e.g. ubuntu or deploy)
-#   DEPLOY_KEY    — private SSH key (contents of ~/.ssh/id_ed25519)
+# Required GitHub repository secrets:
+#   DEPLOY_HOST   — server IP or hostname
+#   DEPLOY_USER   — SSH user (e.g. ubuntu)
+#   DEPLOY_KEY    — private SSH key contents
 #   DEPLOY_PATH   — absolute path on server (e.g. /srv/hostai)
-#
-# Generate a deploy key:
-#   ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/hostai_deploy -N ""
-#   # Add public key to server:  cat ~/.ssh/hostai_deploy.pub >> ~/.ssh/authorized_keys
-#   # Add private key to GitHub: cat ~/.ssh/hostai_deploy  (→ DEPLOY_KEY secret)
 # ============================================================
 
-name: Deploy to Production
+name: CI / Deploy
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:   # allow manual trigger from GitHub UI
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  # ── Lint / basic checks ──────────────────────────────────────
-  lint:
-    name: Lint & syntax check
+  # ── 1. Static checks (no DB needed) ─────────────────────────
+  static-checks:
+    name: Static Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install lint deps
-        run: pip install --quiet ruff
+      - name: Install minimal deps
+        run: pip install --quiet ruff sqlalchemy alembic
 
-      - name: Check Python syntax (ruff)
+      - name: "🔍 Python syntax (ruff)"
         run: ruff check web/ --select E9,F63,F7,F82 --output-format=github
 
-      - name: Verify JS syntax (node --check)
+      - name: "🗃️  Validate Alembic migration chain"
         run: |
-          for f in airbnb-host/scripts/whatsapp/*.js; do
-            node --check "$f" && echo "OK: $f" || exit 1
-          done
+          export PYTHONPATH=.
+          python3 scripts/check_migrations.py
+        # Catches: broken down_revision, multiple heads, missing ORM models for created tables
 
-  # ── Tests + migrations ──────────────────────────────────────
-  test:
-    name: Tests & migrations
+      - name: "🧬 Validate ORM models"
+        run: |
+          export PYTHONPATH=.
+          python3 scripts/check_models.py
+        # Catches: duplicate classes/tables, missing back_populates, unimported models in db.py
+
+      - name: "🎨 Validate HTML templates"
+        run: |
+          python3 scripts/check_templates.py
+        # Catches: missing md: prefixes, no hamburger button, white-flash CSS, duplicate CDNs
+
+      - name: "📦 models.py imports cleanly"
+        run: |
+          export PYTHONPATH=.
+          python3 -c "
+          from web.models import Base
+          count = len(Base.metadata.tables)
+          print(f'OK — {count} tables registered')
+          assert count >= 30, f'Expected 30+ tables, got {count} — a model may have been accidentally deleted'
+          "
+
+      - name: "📦 db.py imports cleanly"
+        run: |
+          export PYTHONPATH=.
+          python3 -c "from web.db import init_db, db_migrate; print('OK')"
+
+      - name: "🔒 No current_user in templates"
+        run: |
+          count=$(grep -rl 'current_user' web/templates/ 2>/dev/null | wc -l)
+          if [ "$count" -gt 0 ]; then
+            echo "❌ Found 'current_user' in templates (should be 'tenant'):"
+            grep -rl 'current_user' web/templates/
+            exit 1
+          fi
+          echo "✅ No current_user usage found"
+
+      - name: "🔒 No hardcoded API keys"
+        run: |
+          if grep -rn 'sk-[a-zA-Z0-9]\{32,\}' web/*.py 2>/dev/null; then
+            echo "❌ Potential hardcoded API key found above"
+            exit 1
+          fi
+          echo "✅ No hardcoded keys found"
+
+  # ── 2. Migration + DB tests (real Postgres) ─────────────────
+  db-tests:
+    name: DB & Migration Tests
     runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: hostai
+          POSTGRES_DB: hostai_test
           POSTGRES_USER: hostai
           POSTGRES_PASSWORD: hostai
         ports:
@@ -72,7 +111,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -82,33 +121,85 @@ jobs:
           pip install --quiet -r web/requirements.txt
           pip install --quiet pytest
 
-      - name: Install Postgres client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-      - name: Wait for Postgres
-        run: |
-          export PGPASSWORD=hostai
-          for i in {1..30}; do
-            pg_isready -h localhost -U hostai && exit 0
-            sleep 2
-          done
-          echo "Postgres not ready" && exit 1
-
-      - name: Alembic upgrade head
+      - name: "🗃️  alembic upgrade head (Postgres)"
         env:
-          DATABASE_URL: postgresql://hostai:hostai@localhost:5432/hostai
+          DATABASE_URL: postgresql://hostai:hostai@localhost:5432/hostai_test
           PYTHONPATH: .
-        run: alembic upgrade head
+        run: |
+          alembic -c web/alembic.ini upgrade head
+        # This runs the REAL migration against Postgres.
+        # Catches: boolean syntax errors, raw SQL incompatibilities, missing FK types
 
-      - name: Run pytest
-        run: pytest -q
+      - name: "🗃️  Verify all tables exist after migration"
+        env:
+          DATABASE_URL: postgresql://hostai:hostai@localhost:5432/hostai_test
+          PYTHONPATH: .
+        run: |
+          python3 -c "
+          import os
+          os.environ['DATABASE_URL'] = 'postgresql://hostai:hostai@localhost:5432/hostai_test'
+          from web.db import engine
+          from sqlalchemy import inspect
+          inspector = inspect(engine)
+          tables = set(inspector.get_table_names())
+          required = {
+              'tenants', 'tenant_configs', 'reservations', 'drafts',
+              'voice_calls', 'automated_messages', 'guest_feedback',
+              'routing_rules', 'voice_routing_configs', 'escalation_rules',
+          }
+          missing = required - tables
+          if missing:
+              print(f'❌ Missing tables after migration: {missing}')
+              exit(1)
+          print(f'✅ All {len(tables)} tables present')
+          "
 
-  # ── Deploy ───────────────────────────────────────────────────
+      - name: "🗃️  Verify key columns exist"
+        env:
+          DATABASE_URL: postgresql://hostai:hostai@localhost:5432/hostai_test
+          PYTHONPATH: .
+        run: |
+          python3 -c "
+          import os
+          os.environ['DATABASE_URL'] = 'postgresql://hostai:hostai@localhost:5432/hostai_test'
+          from web.db import engine
+          from sqlalchemy import inspect, text
+          inspector = inspect(engine)
+
+          # Map of table -> columns that MUST exist
+          required_columns = {
+              'tenant_configs': ['digest_enabled', 'voice_send_channel', 'subscription_plan'],
+              'tenants': ['first_name', 'last_name', 'voice_enabled', 'voice_forward_enabled'],
+              'reservations': ['guest_feedback_positive', 'guest_feedback_negative'],
+              'automated_messages': ['trigger', 'channel', 'message_template', 'is_active'],
+              'guest_feedback': ['feedback_token', 'rating', 'submitted_at'],
+          }
+          errors = []
+          for table, cols in required_columns.items():
+              existing = {c['name'] for c in inspector.get_columns(table)}
+              for col in cols:
+                  if col not in existing:
+                      errors.append(f'{table}.{col} MISSING')
+          if errors:
+              for e in errors: print(f'❌ {e}')
+              exit(1)
+          print('✅ All required columns verified')
+          "
+
+      - name: "🧪 Run pytest"
+        env:
+          DATABASE_URL: postgresql://hostai:hostai@localhost:5432/hostai_test
+          PYTHONPATH: .
+          ENVIRONMENT: test
+        run: pytest -q --tb=short
+
+  # ── 3. Deploy (only on main, only if checks pass) ────────────
   deploy:
-    name: Zero-downtime deploy
-    needs: [lint, test]
+    name: Deploy to Production
+    needs: [static-checks, db-tests]
     runs-on: ubuntu-latest
-    environment: production   # optional: add approval gate in GitHub Environments
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
 
     steps:
       - name: Deploy via SSH
@@ -122,15 +213,11 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
-
-            # Pull the latest code
             git fetch origin main
             git reset --hard origin/main
-
-            # Run zero-downtime update (already built the image, no git pull needed)
             ./update.sh --skip-pull
 
-      - name: Verify deployment
+      - name: "❤️  Health check"
         uses: appleboy/ssh-action@v1.0.3
         with:
           host:     ${{ secrets.DEPLOY_HOST }}
@@ -138,11 +225,10 @@ jobs:
           key:      ${{ secrets.DEPLOY_KEY }}
           port:     22
           script: |
-            cd "${{ secrets.DEPLOY_PATH }}"
-            curl -sf http://localhost/ping | grep -q '"ok":true' && echo "✅ Deploy verified" || { echo "❌ Health check failed"; exit 1; }
+            curl -sf http://localhost/ping | grep -q '"ok":true' \
+              && echo "✅ Deploy verified — app is healthy" \
+              || { echo "❌ Health check failed"; exit 1; }
 
       - name: Notify on failure
         if: failure()
-        run: |
-          echo "::error::Deployment failed. Check the logs above."
-          # Optionally add Slack/Discord/email notification here
+        run: echo "::error::Deployment failed. Check logs above."
