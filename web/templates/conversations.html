@@ -513,11 +513,11 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
     </div>
 
     <div class="flex gap-3 mb-4 flex-wrap">
-      <button type="button" onclick="simulateWABot()" id="sim-btn"
+      <button type="button" id="sim-btn"
               class="flex items-center gap-2 px-4 py-2.5 bg-white/10 border border-white/20 text-slate-200 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors active:scale-95">
         <span class="material-symbols-outlined text-base">preview</span>Preview Response
       </button>
-      <button type="button" onclick="simulateAndSend()" id="sim-send-btn"
+      <button type="button" id="sim-send-btn"
               class="flex items-center gap-2 px-4 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors active:scale-95">
         <span class="material-symbols-outlined text-base">send</span>Send via WhatsApp
       </button>
@@ -671,73 +671,79 @@ function filterConversations(query) {
   });
 }
 
-async function _runSim(endpoint, extraFields) {
-  const name = document.getElementById('sim-name').value.trim() || 'Demo Guest';
-  const msg = document.getElementById('sim-msg').value.trim();
-  const loading = document.getElementById('sim-loading');
-  const error = document.getElementById('sim-error');
-  const chat = document.getElementById('sim-chat');
+// Bot simulator — wire up after DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+  const btnPreview  = document.getElementById('sim-btn');
+  const btnSend     = document.getElementById('sim-send-btn');
+  if (btnPreview)  btnPreview.addEventListener('click', function() { runSim('/api/simulate/json', {}); });
+  if (btnSend)     btnSend.addEventListener('click', function() {
+    const phone = (document.getElementById('sim-phone') || {}).value || '';
+    if (!phone.trim()) { showSimError('Please enter a phone number to send to'); return; }
+    runSim('/api/simulate/send', { to_phone: phone.trim() });
+  });
+});
 
-  if (!msg) {
-    error.textContent = '❌ Please enter a guest message';
-    error.style.display = 'block';
-    return;
-  }
+function showSimError(msg) {
+  var el = document.getElementById('sim-error');
+  if (!el) return;
+  el.textContent = '❌ ' + msg;
+  el.style.display = 'block';
+}
 
-  chat.style.display = 'none';
-  error.style.display = 'none';
-  loading.style.display = 'block';
-  document.getElementById('sim-btn').disabled = true;
-  document.getElementById('sim-send-btn').disabled = true;
+async function runSim(endpoint, extra) {
+  var nameEl    = document.getElementById('sim-name');
+  var msgEl     = document.getElementById('sim-msg');
+  var loadingEl = document.getElementById('sim-loading');
+  var errorEl   = document.getElementById('sim-error');
+  var chatEl    = document.getElementById('sim-chat');
+  var btnEl     = document.getElementById('sim-btn');
+  var sendEl    = document.getElementById('sim-send-btn');
 
-  const fd = new FormData();
-  fd.append('guest_name', name);
-  fd.append('message', msg);
-  fd.append('csrf_token', '{{ request.state.csrf_token }}');
-  for (const [k, v] of Object.entries(extraFields || {})) fd.append(k, v);
+  var name = nameEl ? nameEl.value.trim() || 'Demo Guest' : 'Demo Guest';
+  var msg  = msgEl  ? msgEl.value.trim() : '';
+
+  if (!msg) { showSimError('Please enter a guest message'); return; }
+
+  if (chatEl)    chatEl.style.display    = 'none';
+  if (errorEl)   errorEl.style.display   = 'none';
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (btnEl)     btnEl.disabled  = true;
+  if (sendEl)    sendEl.disabled = true;
 
   try {
-    const resp = await fetch(endpoint, { method: 'POST', body: fd });
-    const data = await resp.json();
-    if (!data.ok) throw new Error(data.error || 'Failed');
+    var fd = new FormData();
+    fd.append('guest_name', name);
+    fd.append('message', msg);
+    fd.append('csrf_token', '{{ request.state.csrf_token }}');
+    Object.keys(extra || {}).forEach(function(k) { fd.append(k, extra[k]); });
 
-    document.getElementById('sim-out-name').textContent = name;
-    document.getElementById('sim-out-guest').textContent = msg;
-    document.getElementById('sim-out-ai').textContent = data.draft;
-    document.getElementById('sim-type-badge').textContent = data.msg_type;
-    document.getElementById('sim-conf-badge').textContent = data.confidence + '% confident';
-    if (data.message) {
-      document.getElementById('sim-send-status').textContent = data.message;
-      document.getElementById('sim-send-status').style.display = 'block';
-    } else {
-      document.getElementById('sim-send-status').style.display = 'none';
+    var resp = await fetch(endpoint, { method: 'POST', body: fd });
+    var data = await resp.json();
+
+    if (!data.ok) throw new Error(data.error || 'Request failed');
+
+    var set = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
+    set('sim-out-name', name);
+    set('sim-out-guest', msg);
+    set('sim-out-ai', data.draft || '');
+    set('sim-type-badge', data.msg_type || '');
+    set('sim-conf-badge', (data.confidence || 0) + '% confident');
+
+    var statusEl = document.getElementById('sim-send-status');
+    if (statusEl) {
+      statusEl.textContent = data.message || '';
+      statusEl.style.display = data.message ? 'block' : 'none';
     }
 
-    loading.style.display = 'none';
-    chat.style.display = 'block';
-  } catch (e) {
-    loading.style.display = 'none';
-    error.textContent = '❌ ' + e.message;
-    error.style.display = 'block';
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (chatEl)    chatEl.style.display    = 'block';
+  } catch(e) {
+    if (loadingEl) loadingEl.style.display = 'none';
+    showSimError(e.message);
   } finally {
-    document.getElementById('sim-btn').disabled = false;
-    document.getElementById('sim-send-btn').disabled = false;
+    if (btnEl)  btnEl.disabled  = false;
+    if (sendEl) sendEl.disabled = false;
   }
-}
-
-function simulateWABot() {
-  return _runSim('/api/simulate/json', {});
-}
-
-function simulateAndSend() {
-  const phone = document.getElementById('sim-phone').value.trim();
-  if (!phone) {
-    const error = document.getElementById('sim-error');
-    error.textContent = '❌ Please enter a phone number to send to';
-    error.style.display = 'block';
-    return;
-  }
-  return _runSim('/api/simulate/send', { to_phone: phone });
 }
 </script>
 
