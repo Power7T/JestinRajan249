@@ -481,6 +481,7 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
   </div>
 
   <!-- Bot Test Simulator -->
+  {% set wa_ready = cfg and cfg.whatsapp_phone_id and cfg.whatsapp_token_enc %}
   <div class="glass-card rounded-3xl p-6 mb-8 border border-[#5B8DEF]/15">
     <div class="flex items-center gap-3 mb-2">
       <div class="w-10 h-10 rounded-xl bg-[#5B8DEF]/10 flex items-center justify-center flex-shrink-0">
@@ -491,55 +492,58 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
         <h2 class="text-xl font-bold text-white">Test Your WhatsApp Bot</h2>
       </div>
     </div>
-    <p class="text-slate-400 text-sm mb-6">Enter a phone number and a guest message — the bot will generate a real AI response and send it to that number via WhatsApp.</p>
+
+    {% if not wa_ready %}
+    <div class="mt-3 mb-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 flex items-start gap-3">
+      <span class="material-symbols-outlined text-amber-300 mt-0.5 text-base">warning</span>
+      <div>
+        <p class="text-sm font-semibold text-amber-200">WhatsApp not configured</p>
+        <p class="text-xs text-amber-300/80 mt-0.5">Add your Phone ID and Access Token above, save, then come back to test.</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <p class="text-slate-400 text-sm mb-5">Enter a phone number and a message as if from a guest — the AI generates a real response and sends it via WhatsApp.</p>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
       <div>
-        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Send To (Phone)</label>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Send To (Phone) <span class="text-red-400">*</span></label>
         <input type="text" id="sim-phone" placeholder="+1 415 555 0100"
                class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
-        <p class="mt-1 text-xs text-slate-500">The number that receives the bot reply</p>
+        <p class="mt-1 text-xs text-slate-500">Number that receives the AI reply</p>
       </div>
       <div>
         <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Guest Name</label>
-        <input type="text" id="sim-name" value="Alex" placeholder="Spoofed guest name"
+        <input type="text" id="sim-name" value="Alex" placeholder="Demo guest"
                class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Guest Message</label>
-        <input type="text" id="sim-msg" value="Hi, what time is check-in?" placeholder="Message the bot should respond to"
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Guest Message <span class="text-red-400">*</span></label>
+        <input type="text" id="sim-msg" value="Hi, what time is check-in?" placeholder="What the guest asks…"
                class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
       </div>
     </div>
 
-    <div class="flex gap-3 mb-4 flex-wrap">
-      <button type="button" id="sim-btn"
-              class="flex items-center gap-2 px-4 py-2.5 bg-white/10 border border-white/20 text-slate-200 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors active:scale-95">
-        <span class="material-symbols-outlined text-base">preview</span>Preview Response
+    <div class="flex gap-3 mb-5 flex-wrap">
+      <button type="button" onclick="botPreview()"
+              class="flex items-center gap-2 px-4 py-2.5 bg-white/10 border border-white/20 text-slate-200 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors">
+        <span class="material-symbols-outlined text-base">preview</span>Preview Only
       </button>
-      <button type="button" id="sim-send-btn"
-              class="flex items-center gap-2 px-4 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors active:scale-95">
+      <button type="button" onclick="botSend()"
+              class="flex items-center gap-2 px-4 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
         <span class="material-symbols-outlined text-base">send</span>Send via WhatsApp
       </button>
     </div>
 
-    <!-- Loading -->
-    <div id="sim-loading" style="display:none" class="text-center py-6 text-slate-400 text-sm">
-      <span class="material-symbols-outlined animate-spin inline-block mr-2">progress_activity</span>Generating AI response…
-    </div>
-    <!-- Error -->
-    <div id="sim-error" style="display:none" class="rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300"></div>
+    <div id="sim-status" style="display:none;margin-bottom:12px" class="rounded-2xl px-4 py-3 text-sm font-semibold"></div>
 
-    <!-- Chat Output -->
-    <div id="sim-chat" style="display:none" class="mt-4 space-y-3">
-      <!-- Guest bubble -->
+    <div id="sim-chat" style="display:none" class="space-y-3">
       <div class="flex justify-start">
-        <div class="max-w-[75%] rounded-2xl rounded-bl-sm bg-white/7 border border-white/10 px-4 py-3">
-          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">👤 <span id="sim-out-name">Alex</span></p>
+        <div class="max-w-[75%] rounded-2xl rounded-bl-sm bg-white/5 border border-white/10 px-4 py-3">
+          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">👤 <span id="sim-out-name"></span></p>
           <p class="text-sm text-slate-200 leading-relaxed" id="sim-out-guest"></p>
         </div>
       </div>
-      <!-- AI bubble -->
       <div class="flex justify-end">
         <div class="max-w-[75%] rounded-2xl rounded-br-sm bg-[#5B8DEF]/10 border border-[#5B8DEF]/30 px-4 py-3">
           <div class="flex items-center gap-2 mb-2 flex-wrap">
@@ -548,16 +552,70 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
             <span id="sim-conf-badge" class="text-[0.65rem] font-bold px-2 py-0.5 rounded-md bg-emerald-400/15 text-emerald-300"></span>
           </div>
           <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap" id="sim-out-ai"></p>
-          <div class="mt-3 pt-3 border-t border-[#5B8DEF]/20 space-y-2">
-            <div id="sim-send-status" style="display:none" class="text-xs font-semibold text-emerald-300"></div>
-            <a href="/dashboard" class="text-xs text-[#aec6ff] font-semibold hover:underline flex items-center gap-1">
-              <span class="material-symbols-outlined text-sm">open_in_new</span>View draft on Dashboard
-            </a>
-          </div>
+          <a href="/dashboard" class="mt-3 pt-3 border-t border-[#5B8DEF]/20 text-xs text-[#aec6ff] font-semibold hover:underline flex items-center gap-1" style="display:block">
+            <span class="material-symbols-outlined text-sm">open_in_new</span>View on Dashboard
+          </a>
         </div>
       </div>
     </div>
   </div>
+
+  <script nonce="{{ request.state.csp_nonce }}">
+  var _csrf = {{ request.state.csrf_token | tojson }};
+
+  function simStatus(msg, isError) {
+    var el = document.getElementById('sim-status');
+    if (!el) { alert(msg); return; }
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.style.background = isError ? 'rgba(239,68,68,0.15)' : 'rgba(74,222,128,0.15)';
+    el.style.color = isError ? '#fca5a5' : '#86efac';
+    el.style.border = isError ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(74,222,128,0.3)';
+  }
+
+  async function _doSim(endpoint, extra) {
+    var phone = (document.getElementById('sim-phone') || {}).value || '';
+    var name  = (document.getElementById('sim-name')  || {}).value || 'Alex';
+    var msg   = (document.getElementById('sim-msg')   || {}).value || '';
+    if (!msg.trim()) { simStatus('Please enter a guest message.', true); return; }
+    if (endpoint.indexOf('send') > -1 && !phone.trim()) { simStatus('Please enter a phone number to send to.', true); return; }
+
+    var chatEl = document.getElementById('sim-chat');
+    if (chatEl) chatEl.style.display = 'none';
+    simStatus('⏳ Generating AI response…', false);
+
+    try {
+      var fd = new FormData();
+      fd.append('guest_name', name.trim() || 'Alex');
+      fd.append('message', msg.trim());
+      fd.append('csrf_token', _csrf);
+      if (extra && extra.to_phone) fd.append('to_phone', extra.to_phone);
+
+      var resp = await fetch(endpoint, { method: 'POST', body: fd });
+      var data = await resp.json();
+
+      if (!data.ok) {
+        simStatus('❌ ' + (data.error || data.detail || 'Unknown error'), true);
+        return;
+      }
+
+      var set = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+      set('sim-out-name', name);
+      set('sim-out-guest', msg);
+      set('sim-out-ai', data.draft || '');
+      set('sim-type-badge', data.msg_type || '');
+      set('sim-conf-badge', (data.confidence || 0) + '% confident');
+
+      if (chatEl) chatEl.style.display = 'block';
+      simStatus(data.message || '✅ Response generated', false);
+    } catch(e) {
+      simStatus('❌ Request failed: ' + e.message, true);
+    }
+  }
+
+  function botPreview() { _doSim('/api/simulate/json', {}); }
+  function botSend()    { _doSim('/api/simulate/send', { to_phone: (document.getElementById('sim-phone') || {}).value || '' }); }
+  </script>
 
   <!-- Quick Docs Links -->
   <div class="glass-card rounded-3xl p-6 border border-white/5">
@@ -671,80 +729,6 @@ function filterConversations(query) {
   });
 }
 
-// Bot simulator — wire up after DOM ready
-document.addEventListener('DOMContentLoaded', function() {
-  const btnPreview  = document.getElementById('sim-btn');
-  const btnSend     = document.getElementById('sim-send-btn');
-  if (btnPreview)  btnPreview.addEventListener('click', function() { runSim('/api/simulate/json', {}); });
-  if (btnSend)     btnSend.addEventListener('click', function() {
-    const phone = (document.getElementById('sim-phone') || {}).value || '';
-    if (!phone.trim()) { showSimError('Please enter a phone number to send to'); return; }
-    runSim('/api/simulate/send', { to_phone: phone.trim() });
-  });
-});
-
-function showSimError(msg) {
-  var el = document.getElementById('sim-error');
-  if (!el) return;
-  el.textContent = '❌ ' + msg;
-  el.style.display = 'block';
-}
-
-async function runSim(endpoint, extra) {
-  var nameEl    = document.getElementById('sim-name');
-  var msgEl     = document.getElementById('sim-msg');
-  var loadingEl = document.getElementById('sim-loading');
-  var errorEl   = document.getElementById('sim-error');
-  var chatEl    = document.getElementById('sim-chat');
-  var btnEl     = document.getElementById('sim-btn');
-  var sendEl    = document.getElementById('sim-send-btn');
-
-  var name = nameEl ? nameEl.value.trim() || 'Demo Guest' : 'Demo Guest';
-  var msg  = msgEl  ? msgEl.value.trim() : '';
-
-  if (!msg) { showSimError('Please enter a guest message'); return; }
-
-  if (chatEl)    chatEl.style.display    = 'none';
-  if (errorEl)   errorEl.style.display   = 'none';
-  if (loadingEl) loadingEl.style.display = 'block';
-  if (btnEl)     btnEl.disabled  = true;
-  if (sendEl)    sendEl.disabled = true;
-
-  try {
-    var fd = new FormData();
-    fd.append('guest_name', name);
-    fd.append('message', msg);
-    fd.append('csrf_token', '{{ request.state.csrf_token }}');
-    Object.keys(extra || {}).forEach(function(k) { fd.append(k, extra[k]); });
-
-    var resp = await fetch(endpoint, { method: 'POST', body: fd });
-    var data = await resp.json();
-
-    if (!data.ok) throw new Error(data.error || 'Request failed');
-
-    var set = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
-    set('sim-out-name', name);
-    set('sim-out-guest', msg);
-    set('sim-out-ai', data.draft || '');
-    set('sim-type-badge', data.msg_type || '');
-    set('sim-conf-badge', (data.confidence || 0) + '% confident');
-
-    var statusEl = document.getElementById('sim-send-status');
-    if (statusEl) {
-      statusEl.textContent = data.message || '';
-      statusEl.style.display = data.message ? 'block' : 'none';
-    }
-
-    if (loadingEl) loadingEl.style.display = 'none';
-    if (chatEl)    chatEl.style.display    = 'block';
-  } catch(e) {
-    if (loadingEl) loadingEl.style.display = 'none';
-    showSimError(e.message);
-  } finally {
-    if (btnEl)  btnEl.disabled  = false;
-    if (sendEl) sendEl.disabled = false;
-  }
-}
 </script>
 
 {%- endblock %}
