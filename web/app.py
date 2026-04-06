@@ -7151,6 +7151,77 @@ def simulate_guest(request: Request,
     return RedirectResponse("/dashboard", status_code=302)
 
 
+@app.post("/api/simulate/json")
+async def simulate_guest_json(
+    request: Request,
+    guest_name: str = Form("Demo Guest"),
+    message: str = Form("Hi, what time is check-in?"),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Simulate guest message → return AI draft as JSON (for settings widget)."""
+    tenant_id = get_current_tenant_id(request)
+    validate_csrf(request, csrf_token)
+    rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
+    cfg = _get_or_create_config(tenant_id, db)
+
+    guest_name = (guest_name or "Demo Guest").strip()[:128]
+    message = (message or "Hi, what time is check-in?").strip()[:2000]
+
+    try:
+        msg_type, confidence, _ = classify_message_with_confidence(message)
+        property_context = build_property_context(cfg)
+        draft_text = generate_draft(
+            guest_name,
+            message,
+            msg_type,
+            property_context=property_context,
+            tenant_id=tenant_id,
+        )
+    except Exception as e:
+        logger.error(f"Draft generation error: {e}")
+        return JSONResponse(
+            {"ok": False, "error": f"Failed to generate response: {str(e)}"},
+            status_code=500,
+        )
+
+    try:
+        draft_id = make_draft_id("simulate")
+        db.add(
+            Draft(
+                id=draft_id,
+                tenant_id=tenant_id,
+                source="simulate",
+                guest_name=guest_name,
+                message=message,
+                reply_to=None,
+                msg_type=msg_type,
+                vendor_type=None,
+                draft=draft_text,
+                status="pending",
+                confidence=confidence,
+            )
+        )
+        db.commit()
+    except Exception as e:
+        logger.error(f"Draft save error: {e}")
+        db.rollback()
+        return JSONResponse(
+            {"ok": False, "error": f"Failed to save draft: {str(e)}"},
+            status_code=500,
+        )
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "draft": draft_text,
+            "msg_type": msg_type,
+            "confidence": int(round(confidence * 100)),
+            "draft_id": draft_id,
+        }
+    )
+
+
 # ---------------------------------------------------------------------------
 # Team member CRUD (quick-add / deactivate)
 # ---------------------------------------------------------------------------

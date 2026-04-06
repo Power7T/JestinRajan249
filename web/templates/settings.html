@@ -307,11 +307,24 @@
 
 
 
+<!-- Tab Navigation -->
+<style>
+  [data-section]:not([data-section="general"]) {
+    display: none !important;
+  }
+</style>
+<div style="display:flex; gap:24px; margin-bottom:32px; border-bottom:1px solid rgba(255,255,255,0.08); position:sticky; top:0; background:rgba(8,9,15,0.95); backdrop-filter:blur(8px); padding:16px 0; z-index:10">
+  <button type="button" class="settings-tab active" data-tab="general" onclick="switchTab('general')" style="color:#aec6ff; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid #5B8DEF; transition:all 0.2s">General</button>
+  <button type="button" class="settings-tab" data-tab="channels" onclick="switchTab('channels')" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Channels</button>
+  <button type="button" class="settings-tab" data-tab="email" onclick="switchTab('email')" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Email</button>
+  <button type="button" class="settings-tab" data-tab="automation" onclick="switchTab('automation')" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Automation</button>
+</div>
+
 <form method="post" action="/settings">
   <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
 
   <!-- ── Property ─────────────────────────────────────────────────── -->
-  <div class="form-section">
+  <div class="form-section" data-section="general">
     <h2>Property</h2>
     <label>Property name(s)</label>
     <input type="text" name="property_names" value="{{ cfg.property_names or '' }}" placeholder="Beach House, City Flat">
@@ -411,7 +424,7 @@
   </div>
 
   <!-- ── Guest Messaging ────────────────────────────────────────────────────── -->
-  <div class="form-section">
+  <div class="form-section" data-section="general">
     <h2>Guest messaging</h2>
     <label>Custom welcome message for guest check-ins</label>
     <textarea name="guest_welcome_template" placeholder="Hi {guest_name}! Welcome to {property_name}. Your room is {room}. Check-in is now available. Let me know if you need anything!">{{ cfg.guest_welcome_template or '' }}</textarea>
@@ -419,7 +432,7 @@
   </div>
 
   <!-- ── Calendar ────────────────────────────────────────────────────── -->
-  <div class="form-section">
+  <div class="form-section" data-section="general">
     <h2>Calendar & imports</h2>
     <label>Airbnb iCal URL(s)</label>
     <textarea name="ical_urls" placeholder="https://www.airbnb.com/calendar/ical/...ics&#10;One per line or comma-separated">{{ cfg.ical_urls or '' }}</textarea>
@@ -427,7 +440,7 @@
   </div>
 
   <!-- ── Email ────────────────────────────────────────────────────── -->
-  <div class="form-section">
+  <div class="form-section" data-section="email">
     <h2>Email intake</h2>
     <label>How HostAI should receive guest emails</label>
     <select name="email_ingest_mode">
@@ -482,7 +495,7 @@
   <input type="hidden" name="sms_mode" value="twilio">
 
   <!-- WhatsApp: Meta Cloud API -->
-  <div style="background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); border-radius: 24px; padding: 24px; margin-bottom: 32px; border: 1px solid rgba(93,141,241,0.15)">
+  <div data-section="channels" style="background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); border-radius: 24px; padding: 24px; margin-bottom: 32px; border: 1px solid rgba(93,141,241,0.15)">
     <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; line-height: 1.5">
       <div>
         <p style="font-size:0.65rem;font-weight:700;color:#aec6ff;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px">Setup</p>
@@ -564,20 +577,65 @@
       </div>
     </div>
 
-    <!-- Test Message -->
+    <!-- Test Your WhatsApp Bot -->
     <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08)">
-      <p style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:12px">Send Test Message</p>
-      <p style="font-size:0.875rem;color:#b4c9ff;margin-bottom:12px">Verify WhatsApp is working by sending a test message to any number:</p>
-      <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px">
-        <input type="text" id="wa-test-phone" placeholder="+1 415 555 0100" style="padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        <button type="button" onclick="sendTestWA()" style="padding:8px 16px;background:rgba(93,141,241,0.3);border:1px solid rgba(93,141,241,0.5);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Send Test</button>
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px">
+        <span style="font-size:1.5rem">🤖</span>
+        <div>
+          <p style="font-size:0.75rem;font-weight:700;color:#aec6ff;text-transform:uppercase;letter-spacing:0.05em;margin:0">Test Your WhatsApp Bot</p>
+          <p style="font-size:0.875rem;color:#9ca3af;margin:4px 0 0 0">Simulate a guest message to see how your AI responds</p>
+        </div>
       </div>
-      <div id="wa-test-result" style="display:none;margin-top:12px;padding:12px;border-radius:8px;font-size:0.875rem;font-weight:600"></div>
+
+      <!-- Bot Test Inputs -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; margin-bottom:20px">
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Guest Name</label>
+          <input type="text" id="sim-name" value="Alex" placeholder="Guest name" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        </div>
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Message</label>
+          <input type="text" id="sim-msg" value="Hi, what time is check-in?" placeholder="Guest message" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        </div>
+        <button type="button" onclick="simulateWABot()" style="align-self:flex-end; padding:8px 16px;background:rgba(93,141,241,0.3);border:1px solid rgba(93,141,241,0.5);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Simulate ▶</button>
+      </div>
+
+      <!-- Chat Bubbles -->
+      <div id="wa-bot-chat" style="display:none">
+        <!-- Guest Bubble -->
+        <div style="margin-bottom:12px; display:flex; justify-content:flex-start">
+          <div style="max-width:70%; padding:12px 16px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:16px; border-bottom-left-radius:4px">
+            <p style="font-size:0.75rem; font-weight:700; color:#9ca3af; margin:0 0 6px 0; text-transform:uppercase">👤 <span id="chat-guest-name">Alex</span></p>
+            <p style="margin:0; color:#e3e1eb; font-size:0.875rem; line-height:1.4" id="chat-guest-msg"></p>
+          </div>
+        </div>
+
+        <!-- AI Bubble -->
+        <div style="margin-bottom:12px; display:flex; justify-content:flex-end">
+          <div style="max-width:70%; padding:12px 16px; background:rgba(93,141,241,0.15); border:1px solid rgba(93,141,241,0.3); border-radius:16px; border-bottom-right-radius:4px">
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px">
+              <span style="font-size:0.75rem; font-weight:700; color:#aec6ff; text-transform:uppercase">🤖 AI Host</span>
+              <span style="font-size:0.7rem; font-weight:700; color:#fbbf24; background:rgba(251,191,36,0.15); padding:2px 6px; border-radius:4px; text-transform:uppercase" id="chat-type"></span>
+              <span style="font-size:0.7rem; font-weight:700; color:#4ade80; background:rgba(74,222,128,0.15); padding:2px 6px; border-radius:4px" id="chat-confidence"></span>
+            </div>
+            <p style="margin:0; color:#e3e1eb; font-size:0.875rem; line-height:1.4; white-space:pre-wrap" id="chat-ai-msg"></p>
+            <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(93,141,241,0.2)">
+              <a href="/dashboard" style="font-size:0.75rem; color:#aec6ff; text-decoration:none; font-weight:600">View on Dashboard ↗</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading / Error State -->
+      <div id="wa-bot-loading" style="display:none; text-align:center; padding:20px">
+        <p style="color:#9ca3af; font-size:0.875rem">⏳ Generating response...</p>
+      </div>
+      <div id="wa-bot-error" style="display:none; padding:12px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); border-radius:8px; color:#fca5a5; font-size:0.875rem"></div>
     </div>
   </div>
 
   <!-- ── SMS / Twilio ─────────────────────────────────────────────── -->
-  <div style="background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); border-radius: 24px; padding: 24px; margin-bottom: 32px; border: 1px solid rgba(93,141,241,0.15)">
+  <div data-section="channels" style="background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); border-radius: 24px; padding: 24px; margin-bottom: 32px; border: 1px solid rgba(93,141,241,0.15)">
     <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
       <div>
         <p style="font-size:0.65rem;font-weight:700;color:#aec6ff;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px">Setup</p>
@@ -769,7 +827,7 @@
   <button type="submit" class="btn btn-primary">Save settings</button>
 </form>
 
-<div class="form-section" id="workflow-automation" style="margin-top:2.5rem">
+<div class="form-section" id="workflow-automation" data-section="automation" style="margin-top:2.5rem">
   <h2>Automation Rules</h2>
   <p class="help-text">Use this to auto-send routine replies while keeping risky conversations in review.</p>
   {% if automation_rules %}
@@ -1475,6 +1533,81 @@ async function sendTestSMS() {
     } catch (error) {
         result.textContent = '❌ Error: ' + error.message;
         result.style.color = '#f87171';
+    }
+}
+
+// Tab switching
+function switchTab(tabName) {
+    // Hide all sections
+    document.querySelectorAll('[data-section]').forEach(el => {
+        el.style.display = 'none';
+    });
+
+    // Show selected section
+    document.querySelectorAll(`[data-section="${tabName}"]`).forEach(el => {
+        el.style.display = 'block';
+    });
+
+    // Update tab styles
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        if (tab.dataset.tab === tabName) {
+            tab.style.color = '#aec6ff';
+            tab.style.borderBottomColor = '#5B8DEF';
+        } else {
+            tab.style.color = '#9ca3af';
+            tab.style.borderBottomColor = 'transparent';
+        }
+    });
+}
+
+// WhatsApp Bot Simulator
+async function simulateWABot() {
+    const guestName = document.getElementById('sim-name').value.trim() || 'Demo Guest';
+    const message = document.getElementById('sim-msg').value.trim();
+    const chatDiv = document.getElementById('wa-bot-chat');
+    const loadingDiv = document.getElementById('wa-bot-loading');
+    const errorDiv = document.getElementById('wa-bot-error');
+
+    // Hide previous results
+    chatDiv.style.display = 'none';
+    errorDiv.style.display = 'none';
+    loadingDiv.style.display = 'block';
+
+    if (!message) {
+        loadingDiv.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = '❌ Please enter a message';
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append('guest_name', guestName);
+    fd.append('message', message);
+    fd.append('csrf_token', '{{ request.state.csrf_token }}');
+
+    try {
+        const resp = await fetch('/api/simulate/json', {method: 'POST', body: fd});
+        const data = await resp.json();
+
+        if (!data.ok) {
+            throw new Error(data.error || 'Simulation failed');
+        }
+
+        // Populate chat bubbles
+        document.getElementById('chat-guest-name').textContent = guestName;
+        document.getElementById('chat-guest-msg').textContent = message;
+        document.getElementById('chat-ai-msg').textContent = data.draft;
+        document.getElementById('chat-type').textContent = data.msg_type.toUpperCase();
+        document.getElementById('chat-confidence').textContent = data.confidence + '% sure';
+
+        // Show chat
+        loadingDiv.style.display = 'none';
+        chatDiv.style.display = 'block';
+
+    } catch (error) {
+        loadingDiv.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = '❌ ' + error.message;
     }
 }
 </script>
