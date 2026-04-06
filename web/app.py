@@ -3695,6 +3695,86 @@ async def settings_save(
     })
 
 
+@app.post("/api/test-whatsapp")
+async def test_whatsapp(
+    request: Request,
+    to_phone: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Send a test WhatsApp message to verify configuration."""
+    tenant_id = get_current_tenant_id(request)
+    cfg = _get_or_create_config(tenant_id, db)
+
+    if not cfg.whatsapp_phone_id or not cfg.whatsapp_token_enc:
+        return JSONResponse(
+            {"ok": False, "error": "WhatsApp credentials not configured yet."},
+            status_code=400
+        )
+
+    try:
+        token = decrypt(cfg.whatsapp_token_enc)
+        to_phone_normalized = to_phone.replace("+", "").strip()
+        ok = send_whatsapp(
+            cfg.whatsapp_phone_id,
+            token,
+            to_phone_normalized,
+            "👋 This is a test message from your HostAI account. If you see this, WhatsApp is working!"
+        )
+        if ok:
+            return JSONResponse({"ok": True, "message": f"✅ Test message sent to {to_phone}"})
+        return JSONResponse(
+            {"ok": False, "error": f"❌ Failed to send. Check your credentials and try again."},
+            status_code=400
+        )
+    except Exception as e:
+        logger.error(f"WhatsApp test error: {e}")
+        return JSONResponse(
+            {"ok": False, "error": f"❌ Error: {str(e)}"},
+            status_code=500
+        )
+
+
+@app.post("/api/test-sms")
+async def test_sms(
+    request: Request,
+    to_phone: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Send a test SMS to verify configuration."""
+    tenant_id = get_current_tenant_id(request)
+    cfg = _get_or_create_config(tenant_id, db)
+
+    if not cfg.twilio_account_sid or not cfg.twilio_auth_token_enc or not cfg.twilio_from_number:
+        return JSONResponse(
+            {"ok": False, "error": "SMS credentials not fully configured yet."},
+            status_code=400
+        )
+
+    try:
+        auth_token = decrypt(cfg.twilio_auth_token_enc)
+        ok = send_sms(
+            cfg.twilio_account_sid,
+            auth_token,
+            cfg.twilio_from_number,
+            to_phone.strip(),
+            "👋 This is a test SMS from your HostAI account. If you see this, SMS is working!"
+        )
+        if ok:
+            return JSONResponse({"ok": True, "message": f"✅ Test SMS sent to {to_phone}"})
+        return JSONResponse(
+            {"ok": False, "error": f"❌ Failed to send. Check your Twilio credentials and try again."},
+            status_code=400
+        )
+    except Exception as e:
+        logger.error(f"SMS test error: {e}")
+        return JSONResponse(
+            {"ok": False, "error": f"❌ Error: {str(e)}"},
+            status_code=500
+        )
+
+
 @app.post("/voice-calls/settings", response_class=HTMLResponse)
 async def voice_ai_settings_save(
     request: Request,
