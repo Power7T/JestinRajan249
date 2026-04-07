@@ -751,30 +751,30 @@
     {% if tenant.voice_enabled %}
 
     <!-- STEP 2: Twilio Account SID -->
-    <div style="background:#f9f9f9;padding:1rem;border-radius:8px;margin-top:1rem">
+    <div style="background:rgba(26,27,34,0.8);border:1px solid rgba(174,198,255,0.08);padding:1rem;border-radius:8px;margin-top:1rem">
       <label style="font-weight:600">📌 Step 1: Twilio Account SID</label>
       <input type="text" name="voice_twilio_account_sid" id="twilio_sid"
              value="{{ cfg.voice_twilio_account_sid or '' }}"
              placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
              style="font-family:monospace;margin-top:0.5rem">
-      <small style="color:#666;display:block;margin-top:0.5rem">
+      <small style="color:#8d909e;display:block;margin-top:0.5rem">
         Find it in <a href="https://console.twilio.com" target="_blank" style="color:#5B8DEF;text-decoration:underline">Twilio Console</a> → Account → API Credentials
       </small>
     </div>
 
     <!-- STEP 3: Twilio Auth Token -->
-    <div style="background:#f9f9f9;padding:1rem;border-radius:8px;margin-top:1rem">
+    <div style="background:rgba(26,27,34,0.8);border:1px solid rgba(174,198,255,0.08);padding:1rem;border-radius:8px;margin-top:1rem">
       <label style="font-weight:600">🔐 Step 2: Twilio Auth Token</label>
       <input type="password" name="voice_twilio_auth_token" id="twilio_token"
              placeholder="••••••••••••••••••••••••••••••••••"
              style="font-family:monospace;margin-top:0.5rem">
-      <small style="color:#666;display:block;margin-top:0.5rem">
+      <small style="color:#8d909e;display:block;margin-top:0.5rem">
         Same page, click "Show" next to Auth Token to reveal it
       </small>
     </div>
 
     <!-- STEP 4: Select Phone Number -->
-    <div style="background:#f9f9f9;padding:1rem;border-radius:8px;margin-top:1rem">
+    <div style="background:rgba(26,27,34,0.8);border:1px solid rgba(174,198,255,0.08);padding:1rem;border-radius:8px;margin-top:1rem">
       <label style="font-weight:600">📱 Step 3: Twilio Phone Number</label>
       <button type="button" class="btn btn-outline" onclick="fetchTwilioPhoneNumbers()"
               style="width:100%;margin-top:0.5rem;margin-bottom:0.5rem">
@@ -788,7 +788,7 @@
     </div>
 
     <!-- STEP 5: Voice Selection -->
-    <div style="background:#f9f9f9;padding:1rem;border-radius:8px;margin-top:1rem">
+    <div style="background:rgba(26,27,34,0.8);border:1px solid rgba(174,198,255,0.08);padding:1rem;border-radius:8px;margin-top:1rem">
       <label style="font-weight:600">🎙️ Step 4: Choose Voice</label>
       <select name="voice_elevenlabs_voice_id" style="margin-top:0.5rem">
         <option value="EXAVITQu4vr4xnSDxMaL" {% if (cfg.voice_elevenlabs_voice_id or 'EXAVITQu4vr4xnSDxMaL') == 'EXAVITQu4vr4xnSDxMaL' %}selected{% endif %}>Rachel — Female (Friendly)</option>
@@ -799,7 +799,7 @@
     </div>
 
     <!-- STEP 6: Call Forwarding (Optional) -->
-    <div style="background:#f9f9f9;padding:1rem;border-radius:8px;margin-top:1rem">
+    <div style="background:rgba(26,27,34,0.8);border:1px solid rgba(174,198,255,0.08);padding:1rem;border-radius:8px;margin-top:1rem">
       <label style="font-weight:600">📞 Step 5: Call Forwarding (Optional)</label>
       <div style="margin-top:0.75rem">
         <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:normal">
@@ -815,7 +815,7 @@
                value="{{ cfg.voice_forward_number or '' }}"
                placeholder="+1 (555) 123-4567"
                style="margin-top:0.3rem">
-        <small style="color:#666;display:block;margin-top:0.3rem">
+        <small style="color:#8d909e;display:block;margin-top:0.3rem">
           When AI can't help with a question, it will transfer the call to this number. Include country code.
         </small>
       </div>
