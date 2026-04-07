@@ -1,402 +1,182 @@
 <!DOCTYPE html>
 
-<html class="light" lang="en"><head>
+<html class="dark" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Host Assistant - Guest Check-in Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
       tailwind.config = {
         darkMode: "class",
         theme: {
           extend: {
-            "colors": {
-                    "surface-container-highest": "#e0e3e5",
-                    "on-surface-variant": "#414753",
-                    "secondary-container": "#d5e3fc",
-                    "surface": "#f7f9fb",
-                    "surface-dim": "#d8dadc",
-                    "on-tertiary-fixed": "#341100",
-                    "on-secondary": "#ffffff",
-                    "tertiary-fixed": "#ffdbcb",
-                    "outline-variant": "#c1c6d5",
-                    "surface-tint": "#005cba",
-                    "on-secondary-container": "#57657a",
-                    "inverse-primary": "#aac7ff",
-                    "background": "#f7f9fb",
-                    "secondary": "#515f74",
-                    "surface-variant": "#e0e3e5",
-                    "surface-container-low": "#f2f4f6",
-                    "on-tertiary": "#ffffff",
-                    "surface-container-high": "#e6e8ea",
-                    "surface-container-lowest": "#ffffff",
-                    "on-background": "#191c1e",
-                    "error-container": "#ffdad6",
-                    "on-error": "#ffffff",
-                    "surface-container": "#eceef0",
-                    "primary-fixed": "#d7e3ff",
-                    "primary-container": "#0066cc",
-                    "on-secondary-fixed": "#0d1c2e",
-                    "outline": "#727784",
-                    "tertiary-fixed-dim": "#ffb692",
-                    "primary-fixed-dim": "#aac7ff",
-                    "on-primary-fixed-variant": "#00458e",
-                    "error": "#ba1a1a",
-                    "on-tertiary-container": "#ffe3d6",
-                    "secondary-fixed-dim": "#b9c7df",
-                    "on-primary-container": "#dfe8ff",
-                    "tertiary": "#883700",
-                    "secondary-fixed": "#d5e3fc",
-                    "on-primary-fixed": "#001b3e",
-                    "on-tertiary-fixed-variant": "#793000",
-                    "on-surface": "#191c1e",
-                    "inverse-on-surface": "#eff1f3",
-                    "tertiary-container": "#af4900",
-                    "inverse-surface": "#2d3133",
-                    "surface-bright": "#f7f9fb",
-                    "on-error-container": "#93000a",
-                    "on-secondary-fixed-variant": "#3a485b",
-                    "primary": "#004e9f",
-                    "on-primary": "#ffffff"
+            colors: {
+              "surface-container-highest": "#34343b",
+              "surface-tint": "#aec6ff",
+              "secondary-container": "#00e3fd",
+              "on-tertiary-container": "#3e2400",
+              "background": "#08090F",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-tertiary-fixed": "#2a1700",
+              "surface-container-low": "#1a1b22",
+              "tertiary-fixed": "#ffddb8",
+              "outline": "#8d909e",
+              "on-secondary-container": "#00616d",
+              "error": "#ffb4ab",
+              "surface-container-lowest": "#0d0e14",
+              "primary-fixed-dim": "#aec6ff",
+              "surface-variant": "#34343b",
+              "secondary-fixed-dim": "#00daf3",
+              "primary-fixed": "#d8e2ff",
+              "on-error": "#690005",
+              "on-surface-variant": "#c3c6d4",
+              "tertiary-fixed-dim": "#ffb960",
+              "secondary-fixed": "#9cf0ff",
+              "on-background": "#e3e1eb",
+              "tertiary": "#ffb960",
+              "on-primary-fixed": "#001a43",
+              "secondary": "#bdf4ff",
+              "error-container": "#93000a",
+              "surface-container": "#1e1f26",
+              "on-surface": "#e3e1eb",
+              "tertiary-container": "#ca8103",
+              "outline-variant": "#424752",
+              "on-tertiary": "#472a00",
+              "on-error-container": "#ffdad6",
+              "inverse-surface": "#e3e1eb",
+              "surface-bright": "#383940",
+              "primary-container": "#5d8ef1",
+              "on-primary-fixed-variant": "#004397",
+              "on-primary-container": "#00275e",
+              "primary": "#aec6ff",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-secondary-fixed": "#001f24",
+              "on-primary": "#002e6b",
+              "surface-dim": "#08090F",
+              "on-secondary": "#00363d",
+              "inverse-primary": "#1e5bba",
+              "surface": "#08090F",
+              "surface-container-high": "#292930",
+              "inverse-on-surface": "#2f3037"
             },
-            "borderRadius": {
-                    "DEFAULT": "0.125rem",
-                    "lg": "0.25rem",
-                    "xl": "0.5rem",
-                    "full": "0.75rem"
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
             },
-            "fontFamily": {
-                    "headline": ["Inter"],
-                    "body": ["Inter"],
-                    "label": ["Inter"]
-            }
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
           },
         },
       }
     </script>
 <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-            display: inline-block;
-            vertical-align: middle;
-        }
-        body { font-family: 'Inter', sans-serif; }
+      .glass-card {
+        background: rgba(26, 27, 34, 0.7);
+        backdrop-filter: blur(24px);
+        border-top: 1px solid rgba(174, 198, 255, 0.1);
+        border-left: 1px solid rgba(174, 198, 255, 0.1);
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+      }
+      .gradient-text {
+        background: linear-gradient(135deg, #aec6ff 0%, #5d8ef1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .pin-box {
+        background: rgba(13, 14, 20, 0.6);
+        box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+      }
     </style>
 </head>
-<body class="bg-surface text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
-<!-- TopNavBar -->
-<header class="fixed top-0 w-full z-50 bg-slate-50/80 backdrop-blur-md shadow-sm">
-<div class="flex justify-between items-center px-8 py-3 w-full max-w-full">
-<div class="flex items-center gap-8">
-<span class="text-xl font-bold tracking-tighter text-slate-900">Host Assistant</span>
-<nav class="hidden md:flex gap-6 items-center">
-<a class="text-slate-500 hover:text-slate-900 transition-colors font-inter tracking-tight" href="/dashboard">Dashboard</a>
-<a class="text-slate-500 hover:text-slate-900 transition-colors font-inter tracking-tight" href="/reservations">Bookings</a>
-<a class="text-slate-500 hover:text-slate-900 transition-colors font-inter tracking-tight" href="/admin/overview">Calendar</a>
-<a class="text-blue-700 font-semibold border-b-2 border-blue-700 pb-1 font-inter tracking-tight" href="/reservations">Arrivals</a>
-</nav>
+<body class="bg-background text-on-background font-body min-h-screen flex items-center justify-center relative overflow-hidden">
+<!-- Background Ambient Aura -->
+<div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary-container opacity-[0.05] blur-[120px] rounded-full"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-secondary-container opacity-[0.03] blur-[120px] rounded-full"></div>
+<main class="relative z-10 w-full max-w-2xl px-6 py-12">
+<!-- Logo/Brand Header -->
+<div class="flex flex-col items-center mb-12 space-y-2">
+<span class="material-symbols-outlined text-primary text-4xl mb-2" data-icon="key">key</span>
+<h1 class="text-label-sm font-bold tracking-[0.2em] text-primary uppercase">Guest Portal</h1>
 </div>
-<div class="flex items-center gap-4">
-<div class="relative hidden lg:block">
-<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">search</span>
-<input class="pl-10 pr-4 py-2 bg-slate-100 border-none rounded-full text-sm focus:ring-2 focus:ring-primary w-64" placeholder="Search portfolio..." type="text"/>
+<!-- Main Glass Card -->
+<div class="glass-card rounded-xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
+<!-- Property Information -->
+<div class="text-center mb-10">
+<h2 class="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter mb-4 text-on-surface">
+                    The Obsidian Heights
+                </h2>
+<div class="flex items-center justify-center space-x-6 text-slate-400">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-sm mr-2" data-icon="calendar_today">calendar_today</span>
+<span class="text-sm font-medium">Oct 24, 2023</span>
 </div>
-<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-all active:scale-95 duration-200">
-<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<div class="w-1 h-1 rounded-full bg-outline-variant"></div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-sm mr-2" data-icon="schedule">schedule</span>
+<span class="text-sm font-medium">15:00 PM</span>
+</div>
+</div>
+</div>
+<!-- PIN Display Section -->
+<div class="relative mb-10">
+<div class="pin-box rounded-xl p-10 flex flex-col items-center justify-center border border-outline-variant/15">
+<p class="text-label-sm font-bold tracking-widest text-slate-500 uppercase mb-6">Access Code</p>
+<div class="flex space-x-4 mb-6">
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+<div class="w-12 h-16 rounded-lg bg-surface-container flex items-center justify-center border border-primary/20">
+<span class="text-primary text-2xl font-bold opacity-30">•</span>
+</div>
+</div>
+<div class="flex items-center bg-primary/10 px-4 py-2 rounded-full border border-primary/20">
+<span class="material-symbols-outlined text-[16px] text-primary mr-2" data-icon="lock_clock">lock_clock</span>
+<span class="text-xs font-bold text-primary tracking-wide">AWAITING ACTIVATION</span>
+</div>
+</div>
+</div>
+<!-- Secondary Info Grid (Bento Style Lite) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+<div class="bg-surface-container-lowest/50 p-5 rounded-lg border border-outline-variant/10">
+<span class="material-symbols-outlined text-secondary text-xl mb-2" data-icon="wifi">wifi</span>
+<h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Network</h4>
+<p class="text-on-surface font-medium">Obsidian_Guest_5G</p>
+</div>
+<div class="bg-surface-container-lowest/50 p-5 rounded-lg border border-outline-variant/10">
+<span class="material-symbols-outlined text-secondary text-xl mb-2" data-icon="room_service">room_service</span>
+<h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Assistance</h4>
+<p class="text-on-surface font-medium">Concierge Active</p>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col space-y-4">
+<button class="w-full py-4 rounded-lg font-bold text-on-primary bg-gradient-to-br from-primary to-primary-container shadow-[0_0_20px_rgba(93,142,241,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span>Contact Host</span>
 </button>
-<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-all active:scale-95 duration-200">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
-</button>
-<img alt="Manager Profile" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="Close-up professional headshot of a property manager with a friendly expression in a modern office environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCr6Bc8i_FmxDhiB5C0RgeicL_7RePhyuu2by0j2xGRSbNtQKcuwRMxr45EL4MUlAFMcKJikHCFAh_xv-4nXwpnVZL4UQcYF_p9KXu90PWKUmIGidjOZPN0A_pSN3wpZK5i9iKf2gx9iZ_bMlPZiXsJEm3hk-P1FPg8OdtAd7ItF6OcSNyQvQzLJa65IaykhZNjhNELXpMOkwyElIL7grwVykkNAsLghFK4chYXMrp_M05c5cGGtwuFWs5qAUIUEWQltm1ViGXk_nQK"/>
-</div>
-</div>
-<div class="bg-slate-200/50 h-[1px]"></div>
-</header>
-<div class="flex min-h-screen pt-[65px]">
-<!-- SideNavBar -->
-<aside id="sidebar" class="h-[calc(100vh-65px)] w-64 bg-slate-50 flex flex-col py-6 space-y-2 sticky top-[65px] hidden md:flex">
-<div class="px-6 mb-6">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 bg-primary-container rounded-xl flex items-center justify-center">
-<span class="material-symbols-outlined text-on-primary-container" data-icon="domain">domain</span>
-</div>
-<div>
-<h2 class="text-lg font-black text-blue-800 leading-none">Portfolio Manager</h2>
-<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Premium Estates</p>
-</div>
-</div>
-</div>
-<nav class="flex-1 space-y-1">
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-<span>Overview</span>
-</a>
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="/reservations">
-<span class="material-symbols-outlined" data-icon="event_note">event_note</span>
-<span>Reservations</span>
-</a>
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="/guest_timeline">
-<span class="material-symbols-outlined" data-icon="calendar_view_day">calendar_view_day</span>
-<span>Timeline</span>
-</a>
-<a class="flex items-center gap-3 bg-blue-50 text-blue-700 rounded-full py-3 px-6 mx-2 text-sm font-medium font-inter" href="/checkin">
-<span class="material-symbols-outlined" data-icon="login">login</span>
-<span>Check-ins</span>
-</a>
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="domain">domain</span>
-<span>Units</span>
-</a>
-</nav>
-<div class="px-4 py-4">
-<button class="w-full bg-primary-container text-on-primary-container font-semibold py-3 px-4 rounded-full shadow-sm hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2">
-<span class="material-symbols-outlined text-sm">add</span>
-                    New Reservation
-                </button>
-</div>
-<div class="mt-auto space-y-1 border-t border-slate-200 pt-4">
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 transition-all text-sm font-medium font-inter" href="/settings">
-<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
-<span>Support</span>
-</a>
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 transition-all text-sm font-medium font-inter" href="/settings">
-<span class="material-symbols-outlined" data-icon="person_outline">person_outline</span>
-<span>Account</span>
-</a>
-</div>
-</aside>
-<!-- Main Content Area -->
-<main class="flex-1 bg-surface-container-low p-8">
-<!-- Header & Stats Asymmetric Layout -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10">
-<div class="lg:col-span-7">
-<div class="flex items-baseline gap-4 mb-2">
-<h1 class="text-4xl font-extrabold tracking-tight text-on-surface">Daily Operations</h1>
-<span class="text-xl font-medium text-on-surface-variant">Oct 24th</span>
-</div>
-<p class="text-on-surface-variant text-lg max-w-xl">Coordinating 12 arrivals and managing property status for the peak autumn window.</p>
-</div>
-<div class="lg:col-span-5 flex items-end justify-end gap-4">
-<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10 flex-1">
-<span class="block text-sm font-medium text-on-surface-variant mb-1">Occupancy</span>
-<div class="flex items-baseline gap-2">
-<span class="text-3xl font-bold">94%</span>
-<span class="text-xs font-bold text-primary">+2% from yesterday</span>
-</div>
-</div>
-<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10 flex-1">
-<span class="block text-sm font-medium text-on-surface-variant mb-1">Clean Units</span>
-<div class="flex items-baseline gap-2">
-<span class="text-3xl font-bold text-primary">08</span>
-<span class="text-xs font-medium text-on-surface-variant">of 12 ready</span>
-</div>
-</div>
-</div>
-</div>
-<!-- Bento Grid Content -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-<!-- Alerts Panel -->
-<section class="lg:col-span-1 space-y-6">
-<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border-l-4 border-tertiary-container">
-<div class="flex items-center gap-3 mb-4">
-<span class="material-symbols-outlined text-tertiary" data-icon="warning">warning</span>
-<h3 class="font-bold text-on-surface">Operations Alerts</h3>
-</div>
-<div class="space-y-4">
-<div class="flex gap-4">
-<div class="w-2 h-2 rounded-full bg-error mt-2"></div>
-<div>
-<p class="text-sm font-bold text-on-surface">Late Check-out: Unit 402</p>
-<p class="text-xs text-on-surface-variant">Guest "The Miller Family" still in unit. Housekeeping delayed.</p>
-</div>
-</div>
-<div class="flex gap-4">
-<div class="w-2 h-2 rounded-full bg-tertiary mt-2"></div>
-<div>
-<p class="text-sm font-bold text-on-surface">Maintenance: HVAC Filter</p>
-<p class="text-xs text-on-surface-variant">Routine check required for Unit 205 before 3PM arrival.</p>
-</div>
-</div>
-</div>
-</div>
-<!-- Quick Navigation / Stats -->
-<div class="bg-primary p-8 rounded-xl text-on-primary shadow-lg shadow-primary/10 relative overflow-hidden">
-<div class="relative z-10">
-<h3 class="text-xl font-bold mb-2">Morning Briefing</h3>
-<p class="text-on-primary-container text-sm leading-relaxed mb-6">You have 3 VIP arrivals scheduled between 2:00 PM and 4:00 PM. All welcome packages are staged in the lobby.</p>
-<a href="/reservations" class="bg-white text-primary px-6 py-2 rounded-full text-sm font-bold shadow-md hover:-translate-y-0.5 transition-all">Review Protocol</a>
-</div>
-<span class="absolute -bottom-8 -right-8 material-symbols-outlined text-[160px] opacity-10 pointer-events-none" data-icon="auto_awesome">auto_awesome</span>
-</div>
-</section>
-<!-- Arrivals List -->
-<section class="lg:col-span-2">
-<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden border border-outline-variant/5">
-<div class="px-8 py-6 flex justify-between items-center border-b border-surface-container">
-<h3 class="text-xl font-bold">Upcoming Arrivals</h3>
-<div class="flex gap-2">
-<button class="px-4 py-2 text-xs font-bold rounded-full bg-surface-container text-on-surface-variant" onclick="this.textContent = this.textContent.includes("↑") ? "Sort by Time ↓" : "Sort by Time ↑"">Sort by Time</button>
-<a href="/activity" class="px-4 py-2 text-xs font-bold rounded-full text-primary hover:bg-primary-fixed transition-colors">Export Daily List</a>
-</div>
-</div>
-<!-- Arrival Rows -->
-<div class="divide-y divide-surface-container">
-<!-- Arrival 1 -->
-<div class="px-8 py-6 hover:bg-surface-container-low transition-colors group">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-6">
-<div class="w-14 h-14 rounded-full overflow-hidden border-2 border-primary-fixed">
-<img alt="Julian Alexander" class="w-full h-full object-cover" data-alt="Portrait of a sophisticated male traveler in a stylish overcoat, professional and friendly aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7Wj50LFzZSeobuPVJlu5eSPGZHe-k0AIU7zP7aufFbCvHB3aNC9D0prnA3t-B-DQ5Fd1zES1juG1Rgv404wlkeHq2WuksnFoupr49JAXzAsGa5wlAofr44L8m-156gk91RdN7qzCE4OAY9UNuVPR3NCeJ29X_QhSW7mBABa-IlvJPHcc7jucieJkeghVwArIl6ShSJdKJ7K4eytk5kE0-TmMghf2qTorjNXGFwYFRZXiu1LpXBv3-GyW-CCZeDPAdnP0R3eH4wbxn"/>
-</div>
-<div>
-<h4 class="text-lg font-bold text-on-surface leading-tight">Julian Alexander</h4>
-<div class="flex items-center gap-3 mt-1">
-<span class="flex items-center gap-1 text-xs text-on-surface-variant font-medium">
-<span class="material-symbols-outlined text-sm">schedule</span> 2:30 PM
-                                                </span>
-<span class="text-xs text-on-surface-variant">•</span>
-<span class="text-xs text-on-surface-variant font-medium uppercase tracking-wider">Unit</span>
-</div>
-</div>
-</div>
-<div class="flex items-center gap-8">
-<div class="text-right">
-<span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter bg-green-100 text-green-700">Ready</span>
-</div>
-<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-<button class="w-10 h-10 rounded-full flex items-center justify-center bg-secondary-container text-secondary hover:bg-primary hover:text-white transition-all">
-<span class="material-symbols-outlined text-sm" data-icon="mail">mail</span>
-</button>
-<button class="w-10 h-10 rounded-full flex items-center justify-center bg-secondary-container text-secondary hover:bg-primary hover:text-white transition-all">
-<span class="material-symbols-outlined text-sm" data-icon="phone">phone</span>
+<button class="w-full py-4 rounded-lg font-bold text-slate-400 hover:text-on-surface hover:bg-surface-container-high/40 transition-all flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span>View Arrival Instructions</span>
 </button>
 </div>
 </div>
-</div>
-</div>
-<!-- Arrival 2 -->
-<div class="px-8 py-6 hover:bg-surface-container-low transition-colors group">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-6">
-<div class="w-14 h-14 rounded-full overflow-hidden border-2 border-outline-variant/20">
-<img alt="Sarah Mitchell" class="w-full h-full object-cover" data-alt="Modern professional woman with a warm smile, wearing minimal jewelry and clean attire" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7_zchMgb4LkX48CD0vsVSrr26OCUw_kolWvwM1NT9Dj904OWEr6XEbYuNYXOttk1fsVcur2YmN1aCHUMAO-C997rJeIO4U_499xfiV0czlzfZac_9Jl3YIi5-P68EuA346ECh30niqH5knB_Yn_neyWWv_xdHBXh6QvwEvHXacf8wDGJrmiv-E7gtNMkSiob3ZoqYY9_vnVvFRg0Vx6b04V7UE7cv4cKkT5wy4vfGUpFzxeFPfU9nKwYucKYK4CLHXuyCyC2BAreJ"/>
-</div>
-<div>
-<h4 class="text-lg font-bold text-on-surface leading-tight">Sarah Mitchell</h4>
-<div class="flex items-center gap-3 mt-1">
-<span class="flex items-center gap-1 text-xs text-on-surface-variant font-medium">
-<span class="material-symbols-outlined text-sm">schedule</span> 3:15 PM
-                                                </span>
-<span class="text-xs text-on-surface-variant">•</span>
-<span class="text-xs text-on-surface-variant font-medium uppercase tracking-wider">Unit</span>
-</div>
-</div>
-</div>
-<div class="flex items-center gap-8">
-<div class="text-right">
-<span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter bg-tertiary-fixed text-tertiary">Cleaning in Progress</span>
-</div>
-<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-<button class="w-10 h-10 rounded-full flex items-center justify-center bg-secondary-container text-secondary hover:bg-primary hover:text-white transition-all">
-<span class="material-symbols-outlined text-sm" data-icon="mail">mail</span>
-</button>
-<button class="w-10 h-10 rounded-full flex items-center justify-center bg-secondary-container text-secondary hover:bg-primary hover:text-white transition-all">
-<span class="material-symbols-outlined text-sm" data-icon="more_vert">more_vert</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-<!-- Arrival 3 -->
-<div class="px-8 py-6 hover:bg-surface-container-low transition-colors group">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-6">
-<div class="w-14 h-14 rounded-full overflow-hidden border-2 border-outline-variant/20">
-<img alt="Guest" class="w-full h-full object-cover" data-alt="Young professional man with dark hair, looking confident and approachable, soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJURO0yRqzx-JzRuz_P-7IMJ8hyuv2qXsFpNuEdu7mIt_YUZwWWuWDlywdsLVBUvBa-CvXZETG0gZLU0vQ2Dc6zW3hChh9Vs_W_yjh-aHEwS9lm2C-1A3LlbwB73CeQUbw2BiRXFi1MgND3JsG-1aYUG6LQLqAQm29kc2jAq9oaEaYm-ZYsmpG89d2COoJnDfww6OCBSpOFXqndG3-uziRWad-P6tEjjgXpCv-J2mhulIZw9J8lRCq2MizIX1FIyjB86PqEG30MCuM"/>
-</div>
-<div>
-<h4 class="text-lg font-bold text-on-surface leading-tight">Guest</h4>
-<div class="flex items-center gap-3 mt-1">
-<span class="flex items-center gap-1 text-xs text-on-surface-variant font-medium">
-<span class="material-symbols-outlined text-sm">schedule</span> 5:45 PM
-                                                </span>
-<span class="text-xs text-on-surface-variant">•</span>
-<span class="text-xs text-on-surface-variant font-medium uppercase tracking-wider">Unit 205 (Standard Loft)</span>
-</div>
-</div>
-</div>
-<div class="flex items-center gap-8">
-<div class="text-right">
-<span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter bg-blue-100 text-blue-700">In Prep</span>
-</div>
-<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-<button class="w-10 h-10 rounded-full flex items-center justify-center bg-secondary-container text-secondary hover:bg-primary hover:text-white transition-all">
-<span class="material-symbols-outlined text-sm" data-icon="mail">mail</span>
-</button>
-<button class="w-10 h-10 rounded-full flex items-center justify-center bg-secondary-container text-secondary hover:bg-primary hover:text-white transition-all">
-<span class="material-symbols-outlined text-sm" data-icon="more_vert">more_vert</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Footer Link -->
-<div class="px-8 py-4 bg-surface-container/30 text-center">
-<a href="/reservations" class="text-sm font-bold text-primary hover:underline">View all 12 arrivals for today</a>
-</div>
-</div>
-<!-- Map/Location Quick View -->
-<div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
-<h4 class="text-sm font-bold text-on-surface mb-4 flex items-center gap-2">
-<span class="material-symbols-outlined text-primary text-lg">location_on</span>
-                                Property Hub Coverage
-                            </h4>
-<div class="aspect-video rounded-lg bg-slate-200 relative overflow-hidden">
-<div class="absolute inset-0 grayscale opacity-50" data-location="Manhattan, New York" style=""></div>
-<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-<div class="w-4 h-4 bg-primary rounded-full animate-ping absolute"></div>
-<div class="w-4 h-4 bg-primary rounded-full relative border-2 border-white"></div>
-</div>
-</div>
-</div>
-<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
-<h4 class="text-sm font-bold text-on-surface mb-4">Staff On Duty</h4>
-<div class="flex -space-x-3">
-<img alt="Staff 1" class="w-10 h-10 rounded-full border-2 border-white" data-alt="Female concierge staff member portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRATy8FfB_wjodlRWpyFNXS2obM6dHlCDDF-thWpeeqyQbUmQVCWio7RAYf7DO7ywXFxoeZ3F9J4rPzJ5safLzT5FnNbNCnA6uuZ6UGeEz1YC-o-6nDRCMqsga4DUK9Gav-db7e9xUe9KtAdVpcYy8PxHyWXrmIxwrziYr56CfI7v39F4nrhEiTneawxB6FsiBUY0lwcJP5j_-EOpYhBHTWYZb77NQgZFN5TS5vGOOC4PHwwnfgQLUwZcjb3NQaXrH0670N51H7tKe"/>
-<img alt="Staff 2" class="w-10 h-10 rounded-full border-2 border-white" data-alt="Male maintenance manager portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBa59Wj2erF0KhM7nFQ62dPuemPE8ZVS8Fw04OLwk22x6peHu1hbbeHuN4e0xujs3jR-gw4rKm9chi_oGh40x83lMHMszvYzRqNBPh7mzhlgbzf49h7DOIQWVT_5Q0mSZFNCzNDNhCjIWypZMriV0Za8Zd3IWF82GJoo5POCh45iOJCGzYrcCEt4dafDblhqL4f-W1UUF4Hq0VXX-1qJ8baWR1HOQQmQf3XzSdz9bQar_bBlEVsAsi0zLhdigXfl6I1by64bZFCutj1"/>
-<img alt="Staff 3" class="w-10 h-10 rounded-full border-2 border-white" data-alt="Female housekeeping lead portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHio6GbmjJ21YwAU3hQmmY6U0aSPngF-6w2NboGmsh9dxqQi8Bus4WmgNxl_gqD6vq1sWnu8X413rvMpg7sS-qMbra7moXn3XKp2yOCM2TqKwGv4ZBqUTDPL4S0Ttwdz0lfchXtVr1qUbM4KNy1-9e-qTl_mGarhC2q_t2TxlRocrMbaY0eDPI2dFes4OVFZO3JoLH8mhDWnjuhKu_ACayo3ZJ_hh-6VJJwjK5JyB3eduZgKscdKYHsXivSwVps7o85G-qXesy_znF"/>
-<div class="w-10 h-10 rounded-full border-2 border-white bg-surface-container flex items-center justify-center text-[10px] font-bold text-on-surface-variant">+4</div>
-</div>
-<div class="mt-4 p-3 rounded-lg bg-surface-container-low">
-<p class="text-xs font-medium text-on-surface">Housekeeping Team B</p>
-<p class="text-[10px] text-on-surface-variant">Active in Floors 2-5</p>
-</div>
-</div>
-</div>
-</section>
-</div>
+<!-- Footer Help -->
+<p class="mt-8 text-center text-slate-500 text-sm font-medium">
+            Trouble checking in? <a class="text-primary hover:underline transition-all" href="#">Call Support</a>
+</p>
 </main>
+<!-- Decorative Elements -->
+<div class="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+<div class="fixed bottom-10 left-1/2 -translate-x-1/2 opacity-20">
+<img alt="HostAI Logo" class="h-6 grayscale contrast-125" data-alt="minimalist tech company logo with clean geometric lines and futuristic typography on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9IbqgDXR23tBTHc_R5pTX_itopaWEPD0ZsDPn2rHDtIDF1chHU7SaWz-W6HjQb6D086QEsNzUBLOhps5lb5h9BzQPgfM_6QyTsfWLvYyE5FGiF1ZftmfkKL92sNOqPf3EqYBstPe79s1TVhG5P5lwHlTjILUL7ynhxyv0lGCuJnhB54ucxGCZn5DboFyso-KJP6vBvRIfMcD4pQeZwjBXXmEevmwdjf74bFGrZu0vJgAF30qz6_UViVyNWm0DleQ0XXTHQnzWn6c6"/>
 </div>
-<!-- Mobile Navigation Shell -->
-<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex justify-around py-3 px-6 z-50">
-<button class="flex flex-col items-center gap-1 text-slate-400">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="text-[10px] font-bold">Home</span>
-</button>
-<button class="flex flex-col items-center gap-1 text-blue-700">
-<span class="material-symbols-outlined">login</span>
-<span class="text-[10px] font-bold">Arrivals</span>
-</button>
-<button class="flex flex-col items-center gap-1 text-slate-400">
-<span class="material-symbols-outlined">calendar_month</span>
-<span class="text-[10px] font-bold">Schedule</span>
-</button>
-<button class="flex flex-col items-center gap-1 text-slate-400">
-<span class="material-symbols-outlined">person</span>
-<span class="text-[10px] font-bold">Profile</span>
-</button>
-</nav>
 </body></html>

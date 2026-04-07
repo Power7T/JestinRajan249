@@ -1,388 +1,239 @@
-<!DOCTYPE html>
+{% extends "base.html" %}
+{% set tenant = admin %}
+{% block title %}AI Engine Configuration — HostAI{% endblock %}
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>AI System Management</title>
+{% block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "surface-container-low": "#f2f4f6",
-                        "primary": "#004e9f",
-                        "on-tertiary": "#ffffff",
-                        "surface-container-lowest": "#ffffff",
-                        "on-surface-variant": "#414753",
-                        "surface-bright": "#f7f9fb",
-                        "tertiary-container": "#af4900",
-                        "surface": "#f7f9fb",
-                        "primary-fixed": "#d7e3ff",
-                        "outline": "#727784",
-                        "primary-container": "#0066cc",
-                        "on-tertiary-container": "#ffe3d6",
-                        "surface-tint": "#005cba",
-                        "on-tertiary-fixed-variant": "#793000",
-                        "inverse-surface": "#2d3133",
-                        "surface-dim": "#d8dadc",
-                        "on-background": "#191c1e",
-                        "outline-variant": "#c1c6d5",
-                        "background": "#f7f9fb",
-                        "primary-fixed-dim": "#aac7ff",
-                        "secondary": "#515f74",
-                        "on-error-container": "#93000a",
-                        "on-secondary-fixed-variant": "#3a485b",
-                        "on-tertiary-fixed": "#341100",
-                        "on-primary-container": "#dfe8ff",
-                        "inverse-on-surface": "#eff1f3",
-                        "on-primary": "#ffffff",
-                        "secondary-container": "#d5e3fc",
-                        "surface-container": "#eceef0",
-                        "on-primary-fixed": "#001b3e",
-                        "inverse-primary": "#aac7ff",
-                        "surface-variant": "#e0e3e5",
-                        "surface-container-highest": "#e0e3e5",
-                        "secondary-fixed-dim": "#b9c7df",
-                        "secondary-fixed": "#d5e3fc",
-                        "on-secondary-container": "#57657a",
-                        "on-secondary": "#ffffff",
-                        "on-primary-fixed-variant": "#00458e",
-                        "on-error": "#ffffff",
-                        "on-surface": "#191c1e",
-                        "surface-container-high": "#e6e8ea",
-                        "tertiary": "#883700",
-                        "error": "#ba1a1a",
-                        "on-secondary-fixed": "#0d1c2e",
-                        "error-container": "#ffdad6",
-                        "tertiary-fixed": "#ffdbcb",
-                        "tertiary-fixed-dim": "#ffb692"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.125rem",
-                        "lg": "0.25rem",
-                        "xl": "0.5rem",
-                        "full": "0.75rem"
-                    },
-                    "fontFamily": {
-                        "headline": ["Inter"],
-                        "body": ["Inter"],
-                        "label": ["Inter"]
-                    }
-                }
-            }
-        }
-    </script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+  darkMode: "class",
+  theme: { extend: { colors: {
+    "primary": "#aec6ff","primary-container":"#5d8ef1","on-primary":"#002e6b",
+    "surface":"#121319","surface-container":"#1e1f26","surface-container-lowest":"#0d0e14",
+    "surface-container-high":"#292930","on-surface":"#e3e1eb","on-surface-variant":"#c3c6d4",
+    "outline":"#424752","outline-variant":"#34343b","error":"#ffb4ab","tertiary":"#ffb960",
+    "secondary":"#bdf4ff","secondary-fixed-dim":"#00daf3",
+  }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
+}
+</script>
 <style>
-        body { font-family: 'Inter', sans-serif; }
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-    </style>
-</head>
-<body class="bg-surface text-on-surface selection:bg-primary-fixed">
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-white/80 backdrop-blur-xl border border-gray-200 text-gray-600 hover:text-gray-900 transition-all">
-<span class="material-symbols-outlined">menu</span>
-</button>
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/40 hidden" id="sidebar-overlay"></div>
+body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
+.glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
+.material-symbols-outlined { font-variation-settings:'FILL' 1,'wght' 300,'GRAD' 0,'opsz' 24; }
+.admin-tab { padding-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; transition: color 0.2s, border-bottom-color 0.2s; border-bottom: 2px solid transparent; color: #8d909e; }
+.admin-tab:hover { color: #e3e1eb; }
+.admin-tab.active { color: #5B8DEF; border-bottom-color: #5B8DEF; }
 
-<!-- Sidebar Navigation -->
-<aside id="sidebar" class="h-screen w-64 fixed left-0 top-0 bg-slate-50 dark:bg-slate-950 flex flex-col h-full p-4 border-r border-slate-200 dark:border-slate-800 font-sans text-sm font-medium z-50">
-<div class="flex items-center gap-3 mb-8 px-2">
-<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-<span class="material-symbols-outlined text-white" data-icon="robot_2">robot_2</span>
+/* Compat */
+.compat-input { width: 100%; border-radius: 0.5rem; border: 1px solid rgba(66,71,82,0.4); background: #0d0e14; color: #e3e1eb; padding: 0.6rem 0.8rem; font-size: 0.85rem; transition: border-color 0.15s; outline: none; margin-bottom: 0.5rem; }
+.compat-input:focus { border-color: #5B8DEF; }
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- Sidebar -->
+<!-- Mobile hamburger -->
+<button onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full');document.getElementById('admin-sidebar-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+  <span class="material-symbols-outlined">menu</span>
+</button>
+<div onclick="document.getElementById('admin-sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="admin-sidebar-overlay"></div>
+<aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
+  <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7 hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
+<span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
 </div>
-<div>
-<h1 class="text-xl font-black text-blue-900 dark:text-white leading-tight">Host Assistant</h1>
-<p class="text-xs text-on-surface-variant/70">Global AI Engine</p>
-</div>
-</div>
-<nav class="flex-1 space-y-1">
-<a class="flex items-center gap-3 px-4 py-3 bg-blue-100/50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full transition-all" href="/logout">
-<span class="material-symbols-outlined" data-icon="robot_2">robot_2</span>
-<span>Models</span>
+<span>HostAI</span>
 </a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-all" href="/admin/ai">
-<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
-<span>Thresholds</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-all" href="/conversations">
-<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
-<span>Auto-Responses</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-all" href="/reservations">
-<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
-<span>Scheduling</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-all" href="/activity">
-<span class="material-symbols-outlined" data-icon="history">history</span>
-<span>Audit Logs</span>
-</a>
-</nav>
-<div class="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-1">
-<a href="/admin/ai" class="w-full bg-primary text-white py-2.5 rounded-xl font-semibold mb-4 active:scale-95 duration-200">Deploy Changes</a>
-<a class="flex items-center gap-3 px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-blue-600" href="/settings">
-<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
-<span>Help</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-blue-600" href="/logout">
-<span class="material-symbols-outlined" data-icon="logout">logout</span>
-<span>Logout</span>
-</a>
-</div>
+  <nav class="flex-1 px-4 space-y-1">
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+      <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
+      <span class="material-symbols-outlined" data-icon="forum">forum</span> Conversations
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
+      <span class="material-symbols-outlined" data-icon="event_available">event_available</span> Reservations
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
+      <span class="material-symbols-outlined" data-icon="history">history</span> Activity
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
+      <span class="material-symbols-outlined" data-icon="analytics">analytics</span> Analytics
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+                Voice AI
+            </a>
+      <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
+      <span class="material-symbols-outlined" data-icon="hub">hub</span> Workflow Center
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
+      <span class="material-symbols-outlined" data-icon="settings">settings</span> Settings
+    </a>
+    {% if is_admin(admin.email) %}
+    <a class="flex items-center gap-3 px-6 py-3 text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold transition-all duration-200" href="/admin">
+      <span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span> Admin Panel
+    </a>
+    {% endif %}
+  </nav>
+
+  <div class="p-6 border-t border-white/5">
+    <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
+      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+        {{ (admin.name or admin.email or 'H')[0]|upper }}
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-white text-sm font-bold truncate">{{ admin.name or admin.email.split('@')[0]|title }}</p>
+        <p class="text-slate-500 text-xs truncate">Admin Account</p>
+      </div>
+    </div>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-red-400 transition-colors text-xs font-bold uppercase tracking-widest py-2">
+        <span class="material-symbols-outlined text-sm">logout</span>Sign Out
+      </button>
+    </form>
+  </div>
 </aside>
-<!-- Main Canvas -->
-<main class="ml-64 min-h-screen">
-<!-- Top Navigation -->
-<header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl w-full sticky top-0 z-40 flex justify-between items-center px-8 py-4 border-b border-slate-100 dark:border-slate-800 shadow-sm shadow-blue-900/5">
-<div class="flex items-center gap-4">
-<h2 class="text-lg font-bold tracking-tighter text-blue-900 dark:text-blue-100 uppercase tracking-widest text-xs opacity-60">AI System Management</h2>
-</div>
-<div class="flex items-center gap-6">
-<div class="relative">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm" data-icon="search">search</span>
-<input class="bg-surface-container-low border-none rounded-full py-1.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search systems..." type="text"/>
-</div>
-<div class="flex items-center gap-3">
-<button class="p-2 text-slate-500 hover:bg-slate-100/50 rounded-full transition-colors">
-<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
-</button>
-<button class="p-2 text-slate-500 hover:bg-slate-100/50 rounded-full transition-colors">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
-</button>
-<div class="w-8 h-8 rounded-full bg-primary-fixed overflow-hidden">
-<img alt="Administrator profile" data-alt="Portrait of a professional administrator in a bright modern office setting, soft natural lighting, minimalist corporate style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9YcM6K1jKxmLU_wtt5-mL9RdiAMzoSGCPLR85pQXl_yzOR1TXP31e1cTsY6TU9lRXjULS3gQtuvdWAoUsOQm512NF2xHwwuvZKRUqmFb17DpeJK0Fnru-jyzlYU1fwk7ktE5wV2UBHk4ec235zqArRDMedBGR2SoVT5fj-JLzex6s0lqWC3X79xWOuq93pEbb7_anqRd2f8eE2UWm1Ru0GeiCxL0bn2bZgZ-CoktGLGnMOFA9PztPIenOIrPfpY2a_4aV_uAvLeIG"/>
-</div>
-</div>
-</div>
-</header>
-<!-- Dashboard Content -->
-<div class="p-8 max-w-7xl mx-auto space-y-8">
-<!-- Page Header -->
-<div class="flex justify-between items-end">
-<div class="space-y-1">
-<h1 class="text-4xl font-bold tracking-tight text-on-surface">AI System Management</h1>
-<p class="text-on-surface-variant">Configure intelligence parameters and operational thresholds for global property interactions.</p>
-</div>
-<div class="flex gap-3">
-<a href="/admin/ai" class="px-6 py-2.5 rounded-xl bg-secondary-container text-on-secondary-container font-medium hover:brightness-95 transition-all">Reset Defaults</a>
-<button class="px-6 py-2.5 rounded-xl bg-primary text-on-primary font-medium shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all" onclick="this.textContent="Syncing..."; setTimeout(()=>{this.textContent="Sync Environment"},2000)">Sync Environment</button>
-</div>
-</div>
-<!-- Bento Grid Section -->
-<div class="grid grid-cols-12 gap-6">
-<!-- Model Selection (Span 8) -->
-<section class="col-span-8 bg-surface-container-lowest rounded-xl p-8 shadow-sm">
-<div class="flex items-center justify-between mb-8">
-<div>
-<h3 class="text-xl font-bold text-on-surface">Model Selection</h3>
-<p class="text-sm text-on-surface-variant">Select the core engine driving your property's intelligence.</p>
-</div>
-<span class="px-3 py-1 bg-primary-fixed text-on-primary-fixed text-xs font-bold rounded-full">ACTIVE ENGINE: SUPPORT-FAST-GPT</span>
-</div>
-<div class="grid grid-cols-2 gap-4">
-<!-- Model Card Active -->
-<div class="p-5 rounded-xl border-2 border-primary bg-primary/5 space-y-4 relative overflow-hidden group">
-<div class="absolute top-0 right-0 p-2">
-<span class="material-symbols-outlined text-primary" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-</div>
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center">
-<span class="material-symbols-outlined text-white" data-icon="bolt">bolt</span>
-</div>
-<div>
-<h4 class="font-bold text-on-surface">Support-Fast-GPT</h4>
-<p class="text-xs text-primary font-semibold">Active</p>
-</div>
-</div>
-<div class="grid grid-cols-2 gap-4 pt-2">
-<div>
-<p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Latency</p>
-<p class="text-lg font-bold">142ms</p>
-</div>
-<div>
-<p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Accuracy</p>
-<p class="text-lg font-bold text-primary">98.4%</p>
-</div>
-</div>
-</div>
-<!-- Model Card Standby -->
-<div class="p-5 rounded-xl border border-outline-variant hover:border-primary/50 transition-colors bg-white space-y-4 cursor-pointer group">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
-<span class="material-symbols-outlined text-on-surface-variant" data-icon="star">star</span>
-</div>
-<div>
-<h4 class="font-bold text-on-surface">Concierge-Pro-V4</h4>
-<p class="text-xs text-on-surface-variant font-semibold">Standby</p>
-</div>
-</div>
-<div class="grid grid-cols-2 gap-4 pt-2">
-<div>
-<p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Latency</p>
-<p class="text-lg font-bold">310ms</p>
-</div>
-<div>
-<p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Accuracy</p>
-<p class="text-lg font-bold">99.1%</p>
-</div>
-</div>
-</div>
-</div>
-</section>
-<!-- Confidence Thresholds (Span 4) -->
-<section class="col-span-4 bg-surface-container-low rounded-xl p-8 flex flex-col justify-between">
-<div class="space-y-2">
-<h3 class="text-xl font-bold text-on-surface">Confidence Thresholds</h3>
-<p class="text-sm text-on-surface-variant leading-relaxed">
-                            Responses below these thresholds will be automatically routed to a human curator for manual review.
-                        </p>
-</div>
-<div class="space-y-8 mt-6">
-<div class="space-y-4">
-<div class="flex justify-between items-center">
-<label class="text-sm font-bold text-on-surface">Auto-Response</label>
-<span class="text-primary font-bold">85%</span>
-</div>
-<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
-<div class="h-full bg-primary" style="width: 85%"></div>
-</div>
-<input class="w-full h-1 bg-transparent appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" value="85"/>
-</div>
-<div class="space-y-4">
-<div class="flex justify-between items-center">
-<label class="text-sm font-bold text-on-surface">Smart Scheduling</label>
-<span class="text-primary font-bold">92%</span>
-</div>
-<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
-<div class="h-full bg-primary" style="width: 92%"></div>
-</div>
-<input class="w-full h-1 bg-transparent appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" value="92"/>
-</div>
-</div>
-</section>
-<!-- Feature Management (Span 4) -->
-<section class="col-span-4 bg-surface-container-lowest rounded-xl p-8 shadow-sm">
-<h3 class="text-xl font-bold text-on-surface mb-6">Feature Management</h3>
-<div class="space-y-4">
-<!-- Toggle Item -->
-<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
-<div class="flex items-center gap-3">
-<span class="material-symbols-outlined text-primary" data-icon="forum">forum</span>
-<span class="text-sm font-semibold">Auto-Response</span>
-</div>
-<label class="relative inline-flex items-center cursor-pointer">
-<input checked="" class="sr-only peer" type="checkbox"/>
-<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-</label>
-</div>
-<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
-<div class="flex items-center gap-3">
-<span class="material-symbols-outlined text-primary" data-icon="event_available">event_available</span>
-<span class="text-sm font-semibold">Smart Scheduling</span>
-</div>
-<label class="relative inline-flex items-center cursor-pointer">
-<input checked="" class="sr-only peer" type="checkbox"/>
-<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-</label>
-</div>
-<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
-<div class="flex items-center gap-3">
-<span class="material-symbols-outlined text-primary" data-icon="psychology">psychology</span>
-<span class="text-sm font-semibold">Sentiment Analysis</span>
-</div>
-<label class="relative inline-flex items-center cursor-pointer">
-<input checked="" class="sr-only peer" type="checkbox"/>
-<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-</label>
-</div>
-<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
-<div class="flex items-center gap-3">
-<span class="material-symbols-outlined text-primary" data-icon="priority_high">priority_high</span>
-<span class="text-sm font-semibold">Urgency Detection</span>
-</div>
-<label class="relative inline-flex items-center cursor-pointer">
-<input class="sr-only peer" type="checkbox"/>
-<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-</label>
-</div>
-</div>
-</section>
-<!-- Example Responses (Span 8) -->
-<section class="col-span-8 bg-surface-container-lowest rounded-xl p-8 shadow-sm">
-<div class="flex items-center justify-between mb-8">
-<div>
-<h3 class="text-xl font-bold text-on-surface">Precision Preview</h3>
-<p class="text-sm text-on-surface-variant">Live simulation of current model settings against common queries.</p>
-</div>
-<button class="flex items-center gap-2 text-primary font-bold text-sm">
-<span class="material-symbols-outlined text-sm" data-icon="refresh">refresh</span>
-                            Rerender Examples
-                        </button>
-</div>
-<div class="space-y-6">
-<!-- Inquiry 1 -->
-<div class="flex gap-4">
-<div class="w-10 h-10 rounded-full bg-surface-container flex-shrink-0 flex items-center justify-center">
-<span class="material-symbols-outlined text-on-surface-variant" data-icon="person">person</span>
-</div>
-<div class="flex-1">
-<div class="p-4 rounded-2xl rounded-tl-none bg-surface-container-low mb-4">
-<p class="text-sm text-on-surface font-medium">"Hi, I just checked in. What is the Wi-Fi password for the building?"</p>
-</div>
-<div class="flex gap-4">
-<div class="w-10 h-10 rounded-full bg-primary flex-shrink-0 flex items-center justify-center">
-<span class="material-symbols-outlined text-white" data-icon="smart_toy">smart_toy</span>
-</div>
-<div class="flex-1">
-<div class="p-4 rounded-2xl rounded-tl-none bg-primary/10 border border-primary/20">
-<p class="text-sm text-on-surface mb-2">Welcome! The Wi-Fi network is <span class="font-bold">Vista_Guest</span> and the password is <span class="font-bold">LuxuryStay2024</span>. Let me know if you need help connecting!</p>
-<div class="flex items-center gap-4 text-[10px] font-bold text-primary uppercase tracking-widest">
-<span>Confidence: 99.2%</span>
-<span class="text-outline">·</span>
-<span>Auto-Responded</span>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Inquiry 2 -->
-<div class="flex gap-4">
-<div class="w-10 h-10 rounded-full bg-surface-container flex-shrink-0 flex items-center justify-center">
-<span class="material-symbols-outlined text-on-surface-variant" data-icon="person">person</span>
-</div>
-<div class="flex-1">
-<div class="p-4 rounded-2xl rounded-tl-none bg-surface-container-low mb-4">
-<p class="text-sm text-on-surface font-medium">"I think there's a small leak under the kitchen sink, can someone look at it?"</p>
-</div>
-<div class="flex gap-4 opacity-70">
-<div class="w-10 h-10 rounded-full bg-surface-container flex-shrink-0 flex items-center justify-center">
-<span class="material-symbols-outlined text-on-surface-variant" data-icon="smart_toy">smart_toy</span>
-</div>
-<div class="flex-1">
-<div class="p-4 rounded-2xl rounded-tl-none bg-surface-container-low border border-dashed border-outline-variant italic">
-<p class="text-sm text-on-surface-variant mb-2">Routing to Maintenance Supervisor...</p>
-<div class="flex items-center gap-4 text-[10px] font-bold text-tertiary uppercase tracking-widest">
-<span>Confidence: 64.0%</span>
-<span class="text-outline">·</span>
-<span>Threshold Not Met</span>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</section>
-</div>
-</div>
+
+<!-- Main -->
+<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen relative">
+  <!-- Mobile hamburger menu -->
+  <button id="sidebar-toggle" class="md:hidden fixed top-4 left-4 z-40 p-2 text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all" onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full')">
+    <span class="material-symbols-outlined">menu</span>
+  </button>
+  <div class="absolute -top-48 -right-48 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
+  
+  <div class="mb-10 pt-4">
+    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">AI Engine</h1>
+    <p class="text-slate-400 text-sm">OpenRouter models, hot-swapping, and cost tracking</p>
+    
+    <!-- Admin Subnav -->
+    <div class="flex items-center gap-6 mt-6 border-b border-white/10 overflow-x-auto pb-1 whitespace-nowrap">
+      <a href="/admin" class="admin-tab">Overview</a>
+      <a href="/admin/system" class="admin-tab">System Health</a>
+      <a href="/admin/ai" class="admin-tab active">AI Engine</a>
+      <a href="/admin/costs" class="admin-tab">Profitability</a>
+      <a href="/admin/health_api" class="admin-tab">API Health</a>
+    </div>
+  </div>
+
+  {% if request.query_params.get("msg") == "saved" %}
+  <div class="bg-[#27c93f]/10 border border-[#27c93f]/30 text-[#27c93f] px-4 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+    <span class="material-symbols-outlined text-sm">check_circle</span>
+    Success! AI routing settings hot-swapped and saved.
+  </div>
+  {% endif %}
+
+  <!-- Key Metrics -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total API Spend</p>
+      <p class="text-3xl font-extrabold text-[#5B8DEF]">${{ "%.2f"|format(total_cost) }}</p>
+    </div>
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Recent Generations</p>
+      <p class="text-3xl font-extrabold text-[#aec6ff]">{{ logs|length }}</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+    <div class="xl:col-span-1 space-y-6">
+      <div class="glass-card rounded-3xl p-6">
+        <h2 class="text-lg font-bold text-white mb-4">Global Network Config</h2>
+        <form method="POST" action="/admin/ai/save" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">OpenRouter API Key</label>
+            <input type="password" name="openrouter_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.openrouter_api_key_enc else '' }}" placeholder="sk-or-v1-...">
+            <p class="text-[10px] text-slate-500 font-medium">Leave blank or as ******** to keep current key.</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <span style="display:inline-flex;align-items:center;gap:0.3rem">
+                Primary Model
+                <div class="tooltip-container">
+                  <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+                    <span style="font-size:0.7rem">ⓘ</span>
+                  </button>
+                  <div class="tooltip-content">Most capable model for complex guest issues (Claude 3.5 Sonnet). Routine Model handles simple requests faster/cheaper.</div>
+                </div>
+              </span>
+            </label>
+            <input type="text" name="primary_model" class="compat-input" value="{{ sys_conf.primary_model }}" title="Technical ID: anthropic/claude-3.5-sonnet">
+            <p class="text-[10px] text-slate-500 font-medium">Claude 3.5 Sonnet <span class="text-slate-600 font-mono text-xs">(anthropic/claude-3.5-sonnet)</span></p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Routine Model</label>
+            <input type="text" name="routine_model" class="compat-input" value="{{ sys_conf.routine_model }}" title="Technical ID: google/gemini-2.5-flash">
+            <p class="text-[10px] text-slate-500 font-medium">Gemini 2.5 Flash <span class="text-slate-600 font-mono text-xs">(google/gemini-2.5-flash)</span></p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Fallback Model</label>
+            <input type="text" name="fallback_model" class="compat-input" value="{{ sys_conf.fallback_model }}" title="Technical ID: meta-llama/llama-3.1-70b-instruct">
+            <p class="text-[10px] text-slate-500 font-medium">Llama 3.1 70B <span class="text-slate-600 font-mono text-xs">(meta-llama/llama-3.1-70b-instruct)</span></p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Sentiment Model</label>
+            <input type="text" name="sentiment_model" class="compat-input" value="{{ sys_conf.sentiment_model }}" title="Technical ID: openai/gpt-4o-mini">
+            <p class="text-[10px] text-slate-500 font-medium">GPT-4o Mini <span class="text-slate-600 font-mono text-xs">(openai/gpt-4o-mini)</span></p>
+          </div>
+          <button type="submit" class="w-full mt-2 py-3 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-[#002e6b] text-sm font-extrabold rounded-xl shadow-[0_0_20px_rgba(174,198,255,0.2)] hover:shadow-[0_0_30px_rgba(174,198,255,0.4)] transition-all">
+            Save & Hot-Swap
+          </button>
+        </form>
+      </div>
+    </div>
+    
+    <div class="xl:col-span-2 space-y-6">
+      <div class="glass-card rounded-3xl p-6 h-full flex flex-col">
+        <h2 class="text-lg font-bold text-white mb-6">Live API Cost Logging</h2>
+        <div class="flex-1 overflow-x-auto rounded-xl border border-white/5">
+          <table class="w-full text-left whitespace-nowrap">
+            <thead class="text-[0.65rem] tracking-wider uppercase text-slate-500 bg-black/20 border-b border-white/5">
+              <tr>
+                <th class="px-5 py-3 font-bold">Time</th>
+                <th class="px-5 py-3 font-bold">Model</th>
+                <th class="px-5 py-3 font-bold">Feature</th>
+                <th class="px-5 py-3 font-bold">Tokens</th>
+                <th class="px-5 py-3 font-bold text-right">Cost</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5 text-sm">
+              {% for log in logs %}
+              <tr class="hover:bg-white/5 transition-colors">
+                <td class="px-5 py-3 text-xs text-slate-400">{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td class="px-5 py-3">
+                  <span class="px-2 py-1 bg-white/5 rounded-md text-[0.65rem] text-[#aec6ff] whitespace-nowrap" title="{{ log.model }}">
+                    {% if 'claude-3.5-sonnet' in log.model %}Claude 3.5 Sonnet
+                    {% elif 'gemini-2.5-flash' in log.model %}Gemini 2.5 Flash
+                    {% elif 'llama-3.1-70b' in log.model %}Llama 3.1 70B
+                    {% elif 'gpt-4o-mini' in log.model %}GPT-4o Mini
+                    {% elif 'gpt-4' in log.model %}GPT-4
+                    {% else %}{{ log.model }}{% endif %}
+                  </span>
+                </td>
+                <td class="px-5 py-3 text-xs text-slate-300">{{ log.feature }}</td>
+                <td class="px-5 py-3 text-xs font-mono text-slate-400">
+                  <span class="text-emerald-400">{{ log.input_tokens }}</span> / <span class="text-amber-400">{{ log.output_tokens }}</span>
+                </td>
+                <td class="px-5 py-3 text-xs font-medium text-right text-emerald-400">${{ "%.3f"|format(log.cost_usd) }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="px-6 py-12 text-center text-slate-500 text-sm">No API usage recorded yet.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 </main>
-<!-- FAB for Global Actions -->
-<button class="fixed bottom-8 right-8 w-14 h-14 rounded-full bg-primary text-white shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
-<span class="material-symbols-outlined" data-icon="add">add</span>
-</button>
-</body></html>
+{%- endblock %}
+{%- endblock %}

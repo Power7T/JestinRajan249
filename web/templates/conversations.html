@@ -1,359 +1,756 @@
-<!DOCTYPE html>
+{%- extends "base.html" %}
+{%- block title %}Conversations — HostAI{%- endblock %}
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Host Assistant | Conversations</title>
+{%- block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            "colors": {
-                    "primary-fixed": "#d7e3ff",
-                    "primary-container": "#0066cc",
-                    "tertiary-fixed": "#ffdbcb",
-                    "primary": "#004e9f",
-                    "on-primary": "#ffffff",
-                    "on-tertiary-fixed-variant": "#793000",
-                    "tertiary-container": "#af4900",
-                    "on-primary-fixed-variant": "#00458e",
-                    "surface-container-high": "#e6e8ea",
-                    "on-secondary-fixed": "#0d1c2e",
-                    "tertiary": "#883700",
-                    "surface-bright": "#f7f9fb",
-                    "on-primary-fixed": "#001b3e",
-                    "on-secondary-container": "#57657a",
-                    "on-error": "#ffffff",
-                    "error-container": "#ffdad6",
-                    "on-tertiary-fixed": "#341100",
-                    "surface-container-lowest": "#ffffff",
-                    "secondary-fixed": "#d5e3fc",
-                    "secondary-fixed-dim": "#b9c7df",
-                    "surface-variant": "#e0e3e5",
-                    "inverse-on-surface": "#eff1f3",
-                    "surface-dim": "#d8dadc",
-                    "on-surface": "#191c1e",
-                    "surface": "#f7f9fb",
-                    "on-surface-variant": "#414753",
-                    "primary-fixed-dim": "#aac7ff",
-                    "tertiary-fixed-dim": "#ffb692",
-                    "on-primary-container": "#dfe8ff",
-                    "on-secondary": "#ffffff",
-                    "surface-container-low": "#f2f4f6",
-                    "on-tertiary": "#ffffff",
-                    "secondary": "#515f74",
-                    "on-secondary-fixed-variant": "#3a485b",
-                    "on-error-container": "#93000a",
-                    "surface-tint": "#005cba",
-                    "outline": "#727784",
-                    "inverse-primary": "#aac7ff",
-                    "surface-container-highest": "#e0e3e5",
-                    "error": "#ba1a1a",
-                    "on-tertiary-container": "#ffe3d6",
-                    "surface-container": "#eceef0",
-                    "secondary-container": "#d5e3fc",
-                    "inverse-surface": "#2d3133",
-                    "on-background": "#191c1e",
-                    "background": "#f7f9fb",
-                    "outline-variant": "#c1c6d5"
-            },
-            "borderRadius": {
-                    "DEFAULT": "0.125rem",
-                    "lg": "0.25rem",
-                    "xl": "0.5rem",
-                    "full": "0.75rem"
-            },
-            "fontFamily": {
-                    "headline": ["Inter"],
-                    "body": ["Inter"],
-                    "label": ["Inter"]
-            }
-          },
-        },
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "surface-dim": "#121319",
+        "surface": "#121319",
+        "surface-container": "#1e1f26",
+        "primary": "#aec6ff",
+        "on-primary": "#002e6b",
+        "error": "#ffb4ab",
       }
-    </script>
+    }
+  }
+}
+</script>
 <style>
-        body { font-family: 'Inter', sans-serif; }
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .glass-header {
-            background: rgba(242, 244, 246, 0.8);
-            backdrop-filter: blur(24px);
-        }
-    </style>
-</head>
-<body class="bg-surface text-on-surface overflow-hidden">
-<!-- TopNavBar -->
-<header class="bg-slate-50 dark:bg-slate-900 font-sans text-sm tracking-tight docked full-width top-0 border-b-0 flex justify-between items-center h-16 px-6 w-full fixed z-50">
-<div class="flex items-center gap-4">
-<span class="text-xl font-bold text-blue-900 dark:text-blue-100 tracking-tighter">Host Assistant</span>
-</div>
-<div class="flex items-center gap-2">
-<div class="relative mr-4 hidden md:block">
-<input class="bg-surface-container-high border-none rounded-full px-4 py-2 w-64 focus:ring-2 focus:ring-primary text-xs" placeholder="Search conversations..." type="text"/>
-</div>
-<button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors rounded-full">
-<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color: #e3e1eb; }
+.glass-card { background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); }
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24; }
+.msg-row { display: flex; flex-direction: column; gap: 2px; }
+.msg-row.outbound { align-items: flex-end; }
+.msg-row.inbound  { align-items: flex-start; }
+.msg-bubble { max-width: 72%; padding: 10px 14px; border-radius: 16px; font-size: 0.875rem; line-height: 1.5; }
+.msg-row.outbound .msg-bubble { background: rgba(93,141,239,0.22); color: #e3e1eb; border-bottom-right-radius: 4px; }
+.msg-row.inbound  .msg-bubble { background: rgba(255,255,255,0.07); color: #c3c6d4; border-bottom-left-radius: 4px; }
+.msg-meta { display: flex; gap: 6px; font-size: 0.68rem; color: #424752; padding: 0 4px; flex-wrap: wrap; }
+.day-sep { text-align: center; font-size: 0.68rem; font-weight: 700; color: #424752; text-transform: uppercase; letter-spacing: 0.08em; padding: 12px 0 4px; }
+.chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 3rem; text-align: center; gap: 1rem; }
+.chat-empty-icon { font-size: 3rem; }
+.conv-item.active { background: rgba(93,141,239,0.1); border-left: 2px solid #5B8DEF; }
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+
+<!-- Mobile hamburger -->
+<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+  <span class="material-symbols-outlined">menu</span>
 </button>
-<button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors rounded-full">
-<span class="material-symbols-outlined" data-icon="help">help</span>
-</button>
-<button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors rounded-full">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
-</button>
-<img alt="Manager Profile" class="w-8 h-8 rounded-full ml-2 object-cover" data-alt="professional headshot of a property manager in a modern office setting with soft natural light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1PNg6bIdoe8SXZxt7NRUQGgpAaaG69vxOq1D7L5JQC_2yEGWp_yKT3xO-Dc3k064sgQfVbVXLy3-5cbsGimIYlx3BOf-aUqnKjpqL1Zbl-0x6cX_CESFH02bwWOfoJ3wTt2MglQL-VTrEvEZ9JJblZO5Z1htZPtF3d9GJYBiSgceW-LzfzdhlkBM86KlGsr528LIlAX5JFLtZh1B3Oq07OtK076mtFQWcU9U_NazPT-xjYGLRtvMNFAXNRPTNCXalgG86tSev9rD1"/>
-</div>
-</header>
-<div class="flex h-screen pt-16">
-<!-- SideNavBar -->
-<aside id="sidebar" class="bg-slate-100 dark:bg-slate-950 font-sans text-sm font-medium docked left-0 h-full w-64 hidden md:flex flex-col gap-8 py-8 px-4 flex-shrink-0">
-<div class="px-4">
-<h2 class="text-lg font-black text-blue-800 dark:text-blue-200">Management</h2>
-<p class="text-xs text-slate-500 uppercase tracking-widest">Enterprise Suite</p>
-</div>
-<nav class="flex flex-col gap-1">
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:text-blue-600 dark:hover:text-blue-300 hover:translate-x-1 transition-all duration-200 ease-out" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-<span>Dashboard</span>
-</a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:text-blue-600 dark:hover:text-blue-300 hover:translate-x-1 transition-all duration-200 ease-out" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="domain">domain</span>
-<span>Properties</span>
-</a>
-<!-- Active State -->
-<a class="flex items-center gap-3 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 rounded-full px-4 py-2 transition-all" href="/conversations">
-<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
-<span>Conversations</span>
-</a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:text-blue-600 dark:hover:text-blue-300 hover:translate-x-1 transition-all duration-200 ease-out" href="/billing">
-<span class="material-symbols-outlined" data-icon="payments">payments</span>
-<span>Finances</span>
-</a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:text-blue-600 dark:hover:text-blue-300 hover:translate-x-1 transition-all duration-200 ease-out" href="/analytics">
-<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
-<span>Reports</span>
-</a>
-</nav>
-<div class="mt-auto px-4">
-<button class="w-full bg-primary-container text-on-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-transform">
-<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
-                    New Message
-                </button>
-</div>
-<div class="pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-1">
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:translate-x-1 transition-all" href="/activity">
-<span class="material-symbols-outlined" data-icon="archive">archive</span>
-<span>Archive</span>
-</a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:translate-x-1 transition-all" href="/reservations">
-<span class="material-symbols-outlined" data-icon="delete">delete</span>
-<span>Trash</span>
-</a>
-</div>
+<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
+
+<!-- Sidebar -->
+<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col font-['Plus_Jakarta_Sans'] text-sm font-medium">
+  <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
+    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+      <span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
+    </div>
+    <span>HostAI</span>
+  </a>
+  <nav class="flex-1 px-4 space-y-1">
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+      <span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
+      <span class="material-symbols-outlined">forum</span>Conversations</a>
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
+      <span class="material-symbols-outlined">event_available</span>Reservations</a>
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
+      <span class="material-symbols-outlined">history</span>Activity</a>
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
+      <span class="material-symbols-outlined">analytics</span>Analytics</a>
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
+      <span class="material-symbols-outlined">trending_up</span>Revenue &amp; ROI</a>
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+      <span class="material-symbols-outlined">phone_in_talk</span>Voice AI</a>
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
+      <span class="material-symbols-outlined">hub</span>Operations</a>
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
+      <span class="material-symbols-outlined">settings</span>Settings</a>
+    {% if tenant is defined and tenant and is_admin(tenant.email) %}
+    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
+      <span class="material-symbols-outlined">admin_panel_settings</span>Admin</a>
+    {% endif %}
+  </nav>
+  <div class="mt-auto p-6 space-y-4">
+    <div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+        {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-white font-bold truncate">{{ tenant.first_name or "Your Account" }}</p>
+        <p class="text-slate-500 text-xs truncate">Host Administrator</p>
+      </div>
+    </div>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+        <span class="material-symbols-outlined text-sm">logout</span>Sign Out
+      </button>
+    </form>
+  </div>
 </aside>
-<!-- Main Messaging Interface -->
-<main class="flex-1 flex overflow-hidden">
-<!-- Pane 1: Conversation List -->
-<section class="w-80 md:w-96 bg-surface-container-low flex flex-col h-full border-r border-transparent">
-<div class="p-6 pb-4">
-<h1 class="text-2xl font-bold tracking-tight text-on-surface mb-4">Messages</h1>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg" data-icon="search">search</span>
-<input class="w-full bg-surface-container-lowest border-none rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary shadow-sm" placeholder="Search guests or properties" type="text"/>
-</div>
-</div>
-<div class="flex-1 overflow-y-auto scrollbar-hide px-3 space-y-1">
-<!-- Active Conversation -->
-<div class="bg-surface-container-lowest rounded-xl p-4 flex gap-4 cursor-pointer hover:shadow-md transition-shadow">
-<div class="relative">
-<img alt="{{ tenant.name | default("Guest") }}" class="w-12 h-12 rounded-full object-cover" data-alt="portrait of a professional woman with a friendly smile, neutral background, soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2BCwnxO1-d-3Cfv_sLoYkKfbH1XcuGptJOEBui4irP_4ethYO1llUh31XMx6SRppfMiwiHflc6_AzDCDQd36CRvD9cCj4wlgZG49nw9j-RESjbhvaLmaYcqakgi0dJn_SCqeG4wYq2D528ke9Do0ZpefHQfP9A-bSQEkXYCrVaK6n-UQH7vAjcfRtcAhm8mto8Ht_L5ztMKNlNYj3cpEM7Pvl41jQZofWR_glQDs8BXLsYRjQqV0RjN5u2fauxs1HDelWNvUE-jLl"/>
-<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-</div>
-<div class="flex-1 min-w-0">
-<div class="flex justify-between items-baseline mb-1">
-<h3 class="font-bold text-sm text-on-surface truncate">{{ tenant.name | default("Guest") }}</h3>
-<span class="text-[10px] font-medium text-on-surface-variant">10:42 AM</span>
-</div>
-<p class="text-xs text-primary font-medium truncate">Hi, what's the Wi-Fi password for the...</p>
-<div class="flex justify-between items-center mt-2">
-<span class="text-[10px] px-2 py-0.5 bg-surface-container rounded-full text-on-secondary-container">your property</span>
-<span class="bg-primary px-1.5 py-0.5 rounded-full text-[10px] text-white font-bold">2</span>
-</div>
-</div>
-</div>
-<!-- Other Conversations -->
-<div class="rounded-xl p-4 flex gap-4 cursor-pointer hover:bg-surface-container-high transition-colors">
-<img alt="Guest" class="w-12 h-12 rounded-full object-cover" data-alt="portrait of a man with spectacles in a modern urban setting, warm sunlight, professional look" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDW4kcYSGNVbQeScDB1TzEiR7UQtp37FnxbfoTNX3q1uIwhNNjTxWNKiu7yn_PuGa1q5NEg789AbXKU8wSDi0VtBMN_k-UL1NLs1awslGALbbT-UMKmtXyXJ16Xu6NL_gQacEqZTri-KLzcB9ubFF76Uogo7bHhZfwi1GUWqakcv3l66qQdyf5ctrJH9t0c2LE5SgPrTB9xWSR55_Dpp0NYEOTT84XziWxbEfBefSj2isMuaQZOOEwlDfuIBCciGynoqG-5hvJEhS-D"/>
-<div class="flex-1 min-w-0">
-<div class="flex justify-between items-baseline mb-1">
-<h3 class="font-bold text-sm text-on-surface truncate">Guest</h3>
-<span class="text-[10px] font-medium text-on-surface-variant">Yesterday</span>
-</div>
-<p class="text-xs text-on-surface-variant truncate">Thank you for the early check-in!</p>
-<div class="flex items-center mt-2">
-<span class="text-[10px] px-2 py-0.5 bg-surface-container rounded-full text-on-secondary-container">your property</span>
-</div>
-</div>
-</div>
-<div class="rounded-xl p-4 flex gap-4 cursor-pointer hover:bg-surface-container-high transition-colors">
-<img alt="Guest" class="w-12 h-12 rounded-full object-cover" data-alt="portrait of a woman in business casual attire, minimalist architectural background, clean lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCj540JlMW8OXHhMNvG9gD8AQRzcZWSf5f-P8kdc1C_VnQKZsWy5Dyp_uCrhu-LWOVeRmxZxAqo4gsPFomljv2hywTeQXLqkJAilm2YBlxdpkISKbQoInezCdYYxsC5YXHcO01MURVvh74B15OsPipxWx6ebAqxfAOcS2XFZ_L9UR9fKwa4POeUTjkxalqRsWoL0A3v9WV8ok5we-6W2eCf0ePR1WsldZOJqR5HWxy34_gDwVd4m4RFcaYUUN0xAblLBQD-1AyYvRLY"/>
-<div class="flex-1 min-w-0">
-<div class="flex justify-between items-baseline mb-1">
-<h3 class="font-bold text-sm text-on-surface truncate">Guest</h3>
-<span class="text-[10px] font-medium text-on-surface-variant">Oct 26</span>
-</div>
-<p class="text-xs text-on-surface-variant truncate">The heating seems to be off in the...</p>
-<div class="flex items-center mt-2">
-<span class="text-[10px] px-2 py-0.5 bg-surface-container rounded-full text-on-secondary-container">your property</span>
-</div>
-</div>
-</div>
-</section>
-<!-- Pane 2: Active Thread -->
-<section class="flex-1 bg-surface-container-lowest flex flex-col h-full relative">
-<!-- Thread Header -->
-<div class="glass-header h-16 px-6 flex items-center justify-between border-b-0 sticky top-0 z-10">
-<div class="flex items-center gap-3">
-<h2 class="text-lg font-bold text-on-surface">{{ tenant.name | default("Guest") }}</h2>
-<div class="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-bold">
-<span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                            WhatsApp
-                        </div>
-</div>
-<div class="flex items-center gap-4">
-<button class="text-on-surface-variant hover:text-primary transition-colors">
-<span class="material-symbols-outlined" data-icon="call">call</span>
-</button>
-<button class="text-on-surface-variant hover:text-primary transition-colors">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</div>
-</div>
-<!-- Messages Area -->
-<div class="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-hide">
-<div class="flex justify-center">
-<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 bg-surface-container-low px-4 py-1 rounded-full">Yesterday</span>
-</div>
-<!-- Guest Message -->
-<div class="flex flex-col items-start max-w-[80%]">
-<div class="bg-surface-container-high rounded-2xl rounded-tl-none p-4 text-sm text-on-surface leading-relaxed">
-                            Hello! We just arrived at the loft. It looks beautiful, thank you!
-                        </div>
-<span class="text-[10px] mt-1 text-on-surface-variant ml-1">14:20 • Delivered</span>
-</div>
-<!-- User Message -->
-<div class="flex flex-col items-end ml-auto max-w-[80%]">
-<div class="bg-primary text-white rounded-2xl rounded-tr-none p-4 text-sm leading-relaxed shadow-lg shadow-primary/10">
-                            Welcome, Elena! I'm glad you like it. Is there anything you need right away?
-                        </div>
-<div class="flex items-center gap-1 mt-1 mr-1">
-<span class="text-[10px] text-on-surface-variant">14:22 • Read</span>
-<span class="material-symbols-outlined text-[12px] text-blue-500" data-icon="done_all" style="font-variation-settings: 'FILL' 1;">done_all</span>
-</div>
-</div>
-<div class="flex justify-center">
-<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 bg-surface-container-low px-4 py-1 rounded-full">Today</span>
-</div>
-<!-- Guest Message -->
-<div class="flex flex-col items-start max-w-[80%]">
-<div class="bg-surface-container-high rounded-2xl rounded-tl-none p-4 text-sm text-on-surface leading-relaxed">
-                            Hi, what's the Wi-Fi password for the unit? I can't find it on the welcome sheet.
-                        </div>
-<span class="text-[10px] mt-1 text-on-surface-variant ml-1">10:42 • Delivered</span>
-</div>
-</div>
-<!-- Input Area -->
-<div class="p-6 pt-2">
-<div class="flex gap-2 mb-3">
-<button class="px-4 py-1.5 rounded-full border border-outline-variant/30 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center gap-2">
-<span class="material-symbols-outlined text-sm" data-icon="bolt">bolt</span>
-                            Quick Replies
-                        </button>
-</div>
-<div class="bg-surface-container-low rounded-2xl p-2 flex items-end gap-2 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-<button class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full">
-<span class="material-symbols-outlined" data-icon="sentiment_satisfied">sentiment_satisfied</span>
-</button>
-<button class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full">
-<span class="material-symbols-outlined" data-icon="attach_file">attach_file</span>
-</button>
-<textarea class="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 resize-none max-h-32 scrollbar-hide" placeholder="Type a message..." rows="1"></textarea>
-<button class="bg-primary-container text-on-primary w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 transition-transform active:scale-95">
-<span class="material-symbols-outlined" data-icon="send">send</span>
-</button>
-</div>
-</div>
-</section>
-<!-- Pane 3: Guest Context Panel -->
-<section class="w-80 bg-surface flex flex-col h-full border-l border-transparent hidden xl:flex">
-<div class="p-8 flex flex-col items-center text-center">
-<img alt="{{ tenant.name | default("Guest") }} Large" class="w-24 h-24 rounded-full object-cover mb-4 ring-4 ring-white shadow-xl" data-alt="high resolution close up of a smiling woman, bright and clear aesthetics, professional look" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDT755kEl8pGR8JzJRoUojHvQK6JPbgNFtlPdjVMlVL3O89MlypzW5TKWisRy40IHkGRvOz6A50HtDO9ku5Qvoc3gsCig-z7LyvS8_ffo5yLkTd7yzzyKmb55eNk_OsVLL43HMla4Vswxlou0IbfIzPAtUyka35szpA1KM7CeqZhoSvS1sv90HosLsrDi34L2Y65Qm8EZsBzb6eqvlIedNiTS1OKB2GNmISSimI42i5aMKzbyRkwP4SqyS5nKMe6ztudNeJUQvzjE0E"/>
-<h2 class="text-xl font-extrabold text-on-surface tracking-tight">{{ tenant.name | default("Guest") }}</h2>
-<p class="text-sm text-on-surface-variant font-medium">Guest since 2021</p>
-<div class="grid grid-cols-2 gap-4 w-full mt-8">
-<div class="bg-surface-container-lowest p-4 rounded-xl text-left border-b-2 border-primary-fixed">
-<span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1">Rating</span>
-<div class="flex items-center gap-1">
-<span class="text-lg font-black text-on-surface">4.9</span>
-<span class="material-symbols-outlined text-yellow-500 text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
-</div>
-</div>
-<div class="bg-surface-container-lowest p-4 rounded-xl text-left border-b-2 border-tertiary-fixed">
-<span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1">Stays</span>
-<span class="text-lg font-black text-on-surface">3</span>
-</div>
-</div>
-</div>
-<div class="flex-1 px-8 space-y-6">
-<div class="space-y-4">
-<h4 class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Active Reservation</h4>
-<div class="space-y-3">
-<div class="flex gap-3">
-<span class="material-symbols-outlined text-primary" data-icon="apartment">apartment</span>
-<div>
-<p class="text-xs font-bold text-on-surface">your property</p>
-<p class="text-[11px] text-on-surface-variant">Unit 402 • Penthouse</p>
-</div>
-</div>
-<div class="flex gap-3">
-<span class="material-symbols-outlined text-primary" data-icon="calendar_today">calendar_today</span>
-<div>
-<p class="text-xs font-bold text-on-surface">Oct 24 - Oct 31, 2023</p>
-<p class="text-[11px] text-on-surface-variant">7 Nights</p>
-</div>
-</div>
-<div class="flex gap-3">
-<span class="material-symbols-outlined text-primary" data-icon="payments">payments</span>
-<div>
-<p class="text-xs font-bold text-on-surface">$2,450.00</p>
-<p class="text-[11px] text-on-surface-variant">Total Stay Value</p>
-</div>
-</div>
-</div>
-</div>
-<div class="pt-6 border-t border-surface-container-high space-y-3">
-<button class="w-full py-3 bg-secondary-container text-on-secondary-fixed-variant rounded-xl text-sm font-bold hover:bg-secondary-fixed transition-colors" onclick="window.location.href="/reservations"">View Reservation</button>
-<button class="w-full py-3 bg-transparent text-on-surface-variant border border-outline-variant/30 rounded-xl text-sm font-bold hover:bg-surface-container-low transition-colors" onclick="window.location.href="/reservations"">Edit Guest Details</button>
-</div>
-</div>
-<!-- Quick Actions / Notes -->
-<div class="p-8">
-<div class="bg-tertiary-fixed-dim/20 p-4 rounded-xl border-l-4 border-tertiary">
-<p class="text-[11px] font-bold text-tertiary mb-1">Internal Note</p>
-<p class="text-xs text-on-tertiary-fixed-variant italic leading-relaxed">Guest requested extra pillows and hypoallergenic linens upon arrival.</p>
-</div>
-</div>
-</section>
+
+<!-- Top Header Bar -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+  <div class="flex items-center flex-1 max-w-md">
+    <div class="relative w-full">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+      <input class="w-full bg-[#1e1f26] text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-[#5B8DEF]/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search conversations…" type="text" id="conv-search" oninput="filterConversations(this.value)" />
+    </div>
+  </div>
+  <div class="flex items-center gap-6">
+    <button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+      <span class="material-symbols-outlined">notifications</span>
+      <span class="absolute top-2 right-2 w-2 h-2 bg-[#5B8DEF] rounded-full border-2 border-[#08090F]"></span>
+    </button>
+    <div class="h-8 w-px bg-white/10"></div>
+    <div class="flex items-center gap-3 cursor-pointer group">
+      <span class="text-slate-200 group-hover:text-white transition-colors">{{ tenant.first_name or 'Account' }}</span>
+      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+        {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Main -->
+<main class="md:ml-[260px] pt-24 pb-12 px-4 md:px-8 min-h-screen">
+
+  <!-- Page Header -->
+  <div class="mb-8 flex items-center justify-between">
+    <div>
+      <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">Conversations</h1>
+      <p class="text-slate-400 text-sm">AI-powered guest messaging threads</p>
+    </div>
+    <div class="flex items-center gap-3">
+      {% set wa_active = cfg and cfg.wa_mode == 'meta_cloud' %}
+      {% set sms_active = cfg and cfg.twilio_account_sid %}
+      {% if wa_active %}
+      <span class="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-400 rounded-lg text-xs font-semibold">
+        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>WhatsApp Active
+      </span>
+      {% endif %}
+      {% if sms_active %}
+      <span class="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-xs font-semibold">
+        <span class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>SMS Active
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Tab Switcher -->
+  <div class="mb-6 flex items-center justify-between gap-4">
+    <div class="inline-flex items-center gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
+      <a href="/conversations?tab=panel" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab != 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+        Conversations Panel
+      </a>
+      <a href="/conversations?tab=settings" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab == 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+        Messaging Settings
+      </a>
+    </div>
+    <div class="text-xs text-slate-500 hidden md:block">
+      Panel = message threads. Settings = WhatsApp &amp; SMS configuration.
+    </div>
+  </div>
+
+  <!-- Save success banner -->
+  {% if saved and tab == 'settings' %}
+  <div class="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-100">
+    <div class="flex items-start gap-3">
+      <span class="material-symbols-outlined text-emerald-300">check_circle</span>
+      <div>
+        <p class="font-semibold text-emerald-200">Messaging settings saved</p>
+        <p class="mt-1 text-emerald-100/90">Your WhatsApp and SMS configuration is now active.</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ════════════════════════════════════════════════
+       TAB 1: CONVERSATIONS PANEL
+       ════════════════════════════════════════════════ -->
+  {% if tab != 'settings' %}
+  <div class="glass-card rounded-3xl overflow-hidden" style="height: calc(100vh - 260px);">
+    <div class="flex h-full">
+
+      <!-- Left: Conversation List -->
+      <div class="w-80 border-r border-white/5 bg-[#0d0e14] flex flex-col overflow-hidden flex-shrink-0">
+        <div class="px-4 py-3 border-b border-white/5">
+          <p class="text-xs font-bold uppercase tracking-widest text-slate-500">
+            Conversations
+            {% if conversations %}<span class="ml-2 bg-[#5B8DEF]/10 text-[#aec6ff] px-2 py-0.5 rounded-full">{{ conversations|length }}</span>{% endif %}
+          </p>
+        </div>
+        {% if conversations %}
+        <div class="overflow-y-auto flex-1">
+          {% for conv in conversations %}
+          <div class="conv-item px-4 py-4 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors {% if loop.first %}active{% endif %}"
+               onclick="selectConversation(this, '{{ conv.thread_key }}', '{{ conv.guest_name }}', '{{ conv.guest_phone }}')"
+               data-thread="{{ conv.thread_key }}" data-name="{{ conv.guest_name }}" data-phone="{{ conv.guest_phone }}">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm flex-shrink-0">
+                {{ conv.guest_name[0]|upper if conv.guest_name else '?' }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-white text-sm truncate">{{ conv.guest_name }}</p>
+                <p class="text-slate-500 text-xs font-mono truncate">{{ conv.guest_phone }}</p>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <p class="text-slate-500 text-[10px]">{{ conv.last_at.strftime('%b %d') }}</p>
+                <span class="text-[10px] bg-[#1e1f26] text-slate-400 px-1.5 py-0.5 rounded-full">{{ conv.message_count }}</span>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <span class="material-symbols-outlined text-4xl text-slate-600 mb-3">forum</span>
+          <h3 class="font-bold text-white mb-1">No conversations yet</h3>
+          <p class="text-slate-500 text-sm">Guest messages will appear here as they come in.</p>
+          <a href="/conversations?tab=settings" class="mt-4 flex items-center gap-2 px-4 py-2 bg-[#5B8DEF]/20 text-[#aec6ff] rounded-xl text-sm font-semibold hover:bg-[#5B8DEF]/30 transition-colors">
+            <span class="material-symbols-outlined text-base">settings</span>Configure Messaging
+          </a>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Right: Message Thread -->
+      <div class="flex-1 flex flex-col overflow-hidden bg-[#08090F]" id="detailPanel">
+        {% if conversations %}
+        <div class="flex items-center gap-4 px-6 py-4 border-b border-white/5 bg-[#0d0e14]/60 backdrop-blur-sm" id="detailHeader">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold" id="detailAvatar">
+            {{ conversations[0].guest_name[0]|upper if conversations and conversations[0].guest_name else '?' }}
+          </div>
+          <div>
+            <h2 class="font-bold text-white" id="detailGuestName">{{ conversations[0].guest_name }}</h2>
+            <p class="text-slate-500 text-xs font-mono" id="detailGuestPhone">{{ conversations[0].guest_phone }}</p>
+          </div>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-3" id="messageThread">
+          {% if initial_messages %}
+            {% set ns = namespace(last_date='') %}
+            {% for msg in initial_messages %}
+              {% if msg.display_date != ns.last_date %}
+                <div class="day-sep">{{ msg.display_date }}</div>
+                {% set ns.last_date = msg.display_date %}
+              {% endif %}
+              <div class="msg-row {{ 'outbound' if msg.direction == 'outbound' else 'inbound' }}">
+                <div class="msg-bubble">{{ msg.body }}</div>
+                <div class="msg-meta">
+                  <span>{{ msg.display_time }}</span>
+                  {% if msg.channel %}<span>{{ msg.channel.upper() }}</span>{% endif %}
+                  {% if msg.badge %}<span>{{ msg.badge }}</span>{% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+          <div class="chat-empty">
+            <div class="chat-empty-icon">📭</div>
+            <h3 class="font-bold text-white">No messages</h3>
+            <p class="text-slate-500 text-sm">No messages found in this conversation.</p>
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="flex-1 flex flex-col items-center justify-center text-center p-8">
+          <span class="material-symbols-outlined text-5xl text-slate-600 mb-4">chat_bubble_outline</span>
+          <h3 class="text-xl font-bold text-white mb-2">No conversations yet</h3>
+          <p class="text-slate-400 text-sm mb-6">Once guests send messages via WhatsApp or SMS, you'll find them here.</p>
+          <a href="/conversations?tab=settings" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
+            <span class="material-symbols-outlined text-base">settings</span>Configure WhatsApp &amp; SMS
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ════════════════════════════════════════════════
+       TAB 2: MESSAGING SETTINGS
+       ════════════════════════════════════════════════ -->
+  {% if tab == 'settings' %}
+
+  <!-- ── WhatsApp Meta Cloud API ───────────────────── -->
+  <div class="glass-card rounded-3xl p-6 mb-8 border border-[#5B8DEF]/15">
+    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+      <div>
+        <p class="text-[0.65rem] font-bold text-[#aec6ff] uppercase tracking-[0.3em] mb-2">Setup</p>
+        <h2 class="text-2xl font-bold text-white">WhatsApp Configuration</h2>
+        <p class="text-slate-400 text-sm mt-2 max-w-2xl">
+          Official WhatsApp Business Cloud API — no hardware needed, scales to 10,000+ messages/day.
+        </p>
+      </div>
+      {% set wa_has_token = cfg and cfg.whatsapp_token_enc %}
+      {% set wa_has_number = cfg and (cfg.whatsapp_number or '') %}
+      {% set wa_has_phone_id = cfg and (cfg.whatsapp_phone_id or '') %}
+      <span class="self-start px-3 py-1.5 rounded-full text-xs font-bold {% if cfg and cfg.wa_mode == 'meta_cloud' %}bg-green-500/10 text-green-400 border border-green-400/30{% else %}bg-white/5 text-slate-400{% endif %}">
+        {% if cfg and cfg.wa_mode == 'meta_cloud' %}Configured{% else %}Not Setup{% endif %}
+      </span>
+    </div>
+
+    <!-- Status mini-cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
+        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Access Token</p>
+        <p class="text-sm font-semibold {% if wa_has_token %}text-emerald-300{% else %}text-amber-300{% endif %}">
+          {% if wa_has_token %}Configured{% else %}Missing{% endif %}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">From Meta Cloud API</p>
+      </div>
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
+        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Phone Number</p>
+        <p class="text-sm font-semibold {% if wa_has_number %}text-emerald-300{% else %}text-amber-300{% endif %}">
+          {% if wa_has_number %}Ready{% else %}Missing{% endif %}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">Your WhatsApp Business number</p>
+      </div>
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
+        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Phone ID</p>
+        <p class="text-sm font-semibold {% if wa_has_phone_id %}text-emerald-300{% else %}text-amber-300{% endif %}">
+          {% if wa_has_phone_id %}Ready{% else %}Missing{% endif %}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">Required for API connectivity</p>
+      </div>
+    </div>
+
+    <!-- Instruction banner -->
+    <div class="rounded-2xl border border-[#5B8DEF]/15 bg-[#5B8DEF]/6 p-4 mb-6">
+      <p class="text-sm font-semibold text-white mb-2">Before you enable WhatsApp</p>
+      <ol class="list-decimal pl-5 space-y-1 text-sm text-slate-300">
+        <li>Create a Meta Business App at <a href="https://developers.facebook.com" target="_blank" class="text-[#aec6ff] hover:underline">developers.facebook.com</a>.</li>
+        <li>Add the WhatsApp product and get your Phone Number ID and Access Token.</li>
+        <li>Paste the Webhook URL below into your Meta App webhook settings.</li>
+      </ol>
+    </div>
+
+    <!-- WhatsApp Form -->
+    <form method="post" action="/conversations/settings" class="space-y-5">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <input type="hidden" name="wa_mode" value="meta_cloud">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">WhatsApp Number</label>
+          <input type="text" name="whatsapp_number" value="{{ cfg.whatsapp_number or '' }}" placeholder="+15550001234"
+                 class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Access Token</label>
+          <input type="password" name="whatsapp_token" placeholder="••••••••"
+                 class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+          <p class="mt-1 text-xs text-slate-500">Leave blank to keep current token</p>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Phone ID</label>
+          <input type="text" name="whatsapp_phone_id" value="{{ cfg.whatsapp_phone_id or '' }}" placeholder="123456789"
+                 class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Webhook Verify Token</label>
+          <input type="text" name="whatsapp_verify_token" value="{{ cfg.whatsapp_verify_token or '' }}" placeholder="your_verify_token"
+                 class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+          <p class="mt-1 text-xs text-slate-500">Required for Meta to verify webhook requests</p>
+        </div>
+      </div>
+      <!-- Webhook URL -->
+      <div class="rounded-2xl bg-white/5 border border-white/5 p-4">
+        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-2">WhatsApp Webhook URL</p>
+        <div class="flex flex-col md:flex-row gap-3">
+          <input type="text" readonly value="{{ app_base_url }}/whatsapp/webhook" id="wa-webhook-url" class="flex-1 px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm font-mono">
+          <button type="button" onclick="copyToClipboard('wa-webhook-url', this)" class="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-slate-200 hover:bg-white/15 transition-colors text-sm font-semibold">
+            <span class="material-symbols-outlined text-sm">content_copy</span>Copy
+          </button>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">Paste this URL in your Meta App → WhatsApp → Webhook settings.</p>
+      </div>
+      <div class="flex items-center justify-between gap-4">
+        <p class="text-xs text-slate-500">Changes take effect immediately after saving.</p>
+        <button type="submit" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
+          <span class="material-symbols-outlined text-base">save</span>Save WhatsApp Settings
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── SMS / Twilio ───────────────────────────────── -->
+  <div class="glass-card rounded-3xl p-6 mb-8 border border-[#5B8DEF]/15">
+    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+      <div>
+        <p class="text-[0.65rem] font-bold text-[#aec6ff] uppercase tracking-[0.3em] mb-2">Setup</p>
+        <h2 class="text-2xl font-bold text-white">SMS — Twilio</h2>
+        <p class="text-slate-400 text-sm mt-2 max-w-2xl">
+          Reach guests who don't use WhatsApp. Bring your own Twilio number for inbound SMS handling and automated replies.
+        </p>
+      </div>
+      {% set sms_has_sid = cfg and cfg.twilio_account_sid %}
+      {% set sms_has_from = cfg and cfg.twilio_from_number %}
+      <span class="self-start px-3 py-1.5 rounded-full text-xs font-bold {% if sms_has_sid %}bg-green-500/10 text-green-400 border border-green-400/30{% else %}bg-white/5 text-slate-400{% endif %}">
+        {% if sms_has_sid %}Configured{% else %}Not Setup{% endif %}
+      </span>
+    </div>
+
+    <!-- Status mini-cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
+        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Twilio Credentials</p>
+        <p class="text-sm font-semibold {% if sms_has_sid %}text-emerald-300{% else %}text-amber-300{% endif %}">
+          {% if sms_has_sid %}Configured{% else %}Missing{% endif %}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">Account SID &amp; Auth Token</p>
+      </div>
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
+        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">From Number</p>
+        <p class="text-sm font-semibold {% if sms_has_from %}text-emerald-300{% else %}text-amber-300{% endif %}">
+          {% if sms_has_from %}Ready{% else %}Missing{% endif %}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">Your Twilio phone number</p>
+      </div>
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
+        {% set notify_active = cfg and cfg.sms_notify_number %}
+        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Host Alerts</p>
+        <p class="text-sm font-semibold {% if notify_active %}text-emerald-300{% else %}text-slate-300{% endif %}">
+          {% if notify_active %}Configured{% else %}Optional{% endif %}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">Notification number for alerts</p>
+      </div>
+    </div>
+
+    <!-- SMS Form -->
+    <form method="post" action="/conversations/settings" class="space-y-5">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <input type="hidden" name="wa_mode" value="{{ cfg.wa_mode or 'none' }}">
+      <input type="hidden" name="whatsapp_number" value="{{ cfg.whatsapp_number or '' }}">
+      <input type="hidden" name="whatsapp_phone_id" value="{{ cfg.whatsapp_phone_id or '' }}">
+      <input type="hidden" name="whatsapp_verify_token" value="{{ cfg.whatsapp_verify_token or '' }}">
+      <input type="hidden" name="sms_mode" value="twilio">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Twilio Account SID</label>
+          <input type="text" name="twilio_account_sid" value="{{ cfg.twilio_account_sid or '' }}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                 class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Auth Token</label>
+          <input type="password" name="twilio_auth_token" placeholder="••••••••"
+                 class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+          <p class="mt-1 text-xs text-slate-500">Leave blank to keep current token</p>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">From Number</label>
+          <input type="text" name="twilio_from_number" value="{{ cfg.twilio_from_number or '' }}" placeholder="+15550001234"
+                 class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Host Alert Number</label>
+          <input type="text" name="sms_notify_number" value="{{ cfg.sms_notify_number or '' }}" placeholder="+15550009999"
+                 class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+          <p class="mt-1 text-xs text-slate-500">Where to receive incoming SMS alert notifications</p>
+        </div>
+      </div>
+      <!-- SMS Webhook URL -->
+      <div class="rounded-2xl bg-white/5 border border-white/5 p-4">
+        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-2">Twilio Webhook URL</p>
+        <div class="flex flex-col md:flex-row gap-3">
+          <input type="text" readonly value="{{ app_base_url }}/sms/webhook/{{ cfg.tenant_id if cfg else '' }}" id="sms-webhook-url" class="flex-1 px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm font-mono">
+          <button type="button" onclick="copyToClipboard('sms-webhook-url', this)" class="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-slate-200 hover:bg-white/15 transition-colors text-sm font-semibold">
+            <span class="material-symbols-outlined text-sm">content_copy</span>Copy
+          </button>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">Twilio Console → Phone Numbers → Active Numbers → Messaging → Webhook URL (POST).</p>
+      </div>
+      <div class="flex items-center justify-between gap-4">
+        <p class="text-xs text-slate-500">Changes take effect immediately after saving.</p>
+        <button type="submit" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
+          <span class="material-symbols-outlined text-base">save</span>Save SMS Settings
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Bot Test Simulator -->
+  {% set wa_ready = cfg and cfg.whatsapp_phone_id and cfg.whatsapp_token_enc %}
+  <div class="glass-card rounded-3xl p-6 mb-8 border border-[#5B8DEF]/15">
+    <div class="flex items-center gap-3 mb-2">
+      <div class="w-10 h-10 rounded-xl bg-[#5B8DEF]/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-[#aec6ff]" style="font-variation-settings:'FILL' 1">smart_toy</span>
+      </div>
+      <div>
+        <p class="text-[0.65rem] font-bold text-[#aec6ff] uppercase tracking-[0.3em]">Testing</p>
+        <h2 class="text-xl font-bold text-white">Test Your WhatsApp Bot</h2>
+      </div>
+    </div>
+
+    {% if not wa_ready %}
+    <div class="mt-3 mb-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 flex items-start gap-3">
+      <span class="material-symbols-outlined text-amber-300 mt-0.5 text-base">warning</span>
+      <div>
+        <p class="text-sm font-semibold text-amber-200">WhatsApp not configured</p>
+        <p class="text-xs text-amber-300/80 mt-0.5">Add your Phone ID and Access Token above, save, then come back to test.</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <p class="text-slate-400 text-sm mb-5">Enter a phone number and a message as if from a guest — the AI generates a real response and sends it via WhatsApp.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Send To (Phone) <span class="text-red-400">*</span></label>
+        <input type="text" id="sim-phone" placeholder="+1 415 555 0100"
+               class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+        <p class="mt-1 text-xs text-slate-500">Number that receives the AI reply</p>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Guest Name</label>
+        <input type="text" id="sim-name" value="Alex" placeholder="Demo guest"
+               class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Guest Message <span class="text-red-400">*</span></label>
+        <input type="text" id="sim-msg" value="Hi, what time is check-in?" placeholder="What the guest asks…"
+               class="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
+      </div>
+    </div>
+
+    <div class="flex gap-3 mb-5 flex-wrap">
+      <button type="button" onclick="botPreview()"
+              class="flex items-center gap-2 px-4 py-2.5 bg-white/10 border border-white/20 text-slate-200 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors">
+        <span class="material-symbols-outlined text-base">preview</span>Preview Only
+      </button>
+      <button type="button" onclick="botSend()"
+              class="flex items-center gap-2 px-4 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
+        <span class="material-symbols-outlined text-base">send</span>Send via WhatsApp
+      </button>
+    </div>
+
+    <div id="sim-status" style="display:none;margin-bottom:12px" class="rounded-2xl px-4 py-3 text-sm font-semibold"></div>
+
+    <div id="sim-chat" style="display:none" class="space-y-3">
+      <div class="flex justify-start">
+        <div class="max-w-[75%] rounded-2xl rounded-bl-sm bg-white/5 border border-white/10 px-4 py-3">
+          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">👤 <span id="sim-out-name"></span></p>
+          <p class="text-sm text-slate-200 leading-relaxed" id="sim-out-guest"></p>
+        </div>
+      </div>
+      <div class="flex justify-end">
+        <div class="max-w-[75%] rounded-2xl rounded-br-sm bg-[#5B8DEF]/10 border border-[#5B8DEF]/30 px-4 py-3">
+          <div class="flex items-center gap-2 mb-2 flex-wrap">
+            <span class="text-[0.65rem] font-bold text-[#aec6ff] uppercase tracking-widest">🤖 AI Host</span>
+            <span id="sim-type-badge" class="text-[0.65rem] font-bold px-2 py-0.5 rounded-md bg-amber-400/15 text-amber-300 uppercase"></span>
+            <span id="sim-conf-badge" class="text-[0.65rem] font-bold px-2 py-0.5 rounded-md bg-emerald-400/15 text-emerald-300"></span>
+          </div>
+          <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap" id="sim-out-ai"></p>
+          <a href="/dashboard" class="mt-3 pt-3 border-t border-[#5B8DEF]/20 text-xs text-[#aec6ff] font-semibold hover:underline flex items-center gap-1" style="display:block">
+            <span class="material-symbols-outlined text-sm">open_in_new</span>View on Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script nonce="{{ request.state.csp_nonce }}">
+  var _csrf = {{ request.state.csrf_token | tojson }};
+
+  function simStatus(msg, isError) {
+    var el = document.getElementById('sim-status');
+    if (!el) { alert(msg); return; }
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.style.background = isError ? 'rgba(239,68,68,0.15)' : 'rgba(74,222,128,0.15)';
+    el.style.color = isError ? '#fca5a5' : '#86efac';
+    el.style.border = isError ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(74,222,128,0.3)';
+    if (isError) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function simErrorPopup(msg) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#1e2130;border:1px solid rgba(239,68,68,0.4);border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5)';
+    box.innerHTML = '<div style="display:flex;align-items:flex-start;gap:12px">'
+      + '<span style="font-size:1.5rem;flex-shrink:0">❌</span>'
+      + '<div style="flex:1"><p style="font-weight:700;color:#fca5a5;margin:0 0 8px">WhatsApp Error</p>'
+      + '<p style="color:#e5e7eb;font-size:0.875rem;line-height:1.5;margin:0;word-break:break-word">' + msg.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p></div></div>'
+      + '<button onclick="this.closest(\'[data-sim-popup]\').remove()" style="margin-top:16px;width:100%;padding:8px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#fca5a5;font-weight:600;cursor:pointer;font-size:0.875rem">Dismiss</button>';
+    overlay.setAttribute('data-sim-popup', '1');
+    overlay.appendChild(box);
+    overlay.addEventListener('click', function(ev){ if(ev.target===overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  }
+
+  async function _doSim(endpoint, extra) {
+    var phone = (document.getElementById('sim-phone') || {}).value || '';
+    var name  = (document.getElementById('sim-name')  || {}).value || 'Alex';
+    var msg   = (document.getElementById('sim-msg')   || {}).value || '';
+    if (!msg.trim()) { simStatus('Please enter a guest message.', true); return; }
+    if (endpoint.indexOf('send') > -1 && !phone.trim()) { simStatus('Please enter a phone number to send to.', true); return; }
+
+    var chatEl = document.getElementById('sim-chat');
+    if (chatEl) chatEl.style.display = 'none';
+    simStatus('⏳ Generating AI response…', false);
+
+    try {
+      var fd = new FormData();
+      fd.append('guest_name', name.trim() || 'Alex');
+      fd.append('message', msg.trim());
+      fd.append('csrf_token', _csrf);
+      if (extra && extra.to_phone) fd.append('to_phone', extra.to_phone);
+
+      var resp = await fetch(endpoint, { method: 'POST', body: fd });
+      var data = await resp.json();
+
+      if (!data.ok) {
+        var errMsg = data.error || data.detail || 'Unknown error';
+        simStatus('❌ ' + errMsg, true);
+        if (endpoint.indexOf('send') > -1) simErrorPopup(errMsg);
+        return;
+      }
+
+      var set = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+      set('sim-out-name', name);
+      set('sim-out-guest', msg);
+      set('sim-out-ai', data.draft || '');
+      set('sim-type-badge', data.msg_type || '');
+      set('sim-conf-badge', (data.confidence || 0) + '% confident');
+
+      if (chatEl) chatEl.style.display = 'block';
+      simStatus(data.message || '✅ Response generated', false);
+    } catch(e) {
+      var netErr = '❌ Request failed: ' + e.message;
+      simStatus(netErr, true);
+      if (endpoint.indexOf('send') > -1) simErrorPopup('Network error: ' + e.message);
+    }
+  }
+
+  function botPreview() { _doSim('/api/simulate/json', {}); }
+  function botSend()    { _doSim('/api/simulate/send', { to_phone: (document.getElementById('sim-phone') || {}).value || '' }); }
+  </script>
+
+  <!-- Quick Docs Links -->
+  <div class="glass-card rounded-3xl p-6 border border-white/5">
+    <h3 class="text-lg font-bold text-white mb-4">Setup Resources</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" target="_blank" class="flex items-center gap-3 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors group">
+        <div class="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-green-400">chat</span>
+        </div>
+        <div>
+          <p class="font-semibold text-white text-sm group-hover:text-[#aec6ff] transition-colors">WhatsApp Cloud API Docs</p>
+          <p class="text-slate-500 text-xs mt-0.5">Get started with Meta Business API</p>
+        </div>
+        <span class="material-symbols-outlined text-slate-600 ml-auto text-base">open_in_new</span>
+      </a>
+      <a href="https://console.twilio.com" target="_blank" class="flex items-center gap-3 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors group">
+        <div class="w-10 h-10 rounded-xl bg-[#5B8DEF]/10 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-[#5B8DEF]">sms</span>
+        </div>
+        <div>
+          <p class="font-semibold text-white text-sm group-hover:text-[#aec6ff] transition-colors">Twilio Console</p>
+          <p class="text-slate-500 text-xs mt-0.5">Manage your Twilio account and numbers</p>
+        </div>
+        <span class="material-symbols-outlined text-slate-600 ml-auto text-base">open_in_new</span>
+      </a>
+    </div>
+  </div>
+
+  {% endif %}
+
 </main>
-</div>
-<!-- Floating Action Menu (Mobile Only) -->
-<button class="md:hidden fixed bottom-6 right-6 bg-primary-container text-on-primary w-14 h-14 rounded-full shadow-2xl flex items-center justify-center z-50">
-<span class="material-symbols-outlined" data-icon="add">add</span>
-</button>
-</body></html>
+
+<script nonce="{{ request.state.csp_nonce }}">
+async function selectConversation(element, threadKey, guestName, guestPhone) {
+  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+  element.classList.add('active');
+
+  const nameEl = document.getElementById('detailGuestName');
+  const phoneEl = document.getElementById('detailGuestPhone');
+  const avatarEl = document.getElementById('detailAvatar');
+  const threadEl = document.getElementById('messageThread');
+
+  if (nameEl) nameEl.textContent = guestName;
+  if (phoneEl) phoneEl.textContent = guestPhone;
+  if (avatarEl) avatarEl.textContent = guestName ? guestName[0].toUpperCase() : '?';
+  if (!threadEl) return;
+
+  threadEl.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon" style="animation: pulse 1s infinite">💬</div><p class="text-slate-400 text-sm">Loading messages…</p></div>';
+
+  try {
+    const response = await fetch(`/api/conversation/${threadKey}`);
+    if (!response.ok) {
+      threadEl.innerHTML = '<div class="chat-empty"><p class="text-slate-400 text-sm">Error loading messages.</p></div>';
+      return;
+    }
+    const data = await response.json();
+    const messages = data.messages || [];
+    if (messages.length === 0) {
+      threadEl.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon">📭</div><h3 class="font-bold text-white">No messages</h3><p class="text-slate-500 text-sm">No messages in this conversation.</p></div>';
+      return;
+    }
+    let lastDate = null;
+    const html = messages.map(msg => {
+      const direction = msg.direction === 'outbound' ? 'outbound' : 'inbound';
+      const msgDate = new Date(msg.timestamp);
+      const time = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateStr = msgDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+      let sep = '';
+      if (dateStr !== lastDate) {
+        sep = `<div class="day-sep">${dateStr}</div>`;
+        lastDate = dateStr;
+      }
+      const channel = msg.channel ? `<span>${msg.channel.toUpperCase()}</span>` : '';
+      const badge = msg.badge ? `<span>${escapeHtml(msg.badge)}</span>` : '';
+      return `${sep}<div class="msg-row ${direction}"><div class="msg-bubble">${escapeHtml(msg.body)}</div><div class="msg-meta"><span>${time}</span>${channel}${badge}</div></div>`;
+    }).join('');
+    threadEl.innerHTML = html;
+    threadEl.scrollTop = threadEl.scrollHeight;
+  } catch (err) {
+    threadEl.innerHTML = `<div class="chat-empty"><p class="text-red-400 text-sm">Error: ${escapeHtml(err.message)}</p></div>`;
+  }
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+function copyToClipboard(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  navigator.clipboard.writeText(input.value).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm">check</span>Copied!';
+    btn.classList.add('text-green-400');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('text-green-400'); }, 2000);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const first = document.querySelector('.conv-item');
+  if (first) first.click();
+});
+
+function filterConversations(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('.conv-item').forEach(el => {
+    const name = (el.dataset.name || '').toLowerCase();
+    const phone = (el.dataset.phone || '').toLowerCase();
+    el.style.display = (!q || name.includes(q) || phone.includes(q)) ? '' : 'none';
+  });
+}
+
+</script>
+
+{%- endblock %}
+{%- endblock %}

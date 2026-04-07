@@ -1,313 +1,438 @@
-<!DOCTYPE html>
+{%- extends "base.html" %}
+{%- block title %}Guest Timeline — HostAI{%- endblock %}
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Guest Profile | Host Assistant</title>
+{%- block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "error": "#ba1a1a",
-                        "primary-fixed-dim": "#aac7ff",
-                        "surface": "#f7f9fb",
-                        "outline-variant": "#c1c6d5",
-                        "secondary": "#515f74",
-                        "inverse-on-surface": "#eff1f3",
-                        "on-tertiary": "#ffffff",
-                        "on-primary-fixed": "#001b3e",
-                        "surface-container-low": "#f2f4f6",
-                        "surface-tint": "#005cba",
-                        "surface-bright": "#f7f9fb",
-                        "outline": "#727784",
-                        "secondary-fixed": "#d5e3fc",
-                        "on-error-container": "#93000a",
-                        "primary": "#004e9f",
-                        "on-secondary": "#ffffff",
-                        "tertiary-fixed": "#ffdbcb",
-                        "surface-container-high": "#e6e8ea",
-                        "inverse-primary": "#aac7ff",
-                        "surface-container-highest": "#e0e3e5",
-                        "primary-fixed": "#d7e3ff",
-                        "on-secondary-fixed": "#0d1c2e",
-                        "on-secondary-container": "#57657a",
-                        "on-tertiary-fixed": "#341100",
-                        "primary-container": "#0066cc",
-                        "inverse-surface": "#2d3133",
-                        "on-tertiary-container": "#ffe3d6",
-                        "on-surface": "#191c1e",
-                        "secondary-container": "#d5e3fc",
-                        "background": "#f7f9fb",
-                        "surface-container-lowest": "#ffffff",
-                        "on-background": "#191c1e",
-                        "secondary-fixed-dim": "#b9c7df",
-                        "tertiary-container": "#af4900",
-                        "on-error": "#ffffff",
-                        "on-secondary-fixed-variant": "#3a485b",
-                        "on-primary-fixed-variant": "#00458e",
-                        "tertiary-fixed-dim": "#ffb692",
-                        "tertiary": "#883700",
-                        "surface-variant": "#e0e3e5",
-                        "on-tertiary-fixed-variant": "#793000",
-                        "on-primary-container": "#dfe8ff",
-                        "on-primary": "#ffffff",
-                        "surface-container": "#eceef0",
-                        "on-surface-variant": "#414753",
-                        "error-container": "#ffdad6",
-                        "surface-dim": "#d8dadc"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.125rem",
-                        "lg": "0.25rem",
-                        "xl": "0.5rem",
-                        "full": "0.75rem"
-                    },
-                    "fontFamily": {
-                        "headline": ["Inter"],
-                        "body": ["Inter"],
-                        "label": ["Inter"]
-                    }
-                },
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-highest": "#34343b",
+              "surface-tint": "#aec6ff",
+              "secondary-container": "#00e3fd",
+              "on-tertiary-container": "#3e2400",
+              "background": "#121319",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-tertiary-fixed": "#2a1700",
+              "surface-container-low": "#1a1b22",
+              "tertiary-fixed": "#ffddb8",
+              "outline": "#8d909e",
+              "on-secondary-container": "#00616d",
+              "error": "#ffb4ab",
+              "surface-container-lowest": "#0d0e14",
+              "primary-fixed-dim": "#aec6ff",
+              "surface-variant": "#34343b",
+              "secondary-fixed-dim": "#00daf3",
+              "primary-fixed": "#d8e2ff",
+              "on-error": "#690005",
+              "on-surface-variant": "#c3c6d4",
+              "tertiary-fixed-dim": "#ffb960",
+              "secondary-fixed": "#9cf0ff",
+              "on-background": "#e3e1eb",
+              "tertiary": "#ffb960",
+              "on-primary-fixed": "#001a43",
+              "secondary": "#bdf4ff",
+              "error-container": "#93000a",
+              "surface-container": "#1e1f26",
+              "on-surface": "#e3e1eb",
+              "tertiary-container": "#ca8103",
+              "outline-variant": "#424752",
+              "on-tertiary": "#472a00",
+              "on-error-container": "#ffdad6",
+              "inverse-surface": "#e3e1eb",
+              "surface-bright": "#383940",
+              "primary-container": "#5d8ef1",
+              "on-primary-fixed-variant": "#004397",
+              "on-primary-container": "#00275e",
+              "primary": "#aec6ff",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-secondary-fixed": "#001f24",
+              "on-primary": "#002e6b",
+              "surface-dim": "#121319",
+              "on-secondary": "#00363d",
+              "inverse-primary": "#1e5bba",
+              "surface": "#121319",
+              "surface-container-high": "#292930",
+              "inverse-on-surface": "#2f3037"
             },
-        }
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
     </script>
 <style>
-        body { font-family: 'Inter', sans-serif; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
         .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
         }
     </style>
-</head>
-<body class="bg-surface text-on-surface">
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-white/80 backdrop-blur-xl border border-gray-200 text-gray-600 hover:text-gray-900 transition-all">
-<span class="material-symbols-outlined">menu</span>
-</button>
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/40 hidden" id="sidebar-overlay"></div>
+<style>
+:root{--surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;--border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);--text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;--accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);--success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);--danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);--warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.3);--radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;--nav-h:64px;--rose:#ff6b8a}
+.compat-layer h1{font-size:1.8rem;font-weight:800;margin-bottom:0.25rem;color:#e3e1eb}.compat-layer h2{font-size:1.1rem;font-weight:700;margin-bottom:0.75rem;color:#e3e1eb}.compat-layer h3{font-size:0.92rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
+.compat-layer .card,.compat-layer .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
+.compat-layer label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
+.compat-layer input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.compat-layer select,.compat-layer textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
+.compat-layer input:focus,.compat-layer select:focus,.compat-layer textarea:focus{border-color:#5B8DEF}
+.compat-layer .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
+.compat-layer .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
+.compat-layer .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
+.compat-layer .btn-outline:hover{background:rgba(174,198,255,0.08)}
+.compat-layer .btn-success{background:rgba(39,201,63,0.12);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
+.compat-layer .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
+.compat-layer .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
+.compat-layer .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
+.compat-layer .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
+.compat-layer .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+.compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
+.compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
+.compat-layer td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
+.compat-layer .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
+.compat-layer .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
+.compat-layer .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
+.compat-layer .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
+.compat-layer .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;margin-bottom:0.3rem}
+.compat-layer .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
+.compat-layer .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
+.compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
+.compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
+.compat-layer .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
+.compat-layer .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
+.compat-layer .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
+.compat-layer .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
+.compat-layer .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;margin-left:0.2rem;background:rgba(174,198,255,0.08);color:#aec6ff}
+.compat-layer .badge-escalation{background:rgba(255,180,171,0.1);color:#ffb4ab}
+.compat-layer .badge-whatsapp{background:rgba(39,201,63,0.1);color:#27c93f}
+.compat-layer .badge-email{background:rgba(91,141,239,0.1);color:#5B8DEF}
+.compat-layer .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
+.compat-layer .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
+.compat-layer .timeline{display:flex;flex-direction:column;gap:0}
+.compat-layer .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
+.compat-layer .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
+.compat-layer .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
+.compat-layer .timeline-text{font-size:0.8rem;color:#8d909e}
+.compat-layer input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
+.compat-layer .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
+.compat-layer .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
+.compat-layer .card-meta{font-size:0.75rem;color:#8d909e}
+.compat-layer .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.compat-layer code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
+.compat-layer .priority-high{border-left:3px solid #ffb4ab}
+.compat-layer .priority-medium{border-left:3px solid #ffbd2e}
+.compat-layer .priority-low{border-left:3px solid #27c93f}
+.compat-layer .rule-row,.compat-layer .issue-card{background:#0d0e14;border:1px solid rgba(66,71,82,0.3);border-radius:0.75rem;padding:1rem;margin-bottom:0.75rem}
+</style>
+{%- endblock %}
 
-<!-- TopNavBar -->
-<header class="bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl docked full-width top-0 z-50 sticky shadow-sm dark:shadow-none">
-<div class="flex justify-between items-center w-full px-8 py-3 max-w-[1440px] mx-auto">
-<div class="text-xl font-bold tracking-tighter text-blue-900 dark:text-blue-100">Host Assistant</div>
-<nav class="hidden md:flex items-center gap-8">
-<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 font-sans tracking-tight" href="/dashboard">Dashboard</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 font-sans tracking-tight" href="/dashboard">Properties</a>
-<a class="text-blue-700 dark:text-blue-400 font-semibold border-b-2 border-blue-700 dark:border-blue-400 pb-1 font-sans tracking-tight" href="/analytics">Guests</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 font-sans tracking-tight" href="/activity">Analytics</a>
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- SideNavBar -->
+<!-- Mobile hamburger -->
+<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+  <span class="material-symbols-outlined">menu</span>
+</button>
+<!-- Sidebar overlay for mobile -->
+<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
+<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
+</div>
+<span>HostAI</span>
+</a>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+                Conversations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+                Reservations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Activity
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+                Revenue & ROI
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+                Voice AI
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+                Operations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+                Admin
+            </a>
+{% endif %}
 </nav>
-<div class="flex items-center gap-4">
-<button class="material-symbols-outlined text-on-surface-variant hover:bg-slate-100/50 dark:hover:bg-slate-800/50 p-2 rounded-full transition-all" onclick="window.location.href="/activity"">notifications</button>
-<button class="material-symbols-outlined text-on-surface-variant hover:bg-slate-100/50 dark:hover:bg-slate-800/50 p-2 rounded-full transition-all" onclick="window.location.href="/settings"">settings</button>
-<img alt="User profile" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="Professional headshot of a property manager in a modern office, soft natural lighting, professional and approachable expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0RFMs_6LonOO-lzJnmXfna_cl7GXkYqmMwvIfI-RqiCNn7_6_CI_oVrd3tk0GCrbFmPFhK05zI-89aIjQny9C8c8JCDgKHorw6jsABZPM9zPdh1UBm3HazMYTFU5TBIkEu71eXL6szGwaFO2Q3coSOlMPlpw5wvdO_jW1fLeoLg6HoRp7EY4hWB2SSO5ruMHf-HZ-FAc1mFxePAVqExUQccsKCX79M6c0aSIkPXDVJ0F_ODMCRUCH2QT6sO4H-HTOEooh90KHr0Us"/>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ tenant.first_name or "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+</div>
+</div>
+<form method="post" action="/logout">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+    <span class="material-symbols-outlined text-sm">logout</span>
+    Sign Out
+  </button>
+</form>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts, or analytics..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
+</button>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Account</span>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+</div>
 </div>
 </div>
 </header>
-<div class="flex min-h-screen">
-<!-- SideNavBar -->
-<aside id="sidebar" class="fixed left-0 top-0 h-full flex flex-col pt-20 pb-8 gap-4 bg-slate-50 dark:bg-slate-950 h-screen w-64 left-0 top-0 border-r-0 tonal-layering background-shift z-40">
-<div class="px-6 mb-4">
-<div class="flex items-center gap-3 mb-2">
-<img alt="Guest portrait" class="w-12 h-12 rounded-full object-cover" data-alt="Close-up portrait of {{ guest.name | default("Guest") }}, a smiling woman with warm lighting and a soft architectural interior background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDPnIxkZ-_kvP78KE517fq_KhBKx0Oy1VFPi7EDjXDAMUxEhIys5_xNWp4ybp2uDs3JOjr-Pzqxfc0DjTvroeozwdgS0J5lfHUipSKpFbR6E6sffJfYqQRjU82S07OgP_P_OX9LkocdOWSOVug0l_DyPK8D9LKI7ZgYaDWpbQ47A3MGqCEnPW4cpT3G3L7PZToxaw9MTlVJHYY8-pyBuFSd_UE-cB4ImhH0-rNguZkxnNAjpioUNwnFvUeFNBeuirbpPXL-Zk6Qf9D"/>
-<div>
-<h3 class="font-bold text-on-surface text-sm">Guest Profile</h3>
-<p class="text-xs text-on-surface-variant">ID: 8829-XJ</p>
+<!-- Main Content -->
+<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen">
+<div class="mb-8">
+  <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Guest Timeline</h1>
+  <p class="text-slate-400 text-sm">Full activity log and stay event history</p>
 </div>
+<div class="compat-layer">
+
+
+
+<div class="card" style="margin-bottom:1rem">
+  <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start">
+    <div>
+      <h2 style="margin-bottom:0.3rem">Stay summary</h2>
+      <p style="margin:0;font-size:0.86rem;color:var(--text-2);line-height:1.7">
+        Guest: <strong>{{ reservation.guest_name if reservation is defined and reservation else 'Guest name' }}</strong><br>
+        Room / unit: <strong>{{ reservation.unit_identifier if reservation is defined and reservation and reservation.unit_identifier else 'Room 204' }}</strong><br>
+        Booking ref: <strong>{{ reservation.confirmation_code if reservation is defined and reservation and reservation.confirmation_code else 'ABC123' }}</strong>
+      </p>
+    </div>
+    <div class="chip-row" style="margin-top:0">
+      <span class="chip">Arrival active</span>
+      <span class="chip">Email</span>
+      <span class="chip">WhatsApp</span>
+      <span class="chip">SMS</span>
+    </div>
+  </div>
 </div>
-<a href="/conversations" class="w-full mt-2 bg-primary text-on-primary py-2 rounded-full text-xs font-semibold shadow-sm hover:translate-y-[-1px] transition-all">Contact Guest</a>
+
+<div class="workflow-grid" style="margin-bottom:1rem">
+  <div class="workflow-card">
+    <h3>What belongs here</h3>
+    <p>Incoming guest messages, draft generation, approvals, auto-sends, manual edits, vendor notes, and check-in events should all be visible in one place.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>What should not</h3>
+    <p>Hosts should not need to scan unrelated dashboards or switch between channels to understand what happened on a stay.</p>
+  </div>
 </div>
-<nav class="flex flex-col gap-1">
-<a class="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full px-4 py-2 ml-2 font-sans text-sm font-medium translate-x-1 duration-200" href="/admin/overview">
-<span class="material-symbols-outlined">person</span> Guest Overview
-                </a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 ml-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all font-sans text-sm font-medium" href="/activity">
-<span class="material-symbols-outlined">calendar_month</span> Reservation History
-                </a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 ml-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all font-sans text-sm font-medium" href="/guest_timeline">
-<span class="material-symbols-outlined">chat</span> Message Log
-                </a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 ml-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all font-sans text-sm font-medium" href="/activity">
-<span class="material-symbols-outlined">timeline</span> Interaction Timeline
-                </a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 ml-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all font-sans text-sm font-medium" href="/activity">
-<span class="material-symbols-outlined">edit_note</span> Internal Notes
-                </a>
-</nav>
-</aside>
-<!-- Main Content Area -->
-<main class="flex-1 ml-64 p-8 max-w-[1200px]">
-<!-- Guest Header Summary -->
-<section class="bg-surface-container-lowest rounded-xl p-8 mb-8 shadow-sm flex flex-wrap justify-between items-end gap-6">
-<div class="space-y-2">
-<div class="flex items-center gap-3">
-<h1 class="text-4xl font-extrabold tracking-tight text-on-surface">{{ guest.name | default("Guest") }}</h1>
-<span class="bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Superhost Status</span>
+
+<div class="timeline">
+  {% if timeline_events %}
+    {% for event in timeline_events %}
+    <div class="timeline-item">
+      <div class="timeline-meta">
+        {{ event.created_at.strftime('%b %d %H:%M') if event.created_at else '' }}
+        {% if event.channel %} · {{ event.channel }}{% endif %}
+        {% if event.event_type %} · {{ event.event_type|replace('_', ' ') }}{% endif %}
+      </div>
+      <div class="timeline-title">{{ event.message or event.summary or 'Timeline event' }}</div>
+      <div class="timeline-text">{{ event.status or event.detail or '' }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="timeline-item">
+      <div class="timeline-meta">No live events yet</div>
+      <div class="timeline-title">This stay has not generated guest events yet</div>
+      <div class="timeline-text">As soon as the guest messages or the host activates the stay, the timeline will start filling with real events.</div>
+    </div>
+  {% endif %}
 </div>
-<div class="flex gap-6 text-on-surface-variant font-medium">
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">mail</span> —</span>
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">call</span> —</span>
-<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">location_on</span> —</span>
+
+<div class="workflow-grid" style="margin-top:1rem">
+  <div class="workflow-card">
+    <h3>Guest interactions</h3>
+    <p>Wi-Fi, parking, towels, late checkout, local recommendations, and issue reporting are the core concierge flows.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>Exception handling</h3>
+    <p>Refunds, complaints, safety concerns, and room mapping problems should be tagged and escalated.</p>
+  </div>
+  <div class="workflow-card">
+    <h3>Room-aware replies</h3>
+    <p>Always include the property, room, and arrival details when they matter so the response feels specific and professional.</p>
+  </div>
 </div>
+
+<div class="card" style="margin-top:1rem">
+  <h2 style="margin-bottom:0.5rem">Conversation memory</h2>
+  <div class="draft-text">{{ conversation_memory or 'No memory block yet. HostAI will build one as stay events arrive.' }}</div>
 </div>
-<div class="flex gap-12">
-<div class="text-right">
-<p class="text-3xl font-bold text-primary">12</p>
-<p class="text-xs font-medium text-on-surface-variant uppercase tracking-widest">Total Stays</p>
-</div>
-<div class="text-right">
-<p class="text-3xl font-bold text-primary">—</p>
-<p class="text-xs font-medium text-on-surface-variant uppercase tracking-widest">Lifetime Value</p>
-</div>
-<div class="text-right">
-<p class="text-3xl font-bold text-primary">—</p>
-<p class="text-xs font-medium text-on-surface-variant uppercase tracking-widest">Guest Rating</p>
-</div>
-</div>
-</section>
-<!-- Grid Layout -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-<!-- Left Column: Reservation History -->
-<div class="lg:col-span-8 space-y-8">
-<div class="bg-surface-container-low rounded-xl p-8">
-<div class="flex justify-between items-center mb-6">
-<h2 class="text-xl font-bold text-on-surface tracking-tight">Reservation History</h2>
-<button class="text-primary text-sm font-semibold hover:underline" onclick="window.location.href="/activity"">View All</button>
-</div>
-<div class="space-y-4">
-<!-- Reservation Item -->
-<div class="bg-surface-container-lowest p-5 rounded-xl flex items-center justify-between transition-all hover:translate-y-[-2px] hover:shadow-md">
-<div class="flex items-center gap-4">
-<div class="w-16 h-16 rounded-lg overflow-hidden bg-slate-200">
-<img class="w-full h-full object-cover" data-alt="Modern minimalist villa exterior with a swimming pool and luxury landscaping under clear blue sky" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBX2OXOSXuKR-BCQmcOcBfy-mVXnN39LOfIUL-4jEmqOvXE2RxfqkauzkuLfKZ5rAsJnHrLsRhmuoGVlACqwBx0FYvcQJOOgA-sNeDFYz3JVuJBmdxOZSaQzufbxMoza4Kf54s1mHE3aRARLTLqy1c2Et-rtPe17lHCaaWnq-C2ywuvmThxX0NGKEfJ-d6So8yDhNVtjMRS49WZIvN3fm1FedgnW7oppEPeTb-ZDkqXYXzgEtfGanqPTdgF8_gbGK0h5PSJeD4F0csA"/>
-</div>
-<div>
-<h4 class="font-bold text-on-surface">Property</h4>
-<p class="text-sm text-on-surface-variant">Oct 12 - Oct 18, 2023</p>
-</div>
-</div>
-<div class="text-right">
-<span class="bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full text-xs font-semibold">Completed</span>
-<p class="mt-2 font-bold text-on-surface">—</p>
-</div>
-</div>
-<!-- Reservation Item -->
-<div class="bg-surface-container-lowest p-5 rounded-xl flex items-center justify-between transition-all hover:translate-y-[-2px] hover:shadow-md">
-<div class="flex items-center gap-4">
-<div class="w-16 h-16 rounded-lg overflow-hidden bg-slate-200">
-<img class="w-full h-full object-cover" data-alt="Bright scandinavian style living room with oak floors, white walls, and elegant designer furniture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvjxNEWECMRY8RV_NyrwEwKKWmMzHly0t_PuL3xBe-UNQkcMYLDGtsmscwJB1WZ6pK3luslqZkeK9AQ1n-rMlZL3OkA0UcDmg3AdCE3IRO5Bd6z5p28JdTj5jEU1WatulS9IFk8RG0NfVotQH6vKOzz5eaS17O1iKHjgg3L1Pva3T8UxOJMCUKlFQknHu2v-f4EJeLFUp0YDgRbxxxKXdbH06hO9gMIoIHZ1PmqAJrqN3uBSlhPL5SMZS-P6qqMajsdlAXlV6UgWK7"/>
-</div>
-<div>
-<h4 class="font-bold text-on-surface">Property</h4>
-<p class="text-sm text-on-surface-variant">Dec 22 - Dec 28, 2023</p>
-</div>
-</div>
-<div class="text-right">
-<span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full text-xs font-semibold">Upcoming</span>
-<p class="mt-2 font-bold text-on-surface">—</p>
-</div>
-</div>
-<!-- Reservation Item -->
-<div class="bg-surface-container-lowest p-5 rounded-xl flex items-center justify-between transition-all hover:translate-y-[-2px] hover:shadow-md">
-<div class="flex items-center gap-4">
-<div class="w-16 h-16 rounded-lg overflow-hidden bg-slate-200">
-<img class="w-full h-full object-cover" data-alt="Cozy studio apartment with large windows, city view, and warm decorative lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIldOv6jRrRmcWz6lj2Yrb90Rad8R3bAPUwIgQbySSdhXepLyzNwEaPUxgitncjm9aViHSH6AUfdny5fbv_GYOxhRpPyL8Cv232vviUl0Sxp_OeJGrK6WXgzDxtG-wq4i9e8uJwc-25_uyDRmTX2-1T5lhUwv2ngWHJyL5MRC5AZrtdK_jzlowyxO9_QpGlWMrgIUo7C7uuE_VxrB7Z8SOE6K6q5H0byzlAkNYcOd-ynuYKGFvdYY9crKUBdsw45Q3-ZJxbNBSLgX2"/>
-</div>
-<div>
-<h4 class="font-bold text-on-surface">Property</h4>
-<p class="text-sm text-on-surface-variant">Aug 05 - Aug 09, 2023</p>
-</div>
-</div>
-<div class="text-right">
-<span class="bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full text-xs font-semibold">Completed</span>
-<p class="mt-2 font-bold text-on-surface">—</p>
-</div>
-</div>
-</div>
-</div>
-<!-- Internal Notes -->
-<div class="bg-surface-container-low rounded-xl p-8">
-<div class="flex justify-between items-center mb-6">
-<h2 class="text-xl font-bold text-on-surface tracking-tight">Internal Notes</h2>
-<a href="/activity" class="bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full text-sm font-semibold hover:opacity-90 transition-all">Add Note</a>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-<div class="bg-tertiary-fixed/30 p-6 rounded-xl border-l-4 border-tertiary">
-<div class="flex items-center gap-2 mb-3">
-<span class="material-symbols-outlined text-tertiary text-lg">priority_high</span>
-<h4 class="font-bold text-tertiary text-sm">Preferences</h4>
-</div>
-<p class="text-sm text-on-surface-variant leading-relaxed">Always requests early check-in (1 PM). Prefers extra pillows and feather-free bedding due to mild allergies.</p>
-<p class="mt-4 text-[10px] uppercase font-bold text-on-surface-variant opacity-50 tracking-widest">Modified: 2 days ago</p>
-</div>
-<div class="bg-slate-100 dark:bg-slate-800 p-6 rounded-xl border-l-4 border-slate-400">
-<div class="flex items-center gap-2 mb-3">
-<span class="material-symbols-outlined text-slate-500 text-lg">info</span>
-<h4 class="font-bold text-on-surface text-sm">Guest Habits</h4>
-</div>
-<p class="text-sm text-on-surface-variant leading-relaxed">Quiet guest, usually leaves property in excellent condition. Recommended for high-end penthouse units.</p>
-<p class="mt-4 text-[10px] uppercase font-bold text-on-surface-variant opacity-50 tracking-widest">Modified: Oct 15</p>
-</div>
-</div>
-</div>
-</div>
-<!-- Right Column: Interaction Timeline -->
-<div class="lg:col-span-4 sticky top-24">
-<div class="bg-surface-container-low rounded-xl p-8">
-<h2 class="text-xl font-bold text-on-surface tracking-tight mb-8">Interaction Timeline</h2>
-<div class="relative space-y-8 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-outline-variant">
-<!-- Timeline Entry -->
-<div class="relative pl-10">
-<div class="absolute left-0 top-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center ring-4 ring-surface-container-low">
-<span class="material-symbols-outlined text-[14px] text-on-primary">check</span>
-</div>
-<div>
-<p class="text-xs font-bold text-primary uppercase tracking-widest mb-1">Today, 10:30 AM</p>
-<h4 class="font-bold text-on-surface text-sm">Booking Confirmed</h4>
-<p class="text-sm text-on-surface-variant mt-1">Confirmed for Property (Dec 22-28).</p>
-</div>
-</div>
-<!-- Timeline Entry -->
-<div class="relative pl-10">
-<div class="absolute left-0 top-1 w-6 h-6 bg-tertiary rounded-full flex items-center justify-center ring-4 ring-surface-container-low">
-<span class="material-symbols-outlined text-[14px] text-on-tertiary" style="font-variation-settings: 'FILL' 1;">star</span>
-</div>
-<div>
-<p class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Oct 18, 2023</p>
-<h4 class="font-bold text-on-surface text-sm">Review Submitted</h4>
-<p class="text-sm text-on-surface-variant mt-1">Left a 5-star review for Property: "."</p>
-</div>
-</div>
-<!-- Timeline Entry -->
-<div class="relative pl-10">
-<div class="absolute left-0 top-1 w-6 h-6 bg-secondary rounded-full flex items-center justify-center ring-4 ring-surface-container-low">
-<span class="material-symbols-outlined text-[14px] text-on-secondary">build</span>
-</div>
-<div>
-<p class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Oct 14, 2023</p>
-<h4 class="font-bold text-on-surface text-sm">Maintenance Request</h4>
-<p class="text-sm text-on-surface-variant mt-1">Reported issue with coffee maker. Resolved within 2 hours.</p>
-</div>
-</div>
-<!-- Timeline Entry -->
-<div class="relative pl-10">
-<div class="absolute left-0 top-1 w-6 h-6 bg-outline-variant rounded-full flex items-center justify-center ring-4 ring-surface-container-low">
-<span class="material-symbols-outlined text-[14px] text-on-surface-variant">login</span>
-</div>
-<div>
-<p class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Oct 12, 2023</p>
-<h4 class="font-bold text-on-surface text-sm">Check-in</h4>
-<p class="text-sm text-on-surface-variant mt-1">Checked into Property via smart lock.</p>
-</div>
-</div>
-</div>
-<button class="w-full mt-10 bg-surface-container-highest text-on-surface py-3 rounded-xl text-sm font-bold hover:bg-slate-300 transition-colors" onclick="this.textContent="Loading..."; setTimeout(()=>{this.textContent="Load Older Activity"},1000)">Load Older Activity</button>
-</div>
+
+<div class="card" style="margin-top:1rem">
+  <h2 style="margin-bottom:0.5rem">Open issues</h2>
+{% if open_issues %}
+    <div class="timeline">
+      {% for issue in open_issues %}
+      <div class="timeline-item">
+        <div class="timeline-meta">{{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}</div>
+        <div class="timeline-title">{{ issue.title }}</div>
+        <div class="timeline-text">{{ issue.description or 'No description provided.' }}</div>
+        <div class="chip-row" style="margin-top:0.5rem">
+          <span class="chip">{{ issue.status|replace('_', ' ') }}</span>
+          <span class="chip">{% if issue.assigned_to_member %}{{ issue.assigned_to_member.display_name }}{% else %}Unassigned{% endif %}</span>
+          <span class="chip">{% if issue.vendor %}{{ issue.vendor.name }}{% else %}No vendor{% endif %}</span>
+        </div>
+        <form method="post" action="/issues/{{ issue.id }}/update" style="margin-top:0.75rem">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <input type="hidden" name="next_path" value="/reservations/{{ reservation.id }}/timeline">
+          <div class="form-row">
+            <div>
+              <label>Status</label>
+              <select name="status">
+                <option value="open" {% if issue.status == 'open' %}selected{% endif %}>Open</option>
+                <option value="triage" {% if issue.status == 'triage' %}selected{% endif %}>Triage</option>
+                <option value="assigned" {% if issue.status == 'assigned' %}selected{% endif %}>Assigned</option>
+                <option value="vendor_dispatched" {% if issue.status == 'vendor_dispatched' %}selected{% endif %}>Vendor dispatched</option>
+                <option value="resolved" {% if issue.status == 'resolved' %}selected{% endif %}>Resolved</option>
+              </select>
+            </div>
+            <div>
+              <label>Assigned team member</label>
+              <select name="assigned_to_member_id">
+                <option value="">Unassigned</option>
+                {% for member in team_members or [] %}
+                <option value="{{ member.id }}" {% if issue.assigned_to_member_id == member.id %}selected{% endif %}>{{ member.display_name }} — {{ member.role|replace('_', ' ') }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label>Vendor</label>
+              <select name="vendor_id">
+                <option value="">No vendor</option>
+                {% for vendor in vendors or [] %}
+                <option value="{{ vendor.id }}" {% if issue.vendor_id == vendor.id %}selected{% endif %}>{{ vendor.name }} — {{ vendor.category }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label>Resolution notes</label>
+              <input type="text" name="resolution_notes" value="{{ issue.resolution_notes or '' }}" placeholder="ETA, fix, or follow-up note">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-outline btn-sm">Update issue</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p style="font-size:0.85rem;color:var(--text-3)">No unresolved issues for this stay.</p>
+  {% endif %}
+
+  <form method="post" action="/reservations/{{ reservation.id }}/issues" style="margin-top:1rem">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div class="form-row">
+      <div>
+        <label>Issue title</label>
+        <input type="text" name="title" placeholder="Guest reported AC issue" required>
+      </div>
+      <div>
+        <label>Category</label>
+        <select name="category">
+          <option value="guest_request">Guest request</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="cleaning">Cleaning</option>
+          <option value="billing">Billing</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Priority</label>
+        <select name="priority">
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div>
+        <label>Assigned team member</label>
+        <select name="assigned_to_member_id">
+          <option value="">Assign later</option>
+          {% for member in team_members or [] %}
+          <option value="{{ member.id }}">{{ member.display_name }} — {{ member.role|replace('_', ' ') }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <label>Vendor</label>
+    <select name="vendor_id">
+      <option value="">No vendor yet</option>
+      {% for vendor in vendors or [] %}
+      <option value="{{ vendor.id }}">{{ vendor.name }} — {{ vendor.category }}</option>
+      {% endfor %}
+    </select>
+    <label>Description</label>
+    <textarea name="description" rows="3" placeholder="What happened, where, and what the guest needs next"></textarea>
+    <button type="submit" class="btn btn-primary btn-sm">Create issue</button>
+  </form>
 </div>
 </div>
 </main>
-</div>
-</body></html>
+{%- endblock %}
+{%- endblock %}

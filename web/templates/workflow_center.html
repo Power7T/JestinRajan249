@@ -1,116 +1,153 @@
-<!DOCTYPE html>
+{%- extends "base.html" %}
+{%- block title %}Operations — HostAI{%- endblock %}
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Host Assistant | Workflow Center</title>
+{%- block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "surface-container-highest": "#e0e3e5",
-                        "tertiary": "#000000",
-                        "secondary": "#505f76",
-                        "surface-tint": "#545f73",
-                        "on-error": "#ffffff",
-                        "tertiary-fixed-dim": "#dec29a",
-                        "surface": "#f7f9fb",
-                        "on-tertiary-container": "#98805d",
-                        "on-secondary-container": "#54647a",
-                        "background": "#f7f9fb",
-                        "on-tertiary-fixed": "#271901",
-                        "inverse-primary": "#bcc7de",
-                        "surface-dim": "#d8dadc",
-                        "tertiary-container": "#271901",
-                        "on-surface-variant": "#45464d",
-                        "on-primary-fixed": "#111c2d",
-                        "inverse-on-surface": "#eff1f3",
-                        "secondary-fixed": "#d3e4fe",
-                        "surface-container-lowest": "#ffffff",
-                        "on-surface": "#191c1e",
-                        "on-secondary": "#ffffff",
-                        "on-error-container": "#93000a",
-                        "surface-container-low": "#f2f4f6",
-                        "on-tertiary-fixed-variant": "#574425",
-                        "tertiary-fixed": "#fcdeb5",
-                        "surface-variant": "#e0e3e5",
-                        "error-container": "#ffdad6",
-                        "surface-container": "#eceef0",
-                        "primary": "#000000",
-                        "on-tertiary": "#ffffff",
-                        "primary-container": "#111c2d",
-                        "on-background": "#191c1e",
-                        "on-primary-fixed-variant": "#3c475a",
-                        "on-secondary-fixed": "#0b1c30",
-                        "primary-fixed-dim": "#bcc7de",
-                        "secondary-container": "#d0e1fb",
-                        "secondary-fixed-dim": "#b7c8e1",
-                        "outline-variant": "#c6c6cd",
-                        "inverse-surface": "#2d3133",
-                        "surface-container-high": "#e6e8ea",
-                        "on-secondary-fixed-variant": "#38485d",
-                        "on-primary": "#ffffff",
-                        "error": "#ba1a1a",
-                        "primary-fixed": "#d8e3fb",
-                        "outline": "#76777d",
-                        "on-primary-container": "#79849a",
-                        "surface-bright": "#f7f9fb"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.125rem",
-                        "lg": "0.25rem",
-                        "xl": "0.5rem",
-                        "full": "0.75rem"
-                    },
-                    "fontFamily": {
-                        "headline": ["Manrope"],
-                        "body": ["Inter"],
-                        "label": ["Inter"]
-                    }
-                },
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-container": "#00e3fd",
+              "surface-container-low": "#1a1b22",
+              "surface-container": "#1e1f26",
+              "outline-variant": "#424752",
+              "on-primary-fixed": "#001a43",
+              "error-container": "#93000a",
+              "on-primary-container": "#00275e",
+              "tertiary-fixed": "#ffddb8",
+              "tertiary-container": "#ca8103",
+              "on-secondary-fixed": "#001f24",
+              "surface-container-highest": "#34343b",
+              "surface": "#121319",
+              "on-error": "#690005",
+              "surface-container-lowest": "#0d0e14",
+              "primary-fixed": "#d8e2ff",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-error-container": "#ffdad6",
+              "secondary-fixed": "#9cf0ff",
+              "primary-container": "#5d8ef1",
+              "inverse-primary": "#1e5bba",
+              "inverse-on-surface": "#2f3037",
+              "background": "#121319",
+              "surface-container-high": "#292930",
+              "secondary": "#bdf4ff",
+              "tertiary-fixed-dim": "#ffb960",
+              "surface-tint": "#aec6ff",
+              "secondary-fixed-dim": "#00daf3",
+              "primary": "#aec6ff",
+              "surface-variant": "#34343b",
+              "tertiary": "#ffb960",
+              "primary-fixed-dim": "#aec6ff",
+              "surface-dim": "#121319",
+              "on-surface-variant": "#c3c6d4",
+              "error": "#ffb4ab",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-secondary": "#00363d",
+              "outline": "#8d909e",
+              "on-tertiary-fixed": "#2a1700",
+              "on-secondary-container": "#00616d",
+              "on-primary-fixed-variant": "#004397",
+              "on-tertiary-container": "#3e2400",
+              "on-primary": "#002e6b",
+              "on-background": "#e3e1eb",
+              "surface-bright": "#383940",
+              "on-tertiary": "#472a00",
+              "on-surface": "#e3e1eb",
+              "inverse-surface": "#e3e1eb"
             },
-        }
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
     </script>
 <style>
-        body { font-family: 'Inter', sans-serif; }
-        h1, h2, h3, .headline { font-family: 'Manrope', sans-serif; }
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        body {
+            background-color: #08090F;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #e3e1eb;
         }
-        .canvas-grid {
-            background-image: radial-gradient(#c6c6cd 0.5px, transparent 0.5px);
-            background-size: 24px 24px;
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
         }
     </style>
-</head>
-<body class="bg-surface text-on-surface overflow-hidden">
-<!-- TopNavBar -->
-<header class="flex justify-between items-center w-full px-8 h-16 sticky top-0 z-40 bg-opacity-80 backdrop-blur-md bg-[#f7f9fb] dark:bg-[#0f172a]">
-<div class="flex items-center gap-8">
-<span class="text-xl font-bold tracking-tight text-slate-900 dark:text-white font-[Manrope]">Host Assistant</span>
-<nav class="hidden md:flex gap-6">
-<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" href="/dashboard">Dashboard</a>
-<a class="text-slate-900 dark:text-white font-bold border-b-2 border-slate-900 dark:border-white pb-1" href="/analytics">Workflows</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" href="/settings">Automations</a>
-</nav>
-</div>
-<div class="flex items-center gap-4">
-<div class="relative group">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-<input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full text-sm w-64 focus:ring-1 focus:ring-primary" placeholder="Search workflows..." type="text"/>
-</div>
-<button class="material-symbols-outlined text-slate-600" onclick="window.location.href="/activity"">notifications</button>
-<button class="material-symbols-outlined text-slate-600" onclick="window.location.href="/settings"">help_outline</button>
-<a href="/workflow_center" class="bg-primary text-on-primary px-5 py-2 rounded-full text-sm font-semibold hover:bg-primary-container transition-all active:scale-95">New Workflow</a>
-</div>
-</header>
-<div class="flex h-[calc(100vh-64px)]">
+<style>
+:root{--surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;--border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);--text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;--accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);--success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);--danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);--warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.3);--radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;--nav-h:64px;--rose:#ff6b8a}
+.compat-layer h1{font-size:1.8rem;font-weight:800;margin-bottom:0.25rem;color:#e3e1eb}.compat-layer h2{font-size:1.1rem;font-weight:700;margin-bottom:0.75rem;color:#e3e1eb}.compat-layer h3{font-size:0.92rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
+.compat-layer .card,.compat-layer .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
+.compat-layer label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
+.compat-layer input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.compat-layer select,.compat-layer textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
+.compat-layer input:focus,.compat-layer select:focus,.compat-layer textarea:focus{border-color:#5B8DEF}
+.compat-layer .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
+.compat-layer .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
+.compat-layer .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
+.compat-layer .btn-outline:hover{background:rgba(174,198,255,0.08)}
+.compat-layer .btn-success{background:rgba(39,201,63,0.12);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
+.compat-layer .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
+.compat-layer .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
+.compat-layer .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
+.compat-layer .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
+.compat-layer .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+.compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
+.compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
+.compat-layer td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
+.compat-layer .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
+.compat-layer .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
+.compat-layer .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
+.compat-layer .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
+.compat-layer .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;margin-bottom:0.3rem}
+.compat-layer .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
+.compat-layer .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
+.compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
+.compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
+.compat-layer .analytics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.75rem;margin-bottom:1.5rem}
+.compat-layer .analytics-widget{background:rgba(13,14,20,0.6);border:1px solid rgba(174,198,255,0.07);border-top:2px solid rgba(91,141,239,0.35);border-radius:0.85rem;padding:1.1rem 1rem 0.9rem;text-align:center;transition:border-color .2s,box-shadow .2s;position:relative;overflow:hidden;}
+.compat-layer .analytics-widget::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(91,141,239,0.06) 0%,transparent 70%);pointer-events:none;}
+.compat-layer .analytics-widget:hover{border-top-color:rgba(174,198,255,0.6);box-shadow:0 0 18px rgba(91,141,239,0.12)}
+.compat-layer .widget-value{font-size:1.85rem;font-weight:800;color:#aec6ff;letter-spacing:-0.03em;line-height:1;margin-bottom:0.3rem}
+.compat-layer .widget-label{font-size:0.67rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.09em;font-weight:700}
+.compat-layer .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;margin-left:0.2rem;background:rgba(174,198,255,0.08);color:#aec6ff}
+.compat-layer .badge-escalation{background:rgba(255,180,171,0.1);color:#ffb4ab}
+.compat-layer .badge-whatsapp{background:rgba(39,201,63,0.1);color:#27c93f}
+.compat-layer .badge-email{background:rgba(91,141,239,0.1);color:#5B8DEF}
+.compat-layer .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
+.compat-layer .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
+.compat-layer .timeline{display:flex;flex-direction:column;gap:0}
+.compat-layer .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
+.compat-layer .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
+.compat-layer .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
+.compat-layer .timeline-text{font-size:0.8rem;color:#8d909e}
+.compat-layer input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
+.compat-layer .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
+.compat-layer .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
+.compat-layer .card-meta{font-size:0.75rem;color:#8d909e}
+.compat-layer .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.compat-layer code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
+.compat-layer .priority-high{border-left:3px solid #ffb4ab}
+.compat-layer .priority-medium{border-left:3px solid #ffbd2e}
+.compat-layer .priority-low{border-left:3px solid #27c93f}
+.compat-layer .rule-row,.compat-layer .issue-card{background:#0d0e14;border:1px solid rgba(66,71,82,0.3);border-radius:0.75rem;padding:1rem;margin-bottom:0.75rem}
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
 <!-- SideNavBar -->
 <!-- Mobile hamburger -->
 <button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
@@ -118,215 +155,201 @@
 </button>
 <!-- Sidebar overlay for mobile -->
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
-<aside id="sidebar" class="h-screen w-64 bg-[#f2f4f6] dark:bg-[#1e293b] flex flex-col h-full py-6 px-4 space-y-1 fixed left-0 top-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300">
-<div class="mb-8 px-4">
-<h2 class="text-lg font-black text-slate-900 dark:text-white">Host Assistant</h2>
-<p class="text-xs font-semibold tracking-wide uppercase text-slate-500">Automation Hub</p>
+<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
+<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
 </div>
-<nav class="space-y-1">
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-all" href="/automation_rules">
+<span>HostAI</span>
+</a>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-<span class="text-sm font-semibold tracking-wide uppercase">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg px-4 py-3 shadow-sm transition-all translate-x-1 duration-200" href="/logout">
-<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
-<span class="text-sm font-semibold tracking-wide uppercase">Workflows</span>
-</a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-all" href="/analytics">
-<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
-<span class="text-sm font-semibold tracking-wide uppercase">Automations</span>
-</a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-all" href="/analytics">
-<span class="material-symbols-outlined" data-icon="insights">insights</span>
-<span class="text-sm font-semibold tracking-wide uppercase">Analytics</span>
-</a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-all" href="/settings">
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+                Conversations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+                Reservations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Activity
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+                Revenue & ROI
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+                Voice AI
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+                Operations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
-<span class="text-sm font-semibold tracking-wide uppercase">Settings</span>
-</a>
+                Settings
+            </a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+                Admin
+            </a>
+{% endif %}
 </nav>
-<div class="mt-auto pt-6 space-y-1">
-<div class="p-4 bg-primary-container rounded-xl mb-4">
-<p class="text-xs text-on-primary-container font-semibold mb-2">PRO FEATURES</p>
-<p class="text-sm text-white font-bold mb-3">Upgrade Plan</p>
-<button class="w-full bg-white text-primary py-2 rounded-lg text-xs font-bold uppercase tracking-wider" onclick="window.location.href="/pricing"">Upgrade</button>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
 </div>
-<a class="flex items-center gap-3 text-slate-500 px-4 py-2 hover:text-slate-900 transition-colors" href="/settings">
-<span class="material-symbols-outlined" data-icon="contact_support">contact_support</span>
-<span class="text-xs font-semibold uppercase">Support</span>
-</a>
-<a class="flex items-center gap-3 text-slate-500 px-4 py-2 hover:text-error transition-colors" href="/logout">
-<span class="material-symbols-outlined" data-icon="logout">logout</span>
-<span class="text-xs font-semibold uppercase">Sign Out</span>
-</a>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ tenant.first_name or "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+</div>
+</div>
+<form method="post" action="/logout">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+    <span class="material-symbols-outlined text-sm">logout</span>
+    Sign Out
+  </button>
+</form>
 </div>
 </aside>
-<!-- Main Content (Workflow Builder) -->
-<main class="flex-1 flex flex-col min-w-0 bg-surface">
-<!-- Builder Header -->
-<div class="h-14 bg-surface-container-lowest flex items-center justify-between px-8 z-10 border-b border-outline-variant/10">
-<div class="flex items-center gap-4">
-<h1 class="headline text-lg font-bold">New Reservation Sequence</h1>
-<span class="bg-secondary-container text-on-secondary-container text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter">Draft</span>
-</div>
-<div class="flex items-center gap-3">
-<div class="flex -space-x-2 mr-4">
-<img alt="Team member" class="w-8 h-8 rounded-full border-2 border-white" data-alt="close-up portrait of a professional woman in a modern office setting with soft background bokeh" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiiuPjEDMZDf-kzPYDy1W9MZ0gWFA7ysKZKbgavGhu5MtRl1A0HSBvCyCP1F01w6NSxeETY3CFwmw-0hQBIPARxWlaCqshOkcrqep69WwP6RILuqbUlOu8b2GqZIn8eNtwn3S5KybBLC0lO1fDyF0GnD_0ABucc9tc2Ca7k-74s8sRFTWqgosgNGNkbmh2VJOEmm-skB8yWM6djhhDMh7qP-thqNlacM91eB5kzb14UtsueOaXxOipfIZG8WqUPBZn_pBgGMiee0Qe"/>
-<img alt="Team member" class="w-8 h-8 rounded-full border-2 border-white" data-alt="professional male executive with glasses smiling warmly in a bright corporate office environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiiuPjEDMZDf-kzPYDy1W9MZ0gWFA7ysKZKbgavGhu5MtRl1A0HSBvCyCP1F01w6NSxeETY3CFwmw-0hQBIPARxWlaCqshOkcrqep69WwP6RILuqbUlOu8b2GqZIn8eNtwn3S5KybBLC0lO1fDyF0GnD_0ABucc9tc2Ca7k-74s8sRFTWqgosgNGNkbmh2VJOEmm-skB8yWM6djhhDMh7qP-thqNlacM91eB5kzb14UtsueOaXxOipfIZG8WqUPBZn_pBgGMiee0Qe"/>
-<div class="w-8 h-8 rounded-full border-2 border-white bg-surface-container-high flex items-center justify-center text-[10px] font-bold">+3</div>
-</div>
-<button class="text-slate-600 hover:text-primary material-symbols-outlined" onclick="document.body.style.zoom = (parseFloat(document.body.style.zoom||1)+0.1).toString()">zoom_in</button>
-<button class="text-slate-600 hover:text-primary material-symbols-outlined" onclick="document.body.style.zoom = (parseFloat(document.body.style.zoom||1)-0.1).toString()">zoom_out</button>
-<div class="h-6 w-px bg-outline-variant/20 mx-2"></div>
-<button class="bg-surface-container-high text-on-surface px-4 py-1.5 rounded-lg text-sm font-semibold">Test Workflow</button>
-<a href="/workflow_center" class="bg-primary text-on-primary px-6 py-1.5 rounded-lg text-sm font-semibold">Publish</a>
+<!-- Main Content Area -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search..." type="text"/>
 </div>
 </div>
-<!-- Canvas Area -->
-<div class="flex-1 relative overflow-auto canvas-grid p-20 flex flex-col items-center gap-12">
-<!-- Trigger Node -->
-<div class="relative flex flex-col items-center">
-<div class="w-72 bg-surface-container-lowest rounded-xl shadow-SoftEstate p-5 border-l-4 border-primary">
-<div class="flex items-center gap-3 mb-3">
-<span class="material-symbols-outlined text-primary p-2 bg-primary/5 rounded-lg" data-icon="event_available">event_available</span>
-<div>
-<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trigger</p>
-<h3 class="font-bold text-sm leading-tight">New Reservation</h3>
-</div>
-</div>
-<p class="text-xs text-secondary leading-relaxed">Fires when a guest completes a booking from any channel.</p>
-<div class="mt-4 pt-4 border-t border-outline-variant/5 flex justify-between items-center">
-<span class="text-[10px] font-semibold text-slate-500">Source: All Channels</span>
-<span class="material-symbols-outlined text-slate-400 text-sm">settings</span>
-</div>
-</div>
-<!-- Connector -->
-<div class="h-12 w-0.5 bg-outline-variant/40 mt-0"></div>
-</div>
-<!-- Condition Node -->
-<div class="relative flex flex-col items-center">
-<div class="w-72 bg-surface-container-lowest rounded-xl shadow-SoftEstate p-5 border-l-4 border-secondary">
-<div class="flex items-center gap-3 mb-3">
-<span class="material-symbols-outlined text-secondary p-2 bg-secondary/5 rounded-lg" data-icon="alt_route">alt_route</span>
-<div>
-<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Condition</p>
-<h3 class="font-bold text-sm leading-tight">If Stay &lt; 3 days</h3>
-</div>
-</div>
-<div class="space-y-2 mt-4">
-<div class="flex items-center justify-between p-2 bg-surface-container-low rounded-lg border-l-2 border-primary">
-<span class="text-xs font-bold">YES</span>
-<span class="material-symbols-outlined text-xs text-slate-400">arrow_forward</span>
-</div>
-<div class="flex items-center justify-between p-2 bg-surface-container-low rounded-lg border-l-2 border-outline">
-<span class="text-xs font-bold text-slate-400">NO</span>
-<span class="material-symbols-outlined text-xs text-slate-300">block</span>
-</div>
-</div>
-</div>
-<!-- Connector -->
-<div class="h-12 w-0.5 bg-outline-variant/40"></div>
-</div>
-<!-- Action Node -->
-<div class="relative flex flex-col items-center">
-<div class="w-72 bg-surface-container-lowest rounded-xl shadow-SoftEstate p-5 border-l-4 border-[#075e54]">
-<div class="flex items-center gap-3 mb-3">
-<span class="material-symbols-outlined text-[#075e54] p-2 bg-[#075e54]/5 rounded-lg" data-icon="chat">chat</span>
-<div>
-<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Action</p>
-<h3 class="font-bold text-sm leading-tight">Send Welcome WhatsApp</h3>
-</div>
-</div>
-<p class="text-xs text-secondary italic mb-2">"Hello {{guest_name}}, we're excited to..."</p>
-<div class="flex gap-2">
-<span class="bg-surface-container px-2 py-1 rounded text-[10px] font-bold">SMS</span>
-<span class="bg-surface-container px-2 py-1 rounded text-[10px] font-bold">Mobile</span>
-</div>
-</div>
-<!-- Connector -->
-<div class="h-12 w-0.5 bg-outline-variant/40"></div>
-</div>
-<!-- Notification Node -->
-<div class="relative flex flex-col items-center">
-<div class="w-72 bg-surface-container-lowest rounded-xl shadow-SoftEstate p-5 border-l-4 border-error">
-<div class="flex items-center gap-3 mb-3">
-<span class="material-symbols-outlined text-error p-2 bg-error/5 rounded-lg" data-icon="notification_important">notification_important</span>
-<div>
-<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Notification</p>
-<h3 class="font-bold text-sm leading-tight">Alert Manager</h3>
-</div>
-</div>
-<p class="text-xs text-secondary leading-relaxed">Notify property manager of confirmed short-term stay for prep.</p>
-</div>
-</div>
-<!-- Floating Add Button -->
-<button class="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform mt-4">
-<span class="material-symbols-outlined">add</span>
+<div class="flex items-center gap-6">
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
 </button>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Account</span>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+</div>
+</div>
+</div>
+</header>
+<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen">
+<div class="mb-8">
+  <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Operations</h1>
+  <p class="text-slate-400 text-sm">Manage automation rules and issue escalation</p>
+</div>
+<div class="compat-layer">
+
+
+
+<div class="analytics-row" style="margin-bottom:1.25rem">
+  <div class="analytics-widget">
+    <div class="widget-value">{{ kpis.ops.automation_ready_ratio }}%</div>
+    <div class="widget-label" style="display:inline-flex;align-items:center;justify-content:center;gap:0.3rem">
+      Automation-ready
+      <div class="tooltip-container">
+        <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+          <span style="font-size:0.6rem">ⓘ</span>
+        </button>
+        <div class="tooltip-content">Percentage of active reservations with complete guest contact info + room mapping + PMS integration active</div>
+      </div>
+    </div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ exception_queue|length }}</div>
+    <div class="widget-label" style="display:inline-flex;align-items:center;justify-content:center;gap:0.3rem">
+      Open exceptions
+      <div class="tooltip-container">
+        <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+          <span style="font-size:0.6rem">ⓘ</span>
+        </button>
+        <div class="tooltip-content">Messages that triggered escalation rules (refunds, safety concerns, complaints, property damage)</div>
+      </div>
+    </div>
+  </div>
+  <div class="analytics-widget"><div class="widget-value">{{ kpis.reservations.context_complete }}</div><div class="widget-label">Contexts ready</div></div>
+  <div class="analytics-widget"><div class="widget-value">{{ automation_rules|length }}</div><div class="widget-label">Active rules</div></div>
+</div>
+
+
+
+<div class="card" style="margin-bottom:1rem">
+  <h2>Activation checklist</h2>
+  {% for item in activation_checklist %}
+  <div class="checklist-item">
+    <span class="check-icon {% if item.complete %}done{% else %}todo{% endif %}">{% if item.complete %}✓{% else %}○{% endif %}</span>
+    <span>{{ item.label }}</span>
+    <span style="color:var(--text-3);font-size:0.8rem">{{ item.detail }}</span>
+    {% if not item.complete %}<a href="{{ item.cta }}" class="checklist-action btn btn-outline btn-sm">Open</a>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem">
+  <div class="card" style="padding:1.25rem">
+    <h3 style="margin-bottom:0.75rem">Recent timeline</h3>
+    <div class="timeline" style="padding-left:0">
+      {% for event in timeline_events[:6] %}
+      <div class="timeline-item">
+        <div class="timeline-meta">{{ event.created_at.strftime('%b %d %H:%M') if event.created_at else '' }}{% if event.channel %} · {{ event.channel }}{% endif %}</div>
+        <div class="timeline-title">{{ event.message or event.summary }}</div>
+        <div class="timeline-text">{{ event.detail or event.status or '' }}</div>
+      </div>
+      {% endfor %}
+      {% if not timeline_events %}<p style="font-size:0.85rem;color:var(--text-3)">No timeline events yet.</p>{% endif %}
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:1rem">
+    <div class="card" style="padding:1.25rem">
+      <h3 style="margin-bottom:0.75rem">Exception queue</h3>
+      {% for item in exception_queue[:5] %}
+      <div style="padding:0.75rem 0;border-bottom:1px solid rgba(66,71,82,0.15)">
+        <div style="font-size:0.86rem;font-weight:600;color:#e3e1eb;margin-bottom:0.15rem">{{ item.title }}</div>
+        <div style="font-size:0.8rem;color:var(--text-3)">{{ item.detail }}</div>
+      </div>
+      {% endfor %}
+      {% if not exception_queue %}<p style="font-size:0.85rem;color:var(--text-3)">No exceptions right now.</p>{% endif %}
+    </div>
+    <div class="card" style="padding:1.25rem">
+      <h3 style="margin-bottom:0.75rem">Open issues</h3>
+      {% for issue in open_issues[:5] %}
+      <div style="padding:0.75rem 0;border-bottom:1px solid rgba(66,71,82,0.15)">
+        <div style="font-size:0.86rem;font-weight:600;color:#e3e1eb;margin-bottom:0.15rem">{{ issue.title }}</div>
+        <div style="font-size:0.8rem;color:var(--text-3)">{{ issue.priority|upper }} · {{ issue.category|replace('_', ' ') }}</div>
+      </div>
+      {% endfor %}
+      {% if not open_issues %}<p style="font-size:0.85rem;color:var(--text-3)">No open issues.</p>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem">
+  <a class="btn btn-primary btn-sm" href="/dashboard">Back to dashboard</a>
+  <a class="btn btn-outline btn-sm" href="/reservations">Open reservations</a>
+  <a class="btn btn-outline btn-sm" href="/settings#workflow">Open settings</a>
+  <a class="btn btn-outline btn-sm" href="/ops">Open ops queue</a>
+</div>
 </div>
 </main>
-<!-- Right Sidebar (Templates) -->
-<aside id="sidebar" class="w-80 bg-surface-container-lowest border-l border-outline-variant/10 flex flex-col">
-<div class="p-6 border-b border-outline-variant/10">
-<h2 class="headline font-bold text-base mb-1">Workflow Templates</h2>
-<p class="text-xs text-secondary">Drag and drop to add to your canvas</p>
-</div>
-<div class="flex-1 overflow-y-auto p-6 space-y-4">
-<div class="group p-4 rounded-xl bg-surface-container-low border border-transparent hover:border-primary/20 cursor-grab active:cursor-grabbing transition-all">
-<div class="flex items-start justify-between mb-2">
-<span class="material-symbols-outlined text-primary" data-icon="door_open">door_open</span>
-<span class="text-[10px] font-bold text-slate-400">GUEST EXPERIENCE</span>
-</div>
-<h4 class="font-bold text-sm mb-1">Early Check-in Offer</h4>
-<p class="text-xs text-slate-500 line-clamp-2">Automatically upsells early check-in if property is clean 4h before arrival.</p>
-<div class="mt-3 flex items-center gap-2">
-<span class="material-symbols-outlined text-[14px] text-slate-400">bolt</span>
-<span class="text-[10px] font-bold text-slate-400">3 Steps</span>
-</div>
-</div>
-<div class="group p-4 rounded-xl bg-surface-container-low border border-transparent hover:border-primary/20 cursor-grab active:cursor-grabbing transition-all">
-<div class="flex items-start justify-between mb-2">
-<span class="material-symbols-outlined text-error" data-icon="engineering">engineering</span>
-<span class="text-[10px] font-bold text-slate-400">OPERATIONS</span>
-</div>
-<h4 class="font-bold text-sm mb-1">Maintenance Alert</h4>
-<p class="text-xs text-slate-500 line-clamp-2">Escalate tickets that haven't been touched in 2 hours to senior staff.</p>
-<div class="mt-3 flex items-center gap-2">
-<span class="material-symbols-outlined text-[14px] text-slate-400">bolt</span>
-<span class="text-[10px] font-bold text-slate-400">4 Steps</span>
-</div>
-</div>
-<div class="group p-4 rounded-xl bg-surface-container-low border border-transparent hover:border-primary/20 cursor-grab active:cursor-grabbing transition-all">
-<div class="flex items-start justify-between mb-2">
-<span class="material-symbols-outlined text-secondary" data-icon="star">star</span>
-<span class="text-[10px] font-bold text-slate-400">REVENUE</span>
-</div>
-<h4 class="font-bold text-sm mb-1">Review Request</h4>
-<p class="text-xs text-slate-500 line-clamp-2">Send a personalized review request 24 hours after check-out.</p>
-<div class="mt-3 flex items-center gap-2">
-<span class="material-symbols-outlined text-[14px] text-slate-400">bolt</span>
-<span class="text-[10px] font-bold text-slate-400">2 Steps</span>
-</div>
-</div>
-<div class="group p-4 rounded-xl bg-surface-container-low border border-transparent hover:border-primary/20 cursor-grab active:cursor-grabbing transition-all opacity-60">
-<div class="flex items-start justify-between mb-2">
-<span class="material-symbols-outlined text-on-tertiary-container" data-icon="energy_savings_leaf">energy_savings_leaf</span>
-<span class="text-[10px] font-bold text-slate-400">ENERGY</span>
-</div>
-<h4 class="font-bold text-sm mb-1">Smart Thermostat Sync</h4>
-<p class="text-xs text-slate-500 line-clamp-2">Set ECO mode immediately upon guest check-out notification.</p>
-<div class="mt-3 flex items-center gap-2">
-<span class="material-symbols-outlined text-[14px] text-slate-400">lock</span>
-<span class="text-[10px] font-bold text-slate-400">Pro Feature</span>
-</div>
-</div>
-</div>
-<div class="p-6 bg-surface-container-low/50">
-<button class="w-full py-3 border-2 border-dashed border-outline-variant rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-surface-container-highest transition-colors group">
-<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors">upload_file</span>
-<span class="text-xs font-bold text-slate-500">Import Custom JSON</span>
+<!-- Floating AI Assistant Button (Subtle) -->
+<div class="fixed bottom-8 right-8 z-50">
+<button class="w-14 h-14 rounded-full bg-primary text-on-primary shadow-[0_8px_24px_rgba(0,0,0,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">auto_awesome</span>
 </button>
 </div>
-</aside>
-</div>
-</body></html>
+{%- endblock %}
+{%- endblock %}

@@ -1,454 +1,377 @@
-<!DOCTYPE html>
+{%- extends "base.html" %}
+{%- block title %}Mission Control — HostAI{%- endblock %}
 
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>SOVEREIGN_LEDGER | Mission Control</title>
+{%- block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "tertiary-container": "#ffd2cd",
-                        "primary-fixed-dim": "#00e639",
-                        "outline-variant": "#3b4b37",
-                        "surface-container-high": "#222a3d",
-                        "on-secondary-fixed-variant": "#5c4300",
-                        "surface-bright": "#31394d",
-                        "on-tertiary-fixed-variant": "#93000c",
-                        "on-error-container": "#ffdad6",
-                        "on-surface-variant": "#b9ccb2",
-                        "surface-tint": "#00e639",
-                        "primary": "#ebffe2",
-                        "secondary-container": "#ffbf00",
-                        "on-tertiary-fixed": "#410002",
-                        "tertiary-fixed-dim": "#ffb4ab",
-                        "primary-fixed": "#72ff70",
-                        "on-surface": "#dae2fd",
-                        "on-secondary-container": "#6d5000",
-                        "on-primary-fixed-variant": "#00530e",
-                        "surface": "#0b1326",
-                        "on-tertiary": "#690006",
-                        "background": "#0b1326",
-                        "on-primary": "#003907",
-                        "surface-container": "#171f33",
-                        "primary-container": "#00ff41",
-                        "surface-dim": "#0b1326",
-                        "surface-container-highest": "#2d3449",
-                        "inverse-primary": "#006e16",
-                        "tertiary-fixed": "#ffdad6",
-                        "on-secondary": "#402d00",
-                        "inverse-surface": "#dae2fd",
-                        "secondary-fixed": "#ffdfa0",
-                        "on-tertiary-container": "#c40015",
-                        "inverse-on-surface": "#283044",
-                        "error-container": "#93000a",
-                        "on-secondary-fixed": "#261a00",
-                        "on-primary-fixed": "#002203",
-                        "error": "#ffb4ab",
-                        "surface-container-low": "#131b2e",
-                        "secondary": "#ffe2ab",
-                        "on-primary-container": "#007117",
-                        "on-error": "#690005",
-                        "on-background": "#dae2fd",
-                        "outline": "#84967e",
-                        "surface-variant": "#2d3449",
-                        "secondary-fixed-dim": "#fbbc00",
-                        "tertiary": "#fff7f6",
-                        "surface-container-lowest": "#060e20"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.125rem",
-                        "lg": "0.25rem",
-                        "xl": "0.5rem",
-                        "full": "0.75rem"
-                    },
-                    "fontFamily": {
-                        "headline": ["Space Grotesk"],
-                        "body": ["Inter"],
-                        "label": ["Inter"]
-                    }
-                },
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-highest": "#34343b",
+              "on-tertiary-container": "#3e2400",
+              "on-secondary": "#00363d",
+              "on-tertiary-fixed": "#2a1700",
+              "on-secondary-container": "#00616d",
+              "on-error-container": "#ffdad6",
+              "surface-tint": "#aec6ff",
+              "surface-container-high": "#292930",
+              "outline-variant": "#424752",
+              "inverse-on-surface": "#2f3037",
+              "on-primary-fixed-variant": "#004397",
+              "surface-container-low": "#1a1b22",
+              "surface-bright": "#383940",
+              "primary-container": "#5d8ef1",
+              "background": "#121319",
+              "on-primary": "#002e6b",
+              "secondary-container": "#00e3fd",
+              "tertiary": "#ffb960",
+              "primary-fixed-dim": "#aec6ff",
+              "on-primary-container": "#00275e",
+              "surface-container": "#1e1f26",
+              "secondary-fixed": "#9cf0ff",
+              "tertiary-fixed-dim": "#ffb960",
+              "error": "#ffb4ab",
+              "on-secondary-fixed": "#001f24",
+              "surface-container-lowest": "#0d0e14",
+              "secondary": "#bdf4ff",
+              "on-surface-variant": "#c3c6d4",
+              "tertiary-container": "#ca8103",
+              "primary": "#aec6ff",
+              "on-primary-fixed": "#001a43",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-error": "#690005",
+              "on-background": "#e3e1eb",
+              "on-secondary-fixed-variant": "#004f58",
+              "error-container": "#93000a",
+              "tertiary-fixed": "#ffddb8",
+              "surface-dim": "#121319",
+              "secondary-fixed-dim": "#00daf3",
+              "surface-variant": "#34343b",
+              "surface": "#121319",
+              "primary-fixed": "#d8e2ff",
+              "outline": "#8d909e",
+              "on-tertiary": "#472a00",
+              "on-surface": "#e3e1eb",
+              "inverse-surface": "#e3e1eb",
+              "inverse-primary": "#1e5bba"
             },
-        }
-    </script>
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+</script>
 <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        body { font-family: 'Inter', sans-serif; }
-        .font-headline { font-family: 'Space Grotesk', sans-serif; }
-    </style>
-</head>
-<body class="bg-background text-on-surface selection:bg-primary-container selection:text-on-primary-container">
-<!-- SideNavBar Component -->
+body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; }
+.glass-card { background: rgba(26, 27, 34, 0.7); backdrop-filter: blur(24px); }
+.specular-highlight { border-top: 1px solid rgba(174, 198, 255, 0.1); border-left: 1px solid rgba(174, 198, 255, 0.1); }
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24; }
+.active-glow { box-shadow: 0 0 15px rgba(93, 142, 241, 0.15); }
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #292930;
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #424752;
+}
+.alert-critical { border-left: 4px solid #dc2626; }
+.alert-high { border-left: 4px solid #f97316; }
+.alert-medium { border-left: 4px solid #eab308; }
+.alert-low { border-left: 4px solid #3b82f6; }
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- SideNavBar Shell -->
 <!-- Mobile hamburger -->
 <button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
 <!-- Sidebar overlay for mobile -->
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
-<aside id="sidebar" class="h-screen w-64 flex flex-col fixed left-0 top-0 z-40 bg-[#171f33] shadow-2xl shadow-black/50 -translate-x-full md:translate-x-0 transition-transform duration-300">
-<div class="flex flex-col h-full py-8">
-<div class="px-6 mb-8">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-sm bg-primary-container flex items-center justify-center">
-<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">security</span>
+<!-- Mobile hamburger -->
+<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+  <span class="material-symbols-outlined">menu</span>
+</button>
+<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
+<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
+<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
 </div>
-<div>
-<h2 class="text-[10px] font-bold uppercase tracking-widest text-primary-fixed">HQ-PRIME</h2>
-<p class="text-[8px] text-primary-fixed/60 font-medium tracking-tighter">STATUS: OPERATIONAL</p>
-</div>
-</div>
-</div>
-<nav class="flex-1">
-<ul class="space-y-1">
-<li>
-<a class="bg-[#0b1326] text-[#00FF41] border-l-4 border-[#00FF41] py-4 px-6 flex items-center gap-4 font-['Inter'] uppercase tracking-widest text-[10px] font-bold kinetic-signaling transform transition-transform duration-200" href="/analytics">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
-                            Command Center
-                        </a>
-</li>
-<li>
-<a class="text-slate-500 py-4 px-6 flex items-center gap-4 hover:bg-[#0b1326]/50 transition-all font-['Inter'] uppercase tracking-widest text-[10px] font-bold" href="/admin/system">
-<span class="material-symbols-outlined">domain</span>
-                            Asset Registry
-                        </a>
-</li>
-<li>
-<a class="text-slate-500 py-4 px-6 flex items-center gap-4 hover:bg-[#0b1326]/50 transition-all font-['Inter'] uppercase tracking-widest text-[10px] font-bold" href="/admin/tenant">
-<span class="material-symbols-outlined">groups</span>
-                            Tenant Matrix
-                        </a>
-</li>
-<li>
-<a class="text-slate-500 py-4 px-6 flex items-center gap-4 hover:bg-[#0b1326]/50 transition-all font-['Inter'] uppercase tracking-widest text-[10px] font-bold" href="/billing">
-<span class="material-symbols-outlined">payments</span>
-                            Financial Ledger
-                        </a>
-</li>
-<li>
-<a class="text-slate-500 py-4 px-6 flex items-center gap-4 hover:bg-[#0b1326]/50 transition-all font-['Inter'] uppercase tracking-widest text-[10px] font-bold" href="/admin/system">
-<span class="material-symbols-outlined">analytics</span>
-                            System Health
-                        </a>
-</li>
-</ul>
+<span>HostAI</span>
+</a>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+Dashboard
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+Conversations
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/mission-control' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/mission-control">
+<span class="material-symbols-outlined" data-icon="military_tech">military_tech</span>
+Mission Control
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+Reservations
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+Activity
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+Voice AI
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+Settings
+</a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+Admin
+</a>
+{% endif %}
 </nav>
-<div class="mt-auto px-6 space-y-6">
-<a href="/dashboard" class="w-full bg-primary-container text-on-primary py-3 rounded-sm font-headline font-bold text-xs tracking-tighter uppercase scale-95 active:opacity-80 transition-all">DEPLOY COMMAND</a>
-<div class="pt-6 border-t border-white/5 space-y-4">
-<a class="flex items-center gap-3 text-slate-500 text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors" href="/settings">
-<span class="material-symbols-outlined text-sm">help</span>
-                        Support
-                    </a>
-<a class="flex items-center gap-3 text-slate-500 text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors" href="/settings">
-<span class="material-symbols-outlined text-sm">description</span>
-                        Documentation
-                    </a>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+{{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ tenant.first_name or "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
 </div>
 </div>
+<form method="post" action="/logout">
+<input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+<button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+<span class="material-symbols-outlined text-sm">logout</span>
+Sign Out
+</button>
+</form>
 </div>
 </aside>
-<!-- Main Content Area -->
-<main class="ml-64 min-h-screen">
-<!-- TopNavBar Component -->
-<header class="flex justify-between items-center px-6 w-full z-50 sticky top-0 bg-[#0b1326] h-16 tonal-shift border-b border-opacity-10 border-[#00FF41]">
-<div class="flex items-center gap-8">
-<h1 class="text-xl font-bold tracking-tighter text-[#00FF41] font-['Space_Grotesk']">SOVEREIGN_LEDGER</h1>
-<nav class="hidden md:flex gap-6 items-center">
-<a class="text-[#00FF41] border-b-2 border-[#00FF41] pb-1 font-['Space_Grotesk'] tracking-tight text-sm" href="/dashboard">Sectors</a>
-<a class="text-slate-400 hover:text-white transition-colors font-['Space_Grotesk'] tracking-tight text-sm" href="/analytics">Analytics</a>
-<a class="text-slate-400 hover:text-white transition-colors font-['Space_Grotesk'] tracking-tight text-sm" href="/activity">Logs</a>
-</nav>
+
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search alerts, properties..." type="text"/>
 </div>
-<div class="flex items-center gap-4">
-<div class="flex items-center gap-2 px-3 py-1 bg-surface-container-lowest rounded-full border border-primary-container/10">
-<span class="w-2 h-2 rounded-full bg-primary-fixed animate-pulse"></span>
-<span class="text-[10px] font-bold tracking-widest uppercase text-primary-fixed">ALL SYSTEMS OPERATIONAL</span>
 </div>
-<div class="flex gap-2">
-<button class="p-2 text-slate-400 hover:bg-[#171f33] rounded-sm transition-all">
-<span class="material-symbols-outlined">notifications</span>
+<div class="flex items-center gap-6">
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
 </button>
-<button class="p-2 text-slate-400 hover:bg-[#171f33] rounded-sm transition-all">
-<span class="material-symbols-outlined">settings</span>
-</button>
-<button class="p-2 text-slate-400 hover:bg-[#171f33] rounded-sm transition-all">
-<span class="material-symbols-outlined text-error">power_settings_new</span>
-</button>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Account</span>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+{{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
 </div>
-<div class="h-8 w-8 rounded-full bg-surface-container overflow-hidden border border-primary-container/20">
-<img alt="Commander Profile" class="w-full h-full object-cover" data-alt="close-up portrait of professional executive commander in high-tech lighting with neutral focused expression and dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrWnYW6uuMZSxD1l9V1CpDEQGTPfH2SVD_c_KVGAS1b8-EM-kn5x1wkDuleEVnofgrlugaTZwHr0bcMn2Lc7g8_m-D9sB-HZkS9PjAOBLEmBTY8l_aXgcRJ4dqVq5So_Ed8VmVMD_18PzUTIDdgQWxoEWQtIUMERumKrCKmCwBTLrvzeSe4GM49i1LaquP6Ye33D9N8lZite1zxn-sNlucLwiJ8jrvwhoQHRFK5YbqVuEiMOiR8XENV_2LQKPoy_hZoh6i6-QXd7m_"/>
 </div>
 </div>
 </header>
-<div class="p-8 space-y-8 max-w-[1600px] mx-auto">
-<!-- Top Metrics Row -->
-<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-<!-- Metric Card 1 -->
-<div class="bg-surface-container p-6 flex flex-col gap-2 relative overflow-hidden group">
-<div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/5 -mr-12 -mt-12 rounded-full blur-3xl group-hover:bg-primary-container/10 transition-all"></div>
-<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">TOTAL REVENUE (MTD)</span>
-<div class="flex items-baseline gap-2">
-<h2 class="text-3xl font-headline font-bold text-primary-fixed">$482,900</h2>
-<span class="text-xs font-bold text-primary-fixed-dim flex items-center">
-<span class="material-symbols-outlined text-sm">arrow_upward</span>
-                            12.4%
-                        </span>
-</div>
-<div class="mt-4 h-[2px] bg-surface-container-lowest w-full relative">
-<div class="absolute left-0 top-0 h-full bg-primary-fixed w-[78%]"></div>
-</div>
-</div>
-<!-- Metric Card 2 -->
-<div class="bg-surface-container p-6 flex flex-col gap-2 relative overflow-hidden group">
-<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">ACTIVE PORTFOLIO VALUE</span>
-<div class="flex items-baseline gap-2">
-<h2 class="text-3xl font-headline font-bold text-on-surface">$124.8M</h2>
-<span class="text-xs font-bold text-on-surface-variant tracking-tighter">H1 FORECAST</span>
-</div>
-<div class="mt-4 flex gap-1">
-<div class="h-8 flex-1 bg-primary-container/10 border-b-2 border-primary-container"></div>
-<div class="h-10 flex-1 bg-primary-container/15 border-b-2 border-primary-container"></div>
-<div class="h-6 flex-1 bg-primary-container/5 border-b-2 border-primary-container"></div>
-<div class="h-12 flex-1 bg-primary-container/20 border-b-2 border-primary-container"></div>
-<div class="h-9 flex-1 bg-primary-container/10 border-b-2 border-primary-container"></div>
-</div>
-</div>
-<!-- Metric Card 3 -->
-<div class="bg-surface-container p-6 flex flex-col gap-2 relative overflow-hidden group">
-<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">OCCUPANCY VELOCITY</span>
-<div class="flex items-baseline gap-2">
-<h2 class="text-3xl font-headline font-bold text-on-surface">94.2%</h2>
-<span class="text-xs font-bold text-secondary-fixed-dim">+2.1%</span>
-</div>
-<div class="mt-4 grid grid-cols-4 gap-2">
-<div class="h-1 bg-primary-fixed"></div>
-<div class="h-1 bg-primary-fixed"></div>
-<div class="h-1 bg-primary-fixed"></div>
-<div class="h-1 bg-surface-container-lowest"></div>
-</div>
-</div>
-<!-- Metric Card 4 (Critical Alert Style) -->
-<div class="bg-surface-container p-6 flex flex-col gap-2 relative overflow-hidden border-l-2 border-error">
-<span class="text-[10px] font-bold uppercase tracking-widest text-error">CRITICAL ALERTS</span>
-<div class="flex items-center gap-3">
-<h2 class="text-3xl font-headline font-bold text-on-surface">03</h2>
-<div class="p-2 rounded-sm bg-error-container/20">
-<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
-</div>
-</div>
-<p class="text-[10px] font-medium text-on-surface-variant/80 mt-2">REQUIRES IMMEDIATE DEPLOYMENT</p>
-</div>
-</section>
-<!-- Main Dashboard Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-<!-- Property Matrix Section -->
-<section class="lg:col-span-8 space-y-6">
-<div class="flex justify-between items-end">
+
+<!-- Main Viewport -->
+<main class="md:ml-[260px] pt-16 h-screen flex flex-col overflow-hidden">
+<div class="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-[#08090F]/80 backdrop-blur-xl">
 <div>
-<h3 class="text-xl font-headline font-bold tracking-tight">PROPERTY MATRIX</h3>
-<p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">REAL-TIME ASSET MONITORING</p>
-</div>
-<a href="/dashboard" class="text-[10px] font-bold text-primary hover:underline uppercase tracking-widest">VIEW GLOBAL MAP</a>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-<!-- Property 1 -->
-<div class="bg-surface-container-low group hover:bg-surface-container transition-all p-1">
-<div class="relative h-48 w-full overflow-hidden">
-<img alt="your property" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="ultra-modern glass minimalist architectural luxury villa at dusk with warm interior lighting and sharp geometric lines" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBz0ZC9OAJU3rsD_jbvEBe2-zig3volnyNmQzn755SS19NfHDyRs-vjFWfn9y_dGFRE7YU2L8T8EuB45ALyUQgyJKY8RWQP5ZlAlLdVAKDbVVRI3s3NIyFq3gajkGXNsVX2zZVl0flnBftJAijanELpUWOjPichjbs5LwyQVEZjojBLu-G4zPqKOSNaQ58R3gt50yZXNz8ElJ_pwz5BqBMu_yet7OozuqBEVfImF8VhgAHaOxHwKlFco-6P1KVAqzsu3vuRaeWTfjoA"/>
-<div class="absolute top-4 left-4 flex gap-2">
-<span class="bg-primary-container text-on-primary text-[8px] font-black uppercase px-2 py-1 tracking-widest">CHECK-IN ACTIVE</span>
+<h1 class="text-3xl font-extrabold tracking-tight text-white">🎖️ Mission Control</h1>
+<p class="text-slate-400 text-sm mt-1">Manage properties, handle escalations, and batch operations</p>
 </div>
 </div>
-<div class="p-4 flex justify-between items-start">
+
+<!-- Content -->
+<div class="flex-1 overflow-y-auto custom-scrollbar">
+<div class="p-8 space-y-8">
+<!-- Alert Summary Cards -->
+<div class="grid grid-cols-4 gap-4">
+<div class="bg-[#0d0e14] border border-red-500/20 rounded-lg p-6">
+<div class="flex items-center justify-between">
 <div>
-<h4 class="font-headline font-bold text-lg">your property</h4>
-<p class="text-[10px] text-on-surface-variant font-medium tracking-tight">SECTOR: DOWNTOWN CORE</p>
+<p class="text-slate-500 text-sm uppercase tracking-widest">Critical Alerts</p>
+<p class="text-4xl font-bold text-red-400 mt-2">{{ critical_count }}</p>
 </div>
-<div class="text-right">
-<div class="text-primary-fixed text-sm font-bold">$1,200 <span class="text-[8px] text-on-surface-variant">/ NIGHT</span></div>
-<div class="text-[10px] text-on-surface-variant uppercase tracking-tighter mt-1">REVENUE: $42.1K</div>
+<span class="material-symbols-outlined text-4xl text-red-500/50">priority_high</span>
 </div>
 </div>
-</div>
-<!-- Property 2 -->
-<div class="bg-surface-container-low group hover:bg-surface-container transition-all p-1">
-<div class="relative h-48 w-full overflow-hidden">
-<img alt="your property" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="luxury mediterranean villa with infinity pool overlooking ocean turquoise water at high noon clear blue sky" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCVvIZosi-T_7Hqo2QHn98A2PwlgCRgWLgvpCDulbwuAuamzI7UjuWiH5PqAd0givI_c6k3CN99dl5IWdI3g1rg-l3tX0kXQexBDWfXGbAvHXfGbE4Nvs48RwV4pWDo3YV-QT6OYJrDAN_g2XgSboFdME0NTLDfEUPBCWO0yk1q85Vgmqk5AqWZExnQXIVGyNXAYv1OO0HIOpoihJ-HOeX1sSZNsFOgCAN88MFkUg1XaBp-v-qIlb18xX5_l_zZ-bYt1jP-dM6Mx8A"/>
-<div class="absolute top-4 left-4 flex gap-2">
-<span class="bg-secondary-container text-on-secondary-container text-[8px] font-black uppercase px-2 py-1 tracking-widest">MAINTENANCE REQ</span>
-</div>
-</div>
-<div class="p-4 flex justify-between items-start">
+
+<div class="bg-[#0d0e14] border border-orange-500/20 rounded-lg p-6">
+<div class="flex items-center justify-between">
 <div>
-<h4 class="font-headline font-bold text-lg">your property</h4>
-<p class="text-[10px] text-on-surface-variant font-medium tracking-tight">SECTOR: COASTAL PREMIER</p>
+<p class="text-slate-500 text-sm uppercase tracking-widest">High Priority</p>
+<p class="text-4xl font-bold text-orange-400 mt-2">{{ high_count }}</p>
 </div>
-<div class="text-right">
-<div class="text-on-surface text-sm font-bold">$2,850 <span class="text-[8px] text-on-surface-variant">/ NIGHT</span></div>
-<div class="text-[10px] text-on-surface-variant uppercase tracking-tighter mt-1">REVENUE: $18.4K</div>
+<span class="material-symbols-outlined text-4xl text-orange-500/50">warning</span>
 </div>
 </div>
-</div>
-<!-- Property 3 -->
-<div class="bg-surface-container-low group hover:bg-surface-container transition-all p-1">
-<div class="relative h-48 w-full overflow-hidden">
-<img alt="The Pine Retreat" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="modern cabin retreat in pine forest with cinematic fog and soft morning light technical architectural detail" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWqoqnjRMTpzNAYWJwrOSUnSqGi7mCVW5X-DeDoTdS2VVhECo4UTzp62cgaSACSqb4gM3emfG1Sn8NiOKUWiFsKobVv_m1AF84qcEvd0DRCzI-DrZg21R_i6_SM6spgVX9gASG4LqBpIuxgjIA-XiGe96km-QLyIutnnfXsYZ9vNV--G-gJao2E5-g3Uj7caodNwKlfnCbE0SFyR6d2gyJmf4KliNkeded2hKRpugTNAkYzkFX05muah5xnGTNz4cE2qW49--w771J"/>
-<div class="absolute top-4 left-4 flex gap-2">
-<span class="bg-surface-variant text-on-surface-variant text-[8px] font-black uppercase px-2 py-1 tracking-widest">STABLE</span>
-</div>
-</div>
-<div class="p-4 flex justify-between items-start">
+
+<div class="bg-[#0d0e14] border border-blue-500/20 rounded-lg p-6">
+<div class="flex items-center justify-between">
 <div>
-<h4 class="font-headline font-bold text-lg">The Pine Retreat</h4>
-<p class="text-[10px] text-on-surface-variant font-medium tracking-tight">SECTOR: NORTHERN ESCAPE</p>
+<p class="text-slate-500 text-sm uppercase tracking-widest">Total Alerts</p>
+<p class="text-4xl font-bold text-blue-400 mt-2">{{ total_alerts }}</p>
 </div>
-<div class="text-right">
-<div class="text-on-surface text-sm font-bold">$850 <span class="text-[8px] text-on-surface-variant">/ NIGHT</span></div>
-<div class="text-[10px] text-on-surface-variant uppercase tracking-tighter mt-1">REVENUE: $12.9K</div>
+<span class="material-symbols-outlined text-4xl text-blue-500/50">dashboard_alert</span>
 </div>
 </div>
-</div>
-<!-- Property 4 (Empty/Add) -->
-<div class="border-2 border-dashed border-outline-variant flex flex-center items-center justify-center p-8 group hover:border-primary-container transition-all cursor-pointer">
-<div class="text-center">
-<span class="material-symbols-outlined text-4xl text-outline-variant group-hover:text-primary-container mb-4">add_circle</span>
-<p class="text-[10px] font-bold uppercase tracking-widest text-outline-variant group-hover:text-primary-container">DEPLOY NEW ASSET</p>
-</div>
-</div>
-</div>
-</section>
-<!-- Intelligence Feed Section -->
-<section class="lg:col-span-4 flex flex-col h-full bg-surface-container-low p-6 rounded-sm">
-<div class="mb-6">
-<h3 class="text-sm font-headline font-bold tracking-widest text-on-surface uppercase">INTELLIGENCE FEED</h3>
-<div class="h-1 w-12 bg-primary-container mt-2"></div>
-</div>
-<div class="flex-1 space-y-4 overflow-y-auto max-h-[700px] pr-2 custom-scrollbar">
-<!-- Feed Item 1 -->
-<div class="bg-surface-container-lowest p-4 border-l-2 border-primary-container">
-<div class="flex justify-between items-center mb-2">
-<span class="text-[8px] font-black tracking-widest text-primary-fixed uppercase">SYSTEM EVENT</span>
-<span class="text-[8px] font-medium text-on-surface-variant">02:14:55 UTC</span>
-</div>
-<p class="text-xs text-on-surface font-medium mb-2">Keycard encrypted for your property. Entry confirmed for T-7822 Guest.</p>
-<div class="flex items-center gap-2">
-<div class="w-4 h-4 rounded-full bg-primary-container/20 flex items-center justify-center">
-<span class="material-symbols-outlined text-[10px] text-primary-fixed" style="font-variation-settings: 'FILL' 1;">vpn_key</span>
-</div>
-<span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-tighter">SECURE ACCESS GRANTED</span>
-</div>
-</div>
-<!-- Feed Item 2 -->
-<div class="bg-surface-container-lowest p-4 border-l-2 border-error">
-<div class="flex justify-between items-center mb-2">
-<span class="text-[8px] font-black tracking-widest text-error uppercase">CRITICAL ALERT</span>
-<span class="text-[8px] font-medium text-on-surface-variant">01:52:10 UTC</span>
-</div>
-<p class="text-xs text-on-surface font-medium mb-2">Water sensor triggered in Master Suite A - your property. Flow rate exceeds threshold.</p>
-<a href="/vendor_workflow" class="text-[9px] font-bold text-error border border-error/20 px-2 py-1 uppercase tracking-widest hover:bg-error hover:text-on-error transition-all">DISPATCH MAINTENANCE</a>
-</div>
-<!-- Feed Item 3 -->
-<div class="bg-surface-container-lowest p-4 border-l-2 border-secondary-container">
-<div class="flex justify-between items-center mb-2">
-<span class="text-[8px] font-black tracking-widest text-secondary-container uppercase">GUEST COMM</span>
-<span class="text-[8px] font-medium text-on-surface-variant">01:30:00 UTC</span>
-</div>
-<p class="text-xs text-on-surface font-medium mb-2">"Is the rooftop deck private or shared with the neighboring unit?" - J. Doe</p>
-<div class="flex items-center gap-2">
-<div class="w-4 h-4 rounded-full bg-secondary-container/20 flex items-center justify-center">
-<span class="material-symbols-outlined text-[10px] text-secondary-container" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
-</div>
-<span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-tighter">WAITING RESPONSE</span>
-</div>
-</div>
-<!-- Feed Item 4 -->
-<div class="bg-surface-container-lowest p-4 border-l-2 border-primary-container/30">
-<div class="flex justify-between items-center mb-2">
-<span class="text-[8px] font-black tracking-widest text-on-surface-variant uppercase">ROUTINE LOG</span>
-<span class="text-[8px] font-medium text-on-surface-variant">00:45:12 UTC</span>
-</div>
-<p class="text-xs text-on-surface font-medium">Auto-reconciliation complete for Sector: All. Ledger delta: 0.00%</p>
-</div>
-<!-- Feed Item 5 -->
-<div class="bg-surface-container-lowest p-4 border-l-2 border-primary-container/30">
-<div class="flex justify-between items-center mb-2">
-<span class="text-[8px] font-black tracking-widest text-on-surface-variant uppercase">ROUTINE LOG</span>
-<span class="text-[8px] font-medium text-on-surface-variant">00:10:05 UTC</span>
-</div>
-<p class="text-xs text-on-surface font-medium">Snapshot backup successful. Node 7, 8, 12 operational.</p>
-</div>
-</div>
-</section>
-</div>
-<!-- Trend Visualization Section -->
-<section class="bg-surface-container p-8 space-y-8">
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+
+<div class="bg-[#0d0e14] border border-slate-500/20 rounded-lg p-6">
+<div class="flex items-center justify-between">
 <div>
-<h3 class="text-sm font-headline font-bold tracking-widest text-on-surface uppercase">SECTOR PERFORMANCE TRENDS</h3>
-<p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">24H DATA AGGREGATION</p>
+<p class="text-slate-500 text-sm uppercase tracking-widest">Properties</p>
+<p class="text-4xl font-bold text-slate-300 mt-2">{{ properties|length }}</p>
 </div>
-<div class="flex gap-4">
-<div class="flex items-center gap-2">
-<span class="w-3 h-3 bg-primary-container"></span>
-<span class="text-[10px] font-bold text-on-surface-variant uppercase">DOWNTOWN</span>
-</div>
-<div class="flex items-center gap-2">
-<span class="w-3 h-3 bg-secondary-container"></span>
-<span class="text-[10px] font-bold text-on-surface-variant uppercase">COASTAL</span>
+<span class="material-symbols-outlined text-4xl text-slate-500/50">apartment</span>
 </div>
 </div>
 </div>
-<!-- Abstract Technical Bar Chart -->
-<div class="h-64 w-full flex items-end gap-2 px-2 border-b border-outline-variant/30 relative">
-<!-- Grid Lines (Background) -->
-<div class="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-5">
-<div class="border-t border-white w-full"></div>
-<div class="border-t border-white w-full"></div>
-<div class="border-t border-white w-full"></div>
-<div class="border-t border-white w-full"></div>
+
+<!-- Alerts by Priority -->
+{% if total_alerts > 0 %}
+<div class="bg-[#0d0e14] border border-white/5 rounded-lg overflow-hidden">
+<div class="px-6 py-4 border-b border-white/5 bg-[#08090F]">
+<h2 class="text-xl font-bold text-white">🚨 Active Alerts</h2>
 </div>
-<!-- Bars -->
-<div class="flex-1 bg-primary-container/20 h-[45%] hover:bg-primary-container transition-all relative group">
-<div class="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-mono text-primary opacity-0 group-hover:opacity-100">45%</div>
+
+<div class="divide-y divide-white/5 max-h-96 overflow-y-auto custom-scrollbar">
+{% for alert in escalated_alerts|slice(0, 20) %}
+<div class="p-6 hover:bg-white/2 transition-colors {% if alert.priority == 'critical' %}alert-critical bg-red-500/5{% elif alert.priority == 'high' %}alert-high bg-orange-500/5{% elif alert.priority == 'medium' %}alert-medium bg-yellow-500/5{% else %}alert-low bg-blue-500/5{% endif %}">
+<div class="flex items-start justify-between gap-4">
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-2">
+<span class="inline-block px-2 py-1 rounded text-xs font-bold {% if alert.priority == 'critical' %}bg-red-500/20 text-red-400{% elif alert.priority == 'high' %}bg-orange-500/20 text-orange-400{% elif alert.priority == 'medium' %}bg-yellow-500/20 text-yellow-400{% else %}bg-blue-500/20 text-blue-400{% endif %}">
+{{ alert.priority.upper() }}
+</span>
+<span class="text-slate-500 text-xs">{{ alert.message_type.upper() }}</span>
+<span class="text-slate-600 text-xs">{{ alert.created_at.strftime('%b %d, %H:%M') }}</span>
 </div>
-<div class="flex-1 bg-secondary-container/20 h-[65%] hover:bg-secondary-container transition-all relative group"></div>
-<div class="flex-1 bg-primary-container/20 h-[55%] hover:bg-primary-container transition-all relative group"></div>
-<div class="flex-1 bg-secondary-container/20 h-[35%] hover:bg-secondary-container transition-all relative group"></div>
-<div class="flex-1 bg-primary-container/20 h-[75%] hover:bg-primary-container transition-all relative group"></div>
-<div class="flex-1 bg-secondary-container/20 h-[85%] hover:bg-secondary-container transition-all relative group"></div>
-<div class="flex-1 bg-primary-container/20 h-[60%] hover:bg-primary-container transition-all relative group"></div>
-<div class="flex-1 bg-secondary-container/20 h-[50%] hover:bg-secondary-container transition-all relative group"></div>
-<div class="flex-1 bg-primary-container/20 h-[40%] hover:bg-primary-container transition-all relative group"></div>
-<div class="flex-1 bg-secondary-container/20 h-[90%] hover:bg-secondary-container transition-all relative group"></div>
-<div class="flex-1 bg-primary-container/20 h-[65%] hover:bg-primary-container transition-all relative group"></div>
-<div class="flex-1 bg-secondary-container/20 h-[45%] hover:bg-secondary-container transition-all relative group"></div>
-<div class="flex-1 bg-primary-container/20 h-[30%] hover:bg-primary-container transition-all relative group"></div>
-<div class="flex-1 bg-secondary-container/20 h-[55%] hover:bg-secondary-container transition-all relative group"></div>
-<div class="flex-1 bg-primary-container/20 h-[80%] hover:bg-primary-container transition-all relative group"></div>
-<div class="flex-1 bg-secondary-container/20 h-[65%] hover:bg-secondary-container transition-all relative group"></div>
-<div class="flex-1 bg-primary-container/20 h-[45%] hover:bg-primary-container transition-all relative group"></div>
-<div class="flex-1 bg-secondary-container/20 h-[75%] hover:bg-secondary-container transition-all relative group"></div>
+<p class="text-white font-semibold">{{ alert.guest_name or 'Unknown Guest' }}</p>
+<p class="text-slate-400 text-sm mt-1 line-clamp-2">{{ alert.content }}</p>
+<p class="text-slate-500 text-xs mt-2">Reason: {{ alert.reason.replace('_', ' ').title() }}</p>
 </div>
-<div class="flex justify-between text-[8px] font-bold text-on-surface-variant uppercase tracking-widest px-1">
-<span>00:00</span>
-<span>06:00</span>
-<span>12:00</span>
-<span>18:00</span>
-<span>23:59</span>
+<div class="flex gap-2 flex-shrink-0">
+<button class="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs rounded hover:bg-blue-500/30 transition-colors">View</button>
 </div>
-</section>
 </div>
+</div>
+{% endfor %}
+{% if escalated_alerts|length > 20 %}
+<div class="p-4 text-center text-slate-500 text-sm">
++{{ escalated_alerts|length - 20 }} more alerts
+</div>
+{% endif %}
+</div>
+</div>
+{% else %}
+<div class="bg-[#0d0e14] border border-white/5 rounded-lg p-12 text-center">
+<span class="material-symbols-outlined text-5xl text-slate-600 mb-4 inline-block">check_circle</span>
+<h3 class="text-xl font-bold text-white mb-2">No Active Alerts</h3>
+<p class="text-slate-400">All your properties are running smoothly!</p>
+</div>
+{% endif %}
+
+<!-- Properties Overview -->
+{% if properties %}
+<div class="bg-[#0d0e14] border border-white/5 rounded-lg overflow-hidden">
+<div class="px-6 py-4 border-b border-white/5 bg-[#08090F]">
+<h2 class="text-xl font-bold text-white">🏠 Properties Overview</h2>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+{% for prop in properties %}
+<div class="bg-[#08090F] border border-white/5 rounded-lg p-4 hover:border-primary/50 transition-colors">
+<div class="flex items-start justify-between mb-3">
+<div>
+<h3 class="text-white font-bold">{{ prop.name }}</h3>
+<p class="text-slate-500 text-xs">{{ prop.property_type or 'Property' }}{% if prop.city %} • {{ prop.city }}{% endif %}</p>
+</div>
+<span class="material-symbols-outlined text-lg text-slate-500">apartment</span>
+</div>
+
+<div class="space-y-2 text-sm">
+<div class="flex justify-between">
+<span class="text-slate-500">Alerts</span>
+<span class="font-semibold text-white">
+{%- set prop_alerts = alerts_by_property.get(prop.id, {}) -%}
+{%- set total = (prop_alerts.critical|length) + (prop_alerts.high|length) + (prop_alerts.medium|length) + (prop_alerts.low|length) -%}
+{{ total }}
+</span>
+</div>
+<div class="flex justify-between">
+<span class="text-slate-500">Critical</span>
+<span class="text-red-400">{{ prop_alerts.critical|length }}</span>
+</div>
+<div class="flex justify-between">
+<span class="text-slate-500">Voice AI</span>
+<span class="text-slate-400">
+{%- set config = prop.config -%}
+{% if config and config.voice_enabled %}✓ Enabled{% else %}○ Disabled{% endif %}
+</span>
+</div>
+</div>
+
+<a href="/conversations?property={{ prop.id }}" class="inline-block mt-4 px-3 py-1 bg-primary/20 text-primary text-xs rounded hover:bg-primary/30 transition-colors">
+View Property
+</a>
+</div>
+{% endfor %}
+</div>
+</div>
+{% endif %}
+
+</div>
+</div>
+
 </main>
-<!-- Contextual FAB (Hidden on Mobile) -->
-<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary-container text-on-primary rounded-sm shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-50 md:flex hidden">
-<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">terminal</span>
-</button>
-</body></html>
+{%- endblock %}
+{%- endblock %}
+
+<script nonce="{{ request.state.csp_nonce }}">
+// Mission Control initialization
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('Mission Control dashboard loaded');
+  // TODO: Add real-time updates via SSE or WebSocket
+});
+</script>
+
+<style>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #292930;
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #424752;
+}
+</style>

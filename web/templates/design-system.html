@@ -1,442 +1,371 @@
-<!DOCTYPE html>
+<!--
+  DESIGN SYSTEM - Include this in all templates for consistent styling
+  Usage: {% include 'design-system.html' %}
+  Or paste the <style> section into each template's <head>
+-->
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
-            color: #191c1d;
-        }
-        .headline-lg { font-family: 'Manrope', sans-serif; font-size: 2rem; line-height: 1.2; font-weight: 800; }
-        .display-lg { font-family: 'Manrope', sans-serif; font-size: 3.5rem; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; }
-        .label-sm { font-family: 'Inter', sans-serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-        }
-    </style>
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            "colors": {
-                    "tertiary": "#332313",
-                    "on-secondary-fixed": "#001b3f",
-                    "tertiary-fixed": "#fbddc5",
-                    "primary-fixed": "#d5e5ef",
-                    "background": "#f8f9fa",
-                    "on-primary-container": "#99a9b2",
-                    "primary": "#192830",
-                    "on-surface": "#191c1d",
-                    "inverse-on-surface": "#f0f1f2",
-                    "secondary-container": "#0072e5",
-                    "on-background": "#191c1d",
-                    "on-tertiary": "#ffffff",
-                    "tertiary-fixed-dim": "#dec1aa",
-                    "on-error-container": "#93000a",
-                    "on-error": "#ffffff",
-                    "primary-fixed-dim": "#b9c9d3",
-                    "surface-bright": "#f8f9fa",
-                    "primary-container": "#2f3e46",
-                    "on-primary-fixed-variant": "#3a4951",
-                    "error-container": "#ffdad6",
-                    "on-secondary": "#ffffff",
-                    "secondary-fixed-dim": "#abc7ff",
-                    "on-primary": "#ffffff",
-                    "surface-container": "#edeeef",
-                    "secondary-fixed": "#d7e2ff",
-                    "tertiary-container": "#4b3827",
-                    "surface": "#f8f9fa",
-                    "on-tertiary-fixed": "#281809",
-                    "surface-container-high": "#e7e8e9",
-                    "surface-tint": "#516169",
-                    "surface-container-highest": "#e1e3e4",
-                    "on-secondary-fixed-variant": "#004590",
-                    "outline": "#73787b",
-                    "surface-container-lowest": "#ffffff",
-                    "on-tertiary-container": "#bca18b",
-                    "surface-variant": "#e1e3e4",
-                    "inverse-surface": "#2e3132",
-                    "inverse-primary": "#b9c9d3",
-                    "surface-container-low": "#f3f4f5",
-                    "on-tertiary-fixed-variant": "#574331",
-                    "surface-dim": "#d9dadb",
-                    "error": "#ba1a1a",
-                    "on-surface-variant": "#43474a",
-                    "outline-variant": "#c3c7ca",
-                    "on-primary-fixed": "#0e1d25",
-                    "on-secondary-container": "#fefcff",
-                    "secondary": "#005ab7"
-            },
-            "borderRadius": {
-                    "DEFAULT": "0.125rem",
-                    "lg": "0.25rem",
-                    "xl": "0.5rem",
-                    "full": "0.75rem"
-            },
-            "fontFamily": {
-                    "headline": [
-                            "Manrope"
-                    ],
-                    "body": [
-                            "Inter"
-                    ],
-                    "label": [
-                            "Inter"
-                    ]
-            }
-          },
-        },
-      }
-    </script>
-</head>
-<body class="bg-surface text-on-surface selection:bg-secondary-fixed selection:text-on-secondary-fixed">
-<!-- TopNavBar Implementation -->
-<header class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 docked full-width top-0 sticky z-50 transition-all duration-150 ease-in-out">
-<div class="flex justify-between items-center px-8 h-16 w-full max-w-full">
-<div class="text-xl font-bold tracking-tighter text-slate-900 dark:text-slate-50 font-manrope">
-                Architectural Slate
-            </div>
-<nav class="hidden md:flex items-center gap-8 font-manrope tracking-tighter headline-lg text-base">
-<a class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#foundations">Foundations</a>
-<a class="text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 pb-1 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#components">Components</a>
-<a class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#tokens">Tokens</a>
-<a class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#guidelines">Guidelines</a>
-</nav>
-<div class="flex items-center gap-4">
-<button class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span class="material-symbols-outlined">dark_mode</span></button>
-<button class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span class="material-symbols-outlined">settings</span></button>
-</div>
-</div>
-</header>
-<div class="flex min-h-screen">
-<!-- SideNavBar Implementation -->
-<aside id="sidebar" class="hidden md:flex flex-col h-screen w-64 docked left-0 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-6 px-4 gap-2 sticky top-16 border-r-0 transition-all duration-200">
-<div class="mb-8 px-2">
-<h2 class="font-manrope font-bold text-slate-900 dark:text-slate-50 text-lg">System Reference</h2>
-<p class="text-xs text-slate-500 font-inter">v1.0.4-beta</p>
-</div>
-<nav class="flex flex-col gap-1">
-<a class="flex items-center gap-3 py-2 px-3 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-all font-inter text-sm font-medium" href="#colors">
-<span class="material-symbols-outlined text-sm">palette</span> Colors
-                </a>
-<a class="flex items-center gap-3 py-2 px-3 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-all font-inter text-sm font-medium" href="#typography">
-<span class="material-symbols-outlined text-sm">text_fields</span> Typography
-                </a>
-<a class="flex items-center gap-3 py-2 px-3 bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-50 font-bold rounded-lg transition-all font-inter text-sm font-medium" href="#buttons">
-<span class="material-symbols-outlined text-sm">smart_button</span> Buttons
-                </a>
-<a class="flex items-center gap-3 py-2 px-3 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-all font-inter text-sm font-medium" href="#forms">
-<span class="material-symbols-outlined text-sm">input</span> Forms
-                </a>
-<a class="flex items-center gap-3 py-2 px-3 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-all font-inter text-sm font-medium" href="#layout">
-<span class="material-symbols-outlined text-sm">grid_view</span> Layout
-                </a>
-</nav>
-<div class="mt-auto flex items-center gap-3 px-2 pt-4 border-t-0">
-<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-white text-xs">SM</div>
-<div class="flex flex-col">
-<span class="text-xs font-bold">System Maintainer</span>
-<span class="text-[10px] opacity-60">Admin Access</span>
-</div>
-</div>
-</aside>
-<!-- Main Content Canvas -->
-<main class="flex-1 px-8 py-12 max-w-7xl mx-auto space-y-24">
-<!-- Hero Section -->
-<section class="space-y-6">
-<span class="label-sm text-secondary">Documentation v1.0.4</span>
-<h1 class="display-lg">The Architectural Monolith</h1>
-<p class="max-w-2xl text-on-surface-variant text-lg leading-relaxed">
-                    A design system built for structural clarity. Rejecting visual noise in favor of intentional asymmetry, expansive white space, and authoritative typographic scales.
-                </p>
-<div class="h-1 w-24 bg-primary"></div>
-</section>
-<!-- 1. Color Palette -->
-<section class="space-y-12" id="colors">
-<div class="flex items-baseline justify-between border-b-0 pb-4">
-<h2 class="headline-lg tracking-tight">Color Palette</h2>
-<span class="text-sm font-mono text-outline">#192830 • #005AB7</span>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-<!-- Primary Groups -->
-<div class="space-y-4">
-<p class="label-sm">Primary Brand</p>
-<div class="space-y-2">
-<div class="h-24 bg-primary rounded-xl flex items-end p-4 text-white">
-<span class="font-mono text-xs">#192830 Primary</span>
-</div>
-<div class="h-16 bg-primary-container rounded-xl flex items-end p-4 text-white">
-<span class="font-mono text-xs">#2F3E46 Container</span>
-</div>
-</div>
-</div>
-<!-- Secondary Groups -->
-<div class="space-y-4">
-<p class="label-sm">Secondary Action</p>
-<div class="space-y-2">
-<div class="h-24 bg-secondary rounded-xl flex items-end p-4 text-white">
-<span class="font-mono text-xs">#005AB7 Secondary</span>
-</div>
-<div class="h-16 bg-secondary-container rounded-xl flex items-end p-4 text-white">
-<span class="font-mono text-xs">#0072E5 Container</span>
-</div>
-</div>
-</div>
-<!-- Surface Tones -->
-<div class="space-y-4">
-<p class="label-sm">Surface Logic</p>
-<div class="space-y-2">
-<div class="h-24 bg-surface-container-low rounded-xl flex items-end p-4 border-0">
-<span class="font-mono text-xs text-on-surface">#F3F4F5 Low</span>
-</div>
-<div class="h-16 bg-surface-container-highest rounded-xl flex items-end p-4 border-0">
-<span class="font-mono text-xs text-on-surface">#E1E3E4 High</span>
-</div>
-</div>
-</div>
-<!-- Semantic Colors -->
-<div class="space-y-4">
-<p class="label-sm">Semantic System</p>
-<div class="space-y-2">
-<div class="h-24 bg-error rounded-xl flex items-end p-4 text-white">
-<span class="font-mono text-xs">#BA1A1A Error</span>
-</div>
-<div class="h-16 bg-error-container rounded-xl flex items-end p-4 text-on-error-container">
-<span class="font-mono text-xs">#FFDAD6 Tone</span>
-</div>
-</div>
-</div>
-</div>
-</section>
-<!-- 2. Typography -->
-<section class="space-y-12" id="typography">
-<div class="flex items-baseline justify-between border-b-0 pb-4">
-<h2 class="headline-lg tracking-tight">Typography Scale</h2>
-<span class="text-sm font-mono text-outline">Manrope &amp; Inter</span>
-</div>
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
-<div class="lg:col-span-8 space-y-12">
-<div class="space-y-2">
-<p class="label-sm text-secondary">Display Large / Manrope / -0.02em</p>
-<h3 class="display-lg">Architectural Authority</h3>
-</div>
-<div class="space-y-2">
-<p class="label-sm text-secondary">Headline Large / Manrope / -0.01em</p>
-<h3 class="headline-lg">Structural consistency across every view.</h3>
-</div>
-<div class="space-y-2">
-<p class="label-sm text-secondary">Body Medium / Inter / 1.5lh</p>
-<p class="text-on-surface-variant leading-relaxed">
-                                Standardizing enterprise data delivery through high x-height legibility and intentional vertical rhythm. This body copy is designed for readability in dense informational environments.
-                            </p>
-</div>
-</div>
-<div class="lg:col-span-4 bg-surface-container-low p-8 rounded-xl space-y-6">
-<h4 class="font-headline font-bold">Type Principles</h4>
-<ul class="space-y-4 text-sm text-on-surface-variant">
-<li class="flex gap-3"><span class="material-symbols-outlined text-secondary">check_circle</span> Use tight tracking for headlines</li>
-<li class="flex gap-3"><span class="material-symbols-outlined text-secondary">check_circle</span> Minimum 24px padding for body blocks</li>
-<li class="flex gap-3"><span class="material-symbols-outlined text-secondary">check_circle</span> Pair geometric weights with technical utilities</li>
-</ul>
-</div>
-</div>
-</section>
-<!-- 3. Buttons -->
-<section class="space-y-12" id="buttons">
-<div class="flex items-baseline justify-between border-b-0 pb-4">
-<h2 class="headline-lg tracking-tight">The Weighted Command</h2>
-<span class="text-sm font-mono text-outline">Button States</span>
-</div>
-<div class="bg-surface-container-low p-12 rounded-xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 items-center">
-<!-- Primary -->
-<div class="flex flex-col items-center gap-4">
-<button class="bg-primary text-on-primary px-6 py-3 rounded-lg font-bold text-sm hover:bg-primary-container transition-all w-full">Primary Action</button>
-<span class="label-sm opacity-60">Primary</span>
-</div>
-<!-- Secondary -->
-<div class="flex flex-col items-center gap-4">
-<button class="bg-surface-container-highest text-on-surface px-6 py-3 rounded-lg font-bold text-sm hover:bg-surface-variant transition-all w-full">Secondary</button>
-<span class="label-sm opacity-60">Secondary</span>
-</div>
-<!-- Outline (Ghost Border Fallback) -->
-<div class="flex flex-col items-center gap-4">
-<button class="border border-outline-variant text-on-surface px-6 py-3 rounded-lg font-bold text-sm hover:bg-surface-container-high transition-all w-full">Outline</button>
-<span class="label-sm opacity-60">Outline</span>
-</div>
-<!-- Ghost -->
-<div class="flex flex-col items-center gap-4">
-<button class="text-primary px-6 py-3 rounded-lg font-bold text-sm hover:bg-surface-container-high transition-all w-full">Ghost Link</button>
-<span class="label-sm opacity-60">Ghost</span>
-</div>
-<!-- Destructive -->
-<div class="flex flex-col items-center gap-4">
-<button class="bg-error text-white px-6 py-3 rounded-lg font-bold text-sm hover:opacity-90 transition-all w-full">Destructive</button>
-<span class="label-sm opacity-60">Critical</span>
-</div>
-</div>
-</section>
-<!-- 4. Form Elements -->
-<section class="space-y-12" id="forms">
-<div class="flex items-baseline justify-between border-b-0 pb-4">
-<h2 class="headline-lg tracking-tight">Input Mechanics</h2>
-<span class="text-sm font-mono text-outline">Form Control Library</span>
-</div>
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-16">
-<!-- Text Inputs -->
-<div class="space-y-8">
-<div class="space-y-2">
-<label class="label-sm text-on-surface-variant">Default Input</label>
-<input class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-2 focus:ring-secondary focus:bg-surface-container-lowest transition-all" placeholder="Enter architectural value..." type="text"/>
-</div>
-<div class="space-y-2">
-<label class="label-sm text-error">Error State</label>
-<input class="w-full bg-error-container border border-error rounded-lg px-4 py-3 focus:ring-0 text-on-error-container" type="text" value="Invalid parameter"/>
-<p class="text-xs text-error font-medium">Please verify structural integrity.</p>
-</div>
-<div class="space-y-2">
-<label class="label-sm text-on-surface-variant">Select Menu</label>
-<select class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-2 focus:ring-secondary focus:bg-surface-container-lowest transition-all appearance-none">
-<option>Structural Foundation</option>
-<option>Component Layer</option>
-<option>Token Distribution</option>
-</select>
-</div>
-</div>
-<!-- Complex Elements -->
-<div class="space-y-8">
-<div class="space-y-2">
-<label class="label-sm text-on-surface-variant">Detailed Specification (Textarea)</label>
-<textarea class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-2 focus:ring-secondary focus:bg-surface-container-lowest transition-all" placeholder="Describe the architectural scope..." rows="4"></textarea>
-</div>
-<div class="flex flex-wrap gap-12 pt-4">
-<!-- Checkboxes -->
-<div class="space-y-4">
-<p class="label-sm">Toggle Controls</p>
-<div class="flex items-center gap-3">
-<input checked="" class="w-5 h-5 rounded-md text-secondary border-none bg-surface-container-highest focus:ring-secondary" type="checkbox"/>
-<span class="text-sm font-medium">Auto-apply tokens</span>
-</div>
-<div class="flex items-center gap-3">
-<input class="w-5 h-5 rounded-md text-secondary border-none bg-surface-container-highest focus:ring-secondary" type="checkbox"/>
-<span class="text-sm font-medium">Export raw CSS</span>
-</div>
-</div>
-<!-- Radios -->
-<div class="space-y-4">
-<p class="label-sm">System Priority</p>
-<div class="flex items-center gap-3">
-<input checked="" class="w-5 h-5 text-secondary border-none bg-surface-container-highest focus:ring-secondary" name="priority" type="radio"/>
-<span class="text-sm font-medium">Performance</span>
-</div>
-<div class="flex items-center gap-3">
-<input class="w-5 h-5 text-secondary border-none bg-surface-container-highest focus:ring-secondary" name="priority" type="radio"/>
-<span class="text-sm font-medium">Editorial</span>
-</div>
-</div>
-</div>
-</div>
-</section>
-<!-- Example Section: The Bento Grid Demo -->
-<section class="space-y-12" id="layout">
-<div class="flex items-baseline justify-between border-b-0 pb-4">
-<h2 class="headline-lg tracking-tight">Composition Strategy</h2>
-<span class="text-sm font-mono text-outline">Bento Layout Patterns</span>
-</div>
-<div class="grid grid-cols-12 gap-6 h-[600px]">
-<div class="col-span-12 md:col-span-8 bg-primary rounded-xl overflow-hidden relative group">
-<div class="absolute inset-0 opacity-40 bg-gradient-to-br from-primary to-primary-container"></div>
-<img alt="High-contrast architectural photography of a concrete brutalist building" class="w-full h-full object-cover" data-alt="dramatic architectural photography of a minimalist concrete building with sharp angles and clean shadows at twilight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBS4HFsqbrGBXaRrx0xS82_4VHobRJJSeGy0EgcCJ_z-4Gnmf09u84kdg-m5Eba6a0o0puvfqprZCyXOIHYgnNMaQmFt33nB71FV-t3aeCPgS8suZpsLBcKW6xpnDr91SNhdsvgRPk-CtLBv9Xz-U43h_kvwnE7P98Kcx-5h9JMXWb96NHq-5fa1rPt8etbhbL7A8Otq0mpN3jR_yrSZDup49Vay2Fu9SOIiuLiAJD9yaH6EmdRqhGSZEwKVdX0CYkqXpGkIuaCmNLA"/>
-<div class="absolute bottom-0 left-0 p-12 space-y-4">
-<h3 class="display-lg text-white">Massive Clarity</h3>
-<button class="bg-white text-primary px-6 py-3 rounded-lg font-bold">Explore Architecture</button>
-</div>
-</div>
-<div class="col-span-12 md:col-span-4 bg-surface-container-highest rounded-xl p-8 flex flex-col justify-between">
-<div class="space-y-4">
-<span class="material-symbols-outlined text-4xl text-secondary">grid_view</span>
-<h4 class="headline-lg">Grid Logic</h4>
-<p class="text-sm text-on-surface-variant leading-relaxed">
-                                Our layout engine prioritizes the hierarchy of data over the abundance of containers. Use 64px gutters to allow visual breathing room.
-                            </p>
-</div>
-<div class="flex items-center justify-between text-xs font-mono opacity-50">
-<span>FR-1.0</span>
-<span>COLUMN-12</span>
-</div>
-</div>
-<div class="col-span-12 md:col-span-4 bg-secondary rounded-xl p-8 text-white space-y-4">
-<h4 class="font-headline font-bold text-xl">System Precision</h4>
-<div class="h-1 w-full bg-white/20 overflow-hidden">
-<div class="h-full bg-white w-3/4"></div>
-</div>
-<p class="text-sm opacity-80">Azure precision for focused navigational elements.</p>
-</div>
-<div class="col-span-12 md:col-span-8 bg-surface-container-low rounded-xl p-8 grid grid-cols-3 gap-8 items-center">
-<div class="space-y-2">
-<p class="text-4xl font-headline font-extrabold text-primary">84%</p>
-<p class="label-sm">Performance</p>
-</div>
-<div class="space-y-2">
-<p class="text-4xl font-headline font-extrabold text-primary">12ms</p>
-<p class="label-sm">Latency</p>
-</div>
-<div class="space-y-2">
-<p class="text-4xl font-headline font-extrabold text-primary">60+</p>
-<p class="label-sm">Components</p>
-</div>
-</div>
-</div>
-</section>
-</main>
-</div>
-<!-- Footer Utility -->
-<footer class="bg-surface-dim border-t-0 py-16 px-8 mt-24">
-<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
-<div class="space-y-4 max-w-sm">
-<h2 class="text-xl font-headline font-bold tracking-tighter text-primary">Architectural Slate</h2>
-<p class="text-sm text-on-surface-variant leading-relaxed">
-                    Designed for high-stakes enterprise decision-making environments. Built on the principles of the Architectural Monolith.
-                </p>
-</div>
-<div class="grid grid-cols-2 md:grid-cols-3 gap-12">
-<div class="space-y-4">
-<p class="label-sm">Resources</p>
-<ul class="text-sm space-y-2 text-on-surface-variant">
-<li><a class="hover:text-primary transition-colors" href="https://github.com" target="_blank" rel="noopener">GitHub Repository</a></li>
-<li><a class="hover:text-primary transition-colors" href="https://figma.com" target="_blank" rel="noopener">Figma Library</a></li>
-<li><a class="hover:text-primary transition-colors" href="#changelog">Change Log</a></li>
-</ul>
-</div>
-<div class="space-y-4">
-<p class="label-sm">Support</p>
-<ul class="text-sm space-y-2 text-on-surface-variant">
-<li><a class="hover:text-primary transition-colors" href="https://github.com/issues" target="_blank" rel="noopener">Reporting Issues</a></li>
-<li><a class="hover:text-primary transition-colors" href="#contributing">Contribution Guide</a></li>
-</ul>
-</div>
-<div class="space-y-4">
-<p class="label-sm">Legals</p>
-<ul class="text-sm space-y-2 text-on-surface-variant">
-<li><a class="hover:text-primary transition-colors" href="#license">License</a></li>
-<li><a class="hover:text-primary transition-colors" href="#brand">Brand Assets</a></li>
-</ul>
-</div>
-</div>
-</div>
-<div class="max-w-7xl mx-auto pt-16 mt-16 border-t-0 flex justify-between items-center text-[10px] text-outline opacity-50 uppercase tracking-[0.2em]">
-<span>© 2024 ARCHITECTURAL SLATE FOUNDATION</span>
-<span>PROPRIETARY SYSTEM • V1.0.4-BETA</span>
-</div>
-</footer>
-</body></html>
+  :root {
+    --bg: #0B0E14;
+    --surface: #151A22;
+    --surface-hover: #1A202A;
+    --surface-light: #1F2937;
+    --accent: #3B82F6;
+    --accent-glow: rgba(59, 130, 246, 0.4);
+    --accent-dark: #1E40AF;
+    --success: #10B981;
+    --success-bg: rgba(16, 185, 129, 0.1);
+    --success-border: rgba(16, 185, 129, 0.2);
+    --warn: #F59E0B;
+    --warn-bg: rgba(245, 158, 11, 0.1);
+    --warn-border: rgba(245, 158, 11, 0.2);
+    --danger: #EF4444;
+    --danger-bg: rgba(239, 68, 68, 0.1);
+    --text-main: #FFFFFF;
+    --text-light: #E2E8F0;
+    --text-muted: #94A3B8;
+    --text-dim: #64748B;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-light: rgba(255, 255, 255, 0.12);
+    --radius-lg: 16px;
+    --radius: 8px;
+    --radius-sm: 6px;
+    --t: 0.2s ease;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.25);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--bg);
+    color: var(--text-main);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ===== TYPOGRAPHY ===== */
+  h1, h2, h3, h4, h5, h6 { font-weight: 700; letter-spacing: -0.02em; }
+  h1 { font-size: 2.5rem; }
+  h2 { font-size: 2rem; }
+  h3 { font-size: 1.3rem; }
+  h4 { font-size: 1.1rem; }
+  p { color: var(--text-light); }
+  a { color: var(--accent); text-decoration: none; transition: color var(--t); }
+  a:hover { color: #60A5FA; }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.7rem 1.5rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border: none;
+    transition: all var(--t);
+    text-decoration: none;
+    gap: 0.5rem;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 4px 14px var(--accent-glow);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--accent-glow);
+  }
+
+  .btn-secondary {
+    background: var(--surface-hover);
+    color: var(--text-main);
+    border: 1px solid var(--border-light);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--surface-light);
+    border-color: var(--text-muted);
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text-main);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover:not(:disabled) {
+    background: var(--surface);
+    border-color: var(--text-muted);
+  }
+
+  .btn-success {
+    background: var(--success);
+    color: white;
+  }
+  .btn-success:hover:not(:disabled) {
+    background: #059669;
+    transform: translateY(-2px);
+  }
+
+  .btn-danger {
+    background: var(--danger);
+    color: white;
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: #DC2626;
+  }
+
+  .btn-sm { padding: 0.5rem 1rem; font-size: 0.9rem; }
+  .btn-lg { padding: 1rem 2rem; font-size: 1.1rem; }
+
+  /* ===== CARDS ===== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    transition: all var(--t);
+  }
+
+  .card:hover {
+    border-color: var(--border-light);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .card-meta {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  /* ===== FORMS ===== */
+  input, textarea, select {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition: all var(--t);
+    margin-bottom: 1rem;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+    background: var(--surface);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--text-dim);
+  }
+
+  label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-light);
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+
+  /* ===== ALERTS ===== */
+  .alert {
+    padding: 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .alert-success {
+    background: var(--success-bg);
+    border: 1px solid var(--success-border);
+    color: var(--success);
+  }
+
+  .alert-warning {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    color: var(--warn);
+  }
+
+  .alert-danger {
+    background: var(--danger-bg);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+  }
+
+  .alert-info {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    color: var(--accent);
+  }
+
+  /* ===== BADGES ===== */
+  .badge {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .badge-primary {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+  }
+
+  .badge-success {
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid var(--success-border);
+  }
+
+  .badge-warning {
+    background: var(--warn-bg);
+    color: var(--warn);
+    border: 1px solid var(--warn-border);
+  }
+
+  .badge-danger {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  /* ===== TABLES ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+
+  th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 700;
+    background: var(--surface-light);
+    border-bottom: 2px solid var(--border);
+    color: var(--text-main);
+  }
+
+  td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tr:hover {
+    background: var(--surface-hover);
+  }
+
+  /* ===== GRID ===== */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .grid-2 {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+
+  /* ===== SECTIONS ===== */
+  section {
+    padding: 3rem 5%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-title {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  /* ===== UTILITIES ===== */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 5%;
+  }
+
+  .text-center { text-align: center; }
+  .text-muted { color: var(--text-muted); }
+  .text-sm { font-size: 0.85rem; }
+  .text-lg { font-size: 1.1rem; }
+
+  .mb-1 { margin-bottom: 0.5rem; }
+  .mb-2 { margin-bottom: 1rem; }
+  .mb-3 { margin-bottom: 1.5rem; }
+  .mb-4 { margin-bottom: 2rem; }
+
+  .mt-1 { margin-top: 0.5rem; }
+  .mt-2 { margin-top: 1rem; }
+  .mt-3 { margin-top: 1.5rem; }
+  .mt-4 { margin-top: 2rem; }
+
+  .gap-1 { gap: 0.5rem; }
+  .gap-2 { gap: 1rem; }
+  .gap-3 { gap: 1.5rem; }
+
+  .flex { display: flex; }
+  .flex-center { display: flex; align-items: center; justify-content: center; }
+  .flex-between { display: flex; align-items: center; justify-content: space-between; }
+  .flex-col { flex-direction: column; }
+  .flex-wrap { flex-wrap: wrap; }
+
+  .hidden { display: none !important; }
+  .opacity-50 { opacity: 0.5; }
+  .cursor-pointer { cursor: pointer; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 768px) {
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.5rem; }
+    section { padding: 2rem 5%; }
+    .form-row { grid-template-columns: 1fr; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>

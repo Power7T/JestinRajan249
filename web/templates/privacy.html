@@ -1,323 +1,156 @@
-<!DOCTYPE html>
+{% extends "base.html" %}
+{% block title %}Privacy Policy — HostAI{% endblock %}
+{% block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>body{background:#08090F;font-family:'Plus Jakarta Sans',sans-serif;color:#e3e1eb;}
+.prose{color:#c3c6d4;}.prose h1,.prose h2,.prose h3{color:#e3e1eb;}.prose a{color:#aec6ff;}
+.glass{background:rgba(26,27,34,0.7);backdrop-filter:blur(24px);border:1px solid rgba(174,198,255,0.08);}
+</style>
+{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 pt-16 pb-20">
+  <div class="mb-10">
+    <a href="/" class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#aec6ff] to-[#5B8DEF]">HostAI</a>
+  </div>
+  <div class="glass rounded-3xl p-10 prose max-w-none">
+    <h1 class="text-3xl font-extrabold text-white mb-2">Privacy Policy</h1>
+    <p class="text-slate-400 text-sm mb-8">Last updated: {{ last_updated or "2024" }}</p>
+    <div class="container max-w-4xl mx-auto py-12 px-4">
+    <h1 class="text-4xl font-bold mb-8">Privacy Policy</h1>
+    <p class="text-gray-600 mb-8">Last updated: {{ now.strftime('%B %d, %Y') }}</p>
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Privacy Policy - LegalCenter</title>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <div class="prose prose-lg max-w-none">
+        <h2 class="text-2xl font-bold mt-8 mb-4">1. Introduction</h2>
+        <p>
+            HostAI ("we", "us", "our" or "Company") operates the HostAI.app website. This page informs you of our
+            policies regarding the collection, use, and disclosure of personal data when you use our Service and the
+            choices you have associated with that data.
+        </p>
 
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "surface-tint": "#005cba",
-                        "outline": "#727784",
-                        "on-tertiary": "#ffffff",
-                        "inverse-surface": "#2e3037",
-                        "on-primary-fixed-variant": "#00458e",
-                        "on-tertiary-fixed": "#341100",
-                        "inverse-on-surface": "#eff0f9",
-                        "tertiary-fixed-dim": "#ffb692",
-                        "on-secondary": "#ffffff",
-                        "tertiary": "#883700",
-                        "on-surface-variant": "#414753",
-                        "tertiary-fixed": "#ffdbcb",
-                        "on-surface": "#191c22",
-                        "on-primary-fixed": "#001b3e",
-                        "outline-variant": "#c1c6d5",
-                        "surface-container-low": "#f2f3fc",
-                        "surface-dim": "#d8d9e2",
-                        "surface": "#f9f9ff",
-                        "on-secondary-fixed-variant": "#30476d",
-                        "surface-container-highest": "#e1e2eb",
-                        "on-error-container": "#93000a",
-                        "on-primary-container": "#dfe8ff",
-                        "on-tertiary-fixed-variant": "#793000",
-                        "surface-container-high": "#e6e8f1",
-                        "secondary-fixed-dim": "#b0c7f5",
-                        "secondary": "#495f87",
-                        "tertiary-container": "#af4900",
-                        "on-secondary-fixed": "#001b3e",
-                        "inverse-primary": "#aac7ff",
-                        "primary": "#004e9f",
-                        "surface-container": "#ecedf6",
-                        "error": "#ba1a1a",
-                        "on-tertiary-container": "#ffe3d6",
-                        "surface-container-lowest": "#ffffff",
-                        "background": "#f9f9ff",
-                        "surface-variant": "#e1e2eb",
-                        "surface-bright": "#f9f9ff",
-                        "primary-fixed-dim": "#aac7ff",
-                        "on-primary": "#ffffff",
-                        "primary-fixed": "#d7e3ff",
-                        "on-error": "#ffffff",
-                        "secondary-container": "#b9cffd",
-                        "on-secondary-container": "#425880",
-                        "primary-container": "#0066cc",
-                        "on-background": "#191c22",
-                        "error-container": "#ffdad6",
-                        "secondary-fixed": "#d7e3ff"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.125rem",
-                        "lg": "0.25rem",
-                        "xl": "0.5rem",
-                        "full": "0.75rem"
-                    },
-                    "fontFamily": {
-                        "headline": ["Manrope"],
-                        "body": ["Inter"],
-                        "label": ["Inter"]
-                    }
-                },
-            },
-        }
-    </script>
-<style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-    </style>
-</head>
-<body class="bg-surface font-body text-on-surface antialiased">
-<!-- TopAppBar Shell -->
-<nav class="fixed top-0 w-full z-50 bg-slate-50/80 backdrop-blur-xl flex justify-between items-center px-8 h-16 w-full max-w-full">
-<div class="flex items-center gap-8">
-<span class="text-xl font-bold text-slate-900 tracking-tight font-headline">LegalCenter</span>
-<div class="hidden md:flex items-center gap-6">
-<a class="font-headline font-semibold text-slate-600 hover:text-blue-600 transition-colors" href="/analytics">Policies</a>
-<a class="font-headline font-semibold text-slate-600 hover:text-blue-600 transition-colors" href="/settings">Compliance</a>
-<a class="font-headline font-semibold text-slate-600 hover:text-blue-600 transition-colors" href="/privacy">Security</a>
-<a class="font-headline font-semibold text-slate-600 hover:text-blue-600 transition-colors" href="/terms">Support</a>
+        <h2 class="text-2xl font-bold mt-8 mb-4">2. Information Collection and Use</h2>
+        <p>We collect several different types of information for various purposes:</p>
+
+        <h3 class="text-xl font-semibold mt-6 mb-3">2.1 Account Information</h3>
+        <p>
+            When you create an account, we collect your email address, password (hashed), and optional profile information
+            such as property name, location, and contact details. This information is used to provide you with access to
+            the platform and deliver our services.
+        </p>
+
+        <h3 class="text-xl font-semibold mt-6 mb-3">2.2 Reservation and Guest Data</h3>
+        <p>
+            You may upload reservation data including guest names, phone numbers, email addresses, and check-in/check-out
+            dates. This data is processed to enable draft generation and communication management. Guest information is
+            processed according to your property's data retention settings.
+        </p>
+
+        <h3 class="text-xl font-semibold mt-6 mb-3">2.3 Communication Data</h3>
+        <p>
+            Messages received from guests through email, WhatsApp, SMS, and other channels are collected, processed, and
+            stored to generate AI drafts and maintain conversation history. You can control data retention through your
+            settings (default: 30 days).
+        </p>
+
+        <h3 class="text-xl font-semibold mt-6 mb-3">2.4 Usage Data</h2>
+        <p>
+            We collect information on how you interact with the platform (e.g., drafts approved/rejected, features used)
+            for analytics, service improvement, and billing purposes. This includes IP addresses, browser type, and access times.
+        </p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4">3. Data Processing and AI</h2>
+        <p>
+            HostAI processes your messages through a third-party AI service (OpenRouter) to generate draft responses. Personal
+            information such as phone numbers and email addresses are redacted before transmission. Property context, reservation
+            details, and guest conversation history are sent to generate contextual drafts. You can review all AI-generated content
+            before sending.
+        </p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4">4. Data Retention</h2>
+        <p>
+            By default, data (activity logs, drafts, timeline events) is retained for 30 days. You can adjust this setting in
+            your account. Subscription data and billing records are retained as required by law. Data is automatically purged based
+            on your retention policy.
+        </p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4">5. Data Deletion</h2>
+        <p>
+            You have the right to request deletion of your data. When you delete your account, we delete personal information
+            within 30 days, except where required by law. Backup copies may persist for up to 90 days.
+        </p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4">6. Security of Data</h2>
+        <p>
+            The security of your data is important to us but remember that no method of transmission over the Internet or method
+            of electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your Personal
+            Data, we cannot guarantee its absolute security.
+        </p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4">7. Third-Party Services</h2>
+        <p>
+            We use third-party services to provide functionality:
+        </p>
+        <ul class="list-disc list-inside ml-4 my-4">
+            <li><strong>OpenRouter</strong> — AI model provider for draft generation</li>
+            <li><strong>Stripe</strong> — Payment processing</li>
+            <li><strong>Twilio</strong> — SMS delivery (if enabled)</li>
+            <li><strong>Meta Cloud API</strong> — WhatsApp integration (if enabled)</li>
+        </ul>
+        <p>
+            These services have their own privacy policies. We encourage you to review them. We do not share your data with
+            these services beyond what is necessary for platform functionality.
+        </p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4">8. International Data Transfers</h2>
+        <p>
+            Your information, including Personal Data, may be transferred to — and maintained in — computers located outside of
+            your state, province, country or other governmental jurisdiction where data protection laws may differ from those in
+            your jurisdiction. If you are located outside the US and choose to provide information to us, please note that we may
+            transfer the information to the US and process it there.
+        </p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4">9. Your Rights</h2>
+        <p>
+            You have the right to:
+        </p>
+        <ul class="list-disc list-inside ml-4 my-4">
+            <li>Access your personal data</li>
+            <li>Correct inaccurate or incomplete data</li>
+            <li>Request deletion of your data (subject to legal retention requirements)</li>
+            <li>Opt-out of marketing communications</li>
+            <li>Receive a copy of your data in a portable format</li>
+        </ul>
+        <p>
+            To exercise these rights, please contact us at privacy@hostai.app.
+        </p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4">10. Children's Privacy</h2>
+        <p>
+            HostAI is not intended for individuals under the age of 18. We do not knowingly collect personally identifiable
+            information from children under 18. If we become aware that a child under 18 has provided us with personal information,
+            we take steps to delete such information and terminate the child's account.
+        </p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4">11. Changes to This Privacy Policy</h2>
+        <p>
+            We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy
+            on this page and updating the "effective date" at the top of this Privacy Policy.
+        </p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4">12. Contact Us</h2>
+        <p>
+            If you have any questions about this Privacy Policy, please contact us:
+        </p>
+        <ul class="list-disc list-inside ml-4 my-4">
+            <li>By email: privacy@hostai.app</li>
+            <li>By visiting this page on our website: hostai.app/support</li>
+        </ul>
+    </div>
+
+    <div class="mt-12 pt-8 border-t border-gray-300">
+        <a href="/" class="text-blue-600 hover:underline">← Back to Home</a>
+    </div>
 </div>
+  </div>
 </div>
-<div class="flex items-center gap-4">
-<a href="/settings" class="px-5 py-2 bg-primary text-on-primary rounded-xl font-headline font-semibold text-sm hover:opacity-90 transition-all">Contact Legal</a>
-</div>
-</nav>
-<!-- Sidebar & Content Shell -->
-<div class="flex pt-16 min-h-screen">
-<!-- SideNavBar Shell -->
-<aside id="sidebar" class="h-[calc(100vh-4rem)] w-64 fixed left-0 top-16 bg-slate-100 flex flex-col p-6 space-y-2 overflow-y-auto hide-scrollbar">
-<div class="mb-6">
-<h2 class="text-lg font-bold text-slate-900 font-headline">Table of Contents</h2>
-<p class="text-xs text-slate-500">Last updated Oct 2023</p>
-</div>
-<nav class="flex-1 space-y-1">
-<a class="flex items-center gap-3 px-4 py-3 bg-white text-blue-700 font-semibold rounded-lg shadow-sm font-inter text-sm transition-transform active:scale-[0.98]" href="#introduction">
-<span class="material-symbols-outlined text-[20px]" data-icon="info">info</span>
-                    Introduction
-                </a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200 hover:translate-x-1 transition-all font-inter text-sm" href="#data-collection">
-<span class="material-symbols-outlined text-[20px]" data-icon="database">database</span>
-                    Data Collection
-                </a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200 hover:translate-x-1 transition-all font-inter text-sm" href="#usage-rights">
-<span class="material-symbols-outlined text-[20px]" data-icon="gavel">gavel</span>
-                    Usage Rights
-                </a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200 hover:translate-x-1 transition-all font-inter text-sm" href="#cookies">
-<span class="material-symbols-outlined text-[20px]" data-icon="cookie">cookie</span>
-                    Cookies
-                </a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200 hover:translate-x-1 transition-all font-inter text-sm" href="#contact">
-<span class="material-symbols-outlined text-[20px]" data-icon="mail">mail</span>
-                    Contact
-                </a>
-</nav>
-<div class="pt-6 border-t border-slate-200/50 mt-4 space-y-4">
-<button class="w-full py-3 px-4 bg-primary-container text-on-primary-container font-semibold rounded-xl text-sm flex items-center justify-center gap-2 hover:opacity-90">
-<span class="material-symbols-outlined text-[18px]" data-icon="download">download</span>
-                    Download PDF
-                </button>
-<button class="w-full py-3 px-4 text-slate-500 hover:bg-slate-200 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors">
-<span class="material-symbols-outlined text-[18px]" data-icon="print">print</span>
-                    Print Document
-                </button>
-</div>
-</aside>
-<!-- Main Content Area -->
-<main class="ml-64 w-full bg-surface-container-low min-h-full p-8 lg:p-16">
-<div class="max-w-4xl mx-auto">
-<!-- Hero Header -->
-<header class="mb-16">
-<div class="inline-flex items-center gap-2 bg-tertiary-container text-on-tertiary-container px-4 py-1 rounded-full text-xs font-semibold mb-6">
-<span class="material-symbols-outlined text-[14px]" data-icon="verified_user" style="font-variation-settings: 'FILL' 1;">verified_user</span>
-                        Precision Compliance Standard
-                    </div>
-<h1 class="text-6xl font-bold font-headline tracking-tight text-on-surface mb-6 leading-tight">Privacy Policy</h1>
-<p class="text-lg text-on-surface-variant max-w-2xl leading-relaxed">
-                        At LegalCenter, we prioritize the integrity of your personal data. This document outlines our rigorous standards for data processing, retention, and your fundamental privacy rights under global regulations.
-                    </p>
-</header>
-<!-- Document Content (Editorial Layout) -->
-<div class="space-y-24">
-<!-- Section: Introduction -->
-<section class="scroll-mt-24" id="introduction">
-<div class="flex flex-col md:flex-row gap-8 lg:gap-16">
-<div class="md:w-1/3">
-<h2 class="text-2xl font-bold font-headline text-primary border-l-4 border-primary pl-4">Introduction</h2>
-<p class="text-xs font-semibold text-outline mt-2 uppercase tracking-widest">Section 01</p>
-</div>
-<div class="md:w-2/3 space-y-6">
-<p class="text-on-surface-variant leading-relaxed">
-                                    This Privacy Policy explains how LegalCenter ("we", "us", or "our") collects, uses, and shares information about you when you use our website, mobile application, and other online products and services. 
-                                </p>
-<div class="bg-surface-container-lowest p-8 rounded-xl">
-<p class="text-on-surface leading-relaxed italic">
-                                        "Our mission is to provide a legal framework that is as transparent as the code we write."
-                                    </p>
-</div>
-</div>
-</div>
-</section>
-<!-- Section: Data Collection (Bento Style Grid) -->
-<section class="scroll-mt-24" id="data-collection">
-<div class="mb-12">
-<h2 class="text-2xl font-bold font-headline text-primary border-l-4 border-primary pl-4">Data Collection</h2>
-<p class="text-xs font-semibold text-outline mt-2 uppercase tracking-widest">Section 02</p>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-<div class="bg-surface-container-lowest p-8 rounded-xl flex flex-col justify-between hover:bg-surface-bright transition-all group">
-<span class="material-symbols-outlined text-primary mb-4 text-3xl" data-icon="person">person</span>
-<div>
-<h3 class="text-lg font-bold font-headline mb-2">Personal Identity</h3>
-<p class="text-sm text-on-surface-variant leading-relaxed">Name, email address, postal address, phone number, and other similar contact data.</p>
-</div>
-</div>
-<div class="bg-surface-container-lowest p-8 rounded-xl flex flex-col justify-between hover:bg-surface-bright transition-all">
-<span class="material-symbols-outlined text-primary mb-4 text-3xl" data-icon="devices">devices</span>
-<div>
-<h3 class="text-lg font-bold font-headline mb-2">Device Metadata</h3>
-<p class="text-sm text-on-surface-variant leading-relaxed">IP address, browser type, operating system, and unique device identifiers.</p>
-</div>
-</div>
-<div class="md:col-span-2 bg-surface-container-lowest p-8 rounded-xl flex items-center gap-8 hover:bg-surface-bright transition-all">
-<div class="hidden sm:block w-24 h-24 rounded-full bg-surface-container-low flex-shrink-0 flex items-center justify-center">
-<span class="material-symbols-outlined text-primary text-4xl" data-icon="analytics">analytics</span>
-</div>
-<div>
-<h3 class="text-lg font-bold font-headline mb-2">Usage Patterns</h3>
-<p class="text-sm text-on-surface-variant leading-relaxed">We record your activity within our platform to improve service delivery and security protocols. This includes frequency of access and specific feature engagement metrics.</p>
-</div>
-</div>
-</div>
-</section>
-<!-- Section: Usage Rights (Asymmetric Content) -->
-<section class="scroll-mt-24" id="usage-rights">
-<div class="flex flex-col md:flex-row-reverse gap-8 lg:gap-16">
-<div class="md:w-1/3">
-<h2 class="text-2xl font-bold font-headline text-primary border-l-4 border-primary pl-4">Usage Rights</h2>
-<p class="text-xs font-semibold text-outline mt-2 uppercase tracking-widest">Section 03</p>
-</div>
-<div class="md:w-2/3 space-y-8">
-<p class="text-on-surface-variant leading-relaxed">
-                                    Depending on your location, you may have certain rights regarding your personal information, including:
-                                </p>
-<ul class="space-y-4">
-<li class="flex items-start gap-4">
-<div class="w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center flex-shrink-0 mt-1">
-<span class="material-symbols-outlined text-[14px] text-on-secondary-container" data-icon="check">check</span>
-</div>
-<div>
-<strong class="text-on-surface font-semibold">Right to Access:</strong>
-<p class="text-sm text-on-surface-variant mt-1">Request a copy of the personal data we hold about you.</p>
-</div>
-</li>
-<li class="flex items-start gap-4">
-<div class="w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center flex-shrink-0 mt-1">
-<span class="material-symbols-outlined text-[14px] text-on-secondary-container" data-icon="check">check</span>
-</div>
-<div>
-<strong class="text-on-surface font-semibold">Right to Rectification:</strong>
-<p class="text-sm text-on-surface-variant mt-1">Request that we correct any inaccurate or incomplete personal data.</p>
-</div>
-</li>
-<li class="flex items-start gap-4">
-<div class="w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center flex-shrink-0 mt-1">
-<span class="material-symbols-outlined text-[14px] text-on-secondary-container" data-icon="check">check</span>
-</div>
-<div>
-<strong class="text-on-surface font-semibold">Right to Erasure:</strong>
-<p class="text-sm text-on-surface-variant mt-1">Request that we delete your personal data under certain conditions.</p>
-</div>
-</li>
-</ul>
-</div>
-</div>
-</section>
-<!-- Section: Cookies (Cards with Sentiment Chips) -->
-<section class="scroll-mt-24" id="cookies">
-<div class="mb-12">
-<h2 class="text-2xl font-bold font-headline text-primary border-l-4 border-primary pl-4">Cookies &amp; Tracking</h2>
-<p class="text-xs font-semibold text-outline mt-2 uppercase tracking-widest">Section 04</p>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-<div class="bg-surface-container-lowest p-6 rounded-xl">
-<span class="px-3 py-1 bg-tertiary-container text-on-tertiary-container text-[10px] font-bold rounded-full uppercase tracking-tighter mb-4 inline-block">Essential</span>
-<h3 class="font-bold mb-2">Session Integrity</h3>
-<p class="text-xs text-on-surface-variant leading-relaxed">Necessary for the website to function securely and handle user authentication.</p>
-</div>
-<div class="bg-surface-container-lowest p-6 rounded-xl">
-<span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded-full uppercase tracking-tighter mb-4 inline-block">Performance</span>
-<h3 class="font-bold mb-2">Analytics</h3>
-<p class="text-xs text-on-surface-variant leading-relaxed">Helping us understand how visitors interact with the site by collecting anonymous data.</p>
-</div>
-<div class="bg-surface-container-lowest p-6 rounded-xl">
-<span class="px-3 py-1 bg-surface-container-high text-outline text-[10px] font-bold rounded-full uppercase tracking-tighter mb-4 inline-block">Marketing</span>
-<h3 class="font-bold mb-2">Personalization</h3>
-<p class="text-xs text-on-surface-variant leading-relaxed">Used to deliver advertisements that are relevant to your interests.</p>
-</div>
-</div>
-</section>
-<!-- Section: Contact (Final CTA Area) -->
-<section class="scroll-mt-24 bg-primary text-on-primary p-12 lg:p-20 rounded-2xl overflow-hidden relative" id="contact">
-<div class="relative z-10">
-<h2 class="text-4xl font-bold font-headline mb-6">Need further clarification?</h2>
-<p class="text-on-primary-container max-w-xl text-lg mb-10 leading-relaxed">
-                                Our legal team and Data Protection Officer are available to discuss any specific concerns regarding your data privacy.
-                            </p>
-<div class="flex flex-col sm:flex-row gap-4">
-<button class="px-8 py-4 bg-white text-primary font-bold rounded-xl hover:bg-slate-50 transition-colors" onclick="window.location.href="mailto:dpo@hostassistant.com"">Email DPO Office      </button>
-<button class="px-8 py-4 bg-primary-container text-white border border-white/20 font-bold rounded-xl hover:bg-white/10 transition-colors" onclick="window.location.href="/settings"">Submit Legal Inquiry          </button>
-</div>
-</div>
-<!-- Abstract Background Decoration -->
-<div class="absolute -right-20 -bottom-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
-<div class="absolute right-40 top-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
-</section>
-</div>
-</div>
-<!-- Footer Shell -->
-<footer class="mt-32 w-full py-12 border-t border-slate-200/15 flex flex-col md:flex-row justify-between items-center px-12">
-<div class="flex flex-col md:flex-row items-center gap-8 mb-6 md:mb-0">
-<p class="font-inter text-xs text-slate-500">© 2024 Host Assistant. All rights reserved.</p>
-<div class="flex gap-6">
-<a class="font-inter text-xs text-slate-500 hover:text-slate-900 transition-colors underline" href="/privacy">Privacy Policy</a>
-<a class="font-inter text-xs text-slate-500 hover:text-slate-900 transition-colors" href="/terms">Terms of Service</a>
-<a class="font-inter text-xs text-slate-500 hover:text-slate-900 transition-colors" href="/settings">Cookie Settings</a>
-</div>
-</div>
-<div class="flex gap-4">
-<button class="p-2 text-slate-400 hover:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]" data-icon="language">language</span>
-</button>
-<button class="p-2 text-slate-400 hover:text-primary transition-colors">
-<span class="material-symbols-outlined text-[20px]" data-icon="accessibility">accessibility</span>
-</button>
-</div>
-</footer>
-</main>
-</div>
-</body></html>
+{% endblock %}

@@ -1,434 +1,349 @@
-<!DOCTYPE html>
+{%- extends "base.html" %}
+{%- block title %}Feedback Insights — HostAI{%- endblock %}
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Feedback Insights | Host Assistant</title>
+{%- block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
-      tailwind.config = {
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
         darkMode: "class",
         theme: {
           extend: {
-            "colors": {
-                    "on-secondary-container": "#57657a",
-                    "surface-container-lowest": "#ffffff",
-                    "primary-fixed-dim": "#aac7ff",
-                    "on-surface": "#191c1e",
-                    "on-primary-fixed-variant": "#00458e",
-                    "on-background": "#191c1e",
-                    "inverse-primary": "#aac7ff",
-                    "surface-tint": "#005cba",
-                    "outline": "#727784",
-                    "on-secondary-fixed": "#0d1c2e",
-                    "tertiary-fixed-dim": "#ffb692",
-                    "tertiary-fixed": "#ffdbcb",
-                    "on-error-container": "#93000a",
-                    "error-container": "#ffdad6",
-                    "surface-container-low": "#f2f4f6",
-                    "on-secondary": "#ffffff",
-                    "surface-dim": "#d8dadc",
-                    "outline-variant": "#c1c6d5",
-                    "on-tertiary-container": "#ffe3d6",
-                    "inverse-on-surface": "#eff1f3",
-                    "error": "#ba1a1a",
-                    "tertiary": "#883700",
-                    "background": "#f7f9fb",
-                    "surface": "#f7f9fb",
-                    "on-tertiary-fixed-variant": "#793000",
-                    "secondary-fixed": "#d5e3fc",
-                    "surface-container-highest": "#e0e3e5",
-                    "secondary-fixed-dim": "#b9c7df",
-                    "on-surface-variant": "#414753",
-                    "on-primary": "#ffffff",
-                    "surface-container-high": "#e6e8ea",
-                    "tertiary-container": "#af4900",
-                    "on-secondary-fixed-variant": "#3a485b",
-                    "surface-variant": "#e0e3e5",
-                    "on-primary-fixed": "#001b3e",
-                    "on-error": "#ffffff",
-                    "secondary-container": "#d5e3fc",
-                    "on-tertiary-fixed": "#341100",
-                    "secondary": "#515f74",
-                    "surface-bright": "#f7f9fb",
-                    "primary": "#004e9f",
-                    "primary-fixed": "#d7e3ff",
-                    "inverse-surface": "#2d3133",
-                    "on-primary-container": "#dfe8ff",
-                    "surface-container": "#eceef0",
-                    "on-tertiary": "#ffffff",
-                    "primary-container": "#0066cc"
+            colors: {
+              "surface-container-highest": "#34343b",
+              "on-tertiary-container": "#3e2400",
+              "on-secondary": "#00363d",
+              "on-tertiary-fixed": "#2a1700",
+              "on-secondary-container": "#00616d",
+              "on-error-container": "#ffdad6",
+              "surface-tint": "#aec6ff",
+              "surface-container-high": "#292930",
+              "outline-variant": "#424752",
+              "inverse-on-surface": "#2f3037",
+              "on-primary-fixed-variant": "#004397",
+              "surface-container-low": "#1a1b22",
+              "surface-bright": "#383940",
+              "primary-container": "#5d8ef1",
+              "background": "#121319",
+              "on-primary": "#002e6b",
+              "secondary-container": "#00e3fd",
+              "tertiary": "#ffb960",
+              "primary-fixed-dim": "#aec6ff",
+              "on-primary-container": "#00275e",
+              "surface-container": "#1e1f26",
+              "secondary-fixed": "#9cf0ff",
+              "tertiary-fixed-dim": "#ffb960",
+              "error": "#ffb4ab",
+              "on-secondary-fixed": "#001f24",
+              "surface-container-lowest": "#0d0e14",
+              "secondary": "#bdf4ff",
+              "on-surface-variant": "#c3c6d4",
+              "tertiary-container": "#ca8103",
+              "primary": "#aec6ff",
+              "on-primary-fixed": "#001a43",
+              "on-tertiary-fixed-variant": "#653e00",
+              "on-error": "#690005",
+              "on-background": "#e3e1eb",
+              "on-secondary-fixed-variant": "#004f58",
+              "error-container": "#93000a",
+              "tertiary-fixed": "#ffddb8",
+              "surface-dim": "#121319",
+              "secondary-fixed-dim": "#00daf3",
+              "surface-variant": "#34343b",
+              "surface": "#121319",
+              "primary-fixed": "#d8e2ff",
+              "outline": "#8d909e",
+              "on-tertiary": "#472a00",
+              "on-surface": "#e3e1eb",
+              "inverse-surface": "#e3e1eb",
+              "inverse-primary": "#1e5bba"
             },
-            "borderRadius": {
-                    "DEFAULT": "0.125rem",
-                    "lg": "0.25rem",
-                    "xl": "0.5rem",
-                    "full": "0.75rem"
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
             },
-            "fontFamily": {
-                    "headline": ["Inter"],
-                    "body": ["Inter"],
-                    "label": ["Inter"]
-            }
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
           },
         },
       }
-    </script>
+</script>
 <style>
-        body { font-family: 'Inter', sans-serif; }
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        .glass-nav {
-            backdrop-filter: blur(24px);
-        }
-    </style>
-</head>
-<body class="bg-surface text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
-<!-- Sidebar Navigation -->
-<aside id="sidebar" class="fixed left-0 top-0 h-screen w-64 bg-slate-50 dark:bg-slate-950 hidden md:flex flex-col border-r-0 z-40">
-<div class="flex flex-col gap-y-4 py-8 h-full">
-<div class="px-6 mb-8">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
-</div>
-<div>
-<h2 class="text-lg font-black text-blue-700 dark:text-blue-400 leading-none">Feedback Pro</h2>
-<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold opacity-60">Precision Intelligence</p>
-</div>
-</div>
-</div>
-<nav class="flex-1 space-y-1 px-2">
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all duration-200" href="/dashboard">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-medium text-sm">Overview</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full mx-2 transition-all" href="/dashboard">
-<span class="material-symbols-outlined">psychology</span>
-<span class="font-medium text-sm">Sentiment</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all duration-200" href="/analytics">
-<span class="material-symbols-outlined">cloud</span>
-<span class="font-medium text-sm">Word Cloud</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all duration-200" href="/feedback_insights">
-<span class="material-symbols-outlined">bar_chart</span>
-<span class="font-medium text-sm">Ratings</span>
-</a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all duration-200" href="/logout">
-<span class="material-symbols-outlined">lightbulb</span>
-<span class="font-medium text-sm">Insights</span>
-</a>
-</nav>
-<div class="px-6 mt-auto">
-<button class="w-full bg-primary text-white py-3 rounded-xl font-semibold shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-transform active:scale-95 flex items-center justify-center gap-2">
-<span class="material-symbols-outlined text-sm">file_download</span>
-<span>Export Report</span>
+body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; }
+.glass-card { background: rgba(26, 27, 34, 0.7); backdrop-filter: blur(24px); }
+.specular-highlight { border-top: 1px solid rgba(174, 198, 255, 0.1); border-left: 1px solid rgba(174, 198, 255, 0.1); }
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24; }
+.active-glow { box-shadow: 0 0 15px rgba(93, 142, 241, 0.15); }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #292930; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #424752; }
+.rating-bar-fill { transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- SideNavBar Shell -->
+<!-- Mobile hamburger -->
+<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+  <span class="material-symbols-outlined">menu</span>
 </button>
+<!-- Sidebar overlay for mobile -->
+<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+<!-- Mobile hamburger -->
+<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+  <span class="material-symbols-outlined">menu</span>
+</button>
+<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
+<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
+<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
 </div>
-<div class="mt-4 px-2 space-y-1">
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all duration-200" href="/settings">
-<span class="material-symbols-outlined">help_outline</span>
-<span class="font-medium text-sm">Help</span>
+<span>HostAI</span>
 </a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all duration-200" href="/logout">
-<span class="material-symbols-outlined">logout</span>
-<span class="font-medium text-sm">Logout</span>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+Dashboard
 </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+Conversations
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/mission-control' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/mission-control">
+<span class="material-symbols-outlined" data-icon="military_tech">military_tech</span>
+Mission Control
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/alerts' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/alerts">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+Alerts
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+Reservations
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+Activity
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+Voice AI
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/feedback-insights' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/feedback-insights">
+<span class="material-symbols-outlined" data-icon="star">star</span>
+Feedback
+</a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+Settings
+</a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+Admin
+</a>
+{% endif %}
+</nav>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+{{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
 </div>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ tenant.first_name or "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+</div>
+</div>
+<form method="post" action="/logout">
+<input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+<button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+<span class="material-symbols-outlined text-sm">logout</span>
+Sign Out
+</button>
+</form>
 </div>
 </aside>
-<!-- Main Content Area -->
-<main class="md:ml-64 min-h-screen">
-<!-- Top Navigation -->
-<header class="fixed top-0 right-0 left-0 md:left-64 h-16 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-xl z-30 shadow-sm flex items-center justify-between px-8">
-<div class="flex items-center gap-8">
-<h1 class="text-xl font-bold tracking-tighter text-slate-900 dark:text-slate-50">Host Assistant</h1>
-<nav class="hidden lg:flex items-center gap-6">
-<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium text-sm" href="/dashboard">Dashboard</a>
-<a class="text-blue-700 dark:text-blue-400 font-semibold border-b-2 border-blue-700 dark:border-blue-400 pb-1 text-sm" href="/feedback_insights">Feedback</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium text-sm" href="/analytics">Analytics</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium text-sm" href="/dashboard">Properties</a>
-</nav>
+
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search feedback..." type="text"/>
 </div>
-<div class="flex items-center gap-4">
-<div class="relative hidden sm:block">
-<input class="bg-slate-200/50 dark:bg-slate-800/50 border-none rounded-full py-1.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary w-64" placeholder="Search insights..." type="text"/>
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
 </div>
-<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors relative">
-<span class="material-symbols-outlined">notifications</span>
-<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+<div class="flex items-center gap-6">
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
 </button>
-<img alt="Property Manager Profile" class="w-8 h-8 rounded-full object-cover ring-2 ring-primary-fixed" data-alt="Close-up professional portrait of a property manager in a light-filled modern office setting with blurred architectural background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDP9Yh9CeWXGPVgHyWRrw7BQaua2Db-eZAoTh8lX31ibUkcu2WxtJ7OCX25gwEyACAF_QuMzLFoRRw3zqbxBpOxaa4MaHjRG1jj3k0BlJ2VVJllywIokNjrIFnWLlzTRMs-KAa6AO4OVz9uBouuVICBXGQRQeSAq7N5dxm87HGBFq60ER98zf7rQ4BF39-P6BobXJy_KibtC3Qu5JIBhoSJ354xIsnKHvdpRaZmTvlUAYi77JN_9wV3EdfpYtv0tR7BZCYQUc2XPY9I"/>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+{{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+</div>
+</div>
 </div>
 </header>
-<!-- Page Content -->
-<div class="pt-24 px-8 pb-12 max-w-7xl mx-auto space-y-8">
-<!-- Hero Header Section -->
-<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+
+<!-- Main Viewport -->
+<main class="md:ml-[260px] pt-16 h-screen flex flex-col overflow-hidden">
+<div class="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-[#08090F]/80 backdrop-blur-xl">
 <div>
-<span class="text-primary font-semibold text-sm tracking-wide uppercase">Intelligence Suite</span>
-<h2 class="text-4xl font-extrabold text-on-surface tracking-tight mt-1">Feedback Insights</h2>
-<p class="text-on-surface-variant mt-2 text-lg">Detailed analysis of guest experiences and operational performance.</p>
-</div>
-<div class="flex items-center gap-2 bg-surface-container-low p-1 rounded-xl">
-<button class="px-4 py-2 bg-surface-container-lowest shadow-sm rounded-lg text-sm font-medium" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Last 30 Days</button>
-<button class="px-4 py-2 text-on-surface-variant hover:bg-white/50 rounded-lg text-sm font-medium transition-colors" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Quarterly</button>
-<button class="px-4 py-2 text-on-surface-variant hover:bg-white/50 rounded-lg text-sm font-medium transition-colors" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Yearly</button>
-</div>
-</div>
-<!-- Summary Analytics Bento -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-<!-- Avg Rating -->
-<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/15 flex flex-col justify-between">
-<div class="flex items-center justify-between mb-4">
-<span class="p-2 bg-primary-fixed text-primary rounded-lg material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded-full">+4% vs last mo</span>
-</div>
-<div>
-<h3 class="text-on-surface-variant text-sm font-medium">Average Guest Rating</h3>
-<p class="text-5xl font-black text-on-surface mt-2 tracking-tighter">4.82<span class="text-xl text-on-surface-variant font-normal">/5</span></p>
-</div>
-</div>
-<!-- Total Reviews -->
-<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/15 flex flex-col justify-between">
-<div class="flex items-center justify-between mb-4">
-<span class="p-2 bg-secondary-fixed text-secondary rounded-lg material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">reviews</span>
-<span class="text-slate-400 text-xs font-medium">242 Total</span>
-</div>
-<div>
-<h3 class="text-on-surface-variant text-sm font-medium">Reviews This Month</h3>
-<p class="text-5xl font-black text-on-surface mt-2 tracking-tighter">38</p>
-</div>
-</div>
-<!-- NPS Score -->
-<div class="bg-primary text-white p-8 rounded-xl shadow-lg shadow-primary/10 flex flex-col justify-between relative overflow-hidden">
-<div class="absolute -right-4 -bottom-4 opacity-10 rotate-12">
-<span class="material-symbols-outlined text-9xl">trending_up</span>
-</div>
-<div class="flex items-center justify-between mb-4 relative z-10">
-<span class="p-2 bg-white/20 text-white rounded-lg material-symbols-outlined">analytics</span>
-<span class="text-white/80 text-xs font-bold px-2 py-1 rounded-full border border-white/20">Excellent</span>
-</div>
-<div class="relative z-10">
-<h3 class="text-white/80 text-sm font-medium">Net Promoter Score (NPS)</h3>
-<p class="text-5xl font-black text-white mt-2 tracking-tighter">72</p>
-</div>
-</div>
-</div>
-<!-- Main Charts Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-<!-- Sentiment Analysis & Ratings (Left Column) -->
-<div class="lg:col-span-8 space-y-6">
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-<!-- Sentiment Chart -->
-<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/15">
-<h3 class="text-lg font-bold text-on-surface mb-6">Sentiment Analysis</h3>
-<div class="flex items-center justify-center py-4">
-<div class="relative w-40 h-40">
-<svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
-<circle class="stroke-slate-100" cx="18" cy="18" fill="none" r="16" stroke-width="3"></circle>
-<!-- Positive 82% -->
-<circle class="stroke-primary" cx="18" cy="18" fill="none" r="16" stroke-dasharray="82, 100" stroke-linecap="round" stroke-width="3"></circle>
-<!-- Neutral 12% (offset) -->
-<circle class="stroke-secondary-fixed-dim" cx="18" cy="18" fill="none" r="16" stroke-dasharray="12, 100" stroke-dashoffset="-82" stroke-linecap="round" stroke-width="3"></circle>
-<!-- Negative 6% (offset) -->
-<circle class="stroke-error" cx="18" cy="18" fill="none" r="16" stroke-dasharray="6, 100" stroke-dashoffset="-94" stroke-linecap="round" stroke-width="3"></circle>
-</svg>
-<div class="absolute inset-0 flex flex-col items-center justify-center">
-<span class="text-2xl font-black">82%</span>
-<span class="text-[10px] uppercase font-bold text-on-surface-variant">Positive</span>
-</div>
-</div>
-</div>
-<div class="mt-6 space-y-3">
-<div class="flex justify-between items-center text-sm">
-<div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-primary"></span><span class="text-on-surface-variant">Positive</span></div>
-<span class="font-bold">82%</span>
-</div>
-<div class="flex justify-between items-center text-sm">
-<div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-secondary-fixed-dim"></span><span class="text-on-surface-variant">Neutral</span></div>
-<span class="font-bold">12%</span>
-</div>
-<div class="flex justify-between items-center text-sm">
-<div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-error"></span><span class="text-on-surface-variant">Negative</span></div>
-<span class="font-bold">6%</span>
-</div>
-</div>
-</div>
-<!-- Rating Distribution -->
-<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/15">
-<h3 class="text-lg font-bold text-on-surface mb-6">Rating Distribution</h3>
-<div class="space-y-4">
-<div class="flex items-center gap-3">
-<span class="text-xs font-bold text-on-surface-variant w-4">5</span>
-<div class="flex-1 h-3 bg-surface-container-low rounded-full overflow-hidden">
-<div class="h-full bg-primary w-[75%]"></div>
-</div>
-<span class="text-xs font-medium text-on-surface-variant w-8">182</span>
-</div>
-<div class="flex items-center gap-3">
-<span class="text-xs font-bold text-on-surface-variant w-4">4</span>
-<div class="flex-1 h-3 bg-surface-container-low rounded-full overflow-hidden">
-<div class="h-full bg-primary-fixed-dim w-[15%]"></div>
-</div>
-<span class="text-xs font-medium text-on-surface-variant w-8">36</span>
-</div>
-<div class="flex items-center gap-3">
-<span class="text-xs font-bold text-on-surface-variant w-4">3</span>
-<div class="flex-1 h-3 bg-surface-container-low rounded-full overflow-hidden">
-<div class="h-full bg-secondary-fixed-dim w-[6%]"></div>
-</div>
-<span class="text-xs font-medium text-on-surface-variant w-8">14</span>
-</div>
-<div class="flex items-center gap-3">
-<span class="text-xs font-bold text-on-surface-variant w-4">2</span>
-<div class="flex-1 h-3 bg-surface-container-low rounded-full overflow-hidden">
-<div class="h-full bg-outline-variant w-[3%]"></div>
-</div>
-<span class="text-xs font-medium text-on-surface-variant w-8">7</span>
-</div>
-<div class="flex items-center gap-3">
-<span class="text-xs font-bold text-on-surface-variant w-4">1</span>
-<div class="flex-1 h-3 bg-surface-container-low rounded-full overflow-hidden">
-<div class="h-full bg-error-container w-[1%]"></div>
-</div>
-<span class="text-xs font-medium text-on-surface-variant w-8">3</span>
-</div>
-</div>
-</div>
-</div>
-<!-- Common Topics / Word Cloud -->
-<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/15 relative overflow-hidden">
-<div class="flex items-center justify-between mb-8">
-<h3 class="text-lg font-bold text-on-surface">Common Topics &amp; Themes</h3>
-<span class="text-xs text-on-surface-variant px-3 py-1 bg-surface-container-low rounded-full">Extracted from 242 reviews</span>
-</div>
-<div class="flex flex-wrap items-center justify-center gap-6 py-10 px-4">
-<span class="text-4xl font-black text-primary hover:scale-110 transition-transform cursor-default">Cleanliness</span>
-<span class="text-2xl font-bold text-primary-container hover:scale-110 transition-transform cursor-default">Location</span>
-<span class="text-xl font-medium text-secondary hover:scale-110 transition-transform cursor-default">Check-in</span>
-<span class="text-3xl font-extrabold text-primary hover:scale-110 transition-transform cursor-default">WiFi Stability</span>
-<span class="text-lg font-medium text-on-surface-variant hover:scale-110 transition-transform cursor-default">Kitchen</span>
-<span class="text-2xl font-semibold text-secondary hover:scale-110 transition-transform cursor-default">Modern Decor</span>
-<span class="text-xl font-bold text-primary-container hover:scale-110 transition-transform cursor-default">Ocean View</span>
-<span class="text-base font-medium text-outline hover:scale-110 transition-transform cursor-default">Parking</span>
-<span class="text-2xl font-black text-primary hover:scale-110 transition-transform cursor-default">Host Responsiveness</span>
-</div>
-<!-- Subtle tonal background pattern -->
-<div class="absolute inset-0 pointer-events-none opacity-[0.03] select-none" style="background-image: radial-gradient(#004e9f 0.5px, transparent 0.5px); background-size: 24px 24px;"></div>
-</div>
-</div>
-<!-- Right Column (Insights & Recommendations) -->
-<div class="lg:col-span-4 space-y-6">
-<!-- AI Insights -->
-<div class="bg-surface-container-low p-8 rounded-xl shadow-sm border border-outline-variant/15 h-full">
-<div class="flex items-center gap-3 mb-6">
-<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
-<h3 class="text-lg font-bold text-on-surface">AI Recommendations</h3>
-</div>
-<div class="space-y-4">
-<!-- Card 1 -->
-<div class="bg-surface-container-lowest p-5 rounded-xl border-l-4 border-primary shadow-sm hover:translate-x-1 transition-transform">
-<p class="text-xs font-bold text-primary mb-1">NETWORK STABILITY</p>
-<p class="text-sm text-on-surface font-medium leading-relaxed">Improve WiFi stability at <span class="font-bold">your property</span> based on 3 recent mentions of connectivity drops during evenings.</p>
-<div class="mt-3 flex items-center justify-between">
-<span class="text-[10px] text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-xs">trending_down</span> High Urgency</span>
-<button class="text-primary text-xs font-bold hover:underline" onclick="window.location.href="/admin/system"">Apply Fix</button>
-</div>
-</div>
-<!-- Card 2 -->
-<div class="bg-surface-container-lowest p-5 rounded-xl border-l-4 border-secondary shadow-sm hover:translate-x-1 transition-transform">
-<p class="text-xs font-bold text-secondary mb-1">AMENITY UPGRADE</p>
-<p class="text-sm text-on-surface font-medium leading-relaxed">Consider adding a coffee grinder to <span class="font-bold">your property</span>. Multiple guests noted the premium beans provided but no way to grind them.</p>
-<div class="mt-3 flex items-center justify-between">
-<span class="text-[10px] text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-xs">info</span> Mid-priority</span>
-<button class="text-primary text-xs font-bold hover:underline" onclick="window.location.href="/reservations"">Order Item</button>
-</div>
-</div>
-<!-- Card 3 -->
-<div class="bg-surface-container-lowest p-5 rounded-xl border-l-4 border-tertiary-container shadow-sm hover:translate-x-1 transition-transform">
-<p class="text-xs font-bold text-tertiary-container mb-1">STAFF FEEDBACK</p>
-<p class="text-sm text-on-surface font-medium leading-relaxed">Recognize concierge team for exceptional service mentioned in <span class="font-bold">85%</span> of reviews for your property this month.</p>
-<div class="mt-3 flex items-center justify-between">
-<span class="text-[10px] text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-xs">star</span> Positive Trend</span>
-<button class="text-primary text-xs font-bold hover:underline">Send Kudos</button>
-</div>
-</div>
-</div>
-<a href="/analytics" class="w-full mt-6 py-3 border border-primary text-primary rounded-xl text-sm font-bold hover:bg-primary/5 transition-colors">Generate Full Insight Report</a>
-</div>
-</div>
-</div>
-<!-- Recent Reviews Feed (Horizontal Scroll on mobile, list on desktop) -->
-<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/15">
-<div class="flex items-center justify-between mb-8">
-<h3 class="text-lg font-bold text-on-surface">Recent Guest Reviews</h3>
-<a class="text-primary text-sm font-bold hover:underline flex items-center gap-1" href="/feedback_insights">View all reviews <span class="material-symbols-outlined text-sm">arrow_forward</span></a>
-</div>
-<div class="space-y-0">
-<!-- Review 1 -->
-<div class="group flex flex-col md:flex-row gap-6 py-6 border-b border-outline-variant/10 last:border-0 hover:bg-surface-container-low/50 px-4 -mx-4 rounded-xl transition-all">
-<div class="flex-shrink-0 flex items-center gap-4 w-full md:w-64">
-<img alt="Guest Portrait" class="w-12 h-12 rounded-full object-cover" data-alt="Modern close-up of a smiling young woman with natural light, lifestyle photography style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQZCbm7Q0rmFnSJm2AkCJl8Z4LSZILFCQ1ruK68E1H84cq-HoKLt4jxOPTCc72J2j5P6Bgmfb-t6Ffc7zp-yi3ituUWeT787Mzl6AKnTCwhsZGwElU7HrYFdNbhkPOZer-sfHrco42nY0BaemEZdbgi9buvmGJ2YQ4Vo1kLNCY7tNBZMB4pknoxCVk91l7pH64KbWroG4zmm3UzHhKNpBqb-at5Mc1FIYEZGKq_V-XycbMef3qhT8-8T2Q1K51Foeztr0bV74pk1ND"/>
-<div>
-<h4 class="font-bold text-on-surface">Guest</h4>
-<p class="text-xs text-on-surface-variant">your property</p>
-</div>
-</div>
-<div class="flex-1">
-<div class="flex items-center gap-1 mb-2">
-<span class="material-symbols-outlined text-amber-400 text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-amber-400 text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-amber-400 text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-amber-400 text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-amber-400 text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="text-xs font-bold ml-2 text-on-surface">5.0</span>
-<span class="text-xs text-on-surface-variant ml-auto md:ml-4">2 hours ago</span>
-</div>
-<p class="text-on-surface-variant leading-relaxed italic">"Review text will appear here."</p>
-</div>
-<div class="flex items-center justify-end gap-2">
-<span class="px-2 py-1 bg-green-50 text-green-700 text-[10px] font-black rounded-md border border-green-100 uppercase tracking-tighter">Verified Stay</span>
-<button class="p-2 hover:bg-white rounded-full transition-colors"><span class="material-symbols-outlined text-slate-400">reply</span></button>
-</div>
-</div>
-<!-- Review 2 -->
-<div class="group flex flex-col md:flex-row gap-6 py-6 border-b border-outline-variant/10 last:border-0 hover:bg-surface-container-low/50 px-4 -mx-4 rounded-xl transition-all">
-<div class="flex-shrink-0 flex items-center gap-4 w-full md:w-64">
-<img alt="Guest Portrait" class="w-12 h-12 rounded-full object-cover" data-alt="Cinematic portrait of a middle-aged man in casual wear looking at the camera, warm soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQZCbm7Q0rmFnSJm2AkCJl8Z4LSZILFCQ1ruK68E1H84cq-HoKLt4jxOPTCc72J2j5P6Bgmfb-t6Ffc7zp-yi3ituUWeT787Mzl6AKnTCwhsZGwElU7HrYFdNbhkPOZer-sfHrco42nY0BaemEZdbgi9buvmGJ2YQ4Vo1kLNCY7tNBZMB4pknoxCVk91l7pH64KbWroG4zmm3UzHhKNpBqb-at5Mc1FIYEZGKq_V-XycbMef3qhT8-8T2Q1K51Foeztr0bV74pk1ND"/>
-<div>
-<h4 class="font-bold text-on-surface">Guest</h4>
-<p class="text-xs text-on-surface-variant">your property</p>
-</div>
-</div>
-<div class="flex-1">
-<div class="flex items-center gap-1 mb-2">
-<span class="material-symbols-outlined text-amber-400 text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-amber-400 text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-amber-400 text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-amber-400 text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-slate-200 text-sm">star</span>
-<span class="text-xs font-bold ml-2 text-on-surface">4.0</span>
-<span class="text-xs text-on-surface-variant ml-auto md:ml-4">Yesterday</span>
-</div>
-<p class="text-on-surface-variant leading-relaxed italic">"Review text will appear here."</p>
-</div>
-<div class="flex items-center justify-end gap-2">
-<span class="px-2 py-1 bg-green-50 text-green-700 text-[10px] font-black rounded-md border border-green-100 uppercase tracking-tighter">Verified Stay</span>
-<button class="p-2 hover:bg-white rounded-full transition-colors"><span class="material-symbols-outlined text-slate-400">reply</span></button>
-</div>
-</div>
-</div>
-</div>
+<h1 class="text-3xl font-extrabold tracking-tight text-white">Feedback Insights</h1>
+<p class="text-slate-400 text-sm mt-1">Guest ratings and reviews across all your properties</p>
+</div>
+</div>
+
+<!-- Content -->
+<div class="flex-1 overflow-y-auto custom-scrollbar">
+{% if total_responses is defined and total_responses > 0 %}
+<div class="p-8 space-y-8">
+
+  <!-- Overall Score Banner -->
+  <div class="bg-[#0d0e14] border border-yellow-500/20 rounded-lg p-6 flex items-center gap-6">
+    <div class="flex-shrink-0 w-20 h-20 rounded-2xl bg-yellow-500/10 flex flex-col items-center justify-center">
+      <span class="text-3xl font-extrabold text-yellow-400 leading-none">{{ "%.1f"|format(avg_rating) }}</span>
+      <span class="text-yellow-500/70 text-xs font-semibold mt-0.5">out of 5</span>
+    </div>
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        {%- set full_stars = avg_rating|int -%}
+        {%- set has_half = (avg_rating - full_stars) >= 0.5 -%}
+        {%- for i in range(1, 6) -%}
+          {%- if i <= full_stars -%}
+            <span class="text-yellow-400 text-xl">&#9733;</span>
+          {%- elif i == full_stars + 1 and has_half -%}
+            <span class="text-yellow-400/50 text-xl">&#9733;</span>
+          {%- else -%}
+            <span class="text-slate-600 text-xl">&#9733;</span>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+      <p class="text-white font-bold text-lg">Overall Average Rating</p>
+      <p class="text-slate-400 text-sm">Based on {{ total_responses }} response{{ 's' if total_responses != 1 else '' }}</p>
+    </div>
+  </div>
+
+  <!-- By Property Grid -->
+  {% if by_property %}
+  <div>
+    <h2 class="text-lg font-bold text-white mb-4">By Property</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for prop in by_property %}
+      <div class="bg-[#0d0e14] border border-white/5 rounded-lg p-5 hover:border-primary/30 transition-colors">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex-1 min-w-0 pr-3">
+            <h3 class="text-white font-bold text-sm truncate">{{ prop.name }}</h3>
+            <p class="text-slate-500 text-xs mt-0.5">{{ prop.count }} response{{ 's' if prop.count != 1 else '' }}</p>
+          </div>
+          <div class="flex-shrink-0 text-right">
+            <span class="text-yellow-400 font-extrabold text-lg">{{ "%.1f"|format(prop.avg) }}</span>
+            <span class="text-slate-500 text-xs">/5</span>
+          </div>
+        </div>
+        <!-- Rating bar -->
+        <div class="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+          <div class="h-full rounded-full bg-gradient-to-r from-yellow-500 to-yellow-400 rating-bar-fill"
+               style="width: {{ ((prop.avg / 5) * 100)|round|int }}%"></div>
+        </div>
+        <!-- Mini stars -->
+        <div class="flex items-center gap-0.5 mt-3">
+          {%- set p_full = prop.avg|int -%}
+          {%- set p_half = (prop.avg - p_full) >= 0.5 -%}
+          {%- for i in range(1, 6) -%}
+            {%- if i <= p_full -%}
+              <span class="text-yellow-400 text-sm">&#9733;</span>
+            {%- elif i == p_full + 1 and p_half -%}
+              <span class="text-yellow-400/50 text-sm">&#9733;</span>
+            {%- else -%}
+              <span class="text-slate-700 text-sm">&#9733;</span>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Recent Feedback List -->
+  {% if recent_feedback %}
+  <div>
+    <h2 class="text-lg font-bold text-white mb-4">Recent Feedback</h2>
+    <div class="bg-[#0d0e14] border border-white/5 rounded-lg overflow-hidden">
+      <div class="divide-y divide-white/5">
+        {% for fb in recent_feedback %}
+        <div class="p-6 hover:bg-white/[0.02] transition-colors">
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm flex-shrink-0">
+              {{ (fb.guest_name or '?')[0]|upper }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-3 mb-1 flex-wrap">
+                <div>
+                  <span class="text-white font-semibold text-sm">{{ fb.guest_name or 'Anonymous Guest' }}</span>
+                  <span class="text-slate-500 text-xs ml-2">at {{ fb.property_name }}</span>
+                </div>
+                <span class="text-slate-500 text-xs flex-shrink-0">
+                  {{ fb.created_at.strftime('%b %d, %Y') if fb.created_at else '' }}
+                </span>
+              </div>
+              <!-- Stars display -->
+              <div class="flex items-center gap-0.5 mb-2">
+                {%- set r = fb.rating|int if fb.rating else 0 -%}
+                {%- for i in range(1, 6) -%}
+                  {%- if i <= r -%}
+                    <span class="text-yellow-400 text-base">&#9733;</span>
+                  {%- else -%}
+                    <span class="text-slate-600 text-base">&#9733;</span>
+                  {%- endif -%}
+                {%- endfor -%}
+                <span class="text-slate-500 text-xs ml-1">({{ fb.rating }}/5)</span>
+              </div>
+              {% if fb.comment %}
+              <p class="text-slate-300 text-sm leading-relaxed">{{ fb.comment }}</p>
+              {% else %}
+              <p class="text-slate-600 text-xs italic">No comment provided</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{% else %}
+<!-- Empty State -->
+<div class="flex-1 flex flex-col items-center justify-center p-12 text-center">
+  <div class="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center mb-6">
+    <span class="material-symbols-outlined text-4xl text-slate-600" style="font-variation-settings: 'FILL' 1;">star</span>
+  </div>
+  <h2 class="text-2xl font-bold text-white mb-2">No feedback yet</h2>
+  <p class="text-slate-400 text-sm max-w-sm">
+    Feedback will appear here once guests submit their ratings. Share feedback links with your guests after their stay.
+  </p>
+</div>
+{% endif %}
+
 </div>
 </main>
-<!-- Contextual FAB for generating reports (only on main dashboards) -->
-<button class="fixed bottom-8 right-8 bg-primary text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 md:hidden">
-<span class="material-symbols-outlined">add</span>
-</button>
-</body></html>
+{%- endblock %}
+{%- endblock %}
+
+<script nonce="{{ request.state.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('Feedback Insights loaded');
+});
+</script>

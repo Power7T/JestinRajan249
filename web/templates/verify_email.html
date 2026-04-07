@@ -1,177 +1,71 @@
 <!DOCTYPE html>
-
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "on-secondary-fixed": "#0f1c2d",
-                        "tertiary-container": "#006846",
-                        "surface-dim": "#d9d9e4",
-                        "error-container": "#ffdad6",
-                        "surface-container-high": "#e7e7f2",
-                        "on-error-container": "#93000a",
-                        "on-primary-fixed-variant": "#00419c",
-                        "on-primary-fixed": "#001945",
-                        "on-surface": "#191b23",
-                        "surface-container-highest": "#e1e2ec",
-                        "background": "#faf8ff",
-                        "outline": "#737685",
-                        "tertiary-fixed-dim": "#4edea3",
-                        "tertiary": "#004e33",
-                        "tertiary-fixed": "#6ffbbe",
-                        "on-surface-variant": "#434654",
-                        "primary-fixed": "#d9e2ff",
-                        "on-tertiary-fixed-variant": "#005236",
-                        "error": "#ba1a1a",
-                        "on-secondary-container": "#586579",
-                        "primary-fixed-dim": "#b0c6ff",
-                        "outline-variant": "#c3c6d6",
-                        "on-primary-container": "#c3d2ff",
-                        "on-primary": "#ffffff",
-                        "on-tertiary-container": "#5debaf",
-                        "secondary-container": "#d6e3fb",
-                        "surface-container-low": "#f3f3fd",
-                        "on-tertiary": "#ffffff",
-                        "primary-container": "#0054c5",
-                        "on-error": "#ffffff",
-                        "secondary-fixed": "#d6e3fb",
-                        "on-secondary": "#ffffff",
-                        "inverse-on-surface": "#f0f0fb",
-                        "surface": "#faf8ff",
-                        "inverse-primary": "#b0c6ff",
-                        "on-secondary-fixed-variant": "#3b485a",
-                        "surface-bright": "#faf8ff",
-                        "on-background": "#191b23",
-                        "surface-tint": "#0058cc",
-                        "secondary": "#525f73",
-                        "primary": "#003e95",
-                        "inverse-surface": "#2e3038",
-                        "surface-container": "#ededf8",
-                        "secondary-fixed-dim": "#bac7de",
-                        "surface-container-lowest": "#ffffff",
-                        "surface-variant": "#e1e2ec",
-                        "on-tertiary-fixed": "#002113"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.125rem",
-                        "lg": "0.25rem",
-                        "xl": "0.5rem",
-                        "full": "0.75rem"
-                    },
-                    "fontFamily": {
-                        "headline": ["Manrope"],
-                        "body": ["Inter"],
-                        "label": ["Inter"]
-                    }
-                },
-            },
-        }
-    </script>
-<style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-            vertical-align: middle;
-        }
-        .bg-glass {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(20px);
-        }
-    </style>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Email — HostAI</title>
+  <meta name="description" content="Verify your HostAI email address.">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com?plugins=forms" nonce="{{ request.state.csp_nonce }}"></script>
+  <script nonce="{{ request.state.csp_nonce }}">
+    tailwind.config = {
+      darkMode: "class",
+      theme: { extend: { colors: {
+        "primary": "#aec6ff", "primary-container": "#5d8ef1", "on-primary": "#002e6b",
+        "surface": "#121319", "surface-container": "#1e1f26", "surface-container-lowest": "#0d0e14",
+        "on-surface": "#e3e1eb", "on-surface-variant": "#c3c6d4", "outline": "#424752",
+        "error": "#ffb4ab", "tertiary": "#ffb960",
+      }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
+    }
+  </script>
+  <style>
+    body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass { background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border: 1px solid rgba(174,198,255,0.1); }
+    .glow-ring { box-shadow: 0 0 80px rgba(91,141,239,0.12); }
+    .btn-primary { background: linear-gradient(135deg,#5B8DEF,#aec6ff); color: #002e6b; }
+    .input-obsidian { background: #0d0e14; border: 1px solid rgba(66,71,82,0.5); color: #e3e1eb; }
+    .input-obsidian:focus { outline: none; border-color: #5B8DEF; box-shadow: 0 0 0 2px rgba(91,141,239,0.15); }
+    .alert-error { background: rgba(255,180,171,0.1); border: 1px solid rgba(255,180,171,0.3); color: #ffb4ab; border-radius:0.5rem; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.84rem; }
+    .alert-success { background: rgba(39,201,63,0.1); border: 1px solid rgba(39,201,63,0.3); color: #27c93f; border-radius:0.5rem; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.84rem; }
+    
+  </style>
 </head>
-<body class="bg-surface font-body text-on-surface min-h-screen flex flex-col">
-<!-- TopAppBar -->
-<header class="w-full top-0 sticky z-50 no-border bg-slate-50 dark:bg-slate-950">
-<nav class="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
-<div class="text-xl font-bold text-blue-700 dark:text-blue-400 font-headline tracking-tight">TrustVerify</div>
-<div class="hidden md:flex items-center gap-8">
-<a class="text-slate-600 dark:text-slate-400 font-medium hover:text-blue-600 font-headline tracking-tight transition-colors duration-200" href="/settings">Process</a>
-<a class="text-slate-600 dark:text-slate-400 font-medium hover:text-blue-600 font-headline tracking-tight transition-colors duration-200" href="/login">Security</a>
-<a class="text-slate-600 dark:text-slate-400 font-medium hover:text-blue-600 font-headline tracking-tight transition-colors duration-200" href="/privacy">Help</a>
+<body class="min-h-screen flex flex-col">
+  <!-- Nav -->
+  <nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#08090F]/80 backdrop-blur-xl">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="/" class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#aec6ff] to-[#5B8DEF] tracking-tight">HostAI</a>
+      <a href="/login" class="text-sm text-slate-400 hover:text-white transition-colors">Sign in &rarr;</a>
+    </div>
+  </nav>
+  <!-- Ambient glow -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden">
+    <div class="absolute top-[-20%] left-[30%] w-[600px] h-[600px] bg-[#5B8DEF]/8 rounded-full blur-[120px]"></div>
+  </div>
+  <!-- Content -->
+  <div class="flex-1 flex items-center justify-center px-4 pt-24 pb-12">
+    <div class="w-full max-w-md">
+      <div class="glass glow-ring rounded-3xl p-10 text-center">
+  <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center mx-auto mb-6">
+    <svg class="w-8 h-8 text-[#002e6b]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+  </div>
+  {% if (success is defined and success) or (status is defined and status == "verified") %}
+  <h1 class="text-2xl font-extrabold text-white mb-2">Email confirmed!</h1>
+  <p class="text-slate-400 text-sm mb-6">Your account is fully active. You're ready to go.</p>
+  <div class="alert-success mb-4">✓ Your email address has been confirmed. Your account is fully active.</div>
+  <a href="/dashboard" class="inline-block btn-primary font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-all">Go to Dashboard &rarr;</a>
+  {% elif (expired is defined and expired) or (status is defined and status == "expired") %}
+  <h1 class="text-2xl font-extrabold text-white mb-2">Link expired</h1>
+  <p class="text-slate-400 text-sm mb-4">Verification links are valid for 24 hours.</p>
+  <div class="alert-error mb-4">This verification link has expired. Sign in and request a new one.</div>
+  <a href="/login" class="inline-block text-primary text-sm hover:underline">&larr; Back to sign in</a>
+  {% else %}
+  <h1 class="text-2xl font-extrabold text-white mb-2">Invalid link</h1>
+  <div class="alert-error mb-4">This verification link is invalid or has already been used.</div>
+  <a href="/login" class="inline-block text-primary text-sm hover:underline">&larr; Back to sign in</a>
+  {% endif %}
 </div>
-<div class="flex items-center gap-4">
-<a href="/login" class="text-slate-600 dark:text-slate-400 font-medium hover:text-blue-600 px-4 py-2 font-headline tracking-tight transition-all active:scale-[0.99]">Sign In</a>
-<button class="bg-primary text-on-primary px-6 py-2 rounded-xl font-headline font-semibold tracking-tight shadow-sm hover:bg-primary-container transition-all active:scale-[0.99]" onclick="window.location.href="/settings"">Support</button>
-</div>
-</nav>
-</header>
-<!-- Main Content Area -->
-<main class="flex-grow flex items-center justify-center px-6 py-12 relative overflow-hidden">
-<!-- Abstract Background Shapes -->
-<div class="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-primary-fixed/30 rounded-full blur-[100px]"></div>
-<div class="absolute bottom-[-10%] left-[-5%] w-[300px] h-[300px] bg-secondary-fixed/20 rounded-full blur-[80px]"></div>
-<div class="w-full max-w-xl relative">
-<!-- Verification Card -->
-<div class="bg-surface-container-lowest rounded-xl p-8 md:p-12 shadow-[0_32px_64px_-12px_rgba(25,27,35,0.06)] border border-outline-variant/15">
-<!-- Status Chip -->
-<div class="flex justify-start mb-8">
-<span class="bg-secondary-fixed text-on-secondary-fixed px-4 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase flex items-center gap-2">
-<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                        Verification Pending
-                    </span>
-</div>
-<!-- Editorial Header -->
-<h1 class="font-headline text-4xl md:text-5xl font-extrabold text-on-surface mb-6 tracking-tight">
-                    Verify your email
-                </h1>
-<p class="font-body text-lg text-on-surface-variant leading-relaxed mb-10 max-w-md">
-                    We've sent a verification link to your email address. Please click the link to complete your account setup.
-                </p>
-<!-- User Email Identifier -->
-<div class="bg-surface-container-high rounded-xl p-5 flex items-center justify-between mb-10">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-xl bg-primary-fixed flex items-center justify-center text-primary">
-<span class="material-symbols-outlined" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
-</div>
-<div class="flex flex-col">
-<span class="text-xs font-bold text-outline uppercase tracking-wider">Target Account</span>
-<span class="font-body font-semibold text-on-surface">alex.walker@trustverify.com</span>
-</div>
-</div>
-<span class="material-symbols-outlined text-outline" data-icon="verified_user">verified_user</span>
-</div>
-<!-- Actions -->
-<div class="flex flex-col gap-6">
-<button class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary py-4 px-8 rounded-xl font-headline font-bold text-lg flex items-center justify-center gap-3 shadow-lg shadow-primary/10 hover:opacity-90 transition-all active:scale-[0.99]">
-                        Verify
-                        <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
-</button>
-<div class="flex flex-col items-center gap-4 pt-4">
-<button class="text-primary font-bold font-body text-sm hover:underline transition-all" onclick="this.textContent="Sending..."; setTimeout(()=>{this.textContent="Resend code"},2000)">Resend code</button>
-<div class="w-full h-px bg-outline-variant/10 my-2"></div>
-<a class="flex items-center gap-2 text-on-surface-variant font-medium text-sm hover:text-primary transition-colors" href="/terms">
-<span class="material-symbols-outlined text-sm" data-icon="arrow_back">arrow_back</span>
-                            Back to login
-                        </a>
-</div>
-</div>
-</div>
-<!-- Footer Decorative Element -->
-<div class="mt-8 text-center">
-<p class="text-outline text-xs font-medium tracking-wide">
-                    Secured by 256-bit encryption. Your data remains private.
-                </p>
-</div>
-</div>
-</main>
-<!-- Footer -->
-<footer class="w-full py-8 mt-auto no-border bg-slate-100 dark:bg-slate-900/50">
-<div class="flex flex-col md:flex-row justify-between items-center px-6 max-w-7xl mx-auto gap-4">
-<div class="font-['Inter'] text-sm text-slate-500 dark:text-slate-400">
-                © 2024 Editorial Trust Verification Systems. All rights reserved.
-            </div>
-<div class="flex gap-6">
-<a class="font-['Inter'] text-sm text-slate-500 hover:text-blue-600 transition-colors" href="/privacy">Privacy Policy</a>
-<a class="font-['Inter'] text-sm text-slate-500 hover:text-blue-600 transition-colors" href="/terms">Terms of Service</a>
-<a class="font-['Inter'] text-sm text-slate-500 hover:text-blue-600 transition-colors" href="/settings">Cookie Settings</a>
-</div>
-</div>
-</footer>
-</body></html>
+    </div>
+  </div>
+</body>
+</html>

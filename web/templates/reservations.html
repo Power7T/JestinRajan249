@@ -1,366 +1,826 @@
-<!DOCTYPE html>
+{%- extends "base.html" %}
+{%- block title %}Reservations — HostAI{%- endblock %}
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Reservations | Host Assistant</title>
+{%- block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
       tailwind.config = {
         darkMode: "class",
         theme: {
           extend: {
-            "colors": {
-                    "on-primary-fixed": "#111c2d",
-                    "surface-bright": "#f7f9fb",
-                    "secondary-fixed-dim": "#b7c8e1",
-                    "tertiary-fixed-dim": "#dec29a",
-                    "tertiary-container": "#271901",
-                    "outline": "#76777d",
-                    "surface": "#f7f9fb",
-                    "surface-container-low": "#f2f4f6",
-                    "on-tertiary": "#ffffff",
-                    "surface-dim": "#d8dadc",
-                    "on-surface": "#191c1e",
-                    "outline-variant": "#c6c6cd",
-                    "on-background": "#191c1e",
-                    "primary-container": "#111c2d",
-                    "secondary": "#505f76",
-                    "surface-tint": "#545f73",
-                    "error-container": "#ffdad6",
-                    "surface-container-high": "#e6e8ea",
-                    "primary-fixed-dim": "#bcc7de",
-                    "on-primary-container": "#79849a",
-                    "on-tertiary-fixed-variant": "#574425",
-                    "on-primary": "#ffffff",
-                    "primary": "#000000",
-                    "surface-container-lowest": "#ffffff",
-                    "inverse-surface": "#2d3133",
-                    "on-surface-variant": "#45464d",
-                    "background": "#f7f9fb",
-                    "on-secondary": "#ffffff",
-                    "on-error": "#ffffff",
-                    "surface-container": "#eceef0",
-                    "on-secondary-fixed": "#0b1c30",
-                    "on-tertiary-fixed": "#271901",
-                    "secondary-container": "#d0e1fb",
-                    "inverse-primary": "#bcc7de",
-                    "secondary-fixed": "#d3e4fe",
-                    "on-primary-fixed-variant": "#3c475a",
-                    "surface-variant": "#e0e3e5",
-                    "tertiary-fixed": "#fcdeb5",
-                    "on-secondary-fixed-variant": "#38485d",
-                    "surface-container-highest": "#e0e3e5",
-                    "primary-fixed": "#d8e3fb",
-                    "inverse-on-surface": "#eff1f3",
-                    "on-tertiary-container": "#98805d",
-                    "on-error-container": "#93000a",
-                    "tertiary": "#000000",
-                    "on-secondary-container": "#54647a",
-                    "error": "#ba1a1a"
+            colors: {
+              "surface-dim": "#121319",
+              "tertiary-fixed-dim": "#ffb960",
+              "tertiary-container": "#ca8103",
+              "on-error": "#690005",
+              "on-tertiary-fixed": "#2a1700",
+              "secondary-fixed-dim": "#00daf3",
+              "primary": "#aec6ff",
+              "surface-container": "#1e1f26",
+              "tertiary": "#ffb960",
+              "primary-fixed-dim": "#aec6ff",
+              "on-tertiary": "#472a00",
+              "inverse-on-surface": "#2f3037",
+              "surface": "#121319",
+              "secondary": "#bdf4ff",
+              "outline": "#8d909e",
+              "surface-variant": "#34343b",
+              "inverse-surface": "#e3e1eb",
+              "on-primary-container": "#00275e",
+              "background": "#121319",
+              "error-container": "#93000a",
+              "surface-bright": "#383940",
+              "primary-fixed": "#d8e2ff",
+              "primary-container": "#5d8ef1",
+              "on-secondary-container": "#00616d",
+              "secondary-container": "#00e3fd",
+              "on-surface": "#e3e1eb",
+              "surface-container-highest": "#34343b",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-secondary-fixed": "#001f24",
+              "surface-container-lowest": "#0d0e14",
+              "on-tertiary-container": "#3e2400",
+              "surface-container-low": "#1a1b22",
+              "on-surface-variant": "#c3c6d4",
+              "surface-container-high": "#292930",
+              "on-secondary": "#00363d",
+              "error": "#ffb4ab",
+              "secondary-fixed": "#9cf0ff",
+              "on-primary-fixed-variant": "#004397",
+              "inverse-primary": "#1e5bba",
+              "on-primary-fixed": "#001a43",
+              "surface-tint": "#aec6ff",
+              "on-error-container": "#ffdad6",
+              "on-primary": "#002e6b",
+              "outline-variant": "#424752",
+              "on-background": "#e3e1eb",
+              "tertiary-fixed": "#ffddb8",
+              "on-tertiary-fixed-variant": "#653e00"
             },
-            "borderRadius": {
-                    "DEFAULT": "0.125rem",
-                    "lg": "0.25rem",
-                    "xl": "0.5rem",
-                    "full": "0.75rem"
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
             },
-            "fontFamily": {
-                    "headline": ["Manrope"],
-                    "body": ["Inter"],
-                    "label": ["Inter"]
-            }
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
           },
         },
       }
     </script>
 <style>
-        body { font-family: 'Inter', sans-serif; }
-        h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
+        body {
+            background-color: #08090F;
+            color: #e3e1eb;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
         .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
         }
     </style>
-</head>
-<body class="bg-surface text-on-surface min-h-screen">
-<!-- SideNavBar Component -->
+<style>
+/* Compat layer — maps old CSS variables to Obsidian tokens */
+:root{
+  --surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;
+  --border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);
+  --text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;
+  --accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);
+  --success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);
+  --danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);
+  --warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.3);
+  --radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;--nav-h:64px;
+  --rose:#ff6b8a;--kpi-yellow:#ffbd2e;
+}
+.compat-layer h1{font-size:1.8rem;font-weight:800;margin-bottom:0.25rem;color:#e3e1eb}
+.compat-layer h2{font-size:1.1rem;font-weight:700;margin-bottom:0.75rem;color:#e3e1eb}
+.compat-layer h3{font-size:0.92rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
+.compat-layer .card,.compat-layer .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
+.compat-layer label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
+.compat-layer input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.compat-layer select,.compat-layer textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
+.compat-layer input:focus,.compat-layer select:focus,.compat-layer textarea:focus{border-color:#5B8DEF}
+.compat-layer .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
+.compat-layer .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
+.compat-layer .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
+.compat-layer .btn-outline:hover{background:rgba(174,198,255,0.08)}
+.compat-layer .btn-success{background:rgba(39,201,63,0.12);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
+.compat-layer .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
+.compat-layer .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
+.compat-layer .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
+.compat-layer .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
+.compat-layer .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+.compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
+.compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
+.compat-layer td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
+.compat-layer tr:hover td{background:rgba(174,198,255,0.02)}
+.compat-layer .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
+.compat-layer .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
+.compat-layer .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
+.compat-layer .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
+.compat-layer .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;margin-bottom:0.3rem}
+.compat-layer .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
+.compat-layer .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
+.compat-layer .csv-banner{background:rgba(255,189,46,0.07);border:1px solid rgba(255,189,46,0.2);color:#ffbd2e;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap}
+.compat-layer .csv-banner a{color:#aec6ff}
+.compat-layer .analytics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+.compat-layer .analytics-widget{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.25rem;text-align:center}
+.compat-layer .widget-value{font-size:2rem;font-weight:800;color:#aec6ff;font-family:'Plus Jakarta Sans',sans-serif}
+.compat-layer .widget-label{font-size:0.72rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.06em;margin-top:0.25rem}
+.compat-layer .widget-sub{font-size:0.7rem;color:#424752;margin-top:0.15rem}
+.compat-layer .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
+.compat-layer .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
+.compat-layer .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
+.compat-layer .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
+.compat-layer .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;margin-left:0.2rem;background:rgba(174,198,255,0.08);color:#aec6ff}
+.compat-layer .badge-escalation{background:rgba(255,180,171,0.1);color:#ffb4ab}
+.compat-layer .badge-whatsapp{background:rgba(39,201,63,0.1);color:#27c93f}
+.compat-layer .badge-email{background:rgba(91,141,239,0.1);color:#5B8DEF}
+.compat-layer .badge-sms{background:rgba(255,189,46,0.1);color:#ffbd2e}
+.compat-layer .draft-text{font-size:0.85rem;line-height:1.6;color:#c3c6d4;white-space:pre-wrap;background:#0d0e14;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.75rem;border:1px solid rgba(66,71,82,0.2)}
+.compat-layer .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
+.compat-layer .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
+.compat-layer .timeline{display:flex;flex-direction:column;gap:0}
+.compat-layer .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
+.compat-layer .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
+.compat-layer .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
+.compat-layer .timeline-text{font-size:0.8rem;color:#8d909e}
+.compat-layer input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
+.compat-layer .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
+.compat-layer .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
+.compat-layer .card-meta{font-size:0.75rem;color:#8d909e}
+.compat-layer .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.compat-layer .stepper{display:flex;flex-direction:column;gap:1.25rem}.compat-layer .step{display:flex;gap:1rem;align-items:flex-start;position:relative}.compat-layer .step::before{content:"";position:absolute;left:13px;top:28px;bottom:-1.25rem;width:2px;background:rgba(174,198,255,0.1);z-index:0}.compat-layer .step:last-child::before{display:none}.compat-layer .step.done::before{background:rgba(39,201,63,0.3)}.compat-layer .step.warn::before{background:rgba(255,189,46,0.3)}.compat-layer .num{width:28px;height:28px;border-radius:50%;background:#0d0e14;border:1px solid rgba(174,198,255,0.2);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;color:#aec6ff;flex-shrink:0;z-index:1}.compat-layer .step.done .num{background:rgba(39,201,63,0.1);border-color:rgba(39,201,63,0.4);color:#27c93f}.compat-layer .step.warn .num{background:rgba(255,189,46,0.1);border-color:rgba(255,189,46,0.4);color:#ffbd2e}.compat-layer .step .body h4{font-size:0.95rem;font-weight:700;color:#e3e1eb;margin-bottom:0.25rem}.compat-layer .step .body p{font-size:0.84rem;color:#8d909e;line-height:1.6;margin:0}
+.compat-layer details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
+.compat-layer code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
+.compat-layer .priority-high{border-left:3px solid #ffb4ab}
+.compat-layer .priority-medium{border-left:3px solid #ffbd2e}
+.compat-layer .priority-low{border-left:3px solid #27c93f}
+.compat-layer .rule-row,.compat-layer .issue-card{background:#0d0e14;border:1px solid rgba(66,71,82,0.3);border-radius:0.75rem;padding:1rem;margin-bottom:0.75rem}
+</style>
+<style>
+/* ── Reservations page specific ── */
+
+/* KPI stat tiles */
+.analytics-widget{
+  background:rgba(13,14,20,0.6);
+  border:1px solid rgba(174,198,255,0.07);
+  border-top:2px solid rgba(91,141,239,0.35);
+  border-radius:0.85rem;
+  padding:1.1rem 1rem 0.9rem;
+  text-align:center;
+  transition:border-color .2s,box-shadow .2s;
+  position:relative;
+  overflow:hidden;
+}
+.analytics-widget::before{
+  content:"";
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(91,141,239,0.06) 0%,transparent 70%);
+  pointer-events:none;
+}
+.analytics-widget:hover{border-top-color:rgba(174,198,255,0.6);box-shadow:0 0 18px rgba(91,141,239,0.12)}
+.widget-value{font-size:1.85rem;font-weight:800;color:#aec6ff;letter-spacing:-0.03em;line-height:1;margin-bottom:0.3rem}
+.widget-label{font-size:0.67rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.09em;font-weight:700}
+.analytics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.75rem;margin-bottom:1.5rem}
+
+/* Toolbar / filter bar */
+.res-toolbar{
+  display:flex;
+  align-items:center;
+  gap:0.6rem;
+  flex-wrap:wrap;
+  background:rgba(13,14,20,0.5);
+  border:1px solid rgba(66,71,82,0.25);
+  border-radius:0.75rem;
+  padding:0.6rem 0.9rem;
+  margin-bottom:1.25rem;
+}
+.res-toolbar label{margin:0;font-size:0.75rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;white-space:nowrap}
+.res-toolbar select{max-width:260px;margin-bottom:0;background:#0d0e14;border-color:rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.38rem 0.7rem;font-size:0.82rem}
+.res-toolbar .spacer{flex:1}
+
+/* CSV upload card */
+.upload-card{
+  border:1.5px dashed rgba(91,141,239,0.3);
+  border-radius:1rem;
+  background:rgba(91,141,239,0.03);
+  padding:1.4rem 1.6rem;
+  margin-bottom:1.25rem;
+  text-align:center;
+  transition:border-color .2s,background .2s;
+}
+.upload-card:hover{border-color:rgba(91,141,239,0.55);background:rgba(91,141,239,0.06)}
+.upload-card h3{font-size:0.95rem;font-weight:700;color:#e3e1eb;margin-bottom:0.3rem}
+.upload-card p{font-size:0.82rem;color:#8d909e;margin-bottom:0.85rem;line-height:1.6}
+.upload-card input[type=file]{color:#c3c6d4;font-size:0.8rem}
+
+/* Manual booking – collapsed by default */
+.manual-details>summary{
+  font-size:0.82rem;
+  font-weight:600;
+  color:#8d909e;
+  cursor:pointer;
+  padding:0.55rem 0.9rem;
+  background:rgba(13,14,20,0.4);
+  border:1px solid rgba(66,71,82,0.25);
+  border-radius:0.65rem;
+  list-style:none;
+  display:flex;
+  align-items:center;
+  gap:0.5rem;
+  transition:color .15s,background .15s;
+  margin-bottom:0;
+}
+.manual-details>summary:hover{color:#aec6ff;background:rgba(174,198,255,0.05)}
+.manual-details[open]>summary{color:#aec6ff;border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-color:transparent}
+.manual-details>summary::before{content:"＋";font-size:0.9rem;transition:transform .2s}
+.manual-details[open]>summary::before{content:"−"}
+.manual-details .manual-body{
+  background:rgba(13,14,20,0.5);
+  border:1px solid rgba(66,71,82,0.25);
+  border-top:none;
+  border-bottom-left-radius:0.65rem;
+  border-bottom-right-radius:0.65rem;
+  padding:1.25rem 1rem 1rem;
+  margin-bottom:1.25rem;
+}
+
+/* What HostAI does accordion */
+.info-details>summary{
+  font-size:0.8rem;font-weight:600;color:#5B8DEF;
+  cursor:pointer;padding:3px 0;
+  list-style:none;display:flex;align-items:center;gap:0.4rem;
+}
+.info-details>summary::before{content:"▶";font-size:0.65rem;transition:transform .2s;display:inline-block}
+.info-details[open]>summary::before{transform:rotate(90deg)}
+.info-panel{
+  background:rgba(13,14,20,0.5);
+  border:1px solid rgba(66,71,82,0.2);
+  border-radius:0.6rem;
+  padding:0.9rem 1rem;
+  margin-top:0.5rem;
+  font-size:0.81rem;
+  line-height:1.9;
+  color:#c3c6d4;
+  margin-bottom:1.25rem;
+}
+
+/* Table toolbar row */
+.table-toolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:0.6rem;
+}
+.table-toolbar h3{font-size:0.78rem;font-weight:700;color:#8d909e;text-transform:uppercase;letter-spacing:0.08em;margin:0}
+
+/* Status badges for table */
+.badge{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:0.67rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
+.badge-confirmed,.badge-ok{background:rgba(39,201,63,0.1);color:#27c93f;border:1px solid rgba(39,201,63,0.25)}
+.badge-cancelled,.badge-bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border:1px solid rgba(255,180,171,0.25)}
+.badge-pending{background:rgba(255,189,46,0.1);color:#ffbd2e;border:1px solid rgba(255,189,46,0.25)}
+.badge-today{background:rgba(91,141,239,0.15);color:#aec6ff;border:1px solid rgba(91,141,239,0.3)}
+
+/* Row highlights */
+tr.checkin-soon td{background:rgba(91,141,239,0.04)}
+tr.checkout-today td{background:rgba(255,189,46,0.04)}
+
+/* Draft cell mini-chips */
+.draft-tick{display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;color:#8d909e;white-space:nowrap}
+.draft-tick.done{color:#27c93f}
+
+/* Pagination */
+.pagination{display:flex;gap:0.35rem;justify-content:center;margin-top:1.25rem;flex-wrap:wrap}
+.pagination a{display:inline-flex;padding:5px 11px;border-radius:0.5rem;font-size:0.78rem;font-weight:600;color:#8d909e;border:1px solid rgba(66,71,82,0.3);text-decoration:none;transition:all .15s}
+.pagination a:hover{color:#aec6ff;border-color:rgba(174,198,255,0.3);background:rgba(174,198,255,0.05)}
+.pagination a.active{color:#002e6b;background:linear-gradient(135deg,#5B8DEF,#aec6ff);border-color:transparent}
+
+/* Alert / notification banners */
+.alert{padding:0.65rem 1rem;border-radius:0.6rem;font-size:0.83rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.6rem}
+.alert-success{background:rgba(39,201,63,0.08);border:1px solid rgba(39,201,63,0.25);color:#27c93f}
+.alert-error{background:rgba(255,180,171,0.08);border:1px solid rgba(255,180,171,0.25);color:#ffb4ab}
+
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<!-- SideNavBar Shell -->
 <!-- Mobile hamburger -->
-<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<!-- Sidebar overlay for mobile -->
-<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
-<aside id="sidebar" class="fixed left-0 top-0 h-full flex flex-col p-6 z-40 bg-[#f2f4f6] dark:bg-slate-900/50 w-64 -translate-x-full md:translate-x-0 transition-transform duration-300">
-<div class="mb-10">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary">
-<span class="material-symbols-outlined" data-icon="apartment">apartment</span>
+<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
+<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
+<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
 </div>
-<div>
-<div class="text-lg font-black text-slate-900 dark:text-slate-50">Estate Manager</div>
-<div class="text-[10px] font-label uppercase tracking-widest text-on-surface-variant opacity-60">Portfolio Lead</div>
-</div>
-</div>
-</div>
-<nav class="flex-1 space-y-2">
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-[#e0e3e5] dark:hover:bg-slate-800/50 transition-all rounded-lg" href="/dashboard">
+<span>HostAI</span>
+</a>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-<span class="font-label uppercase tracking-widest text-[11px]">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 text-slate-900 dark:text-slate-50 font-bold bg-[#ffffff] dark:bg-slate-800 rounded-lg px-4 py-3 scale-[0.98] transition-transform" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
-<span class="font-label uppercase tracking-widest text-[11px]">Bookings</span>
-</a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-[#e0e3e5] dark:hover:bg-slate-800/50 transition-all rounded-lg" href="/reservations">
-<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
-<span class="font-label uppercase tracking-widest text-[11px]">Occupancy</span>
-</a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-[#e0e3e5] dark:hover:bg-slate-800/50 transition-all rounded-lg" href="/admin/overview">
-<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
-<span class="font-label uppercase tracking-widest text-[11px]">Operations</span>
-</a>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+                Conversations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+                Reservations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Activity
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+                Revenue & ROI
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+                Voice AI
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+                Operations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+                Admin
+            </a>
+{% endif %}
 </nav>
-<div class="mt-auto space-y-2">
-<button class="w-full py-4 mb-4 bg-primary text-on-primary rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary-container transition-colors">
-<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
-                New Reservation
-            </button>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 hover:bg-[#e0e3e5] transition-all rounded-lg" href="/logout">
-<span class="material-symbols-outlined" data-icon="help">help</span>
-<span class="font-label uppercase tracking-widest text-[11px]">Help Center</span>
-</a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 hover:bg-[#e0e3e5] transition-all rounded-lg" href="/logout">
-<span class="material-symbols-outlined" data-icon="logout">logout</span>
-<span class="font-label uppercase tracking-widest text-[11px]">Logout</span>
-</a>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ tenant.first_name or "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+</div>
+</div>
+<form method="post" action="/logout">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+    <span class="material-symbols-outlined text-sm">logout</span>
+    Sign Out
+  </button>
+</form>
 </div>
 </aside>
-<!-- Main Content Area -->
-<main class="ml-64 min-h-screen">
-<!-- TopNavBar Component -->
-<header class="flex justify-between items-center w-full px-8 py-4 bg-[#f7f9fb] dark:bg-slate-950 sticky top-0 z-30">
+
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<form class="w-full" method="get" action="/reservations">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, properties..." type="text" name="q" value="{{ search_query or '' }}" />
+</div>
+</form>
+</div>
 <div class="flex items-center gap-6">
-<h1 class="text-xl font-bold tracking-tighter text-slate-900 dark:text-slate-50">Reservations</h1>
-<div class="relative flex items-center">
-<span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-lg" data-icon="search">search</span>
-<input class="bg-surface-container-high border-none rounded-xl pl-10 pr-4 py-2 text-sm w-64 focus:ring-1 focus:ring-primary" placeholder="Search guests or IDs..." type="text"/>
-</div>
-</div>
-<div class="flex items-center gap-4">
-<button class="p-2 text-slate-500 hover:text-slate-900 transition-colors">
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
 <span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
 </button>
-<button class="p-2 text-slate-500 hover:text-slate-900 transition-colors">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
-</button>
-<div class="h-8 w-8 rounded-full bg-slate-200 overflow-hidden ml-2">
-<img alt="Manager Profile" class="w-full h-full object-cover" data-alt="Close up portrait of a professional male estate manager with a kind smile, neutral studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbJ1EX-DFV2RmFE-Yi1uUhqOyTJqDmzJWB0bc3MIk7YtsWNP3Lp2LnPSCjyRy5SInpvd8TDRNfonb2oCWsv21glXiHDG7d6u49_ZGXFT1R991zNLCQQQgCVIneo1jlsIJu4YolhZWRnjIOSaoSDooQ2u4MozgDD36vdTPuNcuZ_PdrJAx7-QI1bBCC58Nw394g7Smcrj9Qe2Edvm2DfOKOcB4HnO8zp12f3JEIu4BzyHHRe9verJ-YTtaAwsYiALsEf4T4ERKjPOUY"/>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Account</span>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+</div>
 </div>
 </div>
 </header>
-<!-- Content Canvas -->
-<div class="p-8">
-<!-- Asymmetric Header & Filter Section -->
-<div class="grid grid-cols-12 gap-8 mb-10">
-<div class="col-span-12 lg:col-span-4">
-<div class="text-[11px] font-label uppercase tracking-widest text-on-primary-container mb-2">Portfolio Overview</div>
-<h2 class="text-4xl font-extrabold tracking-tight text-on-surface leading-tight">Managing Live Reservations.</h2>
-<p class="mt-4 text-on-surface-variant max-w-sm leading-relaxed">View, filter, and modify guest stays across your entire residential portfolio in real-time.</p>
-</div>
-<div class="col-span-12 lg:col-span-8 flex flex-col justify-end">
-<div class="bg-surface-container-low p-6 rounded-xl flex flex-wrap items-center gap-4">
-<div class="flex flex-col gap-1 flex-1 min-w-[200px]">
-<label class="text-[10px] font-bold uppercase text-on-surface-variant tracking-tighter">Property Selection</label>
-<select class="bg-surface-container-lowest border-none rounded-lg py-2.5 px-3 text-sm focus:ring-1 focus:ring-primary shadow-sm">
-<option>All Properties</option>
 
-</select>
+<!-- Main Content Canvas -->
+<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen">
+<div class="mb-8">
+  <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Reservations</h1>
+  <p class="text-slate-400 text-sm">Upload your Airbnb CSV and manage guest room mappings</p>
 </div>
-<div class="flex flex-col gap-1 flex-1 min-w-[200px]">
-<label class="text-[10px] font-bold uppercase text-on-surface-variant tracking-tighter">Date Range</label>
-<div class="relative">
-<input class="w-full bg-surface-container-lowest border-none rounded-lg py-2.5 px-3 pl-10 text-sm focus:ring-1 focus:ring-primary shadow-sm" type="text" value="Oct 01 - Oct 31, 2023"/>
-<span class="material-symbols-outlined absolute left-3 top-2.5 text-lg text-on-surface-variant" data-icon="event">event</span>
+<div class="compat-layer">
+
+<div class="res-toolbar">
+  <label>Property</label>
+  <select name="property" form="prop-filter" style="max-width:260px;margin-bottom:0">
+    <option value="">All properties</option>
+    {% for property_name in property_options or [] %}
+    <option value="{{ property_name }}" {% if property_name == selected_property %}selected{% endif %}>{{ property_name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" form="prop-filter" class="btn btn-outline btn-sm">Apply</button>
+  {% if selected_property %}
+  <a href="/reservations" class="btn btn-outline btn-sm">Clear</a>
+  <span class="chip">{{ selected_property }}</span>
+  {% endif %}
 </div>
+<form id="prop-filter" method="get" action="/reservations"></form>
+
+
+<!-- Analytics -->
+{% if total > 0 %}
+<div class="analytics-row">
+  <div class="analytics-widget">
+    <div class="widget-value">{{ upcoming }}</div>
+    <div class="widget-label">Upcoming check-ins</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">${{ "%.0f"|format(month_revenue) }}</div>
+    <div class="widget-label">Revenue this month</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ occupancy_pct }}%</div>
+    <div class="widget-label">Occupancy this month</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ total }}</div>
+    <div class="widget-label">Total reservations</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ activation_count }}</div>
+    <div class="widget-label">Active arrival mappings</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{% if avg_review_rating %}{{ "%.2f"|format(avg_review_rating) }}{% else %}—{% endif %}</div>
+    <div class="widget-label">Average review rating</div>
+  </div>
+  <div class="analytics-widget">
+    <div class="widget-value">{{ sentiment_summary.trend }}</div>
+    <div class="widget-label">Guest sentiment trend</div>
+  </div>
 </div>
-<div class="flex flex-col gap-1 w-full sm:w-auto">
-<label class="text-[10px] font-bold uppercase text-on-surface-variant tracking-tighter">Status</label>
-<div class="flex gap-2">
-<button class="px-4 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-bold shadow-md" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">All</button>
-<button class="px-4 py-2.5 bg-surface-container-lowest hover:bg-surface-container-highest transition-colors rounded-lg text-sm font-medium border border-outline-variant/10" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Confirmed</button>
-<button class="px-4 py-2.5 bg-surface-container-lowest hover:bg-surface-container-highest transition-colors rounded-lg text-sm font-medium border border-outline-variant/10" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Pending</button>
+{% endif %}
+
+
+{% if recent_batches %}
+<div class="card" style="margin-bottom:1rem">
+  <h2 style="margin-bottom:0.5rem">Recent intake batches</h2>
+  <table>
+    <thead>
+      <tr><th>Source</th><th>Name</th><th>Status</th><th>Imported</th><th>Created</th></tr>
+    </thead>
+    <tbody>
+      {% for batch in recent_batches %}
+      <tr>
+        <td>{{ batch.source_kind|upper }}</td>
+        <td>{{ batch.source_name or '—' }}</td>
+        <td>{{ batch.status }}</td>
+        <td>{{ batch.rows_imported }}/{{ batch.rows_total }}</td>
+        <td>{{ batch.created_at.strftime('%b %d %H:%M') if batch.created_at else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
+{% endif %}
+
+
+{% if request.query_params.get('imported') %}
+<div class="alert alert-success">
+  ✓ {{ request.query_params.get('imported') }} new reservation(s) imported successfully.
 </div>
+{% endif %}
+{% if request.query_params.get('error') %}
+<div class="alert alert-error">
+  Upload error: {{ request.query_params.get('error') | replace('_', ' ') }}. Please try again with a valid Airbnb CSV file.
 </div>
+{% endif %}
+{% if request.query_params.get('context_updated') %}
+<div class="alert alert-success">
+  ✓ Reservation guest context saved. HostAI will now use the mapped phone number and room / unit info in guest chat.
 </div>
+{% endif %}
+{% if request.query_params.get('checkin_sent') == 'whatsapp' %}
+<div class="alert alert-success">
+  ✅ Check-in triggered — welcome message sent to the guest via <strong>WhatsApp</strong>.
 </div>
-<!-- Reservations List Table (No-Line Style) -->
-<div class="bg-surface-container-lowest rounded-xl overflow-hidden">
-<table class="w-full text-left border-collapse">
-<thead>
-<tr class="bg-surface-container-low">
-<th class="py-5 px-8 text-[11px] font-label uppercase tracking-widest text-on-surface-variant">Guest Name</th>
-<th class="py-5 px-6 text-[11px] font-label uppercase tracking-widest text-on-surface-variant">Property</th>
-<th class="py-5 px-6 text-[11px] font-label uppercase tracking-widest text-on-surface-variant">Stay Period</th>
-<th class="py-5 px-6 text-[11px] font-label uppercase tracking-widest text-on-surface-variant">Status</th>
-<th class="py-5 px-6 text-[11px] font-label uppercase tracking-widest text-on-surface-variant text-right">Revenue</th>
-<th class="py-5 px-8"></th>
-</tr>
-</thead>
-<tbody class="divide-y divide-surface-container">
-<!-- Row 1 -->
-<tr class="group hover:bg-surface-container-low transition-colors">
-<td class="py-6 px-8">
-<div class="flex items-center gap-4">
-<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-sm">JS</div>
-<div>
-<div class="font-bold text-on-surface">Julianne Smith</div>
-<div class="text-xs text-on-surface-variant">ID: #RES-9402</div>
+{% elif request.query_params.get('checkin_sent') == 'sms' %}
+<div class="alert alert-success">
+  ✅ Check-in triggered — welcome message sent to the guest via <strong>SMS</strong>.
 </div>
+{% elif request.query_params.get('checkin_sent') == 'failed' %}
+<div class="alert alert-error">
+  ⚠️ Check-in triggered but the welcome message could not be delivered. Check your WhatsApp/SMS configuration in <a href="/conversations?tab=settings" style="color:#aec6ff">Messaging Settings</a>.
 </div>
-</td>
-<td class="py-6 px-6">
-<div class="text-sm font-medium text-on-surface">your property</div>
-<div class="text-[10px] text-on-surface-variant">Suite 402</div>
-</td>
-<td class="py-6 px-6">
-<div class="text-sm font-medium text-on-surface">Oct 12 — 18</div>
-<div class="text-xs text-on-surface-variant">6 Nights</div>
-</td>
-<td class="py-6 px-6">
-<span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-[11px] font-bold rounded-full uppercase tracking-tighter">Confirmed</span>
-</td>
-<td class="py-6 px-6 text-right">
-<div class="text-sm font-bold text-on-surface">$3,420.00</div>
-<div class="text-[10px] text-on-surface-variant">Paid via Stripe</div>
-</td>
-<td class="py-6 px-8 text-right">
-<button class="p-2 hover:bg-surface-container-highest rounded-lg transition-colors">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 2 -->
-<tr class="group hover:bg-surface-container-low transition-colors">
-<td class="py-6 px-8">
-<div class="flex items-center gap-4">
-<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed font-bold text-sm">MR</div>
-<div>
-<div class="font-bold text-on-surface">Marcus Reed</div>
-<div class="text-xs text-on-surface-variant">ID: #RES-8821</div>
+{% endif %}
+
+<!-- Upload card -->
+<div class="upload-card">
+  <h3>Upload Airbnb Reservation CSV</h3>
+  <p>
+    On Airbnb → <strong>Reservations</strong> → <strong>Export CSV</strong>.<br>
+    Upload here twice a day for best results. CSV stays supported for hosts without a PMS, and it remains the fallback when PMS sync is unavailable.
+  </p>
+  <form method="post" action="/reservations/upload" enctype="multipart/form-data" style="display:inline-flex;gap:0.75rem;align-items:center;flex-wrap:wrap;justify-content:center">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <input type="file" name="csv_file" accept=".csv" required style="width:auto;margin:0">
+    <button type="submit" class="btn btn-primary">Upload CSV</button>
+  </form>
+  <p style="font-size:0.75rem;color:var(--text-3);margin-top:0.75rem;margin-bottom:0">
+    Existing reservations are updated (not duplicated). Cancelled bookings are flagged automatically.
+  </p>
 </div>
+
+<details class="manual-details" style="margin-bottom:1.25rem">
+  <summary>Add a manual booking</summary>
+  <div class="manual-body">
+    <p class="help-text" style="margin-top:0;margin-bottom:1rem">Use this only when CSV or PMS intake is unavailable.</p>
+    <form method="post" action="/reservations/manual">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <div class="form-row">
+        <div>
+          <label>Guest name</label>
+          <input type="text" name="guest_name" placeholder="Jane Doe" required>
+        </div>
+        <div>
+          <label>Booking ref</label>
+          <input type="text" name="confirmation_code" placeholder="Optional">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Property</label>
+          <input type="text" name="listing_name" placeholder="Beach House">
+        </div>
+        <div>
+          <label>Room / unit</label>
+          <input type="text" name="unit_identifier" placeholder="12A">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Guest phone</label>
+          <input type="text" name="guest_phone" placeholder="+91 98765 43210">
+        </div>
+        <div>
+          <label>Guests</label>
+          <input type="text" name="guests_count" placeholder="2">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Check-in</label>
+          <input type="date" name="checkin">
+        </div>
+        <div>
+          <label>Check-out</label>
+          <input type="date" name="checkout">
+        </div>
+      </div>
+      <label>Notes</label>
+      <textarea name="notes" rows="2" placeholder="Optional"></textarea>
+      <button type="submit" class="btn btn-outline btn-sm">Add booking</button>
+    </form>
+  </div>
+</details>
+
+
+
+<details class="info-details" style="margin-bottom:1.5rem">
+  <summary>What HostAI does with your reservations</summary>
+  <div class="info-panel">
+    <strong>Guest context enrichment</strong> — Room/unit, dates and nights injected into every AI reply.<br>
+    <strong>Pre-arrival</strong> — Welcome draft auto-generated 7 days before check-in.<br>
+    <strong>Check-out</strong> — Thank-you + review request drafted on checkout day.<br>
+    <strong>Cleaner brief</strong> — Full cleaning checklist drafted on checkout day.<br>
+    <strong>Review reminder</strong> — Nudge sent 14 days after checkout.
+  </div>
+</details>
+
+<!-- Export + check-in link notification -->
+{% if request.query_params.get('checkin_link') %}
+<div class="alert alert-success" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+  ✓ Check-in link generated:
+  <code style="font-size:0.82rem;word-break:break-all">{{ request.url.scheme }}://{{ request.headers.get('host', '') }}/checkin/{{ request.query_params.get('checkin_link') }}</code>
+  <button class="btn btn-outline btn-sm copy-link-btn" data-link="{{ request.url.scheme }}://{{ request.headers.get('host', '') }}/checkin/{{ request.query_params.get('checkin_link') }}">Copy link</button>
 </div>
-</td>
-<td class="py-6 px-6">
-<div class="text-sm font-medium text-on-surface">your property</div>
-<div class="text-[10px] text-on-surface-variant">Main Floor</div>
-</td>
-<td class="py-6 px-6">
-<div class="text-sm font-medium text-on-surface">Oct 15 — 22</div>
-<div class="text-xs text-on-surface-variant">7 Nights</div>
-</td>
-<td class="py-6 px-6">
-<span class="px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed text-[11px] font-bold rounded-full uppercase tracking-tighter">Pending</span>
-</td>
-<td class="py-6 px-6 text-right">
-<div class="text-sm font-bold text-on-surface">$5,800.00</div>
-<div class="text-[10px] text-on-surface-variant">Awaiting Transfer</div>
-</td>
-<td class="py-6 px-8 text-right">
-<button class="p-2 hover:bg-surface-container-highest rounded-lg transition-colors">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 3 -->
-<tr class="group hover:bg-surface-container-low transition-colors">
-<td class="py-6 px-8">
-<div class="flex items-center gap-4">
-<div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-on-error-container font-bold text-sm">EL</div>
-<div>
-<div class="font-bold text-on-surface">Elena Lopez</div>
-<div class="text-xs text-on-surface-variant">ID: #RES-7731</div>
+{% endif %}
+
+<!-- Reservations table -->
+{% if rows %}
+<div class="table-toolbar">
+  <h3>{{ rows|length }} reservation{{ 's' if rows|length != 1 else '' }}</h3>
+  <a href="/reservations/export.csv{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" class="btn btn-outline btn-sm">⬇ Export</a>
 </div>
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead>
+      <tr>
+        <th>Guest</th>
+        <th>Property</th>
+        <th>Check-in</th>
+        <th>Check-out</th>
+        <th>Nights</th>
+        <th>Guests</th>
+        <th>Payout</th>
+        <th>Review</th>
+        <th>Status</th>
+        <th>Guest context</th>
+        <th>Drafts</th>
+        <th>Portal</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+    {% set is_today_checkout = r.checkout == today %}
+    {% set is_soon = r.checkin and (r.checkin - today).days <= 3 and (r.checkin - today).days >= 0 %}
+    <tr class="{% if is_today_checkout %}checkout-today{% elif is_soon %}checkin-soon{% endif %}">
+      <td>
+        <strong>{{ r.guest_name }}</strong>
+        <div style="font-size:0.72rem;color:var(--text-3);font-family:monospace">{{ r.confirmation_code }}</div>
+      </td>
+      <td style="font-size:0.82rem">{{ r.listing_name or '—' }}</td>
+      <td style="font-size:0.82rem;white-space:nowrap">
+        {% if r.checkin %}
+          {{ r.checkin.strftime('%b %d, %Y') }}
+          {% if r.checkin == today %}<span class="badge badge-ok" style="margin-left:4px">today</span>{% endif %}
+          {% if is_soon and r.checkin != today %}<span style="font-size:0.7rem;color:#856404">soon</span>{% endif %}
+        {% else %}—{% endif %}
+      </td>
+      <td style="font-size:0.82rem;white-space:nowrap">
+        {% if r.checkout %}
+          {{ r.checkout.strftime('%b %d, %Y') }}
+          {% if is_today_checkout %}<span class="badge badge-ok" style="margin-left:4px">today</span>{% endif %}
+        {% else %}—{% endif %}
+      </td>
+      <td style="text-align:center">{{ r.nights or '—' }}</td>
+      <td style="text-align:center">{{ r.guests_count or '—' }}</td>
+      <td style="text-align:right;font-size:0.85rem">
+        {% if r.payout_usd %}${{ "%.2f"|format(r.payout_usd) }}{% else %}—{% endif %}
+      </td>
+      <td style="font-size:0.78rem;min-width:120px">
+        {% if r.review_rating is not none %}
+        <div><strong>{{ "%.1f"|format(r.review_rating) }}</strong> stars</div>
+        {% if r.review_sentiment %}<div style="color:var(--text-3)">{{ r.review_sentiment }}</div>{% endif %}
+        {% else %}
+        <span style="color:#adb5bd">No review yet</span>
+        {% endif %}
+      </td>
+      <td>
+        <span class="badge badge-{{ r.status }}">{{ r.status }}</span>
+      </td>
+      <td style="font-size:0.78rem;min-width:220px">
+        <form method="post" action="/reservations/{{ r.id }}/context{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="display:flex;flex-direction:column;gap:0.45rem">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <input type="tel" name="guest_phone" value="{{ r.guest_phone or '' }}" placeholder="Guest phone"
+                 style="width:100%;padding:6px 8px;font-size:0.78rem">
+          <input type="text" name="unit_identifier" value="{{ r.unit_identifier or '' }}" placeholder="Room / unit / property #"
+                 style="width:100%;padding:6px 8px;font-size:0.78rem">
+          <div style="display:flex;gap:0.35rem;flex-wrap:wrap">
+            <button type="submit" class="btn btn-outline btn-sm" style="align-self:flex-start">Save context</button>
+          </div>
+        </form>
+        <form method="post" action="/reservations/{{ r.id }}/activate{% if selected_property %}?property={{ selected_property|replace(' ', '%20') }}{% endif %}" style="margin-top:0.45rem;display:flex;flex-direction:column;gap:0.35rem">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <input type="hidden" name="guest_phone" value="{{ r.guest_phone or '' }}">
+          <input type="hidden" name="unit_identifier" value="{{ r.unit_identifier or '' }}">
+          <input type="text" name="notes" placeholder="Activation note (optional)"
+                 style="width:100%;padding:6px 8px;font-size:0.78rem">
+          <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-start">Activate guest bot</button>
+        </form>
+      </td>
+      <td style="font-size:0.72rem;color:var(--text-3);white-space:nowrap">
+        {% if r.pre_arrival_sent %}✓ pre-arrival<br>{% endif %}
+        {% if r.cleaner_brief_sent %}✓ cleaner<br>{% endif %}
+        {% if r.checkout_msg_sent %}✓ checkout<br>{% endif %}
+        {% if r.review_reminder_sent %}✓ review<br>{% endif %}
+        {% if not r.pre_arrival_sent and not r.cleaner_brief_sent and not r.checkout_msg_sent and not r.review_reminder_sent %}
+        <span style="color:#adb5bd">pending</span>
+        {% endif %}
+      </td>
+      <td style="white-space:nowrap">
+        {% if r.checkin_token %}
+          <a href="/checkin/{{ r.checkin_token }}" target="_blank"
+             class="btn btn-outline btn-sm" title="Open guest check-in portal">🔗 View</a>
+        {% else %}
+          <form method="post" action="/reservations/{{ r.id }}/checkin-link" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="btn btn-outline btn-sm" title="Generate check-in link for guest">
+              + Link
+            </button>
+          </form>
+        {% endif %}
+        <!-- Check-in Now button -->
+        {% if r.guest_phone and r.status == 'confirmed' %}
+        <button
+          type="button"
+          class="btn btn-success btn-sm"
+          style="margin-top:0.35rem;display:flex;align-items:center;gap:4px"
+          onclick="openCheckinModal({{ r.id }}, '{{ r.guest_name|replace("'", "\\'") }}', '{{ r.guest_phone }}', '{{ request.state.csrf_token }}')"
+          title="Send welcome WhatsApp/SMS to guest now">
+          <span style="font-size:1rem">🏠</span> Check-in Now
+        </button>
+        {% elif r.status == 'confirmed' %}
+        <span style="display:block;margin-top:0.35rem;font-size:0.7rem;color:#8d909e">ℹ Set phone to check-in</span>
+        {% endif %}
+        <div style="margin-top:0.4rem;display:flex;gap:0.35rem;flex-wrap:wrap">
+          <a href="/reservations/{{ r.id }}/timeline" class="btn btn-outline btn-sm">Timeline</a>
+          {% if issue_counts.get(r.id) %}
+          <span class="chip" style="background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)">{{ issue_counts.get(r.id) }} issue{{ 's' if issue_counts.get(r.id) != 1 else '' }}</span>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
 </div>
-</td>
-<td class="py-6 px-6">
-<div class="text-sm font-medium text-on-surface">your property</div>
-<div class="text-[10px] text-on-surface-variant">Guest House B</div>
-</td>
-<td class="py-6 px-6">
-<div class="text-sm font-medium text-on-surface">Oct 10 — 12</div>
-<div class="text-xs text-on-surface-variant">2 Nights</div>
-</td>
-<td class="py-6 px-6">
-<span class="px-3 py-1 bg-error text-on-error text-[11px] font-bold rounded-full uppercase tracking-tighter">Cancelled</span>
-</td>
-<td class="py-6 px-6 text-right">
-<div class="text-sm font-bold text-on-surface">$0.00</div>
-<div class="text-[10px] text-on-error">Refunded</div>
-</td>
-<td class="py-6 px-8 text-right">
-<button class="p-2 hover:bg-surface-container-highest rounded-lg transition-colors">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 4 -->
-<tr class="group hover:bg-surface-container-low transition-colors">
-<td class="py-6 px-8">
-<div class="flex items-center gap-4">
-<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed font-bold text-sm">DB</div>
-<div>
-<div class="font-bold text-on-surface">David Blackwell</div>
-<div class="text-xs text-on-surface-variant">ID: #RES-9455</div>
+
+<!-- Pagination -->
+{% if pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}<a href="/reservations?page={{ page - 1 }}{% if selected_property %}&property={{ selected_property|replace(' ', '%20') }}{% endif %}">← Prev</a>{% endif %}
+  {% for p in range(1, pages + 1) %}
+    <a href="/reservations?page={{ p }}{% if selected_property %}&property={{ selected_property|replace(' ', '%20') }}{% endif %}" class="{% if p == page %}active{% endif %}">{{ p }}</a>
+  {% endfor %}
+  {% if page < pages %}<a href="/reservations?page={{ page + 1 }}{% if selected_property %}&property={{ selected_property|replace(' ', '%20') }}{% endif %}">Next →</a>{% endif %}
 </div>
+{% endif %}
+
+{% else %}
+<div class="empty">
+  <div class="empty-icon">📋</div>
+  <p>No reservations imported yet.</p>
+  <p style="font-size:0.82rem;margin-top:0.4rem">Upload your Airbnb CSV above to get started.</p>
 </div>
-</td>
-<td class="py-6 px-6">
-<div class="text-sm font-medium text-on-surface">your property</div>
-<div class="text-[10px] text-on-surface-variant">Studio 101</div>
-</td>
-<td class="py-6 px-6">
-<div class="text-sm font-medium text-on-surface">Oct 20 — 25</div>
-<div class="text-xs text-on-surface-variant">5 Nights</div>
-</td>
-<td class="py-6 px-6">
-<span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-[11px] font-bold rounded-full uppercase tracking-tighter">Confirmed</span>
-</td>
-<td class="py-6 px-6 text-right">
-<div class="text-sm font-bold text-on-surface">$2,100.00</div>
-<div class="text-[10px] text-on-surface-variant">Pre-authorized</div>
-</td>
-<td class="py-6 px-8 text-right">
-<button class="p-2 hover:bg-surface-container-highest rounded-lg transition-colors">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-</tbody>
-</table>
+{% endif %}
+
+{% block scripts %}
+<!-- Check-in Now confirmation modal -->
+<div id="checkin-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+  <div style="background:#1a1b22;border:1px solid rgba(174,198,255,0.15);border-radius:1rem;padding:2rem;max-width:420px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,0.5)">
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem">
+      <span style="font-size:1.8rem">🏠</span>
+      <div>
+        <h3 style="font-size:1rem;font-weight:700;color:#e3e1eb;margin:0">Check-in Now</h3>
+        <p style="font-size:0.78rem;color:#8d909e;margin:0">Send welcome message to guest</p>
+      </div>
+    </div>
+    <div style="background:#0d0e14;border-radius:0.6rem;padding:0.85rem 1rem;margin-bottom:1.25rem;font-size:0.84rem;color:#c3c6d4;line-height:1.7">
+      This will immediately send a <strong style="color:#aec6ff">WhatsApp or SMS</strong> welcome message to:<br>
+      <strong id="modal-guest-name" style="color:#e3e1eb"></strong><br>
+      <span id="modal-guest-phone" style="font-family:monospace;font-size:0.78rem;color:#8d909e"></span>
+    </div>
+    <p style="font-size:0.76rem;color:#8d909e;margin-bottom:1.25rem">The message includes property details, check-out date, and an invitation to chat with the AI host.</p>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end">
+      <button onclick="closeCheckinModal()" class="btn btn-outline btn-sm">Cancel</button>
+      <form id="checkin-now-form" method="post" style="display:inline">
+        <input type="hidden" id="checkin-now-csrf" name="csrf_token" value="">
+        <button type="submit" class="btn btn-success btn-sm" style="font-weight:700">✓ Yes, send welcome message</button>
+      </form>
+    </div>
+  </div>
 </div>
-<!-- Pagination Section -->
-<div class="mt-8 flex items-center justify-between px-2">
-<div class="text-xs font-medium text-on-surface-variant">
-                    Showing <span class="text-on-surface font-bold">1-4</span> of <span class="text-on-surface font-bold">128</span> reservations
-                </div>
-<div class="flex items-center gap-1">
-<button class="p-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant">
-<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
-</button>
-<button class="w-8 h-8 rounded-lg bg-primary text-on-primary text-xs font-bold" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white')); this.classList.add('bg-blue-600','text-white')">1</button>
-<button class="w-8 h-8 rounded-lg hover:bg-surface-container-high transition-colors text-xs font-bold text-on-surface-variant" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white')); this.classList.add('bg-blue-600','text-white')">2</button>
-<button class="w-8 h-8 rounded-lg hover:bg-surface-container-high transition-colors text-xs font-bold text-on-surface-variant" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white')); this.classList.add('bg-blue-600','text-white')">3</button>
-<span class="px-2 text-on-surface-variant">...</span>
-<button class="w-8 h-8 rounded-lg hover:bg-surface-container-high transition-colors text-xs font-bold text-on-surface-variant" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white')); this.classList.add('bg-blue-600','text-white')">32</button>
-<button class="p-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant">
-<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
-</button>
-</div>
-</div>
+<script nonce="{{ request.state.csp_nonce }}">
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('copy-link-btn')) {
+        const link = e.target.getAttribute('data-link');
+        navigator.clipboard.writeText(link);
+        const oldText = e.target.textContent;
+        e.target.textContent = 'Copied!';
+        setTimeout(() => e.target.textContent = oldText, 1500);
+    }
+});
+function openCheckinModal(reservationId, guestName, guestPhone, csrfToken) {
+  document.getElementById('modal-guest-name').textContent = guestName;
+  document.getElementById('modal-guest-phone').textContent = guestPhone;
+  document.getElementById('checkin-now-form').action = '/reservations/' + reservationId + '/checkin-now';
+  document.getElementById('checkin-now-csrf').value = csrfToken;
+  const modal = document.getElementById('checkin-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => modal.style.opacity = '1', 10);
+}
+function closeCheckinModal() {
+  document.getElementById('checkin-modal').style.display = 'none';
+}
+document.getElementById('checkin-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeCheckinModal();
+});
+</script>
+{%- endblock %}
 </div>
 </main>
-</body></html>
+{%- endblock %}
+{%- endblock %}

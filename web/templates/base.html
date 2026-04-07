@@ -1,283 +1,797 @@
 <!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0, user-scalable=yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>{% block title %}HostAI — Intelligent Guest Communication{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200;12..96,300;12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@1.9.12" nonce="{{ request.state.csp_nonce }}"></script>
+  <link rel="stylesheet" href="/static/css/design-tokens.css">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <style>
+    /* Tooltip styling */
+    .tooltip-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.1rem;
+      height: 1.1rem;
+      cursor: help;
+      transition: all 0.2s ease;
+    }
+    .tooltip-trigger:hover {
+      opacity: 1;
+    }
+    .tooltip-container {
+      position: relative;
+      display: inline-block;
+    }
+    .tooltip-content {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+      text-align: center;
+      padding: 0.6rem 0.8rem;
+      border-radius: 0.5rem;
+      font-size: 0.75rem;
+      white-space: normal;
+      max-width: 220px;
+      word-wrap: break-word;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      border: 1px solid rgba(174, 198, 255, 0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+    }
+    .tooltip-content::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #1a1a1a transparent transparent transparent;
+    }
+    .tooltip-container:hover .tooltip-content {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+  <!-- Global toast notification styles -->
+  <style>
+    #global-toast {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      max-width: 400px;
+      padding: 1rem 1.5rem;
+      border-radius: 0.75rem;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      border: 1px solid rgba(174, 198, 255, 0.2);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      z-index: 9999;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      transform: translateY(-10px);
+    }
+    #global-toast.show {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #global-toast.success { border-left: 4px solid #10b981; }
+    #global-toast.error { border-left: 4px solid #ef4444; }
+    #global-toast.info { border-left: 4px solid #3b82f6; }
+    #global-toast.warning { border-left: 4px solid #f59e0b; }
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Architect | Enterprise Portal</title>
-<!-- Google Fonts: Manrope -->
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<!-- Material Symbols Outlined -->
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            "colors": {
-                    "secondary-fixed-dim": "#c7d5ed",
-                    "surface": "#f7f9fb",
-                    "on-tertiary-fixed": "#373851",
-                    "surface-container-highest": "#d9e4ea",
-                    "tertiary-container": "#d9d7f8",
-                    "on-primary-fixed-variant": "#535b71",
-                    "on-background": "#2a3439",
-                    "on-secondary-container": "#455367",
-                    "tertiary-fixed-dim": "#cbc9e9",
-                    "on-primary-fixed": "#373f54",
-                    "error": "#9f403d",
-                    "surface-container": "#e8eff3",
-                    "surface-variant": "#d9e4ea",
-                    "tertiary-fixed": "#d9d7f8",
-                    "tertiary": "#5d5d78",
-                    "secondary-fixed": "#d5e3fc",
-                    "on-surface-variant": "#566166",
-                    "secondary-container": "#d5e3fc",
-                    "on-primary": "#f7f7ff",
-                    "inverse-primary": "#dae2fd",
-                    "primary-container": "#dae2fd",
-                    "outline": "#717c82",
-                    "background": "#f7f9fb",
-                    "on-tertiary": "#fbf7ff",
-                    "primary": "#565e74",
-                    "on-tertiary-container": "#4a4a65",
-                    "surface-tint": "#565e74",
-                    "primary-dim": "#4a5268",
-                    "on-error-container": "#752121",
-                    "on-secondary": "#f8f8ff",
-                    "on-secondary-fixed": "#324053",
-                    "surface-container-low": "#f0f4f7",
-                    "on-secondary-fixed-variant": "#4e5c71",
-                    "surface-container-lowest": "#ffffff",
-                    "surface-bright": "#f7f9fb",
-                    "secondary": "#526074",
-                    "on-error": "#fff7f6",
-                    "surface-container-high": "#e1e9ee",
-                    "primary-fixed-dim": "#ccd4ee",
-                    "inverse-surface": "#0b0f10",
-                    "primary-fixed": "#dae2fd",
-                    "on-primary-container": "#4a5167",
-                    "error-dim": "#4e0309",
-                    "on-tertiary-fixed-variant": "#54546f",
-                    "inverse-on-surface": "#9a9d9f",
-                    "on-surface": "#2a3439",
-                    "surface-dim": "#cfdce3",
-                    "error-container": "#fe8983",
-                    "tertiary-dim": "#51516c",
-                    "secondary-dim": "#465468",
-                    "outline-variant": "#a9b4b9"
-            },
-            "borderRadius": {
-                    "DEFAULT": "0.125rem",
-                    "lg": "0.25rem",
-                    "xl": "0.5rem",
-                    "full": "0.75rem"
-            },
-            "fontFamily": {
-                    "headline": ["Manrope"],
-                    "body": ["Manrope"],
-                    "label": ["Manrope"]
-            }
-          },
-        },
+    /* Confirm dialog styles */
+    #confirm-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #1a1a1a;
+      border: 1px solid rgba(174, 198, 255, 0.2);
+      border-radius: 0.75rem;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      z-index: 10000;
+      display: none;
+      min-width: 320px;
+      max-width: 500px;
+    }
+    #confirm-dialog.show { display: block; }
+    #confirm-dialog-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9998;
+      display: none;
+    }
+    #confirm-dialog-overlay.show { display: block; }
+    #confirm-dialog-message {
+      margin-bottom: 1.5rem;
+      color: #e0e0e0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    #confirm-dialog-buttons {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+    }
+    #confirm-dialog-buttons button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #confirm-dialog-buttons .confirm-btn {
+      background: #ef4444;
+      color: white;
+    }
+    #confirm-dialog-buttons .confirm-btn:hover {
+      background: #dc2626;
+    }
+    #confirm-dialog-buttons .cancel-btn {
+      background: #374151;
+      color: #e0e0e0;
+    }
+    #confirm-dialog-buttons .cancel-btn:hover {
+      background: #4b5563;
+    }
+
+    /* Spinner overlay */
+    #spinner-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9997;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    #spinner-overlay.show { display: flex; }
+    .spinner {
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 3px solid rgba(174, 198, 255, 0.2);
+      border-top-color: #aec6ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 640px) {
+      #global-toast {
+        top: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: none;
       }
-    </script>
-<style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-            display: inline-block;
-            vertical-align: middle;
-        }
-        body { font-family: 'Manrope', sans-serif; }
-    </style>
+      #confirm-dialog {
+        min-width: 280px;
+        max-width: calc(100vw - 2rem);
+      }
+    }
+  </style>
+  <style>
+    .host-shell-toggle {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 1rem);
+      left: 1rem;
+      width: 2.9rem;
+      height: 2.9rem;
+      border: 1px solid rgba(174, 198, 255, 0.15);
+      border-radius: 0.95rem;
+      background: rgba(13, 14, 20, 0.9);
+      color: #e3e1eb;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(18px);
+      z-index: 95;
+    }
+    .host-shell-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 9, 15, 0.65);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 75;
+      display: none;
+    }
+    @media (max-width: 1023px) {
+      body.host-shell-page .host-shell-toggle {
+        display: inline-flex;
+      }
+      body.host-shell-page .host-shell-overlay {
+        display: block;
+      }
+      body.host-shell-page .host-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.22s ease;
+        z-index: 85 !important;
+        max-width: min(86vw, 320px);
+      }
+      body.host-shell-page.host-shell-open .host-sidebar {
+        transform: translateX(0);
+      }
+      body.host-shell-page.host-shell-open .host-shell-overlay {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      body.host-shell-page .host-header {
+        left: 0 !important;
+        right: 0 !important;
+        width: auto !important;
+        padding-left: 4.6rem !important;
+        padding-right: 1rem !important;
+        gap: 0.75rem;
+      }
+      body.host-shell-page .host-main {
+        margin-left: 0 !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        padding-top: 5.25rem !important;
+        min-height: 100vh !important;
+      }
+      body.host-shell-page .host-main [class*="grid-cols-4"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 767px) {
+      body.host-shell-page .host-header {
+        padding-left: 4.4rem !important;
+        padding-right: 0.8rem !important;
+      }
+      body.host-shell-page .host-main {
+        padding-left: 0.85rem !important;
+        padding-right: 0.85rem !important;
+      }
+    }
+    @media (min-width: 1024px) {
+      .host-shell-toggle,
+      .host-shell-overlay {
+        display: none !important;
+      }
+    }
+
+    body.admin-shell-page aside.admin-sidebar {
+      overflow-y: visible !important;
+      overscroll-behavior: auto;
+    }
+    .admin-shell-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 9, 15, 0.68);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 70;
+      display: none;
+    }
+    @media (max-width: 767px) {
+      body.admin-shell-page .admin-shell-overlay {
+        display: block;
+      }
+      body.admin-shell-page.admin-shell-open .admin-shell-overlay {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      body.admin-shell-page aside.admin-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.22s ease;
+        z-index: 85 !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+      }
+      body.admin-shell-page.admin-shell-open aside.admin-sidebar {
+        transform: translateX(0);
+      }
+      body.admin-shell-page .admin-main {
+        margin-left: 0 !important;
+        padding-top: 5rem !important;
+      }
+      body.admin-shell-page .admin-sidebar-toggle {
+        display: inline-flex !important;
+      }
+    }
+  </style>
+  {% if request.url.path.startswith('/admin') %}
+  <script nonce="{{ request.state.csp_nonce }}">
+    try { history.scrollRestoration = 'manual'; } catch (error) {}
+
+    function resetAdminInitialScroll() {
+      window.scrollTo(0, 0);
+      const sidebar = document.getElementById('admin-sidebar');
+      if (sidebar) sidebar.scrollTop = 0;
+    }
+
+    window.addEventListener('load', () => {
+      resetAdminInitialScroll();
+      requestAnimationFrame(resetAdminInitialScroll);
+      setTimeout(resetAdminInitialScroll, 120);
+    });
+
+    window.addEventListener('pageshow', () => {
+      resetAdminInitialScroll();
+      requestAnimationFrame(resetAdminInitialScroll);
+    });
+  </script>
+  {% endif %}
+  {% block head %}{% endblock %}
 </head>
-<body class="bg-background text-on-background antialiased overflow-x-hidden">
-<!-- SideNavBar Component -->
-<aside id="sidebar" class="h-screen w-72 fixed left-0 top-0 flex-col bg-slate-50 dark:bg-slate-950 flex flex-col gap-1 p-6 h-full border-r border-slate-200/10 font-['Manrope'] text-sm tracking-wide">
-<!-- Brand Header -->
-<div class="mb-12 flex items-center gap-3">
-<div class="w-10 h-10 bg-primary flex items-center justify-center rounded-lg shadow-sm">
-<span class="material-symbols-outlined text-on-primary" data-icon="domain">domain</span>
+<body>
+
+
+
+{% if request.cookies.get("admin_session") %}
+<div class="banner-admin">
+  <span>🔍 Impersonating session</span>
+  <form method="post" action="/admin/unimpersonate" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button type="submit">← Back to Admin</button>
+  </form>
 </div>
-<div>
-<h1 class="text-xl font-black tracking-tighter text-slate-900 dark:text-slate-50">Architect</h1>
-<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold opacity-60">Enterprise Portal</p>
+{% endif %}
+
+{% if tenant is defined and tenant and not tenant.email_verified %}
+<div class="banner-verify">
+  ⚠️ Please verify your email address to ensure uninterrupted service.
+  <form method="post" action="/resend-verification" style="display:inline;margin-left:0.5rem">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button type="submit">Resend verification email</button>
+  </form>
 </div>
+{% endif %}
+
+{% block main_wrapper %}
+<div class="container">
+  {% block content %}{% endblock %}
 </div>
-<!-- Navigation Tabs -->
-<nav class="flex-1 flex flex-col gap-1">
-<!-- Active Tab: Overview (Selected based on Intent: Dashboard) -->
-<a class="bg-slate-200/60 dark:bg-slate-800/60 text-slate-900 dark:text-slate-50 font-semibold rounded-lg px-4 py-3 flex items-center gap-3 transition-all duration-200 scale-98 active:scale-95" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
-<span>Overview</span>
-</a>
-<a class="text-slate-500 dark:text-slate-400 px-4 py-3 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/40 flex items-center gap-3 transition-all duration-200" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="apartment">apartment</span>
-<span>Properties</span>
-</a>
-<a class="text-slate-500 dark:text-slate-400 px-4 py-3 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/40 flex items-center gap-3 transition-all duration-200" href="/analytics">
-<span class="material-symbols-outlined" data-icon="domain">domain</span>
-<span>Portfolio</span>
-</a>
-<a class="text-slate-500 dark:text-slate-400 px-4 py-3 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/40 flex items-center gap-3 transition-all duration-200" href="/settings">
-<span class="material-symbols-outlined" data-icon="insights">insights</span>
-<span>Analytics</span>
-</a>
-</nav>
-<!-- Footer Tab -->
-<div class="mt-auto pt-6 border-t border-slate-200/10">
-<a class="text-slate-500 dark:text-slate-400 px-4 py-3 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/40 flex items-center gap-3 transition-all duration-200" href="/settings">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
-<span>Settings</span>
-</a>
+{% endblock %}
+
+<!-- Global toast notification -->
+<div id="global-toast"></div>
+
+<!-- Confirm dialog -->
+<div id="confirm-dialog-overlay"></div>
+<div id="confirm-dialog">
+  <div id="confirm-dialog-message"></div>
+  <div id="confirm-dialog-buttons">
+    <button class="cancel-btn">Cancel</button>
+    <button class="confirm-btn">OK</button>
+  </div>
 </div>
-</aside>
-<!-- TopNavBar Component -->
-<header class="sticky top-0 w-full z-40 bg-[#f7f9fb]/70 dark:bg-slate-950/70 backdrop-blur-xl flex justify-between items-center px-8 h-16 ml-72 shadow-sm shadow-slate-200/20 dark:shadow-none font-['Manrope'] text-sm font-medium">
-<div class="flex items-center gap-8 flex-1">
-<h2 class="text-lg font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">Dashboard</h2>
-<!-- Search Bar -->
-<div class="max-w-md w-full relative">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg" data-icon="search">search</span>
-<input class="w-full bg-surface-container-low border-none rounded-full pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/50 transition-all" placeholder="Search assets, tenants, or records..." type="text"/>
+
+<!-- Spinner overlay -->
+<div id="spinner-overlay">
+  <div class="spinner"></div>
 </div>
-</div>
-<div class="flex items-center gap-4">
-<!-- Trailing Icons -->
-<button class="w-10 h-10 flex items-center justify-center hover:bg-slate-100/50 dark:hover:bg-slate-800/50 rounded-full text-on-surface-variant transition-opacity duration-300">
-<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
-</button>
-<button class="w-10 h-10 flex items-center justify-center hover:bg-slate-100/50 dark:hover:bg-slate-800/50 rounded-full text-on-surface-variant transition-opacity duration-300">
-<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
-</button>
-<!-- Primary Action -->
-<button class="ml-2 bg-gradient-to-r from-primary to-primary-dim text-on-primary px-5 py-2 rounded-xl font-semibold shadow-md hover:opacity-90 active:scale-95 transition-all text-sm flex items-center gap-2">
-<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
-                Create New
-            </button>
-<!-- Profile -->
-<div class="ml-4 h-9 w-9 rounded-full overflow-hidden border-2 border-surface-container-highest">
-<img alt="User Profile" class="w-full h-full object-cover" data-alt="professional headshot of a smiling executive with modern glasses in a bright architectural office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRBsQ7-gD2gFVGIC9BPj_KY6ueaRdNxG0RFKEk7WbjbveZ6PD16QX2Ndh6BrrZgfV_TiHYLv7v1KF_UwO8eusSKtCupmupExFP83j7IcKU2Bus06f4sVDd4drn7Tgw-FYit34x0nc-rrQ_taWce9iHt0_EVR2PdDyhSt2YVP0pWLNmLcD2kEnFnaM7VPwFN3-Q7f2FRjiwTgyqwl4-ojvZ3jlboW0uZbLweQWC-VHB0SFmMQ5yfTOtb7Hk0m6LjYCzd-S-5PHCN77X"/>
-</div>
-</div>
-</header>
-<!-- Main Content Area -->
-<main class="ml-72 min-h-[calc(100vh-64px)] p-12 bg-background">
-<!-- Welcome Hero Section (Asymmetric Layout) -->
-<section class="mb-16 flex flex-col md:flex-row gap-12 items-end">
-<div class="flex-1">
-<span class="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4 block">System Status: Optimal</span>
-<h1 class="text-6xl font-extrabold tracking-tight text-on-surface mb-6 leading-tight">Welcome to your <br/>Architect Workspace.</h1>
-<p class="text-on-surface-variant text-lg max-w-xl leading-relaxed">
-                    Manage your global property portfolio with surgical precision. 
-                    Monitor performance metrics, tenant relations, and structural assets from a unified atmospheric interface.
-                </p>
-</div>
-<div class="w-full md:w-1/3 aspect-[4/3] bg-surface-container-high rounded-[2rem] overflow-hidden relative group">
-<img alt="Architecture Detail" class="w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" data-alt="abstract close-up of a modern glass skyscraper reflecting a clear blue sky with sharp geometric lines" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7aCSgCAWKVMLFlHMfWHIe_uayJi9zcnqVJWj5TPunxrkdJAbfQhk933v4jZlj0WKbJHiz17U31mtzxeDFa8yVEx-giUaw6ueVjN7BUa8x0ck0XxhK5mkkjPmZW3SDRIALo1nR7cLhInFyizv6eht6afcFjwxr_0dW-EKMnHDFBPAMESqvU84iidUUncUzsahhE9D37a3XM88zFz-WnFxf-0H6HOL5DXdF843u1STTtnZVtYuTmt8HCb3wzbsD8n_FcvDk-6KPZACx"/>
-<div class="absolute inset-0 bg-gradient-to-t from-surface-container-highest/80 to-transparent"></div>
-</div>
-</section>
-<!-- Bento Grid Data Modules -->
-<div class="grid grid-cols-12 gap-6">
-<!-- Key Metric: Total Portfolio Value -->
-<div class="col-span-12 md:col-span-7 bg-surface-container-lowest rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-shadow">
-<div class="flex justify-between items-start mb-12">
-<div>
-<p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1">Portfolio Valuation</p>
-<h3 class="text-4xl font-bold tracking-tighter text-on-surface">$1.24B</h3>
-</div>
-<div class="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full text-xs font-bold">
-<span class="material-symbols-outlined text-sm" data-icon="trending_up">trending_up</span>
-                        8.4%
-                    </div>
-</div>
-<!-- Atmospheric Visualization Placeholder -->
-<div class="h-48 w-full bg-surface-container-low rounded-2xl flex items-end p-4 gap-2">
-<div class="flex-1 bg-primary/10 rounded-t-lg h-[40%] transition-all hover:bg-primary/20"></div>
-<div class="flex-1 bg-primary/10 rounded-t-lg h-[60%] transition-all hover:bg-primary/20"></div>
-<div class="flex-1 bg-primary/10 rounded-t-lg h-[45%] transition-all hover:bg-primary/20"></div>
-<div class="flex-1 bg-primary/20 rounded-t-lg h-[75%] transition-all hover:bg-primary/30"></div>
-<div class="flex-1 bg-primary/10 rounded-t-lg h-[55%] transition-all hover:bg-primary/20"></div>
-<div class="flex-1 bg-primary rounded-t-lg h-[90%] transition-all hover:opacity-90"></div>
-<div class="flex-1 bg-primary/10 rounded-t-lg h-[65%] transition-all hover:bg-primary/20"></div>
-</div>
-</div>
-<!-- Operational Status -->
-<div class="col-span-12 md:col-span-5 bg-surface-container rounded-[2rem] p-8 flex flex-col justify-between">
-<div>
-<div class="flex items-center gap-2 mb-6">
-<span class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
-<p class="text-xs font-bold uppercase tracking-widest text-on-surface">Live Operations</p>
-</div>
-<div class="space-y-6">
-<div class="flex justify-between items-center">
-<span class="text-on-surface-variant">Occupancy Rate</span>
-<span class="font-bold">98.2%</span>
-</div>
-<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
-<div class="bg-primary h-full w-[98.2%]"></div>
-</div>
-<div class="flex justify-between items-center">
-<span class="text-on-surface-variant">Maintenance Health</span>
-<span class="font-bold">Excellent</span>
-</div>
-<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
-<div class="bg-secondary h-full w-[92%]"></div>
-</div>
-</div>
-</div>
-<button class="mt-8 text-primary font-bold text-sm flex items-center gap-2 hover:gap-3 transition-all" onclick="window.location.href="/reservations"">View Maintenance Schedule<span class="material-symbols-outlined text-base" data-icon="arrow_forward">arrow_forward</span>
-</button>
-</div>
-<!-- Recent Activity / Properties -->
-<div class="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-<!-- Property Card 1 -->
-<div class="bg-surface-container-lowest rounded-3xl p-6 hover:bg-surface-container-high transition-all group">
-<div class="w-full aspect-video bg-surface-container-low rounded-2xl mb-6 overflow-hidden">
-<img alt="Modern Office" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="luxury corporate lobby with marble floors and minimalist white furniture bathed in natural sunlight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbul21-ydBK1DQsGXHe8pw_qlI-uYhlOrUHWe1EjMj7p8zQpMosDFd0CqR78yjYgDanwf0hYzUbE-ya-MObM1jYT2DjIzXWFWOhY1L9nNL81pXl819aIxr2VBbNRu8hCD-W0qTCljwwmZNQ-9oAgBX2fUeae6wa0J4syvZFvf6XfVz_bLnWTPBMMJlcWwVaiBPunFIgeOK604v8KZZzN7U-kS_kITqG9OpWne-8E1sOOyRojj-Mk99g1z87rlvyB5NZDAB9GP5fFW0"/>
-</div>
-<div class="flex items-center justify-between mb-2">
-<span class="text-[10px] font-bold text-primary uppercase tracking-widest">Commercial</span>
-<div class="flex items-center gap-1.5">
-<span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
-<span class="text-[10px] font-bold text-on-surface-variant uppercase">Occupied</span>
-</div>
-</div>
-<h4 class="font-bold text-on-surface text-lg mb-1">The Meridian Plaza</h4>
-<p class="text-xs text-on-surface-variant">Vancouver, BC • 12,400 sq.ft</p>
-</div>
-<!-- Property Card 2 -->
-<div class="bg-surface-container-lowest rounded-3xl p-6 hover:bg-surface-container-high transition-all group">
-<div class="w-full aspect-video bg-surface-container-low rounded-2xl mb-6 overflow-hidden">
-<img alt="Luxury Residential" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="ultra-modern glass-walled residential complex at twilight with warm interior lighting and architectural pool" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpEEVdUi702fm91oQzZhKnoMWMdpgQieQM27tG7b5UPXT53n-YFWxCzxUiv1yXjKZaGkyuFkoAOI3a2Gp1AjGM9UCZ8YDJ6pQ1CebE77tXgDDcpFLIp1G7AgvT5znKhIqPsZXdATSSRbdEyFt-4I85wMCB9AP3U5VO4_CKwYA6umEW9RTjYqdfGPjRNHOdLJLX0XRrBBwsBVMEzcIebt2djyyf0PjlEYy5gyxiWNgpeMOpvkGhN5ujTwdDB6bHpHx97IZwpct5HAFd"/>
-</div>
-<div class="flex items-center justify-between mb-2">
-<span class="text-[10px] font-bold text-primary uppercase tracking-widest">Residential</span>
-<div class="flex items-center gap-1.5">
-<span class="w-1.5 h-1.5 bg-secondary rounded-full"></span>
-<span class="text-[10px] font-bold text-on-surface-variant uppercase">Leasing</span>
-</div>
-</div>
-<h4 class="font-bold text-on-surface text-lg mb-1">Skyline Residences</h4>
-<p class="text-xs text-on-surface-variant">Toronto, ON • 48 Units</p>
-</div>
-<!-- Property Card 3 -->
-<div class="bg-surface-container-lowest rounded-3xl p-6 hover:bg-surface-container-high transition-all group">
-<div class="w-full aspect-video bg-surface-container-low rounded-2xl mb-6 overflow-hidden">
-<img alt="Industrial Hub" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="clean industrial logistics hub with high ceilings and white architectural finish under a clear afternoon sky" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpqJ_Qd-j9fWOJk4yc8pvWbuKFY-X5owI_iRl9KSF9Kt3-LgKfcCsoHXmItr3d96PgunuKFO3Enc306tTidgDVAe9dpkM3KSrHcfodhrpWwJ71tdXhTVTjBlFQbysW3J09hq0HjlsMaN85Yr5IWGjmnulKae-g3_xtkwzax_2c03bdxaqj1OH6PBwkuHzJbmalj_p7eCU0ZeDB4FGWn6lwRFOteWmnhxvsLAYoEzR9agf15R5eSt1HcyrLWjSMDL1ObfjGVDeqx85h"/>
-</div>
-<div class="flex items-center justify-between mb-2">
-<span class="text-[10px] font-bold text-primary uppercase tracking-widest">Industrial</span>
-<div class="flex items-center gap-1.5">
-<span class="w-1.5 h-1.5 bg-error rounded-full"></span>
-<span class="text-[10px] font-bold text-on-surface-variant uppercase">Maintenance</span>
-</div>
-</div>
-<h4 class="font-bold text-on-surface text-lg mb-1">Nexus Logistics Center</h4>
-<p class="text-xs text-on-surface-variant">Calgary, AB • Phase II Completion</p>
-</div>
-</div>
-</div>
-</main>
-</body></html>
+
+<script nonce="{{ request.state.csp_nonce }}">
+// ── Theme toggle ────────────────────────────────────────────
+const THEME_KEY = 'hostai-theme';
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  const icon = document.getElementById('theme-icon');
+  if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem(THEME_KEY, t);
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  applyTheme(cur === 'dark' ? 'light' : 'dark');
+}
+// Apply saved preference immediately
+(function() {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved) applyTheme(saved);
+  
+  // Attach event listener instead of inline onclick (#10)
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.addEventListener('click', toggleTheme);
+})();
+
+// ── Global Toast Notification ────────────────────────────────────────
+function showToast(message, type = 'info') {
+  const toast = document.getElementById('global-toast');
+  toast.textContent = message;
+  toast.className = 'show ' + type;
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3500);
+}
+
+// ── Confirm Dialog ────────────────────────────────────────────────────
+function showConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('confirm-dialog-overlay');
+    const dialog = document.getElementById('confirm-dialog');
+    const msgEl = document.getElementById('confirm-dialog-message');
+    const cancelBtn = dialog.querySelector('.cancel-btn');
+    const confirmBtn = dialog.querySelector('.confirm-btn');
+
+    msgEl.textContent = message;
+    overlay.classList.add('show');
+    dialog.classList.add('show');
+
+    const cleanup = () => {
+      overlay.classList.remove('show');
+      dialog.classList.remove('show');
+      cancelBtn.removeEventListener('click', onCancel);
+      confirmBtn.removeEventListener('click', onConfirm);
+    };
+
+    const onConfirm = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    cancelBtn.addEventListener('click', onCancel);
+    confirmBtn.addEventListener('click', onConfirm);
+    confirmBtn.focus();
+  });
+}
+
+// ── Spinner Overlay ──────────────────────────────────────────────────
+function showSpinner() {
+  document.getElementById('spinner-overlay').classList.add('show');
+}
+
+function hideSpinner() {
+  document.getElementById('spinner-overlay').classList.remove('show');
+}
+
+// ── Host Shell Helpers ───────────────────────────────────────────────
+function initializeHostShell() {
+  if (window.location.pathname.startsWith('/admin')) return;
+
+  const sidebar = Array.from(document.querySelectorAll('aside')).find((el) => {
+    return el.querySelector('a[href="/dashboard"]') && !el.id.startsWith('admin');
+  });
+  const main = Array.from(document.querySelectorAll('main')).find((el) => /ml-\[260px\]/.test(el.className));
+  const header = Array.from(document.querySelectorAll('header')).find((el) => /w-\[calc\(100%-260px\)\]/.test(el.className));
+
+  if (!sidebar || !main) return;
+
+  document.body.classList.add('host-shell-page');
+  sidebar.classList.add('host-sidebar');
+  main.classList.add('host-main');
+  if (header) header.classList.add('host-header');
+
+  if (!document.querySelector('.host-shell-overlay')) {
+    const overlay = document.createElement('button');
+    overlay.type = 'button';
+    overlay.className = 'host-shell-overlay';
+    overlay.setAttribute('aria-label', 'Close navigation');
+    overlay.addEventListener('click', () => {
+      document.body.classList.remove('host-shell-open');
+    });
+    document.body.appendChild(overlay);
+  }
+
+  if (!document.querySelector('.host-shell-toggle')) {
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'host-shell-toggle';
+    toggle.setAttribute('aria-label', 'Open navigation');
+    toggle.innerHTML = '<span class="material-symbols-outlined">menu</span>';
+    toggle.addEventListener('click', () => {
+      document.body.classList.toggle('host-shell-open');
+    });
+    document.body.appendChild(toggle);
+  }
+
+  sidebar.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', () => {
+      document.body.classList.remove('host-shell-open');
+    });
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 1024) {
+      document.body.classList.remove('host-shell-open');
+    }
+  });
+}
+
+function initializeHeaderSearch() {
+  const targetForPath = () => {
+    if (window.location.pathname.startsWith('/reservations')) return '/reservations';
+    if (window.location.pathname.startsWith('/conversations')) return '/conversations';
+    return '/dashboard';
+  };
+  const currentQuery = new URLSearchParams(window.location.search).get('q') || '';
+
+  document.querySelectorAll('input[type="text"][placeholder*="Search"], input[name="q"]').forEach((input) => {
+    input.setAttribute('aria-label', 'Search');
+    if (!input.value && currentQuery) input.value = currentQuery;
+    const form = input.closest('form');
+    if (form && form.getAttribute('action')) return;
+
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      const q = input.value.trim();
+      const target = targetForPath();
+      const url = new URL(target, window.location.origin);
+      if (q) url.searchParams.set('q', q);
+      window.location.assign(url.toString());
+    });
+  });
+}
+
+function initializeConfirmSubmits() {
+  document.addEventListener('submit', async (event) => {
+    const submitter = event.submitter;
+    const target = (submitter && submitter.dataset.confirm) ? submitter : event.target;
+    const message = target.dataset.confirm;
+    if (!message) return;
+
+    if ((submitter && submitter.dataset.confirmed === 'true') || event.target.dataset.confirmed === 'true') {
+      if (submitter) submitter.dataset.confirmed = '';
+      event.target.dataset.confirmed = '';
+      return;
+    }
+
+    event.preventDefault();
+    const confirmed = await showConfirm(message);
+    if (!confirmed) return;
+
+    event.target.dataset.confirmed = 'true';
+    if (submitter) submitter.dataset.confirmed = 'true';
+    event.target.requestSubmit(submitter || undefined);
+  });
+}
+
+function initializeAdminShell() {
+  const sidebar = document.getElementById('admin-sidebar');
+  if (!sidebar) return;
+
+  document.body.classList.add('admin-shell-page');
+  sidebar.classList.add('admin-sidebar');
+
+  const main = document.querySelector('main');
+  if (main) main.classList.add('admin-main');
+
+  const toggle = document.getElementById('sidebar-toggle');
+  if (toggle) {
+    toggle.classList.add('admin-sidebar-toggle');
+    toggle.style.display = '';
+    toggle.onclick = null;
+    toggle.addEventListener('click', () => {
+      document.body.classList.toggle('admin-shell-open');
+    });
+  }
+
+  if (!document.querySelector('.admin-shell-overlay')) {
+    const overlay = document.createElement('button');
+    overlay.type = 'button';
+    overlay.className = 'admin-shell-overlay';
+    overlay.setAttribute('aria-label', 'Close admin navigation');
+    overlay.addEventListener('click', () => {
+      document.body.classList.remove('admin-shell-open');
+    });
+    document.body.appendChild(overlay);
+  }
+
+  sidebar.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', () => {
+      document.body.classList.remove('admin-shell-open');
+    });
+  });
+
+  // Admin pages should always land at the top; some browsers restore the last
+  // scroll position of these long dashboards, which makes the sidebar look cut off.
+  if (window.location.pathname.startsWith('/admin')) {
+    const resetScroll = () => {
+      window.scrollTo(0, 0);
+      sidebar.scrollTop = 0;
+      if (main) main.scrollTop = 0;
+    };
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    resetScroll();
+    requestAnimationFrame(resetScroll);
+    setTimeout(resetScroll, 100);
+  }
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 768) {
+      document.body.classList.remove('admin-shell-open');
+    }
+  });
+}
+
+// ── Keyboard Shortcuts ───────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  // Cmd+K / Ctrl+K: focus search
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    const searchInput = document.querySelector('input[type="text"][placeholder*="Search"], input[name="q"]');
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.select();
+    }
+  }
+
+  // Enter on focused draft: approve it (if there's an approve button in focus context)
+  if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+    const activeEl = document.activeElement;
+    if (activeEl && activeEl.dataset.draftId) {
+      const approveBtn = activeEl.closest('[data-draft-id]')?.querySelector('[data-action="approve"]');
+      if (approveBtn) {
+        e.preventDefault();
+        approveBtn.click();
+      }
+    }
+  }
+
+  // Arrow keys: navigate drafts
+  if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && document.querySelector('[data-draft-id]')) {
+    const drafts = Array.from(document.querySelectorAll('[data-draft-id]'));
+    if (drafts.length === 0) return;
+
+    const currentDraft = drafts.find(d => d.contains(document.activeElement));
+    const currentIndex = currentDraft ? drafts.indexOf(currentDraft) : -1;
+    const nextIndex = e.key === 'ArrowDown' ? currentIndex + 1 : currentIndex - 1;
+
+    if (nextIndex >= 0 && nextIndex < drafts.length) {
+      e.preventDefault();
+      const focusEl = drafts[nextIndex].querySelector('button') || drafts[nextIndex];
+      focusEl.focus();
+    }
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  initializeHostShell();
+  initializeAdminShell();
+  initializeHeaderSearch();
+  initializeConfirmSubmits();
+});
+
+// ── SSE Real-time Notifications ──────────────────────────────────────
+(function() {
+  // Only connect to SSE on authenticated pages (when tenant is defined)
+  if (typeof tenant !== 'undefined' && tenant) {
+    const eventSource = new EventSource('/api/sse/drafts');
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        showToast(`New draft from ${data.guest_name} (${data.source})`, 'info');
+      } catch (e) {
+        console.error('SSE parse error:', e);
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      // Reconnect after 5 seconds
+      setTimeout(() => {
+        location.reload();
+      }, 5000);
+    };
+  }
+})();
+
+// ── Bulk Actions ─────────────────────────────────────────────────────
+function updateBulkToolbar() {
+  const checkboxes = document.querySelectorAll('.draft-checkbox:checked');
+  const toolbar = document.getElementById('bulk-toolbar');
+  const count = checkboxes.length;
+
+  if (count > 0) {
+    toolbar.classList.remove('hidden');
+    document.getElementById('selected-count').textContent = count;
+    document.getElementById('plural').textContent = count === 1 ? '' : 's';
+  } else {
+    toolbar.classList.add('hidden');
+  }
+}
+
+async function bulkApprove() {
+  const checkboxes = document.querySelectorAll('.draft-checkbox:checked');
+  const draftIds = Array.from(checkboxes).map(cb => cb.value);
+
+  if (draftIds.length === 0) return;
+
+  const confirmed = await showConfirm(`Approve ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}?`);
+  if (!confirmed) return;
+
+  showSpinner();
+  try {
+    const response = await fetch('/drafts/bulk-approve', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf_token"]')?.value || ''
+      },
+      body: JSON.stringify({ draft_ids: draftIds })
+    });
+
+    if (response.ok) {
+      showToast(`Approved ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}`, 'success');
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      showToast('Failed to approve drafts', 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    hideSpinner();
+  }
+}
+
+async function bulkSkip() {
+  const checkboxes = document.querySelectorAll('.draft-checkbox:checked');
+  const draftIds = Array.from(checkboxes).map(cb => cb.value);
+
+  if (draftIds.length === 0) return;
+
+  const confirmed = await showConfirm(`Skip ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}?`);
+  if (!confirmed) return;
+
+  showSpinner();
+  try {
+    const response = await fetch('/drafts/bulk-skip', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf_token"]')?.value || ''
+      },
+      body: JSON.stringify({ draft_ids: draftIds })
+    });
+
+    if (response.ok) {
+      showToast(`Skipped ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}`, 'success');
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      showToast('Failed to skip drafts', 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    hideSpinner();
+  }
+}
+
+function clearSelection() {
+  document.querySelectorAll('.draft-checkbox').forEach(cb => cb.checked = false);
+  updateBulkToolbar();
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
