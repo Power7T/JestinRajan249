@@ -632,6 +632,46 @@
       </div>
       <div id="wa-bot-error" style="display:none; padding:12px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); border-radius:8px; color:#fca5a5; font-size:0.875rem"></div>
     </div>
+
+    <!-- Test Booking Welcome Message -->
+    <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08)">
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px">
+        <span style="font-size:1.5rem">📋</span>
+        <div>
+          <p style="font-size:0.75rem;font-weight:700;color:#aec6ff;text-transform:uppercase;letter-spacing:0.05em;margin:0">Test Booking Welcome</p>
+          <p style="font-size:0.875rem;color:#9ca3af;margin:4px 0 0 0">Simulate a new booking — sends the bot's welcome message to a real number</p>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px">
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Guest Name</label>
+          <input type="text" id="bk-name" value="Alex" placeholder="Guest name" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Guest Phone (+E.164)</label>
+          <input type="text" id="bk-phone" placeholder="+14155551234" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Check-in Date</label>
+          <input type="date" id="bk-checkin" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none;box-sizing:border-box;color-scheme:dark">
+        </div>
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Check-out Date</label>
+          <input type="date" id="bk-checkout" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none;box-sizing:border-box;color-scheme:dark">
+        </div>
+      </div>
+
+      <button type="button" id="bk-send-btn" style="padding:8px 20px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);border-radius:8px;color:#4ade80;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Send Booking Welcome ▶</button>
+
+      <div id="bk-loading" style="display:none; margin-top:12px; font-size:0.875rem; color:#9ca3af">⏳ Sending welcome message...</div>
+      <div id="bk-error" style="display:none; margin-top:12px; padding:12px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); border-radius:8px; color:#fca5a5; font-size:0.875rem"></div>
+      <div id="bk-result" style="display:none; margin-top:12px; padding:16px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25); border-radius:12px">
+        <p style="font-size:0.75rem;font-weight:700;color:#4ade80;text-transform:uppercase;margin:0 0 10px 0">✅ Welcome Sent</p>
+        <p style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 6px 0">Message Preview</p>
+        <p id="bk-result-text" style="margin:0; color:#e3e1eb; font-size:0.875rem; line-height:1.5; white-space:pre-wrap; background:rgba(255,255,255,0.04); padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,0.08)"></p>
+      </div>
+    </div>
   </div>
 
   <!-- ── SMS / Twilio ─────────────────────────────────────────────── -->
@@ -1567,6 +1607,54 @@ document.addEventListener('DOMContentLoaded', function() {
             switchTab(btn.dataset.tab);
         });
     });
+
+    // Booking welcome simulator
+    var bkBtn = document.getElementById('bk-send-btn');
+    if (bkBtn) {
+        bkBtn.addEventListener('click', async function() {
+            var guestName = document.getElementById('bk-name').value.trim() || 'Alex';
+            var guestPhone = document.getElementById('bk-phone').value.trim();
+            var checkIn = document.getElementById('bk-checkin').value;
+            var checkOut = document.getElementById('bk-checkout').value;
+            var loading = document.getElementById('bk-loading');
+            var errorDiv = document.getElementById('bk-error');
+            var resultDiv = document.getElementById('bk-result');
+            var resultText = document.getElementById('bk-result-text');
+
+            errorDiv.style.display = 'none';
+            resultDiv.style.display = 'none';
+
+            if (!guestPhone) { errorDiv.textContent = 'Guest phone is required.'; errorDiv.style.display = 'block'; return; }
+            if (!checkIn || !checkOut) { errorDiv.textContent = 'Check-in and check-out dates are required.'; errorDiv.style.display = 'block'; return; }
+
+            loading.style.display = 'block';
+
+            try {
+                var formData = new FormData();
+                formData.append('guest_name', guestName);
+                formData.append('guest_phone', guestPhone);
+                formData.append('check_in', checkIn);
+                formData.append('check_out', checkOut);
+                formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+
+                var resp = await fetch('/api/simulate/booking', { method: 'POST', body: formData });
+                var data = await resp.json();
+                loading.style.display = 'none';
+
+                if (data.ok) {
+                    resultText.textContent = data.welcome_text;
+                    resultDiv.style.display = 'block';
+                } else {
+                    errorDiv.textContent = data.error || 'Unknown error';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (err) {
+                loading.style.display = 'none';
+                errorDiv.textContent = 'Request failed: ' + err.message;
+                errorDiv.style.display = 'block';
+            }
+        });
+    }
 });
 
 // WhatsApp Bot Simulator

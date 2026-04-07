@@ -7329,6 +7329,90 @@ async def simulate_and_send(
     })
 
 
+@app.post("/api/simulate/booking")
+async def simulate_booking_welcome(
+    request: Request,
+    guest_name: str = Form("Alex Guest"),
+    guest_phone: str = Form(...),
+    check_in: str = Form(...),
+    check_out: str = Form(...),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Simulate a new booking and send the bot's welcome message via WhatsApp."""
+    tenant_id = get_current_tenant_id(request)
+    validate_csrf(request, csrf_token)
+    rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
+    cfg = _get_or_create_config(tenant_id, db)
+
+    if not cfg.whatsapp_phone_id or not cfg.whatsapp_token_enc:
+        return JSONResponse(
+            {"ok": False, "error": "WhatsApp not configured. Add your Phone ID and Access Token in Messaging Settings first."},
+            status_code=400,
+        )
+
+    guest_name = (guest_name or "Alex Guest").strip()[:128]
+    guest_phone = guest_phone.strip()
+
+    # Parse dates (accept YYYY-MM-DD)
+    try:
+        from datetime import date
+        check_in_dt = datetime.strptime(check_in, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        check_out_dt = datetime.strptime(check_out, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return JSONResponse({"ok": False, "error": "Invalid date format. Use YYYY-MM-DD."}, status_code=400)
+
+    # Build fake guest contact (in-memory only, no DB save)
+    from web.models import GuestContact as GCModel
+    fake_gc = GCModel(
+        tenant_id=tenant_id,
+        guest_name=guest_name,
+        guest_phone=guest_phone,
+        check_in=check_in_dt,
+        check_out=check_out_dt,
+        property_name=cfg.property_names or None,
+        room_identifier=None,
+        status="active",
+    )
+
+    # Build the welcome message using the same logic as real bookings
+    from web.guest_contact_service import _build_guest_welcome_message
+    welcome_text = _build_guest_welcome_message(fake_gc, cfg)
+
+    # Send via WhatsApp
+    try:
+        from web.meta_sender import send_whatsapp
+        from web.crypto import decrypt
+        token = decrypt(cfg.whatsapp_token_enc)
+        phone_normalized = guest_phone.replace("+", "").strip()
+        wa_error: dict = {}
+        sent = send_whatsapp(cfg.whatsapp_phone_id, token, phone_normalized, welcome_text, error_detail=wa_error)
+    except Exception as e:
+        logger.error(f"[{tenant_id}] Booking simulate send error: {e}")
+        return JSONResponse({"ok": False, "error": f"Failed to send via WhatsApp: {str(e)}"}, status_code=500)
+
+    if not sent:
+        detail = wa_error.get("body", "")
+        try:
+            import json as _json
+            parsed = _json.loads(detail)
+            meta_msg = (parsed.get("error", {}) or {}).get("message") or detail
+        except Exception:
+            meta_msg = detail
+        err_msg = (
+            f"WhatsApp API error (HTTP {wa_error.get('code', '?')}): {meta_msg}"
+            if meta_msg
+            else "WhatsApp send failed. Check your Phone ID, Access Token, and phone number format (+E.164)."
+        )
+        return JSONResponse({"ok": False, "error": err_msg}, status_code=400)
+
+    return JSONResponse({
+        "ok": True,
+        "welcome_text": welcome_text,
+        "message": f"✅ Booking welcome message sent to {guest_phone} via WhatsApp",
+    })
+
+
 # ---------------------------------------------------------------------------
 # Team member CRUD (quick-add / deactivate)
 # ---------------------------------------------------------------------------
