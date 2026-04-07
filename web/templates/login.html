@@ -4,11 +4,11 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Login | Host Assistant</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
+<script nonce="{{ request.state.csp_nonce }}" id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
@@ -104,6 +104,10 @@
 <p class="text-on-surface-variant font-medium">Log in to manage your precision properties.</p>
 </div>
 </div>
+<!-- Error message -->
+{% if error %}
+<div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{{ error }}</div>
+{% endif %}
 <!-- Form -->
 <form class="space-y-6" method="post" action="/login">
 <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
