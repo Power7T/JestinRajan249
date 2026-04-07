@@ -1,533 +1,431 @@
-{%- extends "base.html" %}
-{%- block title %}Voice AI — HostAI{%- endblock %}
+<!DOCTYPE html>
 
-{%- block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
-tailwind.config = {
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        "surface-dim": "#121319",
-        "surface": "#121319",
-        "surface-container": "#1e1f26",
-        "primary": "#aec6ff",
-        "on-primary": "#002e6b",
-        "error": "#ffb4ab",
-      }
-    }
-  }
-}
-</script>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Incident Command | Voice Logs</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#793000",
+                        "surface-tint": "#005cba",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "tertiary": "#883700",
+                        "on-tertiary-fixed": "#341100",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "secondary": "#515f74",
+                        "tertiary-container": "#af4900",
+                        "background": "#f7f9fb",
+                        "secondary-fixed": "#d5e3fc",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#dfe8ff",
+                        "on-primary-fixed": "#001b3e",
+                        "primary-container": "#0066cc",
+                        "on-surface": "#191c1e",
+                        "on-background": "#191c1e",
+                        "tertiary-fixed": "#ffdbcb",
+                        "primary-fixed-dim": "#aac7ff",
+                        "on-surface-variant": "#414753",
+                        "outline": "#727784",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container-low": "#f2f4f6",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-dim": "#d8dadc",
+                        "surface-container": "#eceef0",
+                        "primary-fixed": "#d7e3ff",
+                        "primary": "#004e9f",
+                        "on-error": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "secondary-container": "#d5e3fc",
+                        "outline-variant": "#c1c6d5",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "on-tertiary-container": "#ffe3d6",
+                        "inverse-on-surface": "#eff1f3",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#57657a",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "inverse-primary": "#aac7ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e0e3e5",
+                        "on-primary-fixed-variant": "#00458e",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
 <style>
-  body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color: #e3e1eb; }
-  .glass-card { background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24; }
-  .badge-completed { background: rgba(74,222,128,0.1); color: #4ade80; }
-  .badge-failed { background: rgba(248,113,113,0.1); color: #f87171; }
-  .badge-ringing { background: rgba(251,191,36,0.1); color: #fbbf24; }
-  .badge-answered { background: rgba(96,165,250,0.1); color: #60a5fa; }
-</style>
-{%- endblock %}
-
-{%- block nav %}{%- endblock %}
-
-{%- block main_wrapper %}
-{%- block content %}
-<!-- Sidebar -->
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .editorial-shadow {
+            box-shadow: 0 10px 32px -4px rgba(0, 78, 159, 0.06);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen">
+<!-- TopNavBar -->
+<header class="bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl fixed top-0 w-full z-50 border-b border-slate-200/15 dark:border-slate-800/15 shadow-sm shadow-blue-900/5 flex justify-between items-center px-6 h-16 w-full">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-slate-900 dark:text-white">IncidentManager</span>
+<div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-1.5 gap-2">
+<span class="material-symbols-outlined text-slate-400 text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-64 p-0 placeholder:text-slate-500" placeholder="Search logs..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden ml-2 bg-primary-fixed ring-2 ring-white dark:ring-slate-900">
+<img alt="Manager Profile" class="h-full w-full object-cover" data-alt="professional male property manager headshot with a clean background, soft lighting, wearing a navy polo shirt" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwZZ-ERMccCoLXjkprkXLmDdywHpP_UJnKK39WpV7Ot1DavlLXGH4EJjd5jCfqZE6BS8jN4UDE3BOo0ajVIHLx5NphMxghXHplqetHc_VDFZOwvPjS8USWYYtjhxUeuHRzaC_SRuNiFwyQA8r3TM-jTgcO762jWZ6zdW8piujWruztVgy8VR4lV93RPfZkenbfNJWn4JBxXbLFpsZke_NBmQsYxl_SfbTo8c52cW52HBJj3mFpaVv5wDx07w8UziEKPBayd_fK_78c"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
 <!-- Mobile hamburger -->
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
-<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col font-['Plus_Jakarta_Sans'] text-sm font-medium">
-<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-[#5B8DEF] flex items-center justify-center">
-<span class="material-symbols-outlined text-[#002e6b] text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
+<!-- Sidebar overlay for mobile -->
+<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+<aside id="sidebar" class="bg-slate-50 dark:bg-slate-950 h-screen w-64 fixed left-0 top-0 pt-16 flex flex-col gap-y-4 py-8 -translate-x-full md:translate-x-0 transition-transform duration-300">
+<div class="px-6 py-4 mb-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-lg">domain</span>
 </div>
-<span>HostAI</span>
+<div>
+<h2 class="text-lg font-black text-blue-800 dark:text-blue-300 leading-none">Precision Curator</h2>
+<p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Incident Command</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
 </a>
-<nav class="flex-1 px-4 space-y-1">
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>Dashboard</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
-<span class="material-symbols-outlined" data-icon="forum">forum</span>Conversations</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
-<span class="material-symbols-outlined" data-icon="event_available">event_available</span>Reservations</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
-<span class="material-symbols-outlined" data-icon="history">history</span>Activity</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
-<span class="material-symbols-outlined" data-icon="analytics">analytics</span>Analytics</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
-<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>Revenue & ROI</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>Voice AI</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
-<span class="material-symbols-outlined" data-icon="hub">hub</span>Operations</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>Settings</a>
-{% if tenant is defined and tenant and is_admin(tenant.email) %}
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
-<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>Admin</a>
-{% endif %}
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">error_med</span>
+<span class="font-medium text-sm">Incidents</span>
+</a>
+<a class="flex items-center px-6 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full mx-2" href="#">
+<span class="material-symbols-outlined mr-3">settings_voice</span>
+<span class="font-medium text-sm">Voice Logs</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">domain</span>
+<span class="font-medium text-sm">Properties</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-medium text-sm">Analytics</span>
+</a>
 </nav>
-<div class="mt-auto p-6 space-y-4">
-<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
-<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
-  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+<div class="px-4 py-4">
+<button class="w-full bg-primary hover:bg-primary-container text-white py-3 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                New Report
+            </button>
 </div>
-<div class="flex-1 min-w-0">
-<p class="text-white font-bold truncate">{{ tenant.first_name or tenant.email if tenant else "Your Account" }}</p>
-<p class="text-slate-500 text-xs truncate">Host Administrator</p>
-</div>
-</div>
-<form method="post" action="/logout">
-  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
-    <span class="material-symbols-outlined text-sm">logout</span>Sign Out
-  </button>
-</form>
+<div class="mt-auto pb-6 space-y-1">
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">settings</span>
+<span class="font-medium text-sm">Settings</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">contact_support</span>
+<span class="font-medium text-sm">Support</span>
+</a>
 </div>
 </aside>
-
-<!-- Main -->
-<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen">
-  <div class="mb-8 flex items-center justify-between">
-    <div>
-      <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">Voice AI</h1>
-      <p class="text-slate-400 text-sm">AI-powered phone support call log</p>
-    </div>
-    <div class="flex items-center gap-3">
-      <a href="/voice-calls/gaps" class="relative flex items-center gap-2 px-4 py-2 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl text-sm font-semibold transition-colors">
-        <span class="material-symbols-outlined text-base">help</span>
-        Knowledge Gaps
-        {% if open_gaps_count and open_gaps_count > 0 %}
-        <span class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-black text-[10px] font-black rounded-full flex items-center justify-center">{{ open_gaps_count }}</span>
-        {% endif %}
-      </a>
-      {% if not tenant.voice_enabled %}
-      <a href="/voice-calls?tab=settings#voice-ai-setup" class="flex items-center gap-2 px-4 py-2 bg-[#5B8DEF]/20 text-[#5B8DEF] rounded-xl text-sm font-semibold hover:bg-[#5B8DEF]/30 transition-colors">
-        <span class="material-symbols-outlined text-base">settings</span>
-        Enable Voice AI
-      </a>
-      {% else %}
-      <span class="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-400 rounded-lg text-xs font-semibold">
-        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-        Voice AI Active
-      </span>
-      {% endif %}
-    </div>
-  </div>
-
-  <div class="mb-6 flex items-center justify-between gap-4">
-    <div class="inline-flex items-center gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
-      <a href="/voice-calls?tab=panel" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab != 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
-        Voice AI Panel
-      </a>
-      <a href="/voice-calls?tab=settings#voice-ai-setup" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab == 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
-        Voice AI Settings
-      </a>
-    </div>
-    <div class="text-xs text-slate-500 hidden md:block">
-      Panel = call logs. Settings = Twilio and Voice configuration.
-    </div>
-  </div>
-
-  {% if tab != 'settings' and voice_calls_error %}
-  <div class="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-5 py-4 text-sm text-amber-100">
-    <div class="flex items-start gap-3">
-      <span class="material-symbols-outlined text-amber-300">warning</span>
-      <div>
-        <p class="font-semibold text-amber-200">Voice call data could not be loaded</p>
-        <p class="mt-1 text-amber-100/90">{{ voice_calls_error }}</p>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
-  {% if tab == 'settings' and saved %}
-  <div class="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-100">
-    <div class="flex items-start gap-3">
-      <span class="material-symbols-outlined text-emerald-300">check_circle</span>
-      <div>
-        <p class="font-semibold text-emerald-200">Voice AI settings saved</p>
-        <p class="mt-1 text-emerald-100/90">The new configuration is active for this tenant.</p>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
-  {% if tab == 'settings' %}
-  <div id="voice-ai-setup" class="glass-card rounded-3xl p-6 mb-8 border border-[#5B8DEF]/15">
-    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
-      <div>
-        <p class="text-[0.65rem] font-bold text-[#aec6ff] uppercase tracking-[0.3em] mb-2">Setup</p>
-        <h2 class="text-2xl font-bold text-white">Voice AI Settings</h2>
-        <p class="text-slate-400 text-sm mt-2 max-w-2xl">
-          Configure Twilio, ElevenLabs, host alerts, and pre-check-in calls here. These settings now live on the Voice AI page.
-        </p>
-      </div>
-      <span class="self-start px-3 py-1.5 rounded-full text-xs font-bold {% if tenant.voice_enabled %}bg-green-500/10 text-green-400{% else %}bg-white/5 text-slate-400{% endif %}">
-        {% if tenant.voice_enabled %}Enabled{% else %}Disabled{% endif %}
-      </span>
-    </div>
-
-    {% set voice_has_twilio = (cfg.voice_twilio_account_sid or '') and (cfg.voice_twilio_auth_token or '') %}
-    {% set voice_has_number = (tenant.voice_phone_number or cfg.voice_twilio_from_number or '') %}
-    {% set voice_has_alert_number = (cfg.sms_notify_number or '') %}
-    {% set voice_has_public_url = app_base_url %}
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
-        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Twilio Credentials</p>
-        <p class="text-sm font-semibold {% if voice_has_twilio %}text-emerald-300{% else %}text-amber-300{% endif %}">
-          {% if voice_has_twilio %}Configured{% else %}Missing{% endif %}
-        </p>
-        <p class="mt-2 text-xs text-slate-500">Add the account SID and auth token before turning voice on.</p>
-      </div>
-      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
-        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Phone Number</p>
-        <p class="text-sm font-semibold {% if voice_has_number %}text-emerald-300{% else %}text-amber-300{% endif %}">
-          {% if voice_has_number %}Ready{% else %}Missing{% endif %}
-        </p>
-        <p class="mt-2 text-xs text-slate-500">This is the guest-facing number HostAI answers and uses for follow-up.</p>
-      </div>
-      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
-        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Host Alerts</p>
-        <p class="text-sm font-semibold {% if voice_has_alert_number %}text-emerald-300{% else %}text-slate-300{% endif %}">
-          {% if voice_has_alert_number %}Configured{% else %}Optional{% endif %}
-        </p>
-        <p class="mt-2 text-xs text-slate-500">Use this to get escalation or summary messages after calls.</p>
-      </div>
-      <div class="rounded-2xl border border-white/8 bg-white/5 p-4">
-        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-slate-500 mb-2">Webhook URL</p>
-        <p class="text-sm font-semibold {% if voice_has_public_url %}text-emerald-300{% else %}text-amber-300{% endif %}">
-          {% if voice_has_public_url %}Available{% else %}Missing{% endif %}
-        </p>
-        <p class="mt-2 text-xs text-slate-500">Twilio needs a public URL for inbound voice webhooks.</p>
-      </div>
-    </div>
-
-    <div class="rounded-2xl border border-[#5B8DEF]/15 bg-[#5B8DEF]/6 p-4 mb-6">
-      <p class="text-sm font-semibold text-white mb-2">Before you enable Voice AI</p>
-      <ol class="list-decimal pl-5 space-y-1 text-sm text-slate-300">
-        <li>Save your Twilio credentials and voice number.</li>
-        <li>Copy the webhook URL below into your Twilio phone number settings.</li>
-        <li>Place one real test call and confirm the transcript appears on the panel.</li>
-      </ol>
-    </div>
-
-    <form method="post" action="/voice-calls/settings" class="space-y-5">
-      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Enable Voice AI</label>
-          <select name="voice_enabled" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
-            <option value="false" {% if not tenant.voice_enabled %}selected{% endif %}>Disabled</option>
-            <option value="true" {% if tenant.voice_enabled %}selected{% endif %}>Enabled</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Voice Phone Number</label>
-          <input type="text" name="voice_phone_number" value="{{ tenant.voice_phone_number or '' }}" placeholder="+15550001234" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Twilio Account SID</label>
-          <input type="text" name="voice_twilio_account_sid" value="{{ cfg.voice_twilio_account_sid or '' }}" placeholder="ACxxxxxxxx" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Twilio Auth Token</label>
-          <input type="password" name="voice_twilio_auth_token" placeholder="••••••••" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Twilio From Number</label>
-          <input type="text" name="voice_twilio_from_number" value="{{ cfg.voice_twilio_from_number or '' }}" placeholder="+15550001234" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Host Alert Phone Number</label>
-          <input type="text" name="sms_notify_number" value="{{ cfg.sms_notify_number or '' }}" placeholder="+15550009999" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
-        </div>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Voice Selection</label>
-          <select name="voice_elevenlabs_voice_id" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
-            <option value="EXAVITQu4vr4xnSDxMaL" {% if (cfg.voice_elevenlabs_voice_id or 'EXAVITQu4vr4xnSDxMaL') == 'EXAVITQu4vr4xnSDxMaL' %}selected{% endif %}>Rachel - Female (Default)</option>
-            <option value="VR6AewLTigWG4xSOukaG" {% if cfg.voice_elevenlabs_voice_id == 'VR6AewLTigWG4xSOukaG' %}selected{% endif %}>Arnold - Male</option>
-            <option value="pNInz6obpgDQGcFmaJgB" {% if cfg.voice_elevenlabs_voice_id == 'pNInz6obpgDQGcFmaJgB' %}selected{% endif %}>Adam - Male</option>
-            <option value="MF3mGyEYCl7XYWbV9V6O" {% if cfg.voice_elevenlabs_voice_id == 'MF3mGyEYCl7XYWbV9V6O' %}selected{% endif %}>Elli - Female</option>
-            <option value="AZnzlk1XvdvUeBnXmlld" {% if cfg.voice_elevenlabs_voice_id == 'AZnzlk1XvdvUeBnXmlld' %}selected{% endif %}>Domi - Female</option>
-            <option value="ErXwobaYiN019PkySvjV" {% if cfg.voice_elevenlabs_voice_id == 'ErXwobaYiN019PkySvjV' %}selected{% endif %}>Antoni - Male</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Send Info During Call Via</label>
-          <select name="voice_send_channel" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
-            <option value="disabled" {% if (cfg.voice_send_channel or 'disabled') == 'disabled' %}selected{% endif %}>Disabled (don't send)</option>
-            <option value="sms" {% if cfg.voice_send_channel == 'sms' %}selected{% endif %}>SMS (Twilio)</option>
-            <option value="whatsapp" {% if cfg.voice_send_channel == 'whatsapp' %}selected{% endif %}>WhatsApp</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Post-call Summary</label>
-          <select name="voice_post_call_summary" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
-            <option value="false" {% if not cfg.voice_post_call_summary %}selected{% endif %}>Disabled</option>
-            <option value="true" {% if cfg.voice_post_call_summary %}selected{% endif %}>Send to host after each call</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Scheduled Pre-checkin Calls</label>
-          <select name="voice_scheduled_calls_enabled" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
-            <option value="false" {% if not cfg.voice_scheduled_calls_enabled %}selected{% endif %}>Disabled</option>
-            <option value="true" {% if cfg.voice_scheduled_calls_enabled %}selected{% endif %}>Auto-call guests 24h before check-in</option>
-          </select>
-        </div>
-      </div>
-      <div class="rounded-2xl bg-white/5 border border-white/5 p-4">
-        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-2">Twilio webhook URL</p>
-        <div class="flex flex-col md:flex-row gap-3">
-          <input type="text" readonly value="{{ app_base_url }}/api/calls/incoming" id="voice-webhook-url" class="flex-1 px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm">
-          <button type="button" class="copy-btn flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-slate-200 hover:bg-white/15 transition-colors" data-target="voice-webhook-url">
-            Copy
-          </button>
-        </div>
-        <p class="mt-2 text-xs text-slate-500">Use this URL in Twilio Console for incoming voice calls.</p>
-      </div>
-      <div class="flex items-center justify-between gap-4">
-        <p class="text-xs text-slate-500">Changes take effect after saving and restarting the worker.</p>
-        <button type="submit" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
-          Save Voice AI
-        </button>
-      </div>
-    </form>
-  </div>
-  {% endif %}
-
-  {% if tab != 'settings' %}
-  <!-- Stats Row -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-    <div class="glass-card rounded-2xl p-5">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Calls</p>
-      <p class="text-3xl font-extrabold text-white">{{ total }}</p>
-    </div>
-    <div class="glass-card rounded-2xl p-5">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Completed</p>
-      <p class="text-3xl font-extrabold text-green-400">{{ calls | selectattr('status', 'equalto', 'completed') | list | length }}</p>
-    </div>
-    <div class="glass-card rounded-2xl p-5">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Avg Duration</p>
-      {% set durations = calls | selectattr('duration_seconds') | map(attribute='duration_seconds') | list %}
-      <p class="text-3xl font-extrabold text-[#aec6ff]">
-        {% if durations and durations|length > 0 %}
-          {{ ((durations | sum) / (durations | length) | round(0)) | int }}s
-        {% else %}
-          0s
-        {% endif %}
-      </p>
-    </div>
-    <div class="glass-card rounded-2xl p-5">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Avg Confidence</p>
-      {% set confidences = calls | selectattr('confidence_avg') | map(attribute='confidence_avg') | list %}
-      <p class="text-3xl font-extrabold text-[#aec6ff]">
-        {% if confidences and confidences|length > 0 %}
-          {{ (((confidences | sum) / (confidences | length)) * 100) | round(0) | int }}%
-        {% else %}
-          0%
-        {% endif %}
-      </p>
-    </div>
-  </div>
-
-  <!-- Filters -->
-  <div class="glass-card rounded-3xl overflow-hidden mb-6">
-    <div class="p-6 border-b border-white/5">
-      <h3 class="text-lg font-bold text-white mb-4">Filter Calls</h3>
-      <form method="get" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <!-- Date Range -->
-          <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">From</label>
-            <input type="date" name="date_from" value="{{ date_from or '' }}" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">To</label>
-            <input type="date" name="date_to" value="{{ date_to or '' }}" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
-          </div>
-
-          <!-- Status Filter -->
-          <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Status</label>
-            <select name="status" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
-              <option value="">All Status</option>
-              <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
-              <option value="answered" {% if status == 'answered' %}selected{% endif %}>Answered</option>
-              <option value="ringing" {% if status == 'ringing' %}selected{% endif %}>Ringing</option>
-              <option value="failed" {% if status == 'failed' %}selected{% endif %}>Failed</option>
-            </select>
-          </div>
-
-          <!-- Sentiment Filter -->
-          <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Sentiment</label>
-            <select name="sentiment" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
-              <option value="">All Sentiments</option>
-              <option value="positive" {% if sentiment == 'positive' %}selected{% endif %}>😊 Positive</option>
-              <option value="neutral" {% if sentiment == 'neutral' %}selected{% endif %}>😐 Neutral</option>
-              <option value="negative" {% if sentiment == 'negative' %}selected{% endif %}>😟 Negative</option>
-            </select>
-          </div>
-
-          <!-- Search -->
-          <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Search</label>
-            <input type="text" name="search" placeholder="Phone, guest name, topic..." value="{{ search or '' }}" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF] placeholder-slate-600">
-          </div>
-        </div>
-        <div class="flex gap-2">
-          <button type="submit" class="flex items-center gap-2 px-4 py-2 bg-[#5B8DEF]/20 text-[#5B8DEF] hover:bg-[#5B8DEF]/30 rounded-lg text-sm font-semibold transition-colors">
-            <span class="material-symbols-outlined text-sm">search</span>Filter
-          </button>
-          <a href="/voice-calls" class="flex items-center gap-2 px-4 py-2 bg-white/5 text-slate-300 hover:bg-white/10 rounded-lg text-sm font-semibold transition-colors">
-            <span class="material-symbols-outlined text-sm">clear</span>Clear
-          </a>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Call Log Table -->
-  <div class="glass-card rounded-3xl overflow-hidden">
-    <div class="p-6 border-b border-white/5">
-      <h2 class="text-lg font-bold text-white">Call Log</h2>
-    </div>
-    {% if calls %}
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-white/5">
-            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Guest</th>
-            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Type</th>
-            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Status</th>
-            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Duration</th>
-            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Confidence</th>
-            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Time</th>
-            <th class="text-left px-6 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Transcript</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-white/5">
-          {% for call in calls %}
-          <tr class="hover:bg-white/[0.02] transition-colors cursor-pointer" onclick="toggleTranscript('{{ call.id }}')">
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-[#5B8DEF]/20 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-[#5B8DEF] text-base">person</span>
-                </div>
-                <span class="text-white font-medium">{{ call.guest_phone_number or "Unknown" }}</span>
-              </div>
-            </td>
-            <td class="px-6 py-4">
-              <span class="text-slate-400 capitalize">{{ call.call_type or "incoming" }}</span>
-            </td>
-            <td class="px-6 py-4">
-              <span class="px-2 py-1 rounded-lg text-xs font-semibold badge-{{ call.status or 'ringing' }}">
-                {{ (call.status or "ringing") | title }}
-              </span>
-            </td>
-            <td class="px-6 py-4 text-slate-300">
-              {% if call.duration_seconds %}{{ call.duration_seconds }}s{% else %}—{% endif %}
-            </td>
-            <td class="px-6 py-4 text-slate-300">
-              {% if call.confidence_avg %}{{ (call.confidence_avg * 100) | round(0) | int }}%{% else %}—{% endif %}
-            </td>
-            <td class="px-6 py-4 text-slate-400 text-xs">
-              {{ call.created_at.strftime('%b %d, %H:%M') if call.created_at else '—' }}
-            </td>
-            <td class="px-6 py-4">
-              {% if call.full_transcript %}
-              <span class="text-[#5B8DEF] text-xs">View ▾</span>
-              {% else %}
-              <span class="text-slate-600 text-xs">No transcript</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% if call.full_transcript %}
-          <tr id="transcript-{{ call.id }}" class="hidden bg-[#5B8DEF]/5">
-            <td colspan="7" class="px-6 py-4">
-              <div class="text-sm text-slate-300 leading-relaxed whitespace-pre-line font-mono">{{ call.full_transcript }}</div>
-              {% if call.recording_url %}
-              <div style="margin-top:1rem">
-                <div style="font-size:0.85rem;color:var(--text-2);margin-bottom:0.5rem">Recording:</div>
-                <audio controls style="width:100%;max-width:400px;margin-bottom:0.5rem">
-                  <source src="{{ call.recording_url }}" type="audio/mpeg">
-                  Your browser does not support the audio element.
-                </audio>
-                <br/>
-                <a href="{{ call.recording_url }}" download class="inline-flex items-center gap-1 text-xs text-[#5B8DEF] hover:underline">
-                  <span class="material-symbols-outlined text-sm">download</span>Download recording
-                </a>
-              </div>
-              {% endif %}
-            </td>
-          </tr>
-          {% endif %}
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Pagination -->
-    {% if total_pages > 1 %}
-    <div class="flex items-center justify-between p-6 border-t border-white/5">
-      <p class="text-slate-500 text-sm">Showing {{ (page-1)*per_page + 1 }}–{{ min(page*per_page, total) }} of {{ total }}</p>
-      <div class="flex gap-2">
-        {% if page > 1 %}
-        <a href="?page={{ page - 1 }}" class="px-4 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 text-sm transition-colors">← Prev</a>
-        {% endif %}
-        {% if page < total_pages %}
-        <a href="?page={{ page + 1 }}" class="px-4 py-2 rounded-xl bg-[#5B8DEF]/20 text-[#5B8DEF] hover:bg-[#5B8DEF]/30 text-sm transition-colors">Next →</a>
-        {% endif %}
-      </div>
-    </div>
-    {% endif %}
-
-    {% else %}
-    <!-- Empty state -->
-    <div class="flex flex-col items-center justify-center py-24 px-8">
-      <div class="w-20 h-20 rounded-3xl bg-[#5B8DEF]/10 flex items-center justify-center mb-6">
-        <span class="material-symbols-outlined text-[#5B8DEF] text-4xl">phone_in_talk</span>
-      </div>
-      <h3 class="text-xl font-bold text-white mb-2">No calls yet</h3>
-      <p class="text-slate-400 text-sm text-center max-w-sm mb-6">
-        Once guests call your Twilio number, AI-powered conversations will appear here with full transcripts.
-      </p>
-      {% if not tenant.voice_enabled %}
-      <a href="/voice-calls?tab=settings#voice-ai-setup" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
-        <span class="material-symbols-outlined text-base">settings</span>
-        Set Up Voice AI
-      </a>
-      {% endif %}
-    </div>
-    {% endif %}
-  </div>
-  {% endif %}
+<!-- Main Content -->
+<main class="ml-64 pt-16 p-8 min-h-screen">
+<div class="max-w-7xl mx-auto">
+<!-- Header Section -->
+<div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h1 class="text-4xl font-extrabold text-on-surface tracking-tight mb-2">Voice &amp; Call Gaps</h1>
+<p class="text-on-surface-variant max-w-lg leading-relaxed">
+                        Identify and resolve communication friction points. Automated analysis of missed connections and system timeouts across your portfolio.
+                    </p>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-5 py-2.5 bg-surface-container text-on-surface-variant font-semibold rounded-xl flex items-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+                        Filter
+                    </button>
+<button class="px-5 py-2.5 bg-primary-container text-on-primary font-semibold rounded-xl flex items-center gap-2 editorial-shadow hover:-translate-y-0.5 transition-all">
+<span class="material-symbols-outlined text-[20px]">send</span>
+                        Send Messages
+                    </button>
+</div>
+</div>
+<!-- Dashboard Analytics Quick-View -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow">
+<p class="text-secondary text-sm font-medium mb-1">Total Call Gaps</p>
+<p class="text-3xl font-extrabold text-on-surface">24</p>
+<div class="mt-4 flex items-center gap-1.5 text-error text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+12% from yesterday</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow border-l-4 border-primary">
+<p class="text-secondary text-sm font-medium mb-1">Action Required</p>
+<p class="text-3xl font-extrabold text-on-surface">18</p>
+<div class="mt-4 flex items-center gap-1.5 text-primary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">timer</span>
+<span>Avg response: 14m</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow">
+<p class="text-secondary text-sm font-medium mb-1">Success Recovery</p>
+<p class="text-3xl font-extrabold text-on-surface">62%</p>
+<div class="mt-4 flex items-center gap-1.5 text-primary-fixed-dim text-xs font-bold">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+<span>12 calls recovered</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow">
+<p class="text-secondary text-sm font-medium mb-1">Dropped Ratio</p>
+<p class="text-3xl font-extrabold text-on-surface">4.2%</p>
+<div class="mt-4 flex items-center gap-1.5 text-tertiary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">info</span>
+<span>Target: &lt; 2.0%</span>
+</div>
+</div>
+</div>
+<!-- Incident Table Area -->
+<div class="bg-surface-container-low rounded-2xl overflow-hidden">
+<div class="p-6 flex items-center justify-between bg-surface-container-lowest/50 backdrop-blur-md">
+<h3 class="text-lg font-bold text-on-surface">Pending Voice Gaps</h3>
+<div class="flex items-center gap-2">
+<span class="text-xs text-on-surface-variant font-medium">Select All</span>
+<input class="rounded border-outline-variant text-primary focus:ring-primary h-4 w-4" type="checkbox"/>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full border-collapse">
+<thead>
+<tr class="text-left border-b border-outline-variant/10">
+<th class="px-8 py-4 text-xs uppercase tracking-widest text-on-surface-variant font-bold">Guest &amp; Identity</th>
+<th class="px-8 py-4 text-xs uppercase tracking-widest text-on-surface-variant font-bold">Property Location</th>
+<th class="px-8 py-4 text-xs uppercase tracking-widest text-on-surface-variant font-bold">Time Attempted</th>
+<th class="px-8 py-4 text-xs uppercase tracking-widest text-on-surface-variant font-bold">Gap Reason</th>
+<th class="px-8 py-4 text-xs uppercase tracking-widest text-on-surface-variant font-bold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Entry 1 -->
+<tr class="group hover:bg-white transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-sm">LP</div>
+<div>
+<p class="font-bold text-on-surface">Liam Peterson</p>
+<p class="text-xs text-on-surface-variant">Confirmed Guest • VIP</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="font-medium text-on-surface">The Glass Loft</p>
+<p class="text-xs text-on-surface-variant">Unit 402 • Manhattan</p>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm font-semibold text-on-surface">14:22 PM</p>
+<p class="text-xs text-on-surface-variant">Today, Oct 24</p>
+</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-error-container text-on-error-container text-[10px] font-bold rounded-full uppercase tracking-wider">Connection Dropped</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 hover:bg-primary-fixed text-primary rounded-lg transition-colors" title="Call Back">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="px-4 py-1.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:bg-secondary-fixed transition-colors">
+                                            Send Message
+                                        </button>
+</div>
+</td>
+</tr>
+<!-- Entry 2 -->
+<tr class="group hover:bg-white transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary font-bold text-sm">SC</div>
+<div>
+<p class="font-bold text-on-surface">Sarah Chen</p>
+<p class="text-xs text-on-surface-variant">Inquiry • New User</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="font-medium text-on-surface">Azure Bay Villa</p>
+<p class="text-xs text-on-surface-variant">Main House • Malibu</p>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm font-semibold text-on-surface">13:05 PM</p>
+<p class="text-xs text-on-surface-variant">Today, Oct 24</p>
+</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed-variant text-[10px] font-bold rounded-full uppercase tracking-wider">No Answer</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 hover:bg-primary-fixed text-primary rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="px-4 py-1.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:bg-secondary-fixed transition-colors">
+                                            Send Message
+                                        </button>
+</div>
+</td>
+</tr>
+<!-- Entry 3 -->
+<tr class="group hover:bg-white transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-on-primary-fixed-variant font-bold text-sm">MK</div>
+<div>
+<p class="font-bold text-on-surface">Marcus Knight</p>
+<p class="text-xs text-on-surface-variant">In-Stay • Urgent</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="font-medium text-on-surface">The Glass Loft</p>
+<p class="text-xs text-on-surface-variant">Penthouse • Manhattan</p>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm font-semibold text-on-surface">11:45 AM</p>
+<p class="text-xs text-on-surface-variant">Today, Oct 24</p>
+</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-full uppercase tracking-wider">System Timeout</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 hover:bg-primary-fixed text-primary rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="px-4 py-1.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:bg-secondary-fixed transition-colors">
+                                            Send Message
+                                        </button>
+</div>
+</td>
+</tr>
+<!-- Entry 4 -->
+<tr class="group hover:bg-white transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed-dim flex items-center justify-center text-on-tertiary-fixed font-bold text-sm">EB</div>
+<div>
+<p class="font-bold text-on-surface">Elena Belova</p>
+<p class="text-xs text-on-surface-variant">Upcoming • Request</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="font-medium text-on-surface">Azure Bay Villa</p>
+<p class="text-xs text-on-surface-variant">Guest Suite • Malibu</p>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm font-semibold text-on-surface">10:12 AM</p>
+<p class="text-xs text-on-surface-variant">Today, Oct 24</p>
+</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-error-container text-on-error-container text-[10px] font-bold rounded-full uppercase tracking-wider">Connection Dropped</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 hover:bg-primary-fixed text-primary rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="px-4 py-1.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:bg-secondary-fixed transition-colors">
+                                            Send Message
+                                        </button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination/Load More -->
+<div class="p-8 flex items-center justify-center border-t border-outline-variant/10">
+<button class="text-sm font-bold text-primary flex items-center gap-2 hover:underline">
+                        View Historical Logs
+                        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Contextual Insights Section (Asymmetric Bento) -->
+<div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="md:col-span-2 bg-gradient-to-br from-primary to-primary-container p-8 rounded-3xl text-on-primary editorial-shadow relative overflow-hidden group">
+<div class="relative z-10">
+<h4 class="text-2xl font-bold mb-4">Precision Intelligence</h4>
+<p class="text-on-primary-container/90 max-w-md leading-relaxed mb-6">
+                            Our AI detected a recurring pattern: **Connection Dropped** incidents are up 15% at **The Glass Loft** between 2 PM and 4 PM. This suggests potential network saturation in the Manhattan node.
+                        </p>
+<button class="px-6 py-3 bg-white text-primary font-bold rounded-xl text-sm hover:bg-primary-fixed transition-all">
+                            Investigate Network Node
+                        </button>
+</div>
+<span class="material-symbols-outlined absolute -right-8 -bottom-8 text-[200px] opacity-10 group-hover:scale-110 transition-transform duration-700">settings_voice</span>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-3xl editorial-shadow flex flex-col justify-between">
+<div>
+<div class="w-12 h-12 rounded-2xl bg-tertiary-fixed flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-tertiary">warning</span>
+</div>
+<h4 class="text-lg font-bold text-on-surface mb-2">Portfolio Health</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">
+                            Malibu properties are currently maintaining a 98.4% voice stability rating. No action required for Azure Bay.
+                        </p>
+</div>
+<div class="mt-6 pt-6 border-t border-outline-variant/10">
+<div class="flex items-center justify-between text-xs font-bold text-on-surface uppercase tracking-widest">
+<span>Status: Stable</span>
+<span class="text-tertiary-fixed-variant">Last checked 5m ago</span>
+</div>
+</div>
+</div>
+</div>
+</div>
 </main>
-{%- endblock %}
-{%- endblock %}
-
-<script nonce="{{ request.state.csp_nonce }}">
-function toggleTranscript(id) {
-  const el = document.getElementById('transcript-' + id);
-  if (el) el.classList.toggle('hidden');
-}
-
-document.addEventListener('click', function (event) {
-  const button = event.target.closest('.copy-btn');
-  if (!button) return;
-  const targetId = button.getAttribute('data-target');
-  const element = document.getElementById(targetId);
-  if (!element || !navigator.clipboard) return;
-  navigator.clipboard.writeText(element.value || element.textContent || '');
-});
-</script>
+<!-- FAB Suppression Rule: Not rendered as this is a focused log view -->
+</body></html>

@@ -1,342 +1,475 @@
-{% extends "base.html" %}
-{% set admin_user = admin %}
-{% block title %}Admin · {{ t.email }} — HostAI{% endblock %}
+<!DOCTYPE html>
 
-{% block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
-tailwind.config = {
-  darkMode: "class",
-  theme: { extend: { colors: {
-    "primary": "#aec6ff","primary-container":"#5d8ef1","on-primary":"#002e6b",
-    "surface":"#121319","surface-container":"#1e1f26","surface-container-lowest":"#0d0e14",
-    "surface-container-high":"#292930","on-surface":"#e3e1eb","on-surface-variant":"#c3c6d4",
-    "outline":"#424752","outline-variant":"#34343b","error":"#ffb4ab","tertiary":"#ffb960",
-    "secondary":"#bdf4ff","secondary-fixed-dim":"#00daf3",
-  }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
-}
-</script>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AdminNexus - Tenant Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-highest": "#e0e3e5",
+                    "tertiary": "#883700",
+                    "on-tertiary": "#ffffff",
+                    "inverse-primary": "#aac7ff",
+                    "on-secondary": "#ffffff",
+                    "tertiary-container": "#af4900",
+                    "primary-fixed": "#d7e3ff",
+                    "secondary-container": "#d5e3fc",
+                    "secondary-fixed-dim": "#b9c7df",
+                    "tertiary-fixed": "#ffdbcb",
+                    "secondary": "#515f74",
+                    "on-error-container": "#93000a",
+                    "error-container": "#ffdad6",
+                    "primary-fixed-dim": "#aac7ff",
+                    "on-tertiary-container": "#ffe3d6",
+                    "surface-container": "#eceef0",
+                    "surface": "#f7f9fb",
+                    "on-primary-fixed": "#001b3e",
+                    "on-primary-container": "#dfe8ff",
+                    "on-surface": "#191c1e",
+                    "error": "#ba1a1a",
+                    "primary-container": "#0066cc",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-tint": "#005cba",
+                    "on-primary-fixed-variant": "#00458e",
+                    "on-tertiary-fixed-variant": "#793000",
+                    "secondary-fixed": "#d5e3fc",
+                    "on-secondary-fixed": "#0d1c2e",
+                    "on-background": "#191c1e",
+                    "surface-variant": "#e0e3e5",
+                    "on-primary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "on-error": "#ffffff",
+                    "primary": "#004e9f",
+                    "on-secondary-fixed-variant": "#3a485b",
+                    "on-secondary-container": "#57657a",
+                    "inverse-on-surface": "#eff1f3",
+                    "background": "#f7f9fb",
+                    "on-surface-variant": "#414753",
+                    "outline-variant": "#c1c6d5",
+                    "surface-bright": "#f7f9fb",
+                    "surface-container-high": "#e6e8ea",
+                    "on-tertiary-fixed": "#341100",
+                    "tertiary-fixed-dim": "#ffb692",
+                    "surface-container-low": "#f2f4f6",
+                    "outline": "#727784",
+                    "surface-dim": "#d8dadc"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        }
+      }
+    </script>
 <style>
-body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
-.glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
-.material-symbols-outlined { font-variation-settings:'FILL' 1,'wght' 300,'GRAD' 0,'opsz' 24; }
-.admin-tab { padding-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; transition: color 0.2s, border-bottom-color 0.2s; border-bottom: 2px solid transparent; color: #8d909e; }
-.admin-tab:hover { color: #e3e1eb; }
-.admin-tab.active { color: #5B8DEF; border-bottom-color: #5B8DEF; }
-
-.compat-input { width: 100%; border-radius: 0.5rem; border: 1px solid rgba(66,71,82,0.4); background: #0d0e14; color: #e3e1eb; padding: 0.6rem 0.8rem; font-size: 0.85rem; transition: border-color 0.15s; outline: none; margin-bottom: 0.5rem; }
-.compat-input:focus { border-color: #5B8DEF; }
-</style>
-{%- endblock %}
-
-{%- block nav %}{%- endblock %}
-
-{%- block main_wrapper %}
-{%- block content %}
-<!-- Sidebar -->
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased overflow-hidden">
+<!-- Sidebar Wrapper -->
 <!-- Mobile hamburger -->
-<button onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full');document.getElementById('admin-sidebar-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('admin-sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="admin-sidebar-overlay"></div>
-<aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
-  <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
-<span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
+<!-- Sidebar overlay for mobile -->
+<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+<aside id="sidebar" class="h-screen w-64 fixed left-0 top-0 bg-slate-50 dark:bg-slate-950 flex flex-col gap-y-4 py-8 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300">
+<div class="px-6 mb-4">
+<h1 class="text-lg font-black text-blue-700 dark:text-blue-500">AdminNexus</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">Enterprise Tier</p>
 </div>
-<span>HostAI</span>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all rounded-full group" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-sans text-sm font-medium">Dashboard</span>
 </a>
-  <nav class="flex-1 px-4 space-y-1">
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/dashboard">
-      <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
-      <span class="material-symbols-outlined" data-icon="forum">forum</span> Conversations
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
-      <span class="material-symbols-outlined" data-icon="event_available">event_available</span> Reservations
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
-      <span class="material-symbols-outlined" data-icon="history">history</span> Activity
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
-      <span class="material-symbols-outlined" data-icon="analytics">analytics</span> Analytics
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
-                Voice AI
-            </a>
-      <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
-      <span class="material-symbols-outlined" data-icon="hub">hub</span> Workflow Center
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
-      <span class="material-symbols-outlined" data-icon="settings">settings</span> Settings
-    </a>
-    {% if is_admin(admin_user.email) %}
-    <a class="flex items-center gap-3 px-6 py-3 text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold transition-all duration-200" href="/admin">
-      <span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span> Admin Panel
-    </a>
-    {% endif %}
-  </nav>
-
-  <div class="p-6 border-t border-white/5">
-    <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
-      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-        {{ (admin_user.name or admin_user.email or 'H')[0]|upper }}
-      </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-white text-sm font-bold truncate">{{ admin_user.name or admin_user.email.split('@')[0]|title }}</p>
-        <p class="text-slate-500 text-xs truncate">Admin Account</p>
-      </div>
-    </div>
-    <form method="post" action="/logout">
-      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-      <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-red-400 transition-colors text-xs font-bold uppercase tracking-widest py-2">
-        <span class="material-symbols-outlined text-sm">logout</span>Sign Out
-      </button>
-    </form>
-  </div>
+<a class="flex items-center gap-3 px-4 py-3 bg-blue-100/50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full mx-2 transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="location_city">location_city</span>
+<span class="font-sans text-sm font-medium">Tenants</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all rounded-full group" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-sans text-sm font-medium">Revenue</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all rounded-full group" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-sans text-sm font-medium">Settings</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<div class="bg-slate-200 dark:bg-slate-800/50 h-[1px] w-full mb-4"></div>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all rounded-full group" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-sans text-sm font-medium">Log Out</span>
+</a>
+</div>
 </aside>
-
-<!-- Main -->
-<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen relative">
-  <!-- Mobile hamburger menu -->
-  <button id="sidebar-toggle" class="md:hidden fixed top-4 left-4 z-40 p-2 text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all" onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full')">
-    <span class="material-symbols-outlined">menu</span>
-  </button>
-  <div class="absolute -top-48 -right-48 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
-  
-  <div class="mb-10 pt-4">
-    <!-- Admin Subnav -->
-    <div class="flex items-center gap-6 mb-6">
-      <a href="/admin" class="flex items-center gap-1 text-slate-400 hover:text-white transition-colors text-sm font-bold bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
-        <span class="material-symbols-outlined text-sm">arrow_back</span> All Tenants
-      </a>
-    </div>
-
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-white/10 pb-6">
-      <div>
-        <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">{{ t.email }}</h1>
-        <div class="flex items-center gap-4 text-xs font-medium text-slate-400">
-          <span>ID: <strong class="text-slate-300 font-mono">{{ t.id }}</strong></span>
-          <span class="w-1 h-1 rounded-full bg-slate-600"></span>
-          <span>Joined: <strong class="text-slate-300">{{ t.created_at.strftime("%Y-%m-%d") }}</strong></span>
-          <span class="w-1 h-1 rounded-full bg-slate-600"></span>
-          <span>Last active: <strong class="text-slate-300">{{ last_active.strftime("%Y-%m-%d %H:%M") }} UTC</strong></span>
-          {% if not t.is_active %}<span class="w-1 h-1 rounded-full bg-rose-500"></span><strong class="text-rose-500">DEACTIVATED</strong>{% endif %}
-          {% if not t.email_verified %}<span class="w-1 h-1 rounded-full bg-amber-500"></span><strong class="text-amber-500">unverified email</strong>{% endif %}
-        </div>
-      </div>
-      
-      <div class="flex items-center gap-3">
-        <form method="post" action="/admin/tenants/{{ t.id }}/impersonate">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-          <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-[#aec6ff] border border-[rgba(174,198,255,0.2)] bg-[rgba(174,198,255,0.05)] hover:bg-[rgba(174,198,255,0.1)] transition-colors">
-            <span class="material-symbols-outlined text-sm">person</span> Impersonate
-          </button>
-        </form>
-        {% if t.is_active %}
-        <form method="post" action="/admin/tenants/{{ t.id }}/deactivate" data-confirm="Deactivate {{ t.email }}? Their workers will stop.">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-          <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-rose-400 border border-rose-400/20 bg-rose-400/5 hover:bg-rose-400/10 transition-colors">
-            <span class="material-symbols-outlined text-sm">block</span> Deactivate
-          </button>
-        </form>
-        {% else %}
-        <form method="post" action="/admin/tenants/{{ t.id }}/reactivate">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-          <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-[#27c93f] border border-[#27c93f]/20 bg-[#27c93f]/5 hover:bg-[#27c93f]/10 transition-colors">
-            <span class="material-symbols-outlined text-sm">play_arrow</span> Reactivate
-          </button>
-        </form>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-
-  {% if msg == "plan_updated" %}
-  <div class="bg-[#27c93f]/10 border border-[#27c93f]/30 text-[#27c93f] px-4 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
-    <span class="material-symbols-outlined text-sm">check_circle</span> Plan updated successfully.
-  </div>
-  {% elif msg == "deactivated" %}
-  <div class="bg-rose-500/10 border border-rose-500/30 text-rose-500 px-4 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
-    <span class="material-symbols-outlined text-sm">error</span> Tenant deactivated. Workers stopped.
-  </div>
-  {% elif msg == "reactivated" %}
-  <div class="bg-[#27c93f]/10 border border-[#27c93f]/30 text-[#27c93f] px-4 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
-    <span class="material-symbols-outlined text-sm">check_circle</span> Tenant reactivated. Workers restarted.
-  </div>
-  {% endif %}
-
-  <!-- Stats -->
-  <div class="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-6 gap-4 mb-8">
-    <div class="glass-card p-4 rounded-xl">
-      <p class="text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Drafts</p>
-      <p class="text-2xl font-extrabold text-[#aec6ff]">{{ draft_stats.total }}</p>
-    </div>
-    <div class="glass-card p-4 rounded-xl border-l-2 border-[#27c93f]">
-      <p class="text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Approved</p>
-      <p class="text-2xl font-extrabold text-[#27c93f]">{{ draft_stats.approved }}</p>
-    </div>
-    <div class="glass-card p-4 rounded-xl border-l-2 border-amber-500">
-      <p class="text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Edited</p>
-      <p class="text-2xl font-extrabold text-amber-500">{{ draft_stats.edited }}</p>
-    </div>
-    <div class="glass-card p-4 rounded-xl border-l-2 border-rose-500">
-      <p class="text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Skipped</p>
-      <p class="text-2xl font-extrabold text-rose-500">{{ draft_stats.skipped }}</p>
-    </div>
-    <div class="glass-card p-4 rounded-xl">
-      <p class="text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Reservations</p>
-      <p class="text-2xl font-extrabold text-white">{{ reservation_count }}</p>
-    </div>
-    {% if sync_log %}
-    <div class="glass-card p-4 rounded-xl">
-      <p class="text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Last CSV Sync</p>
-      <p class="text-lg font-extrabold text-[#5B8DEF]">{{ sync_log.last_synced.strftime("%m-%d") }}</p>
-    </div>
-    {% endif %}
-  </div>
-
-  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
-    <!-- Config Snapshot -->
-    <div class="glass-card rounded-3xl p-6">
-      <h2 class="text-lg font-bold text-white mb-6">Configuration</h2>
-      {% if cfg %}
-      <div class="space-y-4">
-        <div class="flex justify-between items-center pb-3 border-b border-white/5">
-          <span class="text-sm font-bold text-slate-400">Plan</span>
-          <div class="flex items-center gap-2">
-            <span class="px-2 py-0.5 bg-white/10 rounded text-[10px] font-bold tracking-wider uppercase text-white">{{ cfg.subscription_plan }}</span>
-            <span class="text-[10px] font-bold uppercase tracking-wider {% if cfg.subscription_status == 'active' %}text-[#27c93f]{% elif cfg.subscription_status == 'trialing' %}text-info{% else %}text-slate-400{% endif %}">{{ cfg.subscription_status }}</span>
-          </div>
-        </div>
-        <div class="flex justify-between items-center pb-3 border-b border-white/5">
-          <span class="text-sm font-bold text-slate-400">Onboarding</span>
-          <span class="text-sm font-medium {% if cfg.onboarding_complete %}text-[#27c93f]{% else %}text-slate-400{% endif %}">
-            {% if cfg.onboarding_complete %}Complete{% else %}Step {{ cfg.onboarding_step }}/5{% endif %}
-          </span>
-        </div>
-        {% if cfg.property_names %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
-          <span class="text-sm font-bold text-slate-400">Property</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.property_names }}</span>
-        </div>{% endif %}
-        {% if cfg.property_city %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
-          <span class="text-sm font-bold text-slate-400">City</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.property_city }}</span>
-        </div>{% endif %}
-        {% if cfg.email_address %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
-          <span class="text-sm font-bold text-slate-400">Email (IMAP)</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.email_address }}</span>
-        </div>{% endif %}
-        {% if cfg.imap_host %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
-          <span class="text-sm font-bold text-slate-400">IMAP host</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.imap_host }}</span>
-        </div>{% endif %}
-        <div class="flex justify-between items-center pb-3 border-b border-white/5">
-          <span class="text-sm font-bold text-slate-400">WhatsApp mode</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.wa_mode }}</span>
-        </div>
-        <div class="flex justify-between items-center pb-3 border-b border-white/5">
-          <span class="text-sm font-bold text-slate-400">SMS mode</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.sms_mode }}</span>
-        </div>
-        {% if cfg.ical_urls %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
-          <span class="text-sm font-bold text-slate-400">iCal URLs</span>
-          <span class="text-sm font-medium text-slate-300">Configured</span>
-        </div>{% endif %}
-        {% if cfg.escalation_email %}<div class="flex justify-between items-center pb-3 border-b border-transparent">
-          <span class="text-sm font-bold text-slate-400">Escalation email</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.escalation_email }}</span>
-        </div>{% endif %}
-      </div>
-      {% else %}
-      <p class="text-slate-500 text-sm">No config record yet.</p>
-      {% endif %}
-    </div>
-
-    <div class="space-y-6">
-      <!-- Billing + Worker status -->
-      <div class="glass-card rounded-3xl p-6">
-        <h2 class="text-lg font-bold text-white mb-6">Subscription</h2>
-        {% if cfg %}
-        <div class="space-y-4">
-          <div class="flex justify-between items-center pb-3 border-b border-transparent">
-            <span class="text-sm font-bold text-slate-400">Expires at</span>
-            <span class="text-sm font-medium text-slate-300">{{ cfg.subscription_expires_at.strftime("%Y-%m-%d") if cfg.subscription_expires_at else "—" }}</span>
-          </div>
-        </div>
-        {% else %}
-        <p class="text-slate-500 text-sm">—</p>
-        {% endif %}
-      </div>
-
-      <div class="glass-card rounded-3xl p-6">
-        <h2 class="text-lg font-bold text-white mb-6">System Health</h2>
-        <div class="flex items-center gap-4">
-          <div class="flex-1">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="w-2.5 h-2.5 rounded-full {% if ws.email_running and ws.cal_running and ws.sched_running %}bg-[#27c93f]{% else %}bg-rose-500{% endif %}"></span>
-              <span class="text-xs font-bold uppercase tracking-wider {% if ws.email_running and ws.cal_running and ws.sched_running %}text-[#27c93f]{% else %}text-rose-500{% endif %}">{{ "All Systems Running" if ws.email_running and ws.cal_running and ws.sched_running else "Issues Detected" }}</span>
-            </div>
-            <p class="text-xs text-slate-500">Email · Calendar · Scheduler</p>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Override Plan -->
-      {% if cfg %}
-      <div class="glass-card rounded-3xl p-6 border border-amber-500/10">
-        <h2 class="text-lg font-bold text-white mb-4">Override Plan</h2>
-        <form method="post" action="/admin/tenants/{{ t.id }}/plan" class="flex flex-col gap-4">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-          <div class="flex gap-4">
-            <div class="flex-1">
-              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Plan</label>
-              <select name="plan" class="compat-input w-full">
-                {% for p in plans %}
-                <option value="{{ p }}" {% if cfg.subscription_plan == p %}selected{% endif %}>
-                  {{ p }} (${{ plan_mrr.get(p, 0) }}/mo)
-                </option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="flex-1">
-              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Status</label>
-              <select name="sub_status" class="compat-input w-full">
-                {% for s in ["active","trialing","inactive","cancelled","past_due"] %}
-                <option value="{{ s }}" {% if cfg.subscription_status == s %}selected{% endif %}>{{ s }}</option>
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-          <button type="submit" class="w-full py-2.5 bg-white/10 hover:bg-white/15 text-white text-sm font-bold border border-white/5 rounded-xl transition-all">Save Plan Configuration</button>
-        </form>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Activity Log -->
-  <div class="glass-card rounded-3xl p-6">
-    <h2 class="text-lg font-bold text-white mb-6">Recent Activity (Last 30 Events)</h2>
-    {% if activity_logs %}
-    <div class="space-y-1">
-      {% for log in activity_logs %}
-      <div class="flex items-start md:items-center flex-col md:flex-row gap-2 md:gap-4 p-3 rounded-lg hover:bg-white/5 transition-colors text-sm border-b border-white/5 last:border-0">
-        <span class="text-xs text-slate-500 font-mono w-32 shrink-0">{{ log.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
-        <span class="px-2 py-0.5 rounded bg-[#aec6ff]/10 text-[#aec6ff] text-[10px] font-bold tracking-wider uppercase md:w-40 shrink-0">{{ log.event_type }}</span>
-        <span class="text-slate-300 font-medium">{{ log.message }}</span>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p class="text-slate-500 text-sm text-center py-6">No activity yet.</p>
-    {% endif %}
-  </div>
-
+<!-- Main Canvas -->
+<main class="ml-64 h-screen flex flex-col overflow-hidden bg-surface">
+<!-- Top Navigation -->
+<header class="w-full h-16 sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-sm dark:shadow-none flex justify-between items-center px-8">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+<input class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-blue-500 transition-all outline-none" placeholder="Search tenants, users, or domains..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors p-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span class="text-sm font-sans">Support</span>
+</button>
+<button class="relative text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors p-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-blue-600 rounded-full border-2 border-white"></span>
+</button>
+<div class="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800">
+<img alt="User profile avatar" class="w-8 h-8 rounded-full object-cover" data-alt="professional portrait of a confident executive male in a dark suit with soft office background lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPPjlwiK9UbJjmYwZYv6i2l8xZQNFDewUQOSOeWAUZeWHIdlolu34mMl8xOQgFr5dbX0XFAc9hNlURbxJAqYyU6cRAAeuyXMXLcOExopTV6z4eqTgmuetlwABgfY0EvnIWLRWqjQvBcxTZbUZRKgx1mhvS7i8PL-w9iS37EEr_c2cIu7GDF0c819my4OKUHgUM6l72FKEWBKPs95C3WGSEHz1DNmU4KhCU93u3ySsQC2Zfg7QEG3wbADtyggBOVUVHbuXLkUVAaYI3"/>
+</div>
+</div>
+</header>
+<!-- Content Area -->
+<section class="flex-1 overflow-y-auto p-8 hide-scrollbar">
+<!-- Page Header Actions -->
+<div class="flex justify-between items-end mb-10">
+<div>
+<h2 class="text-3xl font-extrabold tracking-tight text-on-surface">Tenant Management</h2>
+<p class="text-on-surface-variant mt-1 text-sm">Managing 2,482 total enterprise nodes across 4 regions.</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-5 py-2.5 bg-white border border-outline-variant/30 rounded-xl text-sm font-semibold hover:shadow-md transition-all active:scale-95">
+<span class="material-symbols-outlined text-lg" data-icon="filter_list">filter_list</span>
+                        Filter
+                    </button>
+<button class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary to-primary-container text-on-primary rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all active:scale-95">
+<span class="material-symbols-outlined text-lg" data-icon="add">add</span>
+                        Add New Tenant
+                    </button>
+</div>
+</div>
+<!-- Bulk Actions (Conditional Mock) -->
+<div class="mb-6 flex items-center justify-between bg-secondary-container/40 p-4 rounded-xl border border-secondary-container/50">
+<div class="flex items-center gap-4">
+<div class="bg-primary text-on-primary w-6 h-6 flex items-center justify-center rounded-md text-xs font-bold">3</div>
+<span class="text-sm font-medium text-on-secondary-container">Tenants selected for bulk operations</span>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-1.5 bg-white rounded-lg text-xs font-bold text-slate-700 shadow-sm border border-outline-variant/20 hover:bg-slate-50 transition-colors">Change Plan</button>
+<button class="px-4 py-1.5 bg-white rounded-lg text-xs font-bold text-slate-700 shadow-sm border border-outline-variant/20 hover:bg-slate-50 transition-colors">Suspend</button>
+<button class="px-4 py-1.5 bg-error-container text-on-error-container rounded-lg text-xs font-bold shadow-sm hover:bg-error/10 transition-colors">Delete</button>
+</div>
+</div>
+<!-- Main Data Table Container -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50 border-b border-outline-variant/10">
+<th class="py-5 px-6 w-12">
+<input class="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+</th>
+<th class="py-5 px-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Customer Name</th>
+<th class="py-5 px-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Plan</th>
+<th class="py-5 px-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Status</th>
+<th class="py-5 px-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Users</th>
+<th class="py-5 px-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">MRR</th>
+<th class="py-5 px-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Join Date</th>
+<th class="py-5 px-6 text-right"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors group">
+<td class="py-4 px-6">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-sm">VS</div>
+<div>
+<div class="font-bold text-on-surface">Vortex Systems</div>
+<div class="text-xs text-on-surface-variant">vortex-corp.adminnexus.io</div>
+</div>
+</div>
+</td>
+<td class="py-4 px-4">
+<span class="px-3 py-1 bg-primary-fixed text-on-primary-fixed-variant text-[11px] font-bold rounded-full">Enterprise</span>
+</td>
+<td class="py-4 px-4">
+<span class="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+<span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                                    Active
+                                </span>
+</td>
+<td class="py-4 px-4 font-medium text-on-surface">1,240</td>
+<td class="py-4 px-4 font-bold text-on-surface">$12,400.00</td>
+<td class="py-4 px-4 text-xs text-on-surface-variant">Oct 12, 2023</td>
+<td class="py-4 px-6 text-right">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors hover:bg-primary/5 rounded-lg">
+<span class="material-symbols-outlined" data-icon="open_in_new">open_in_new</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors group">
+<td class="py-4 px-6">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-3">
+<img alt="Company Logo" class="w-10 h-10 rounded-xl object-cover shadow-sm" data-alt="minimalist modern corporate logo of a geometric bird shape in blue tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrpwqc8tnznZZx2jfe0XpRkCos_HgN_WR_QTGkL0CKlvEIpPugLIGrr3lI-fsyjTX8HGKmGkCuGIsXLWF24KNfG6v1y4TgDckRv7HU9RFaEwMt7xZ7MnZgjxN5HaI0boP4wTyUcR133QwLcr2BGn9QuJ4ly7y2_PDzYSmtpHQRnxVrIMooS4U475NGZpPqLzNmUcO87ecTyLSE6sW7Rbiql0JidBGh2xWdq9NcTJLRmRHA1XJwOISJSkJq_nzRmil-u8h68KHmR8Uc"/>
+<div>
+<div class="font-bold text-on-surface">Skyline Global</div>
+<div class="text-xs text-on-surface-variant">skyline.adminnexus.io</div>
+</div>
+</div>
+</td>
+<td class="py-4 px-4">
+<span class="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed-variant text-[11px] font-bold rounded-full">Pro</span>
+</td>
+<td class="py-4 px-4">
+<span class="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+<span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                                    Active
+                                </span>
+</td>
+<td class="py-4 px-4 font-medium text-on-surface">450</td>
+<td class="py-4 px-4 font-bold text-on-surface">$4,500.00</td>
+<td class="py-4 px-4 text-xs text-on-surface-variant">Jan 04, 2024</td>
+<td class="py-4 px-6 text-right">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors hover:bg-primary/5 rounded-lg">
+<span class="material-symbols-outlined" data-icon="open_in_new">open_in_new</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors group">
+<td class="py-4 px-6">
+<input class="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant flex items-center justify-center font-bold text-sm">LM</div>
+<div>
+<div class="font-bold text-on-surface">Lumina Media</div>
+<div class="text-xs text-on-surface-variant">lumina-m.adminnexus.io</div>
+</div>
+</div>
+</td>
+<td class="py-4 px-4">
+<span class="px-3 py-1 bg-surface-variant text-on-surface-variant text-[11px] font-bold rounded-full">Starter</span>
+</td>
+<td class="py-4 px-4">
+<span class="flex items-center gap-1.5 text-xs font-bold text-on-error-container">
+<span class="w-2 h-2 bg-error rounded-full"></span>
+                                    Suspended
+                                </span>
+</td>
+<td class="py-4 px-4 font-medium text-on-surface">12</td>
+<td class="py-4 px-4 font-bold text-on-surface">$120.00</td>
+<td class="py-4 px-4 text-xs text-on-surface-variant">Feb 28, 2024</td>
+<td class="py-4 px-6 text-right">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors hover:bg-primary/5 rounded-lg">
+<span class="material-symbols-outlined" data-icon="open_in_new">open_in_new</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors group bg-primary/5">
+<td class="py-4 px-6">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+<img alt="Avatar" class="w-full h-full object-cover" data-alt="close up headshot of a professional creative woman smiling in a bright studio lighting environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyAe2Bmnnui69foSI3vSfy3bZsT_1FWxMFKTPY88SF2oATndTiymEGlyejY2RESYzTGnXCh0neL0IVsFkGI149KKdMFKlCtKuFwLtjg2QA5dJXazPQr6EaPCUeIORzCtCgPtRT-oj4QdcVa-aT7H5e2huE2tK8LveBzT1o2_-v1wXU5HjzMYwMlBs4Us42IopAEQkAz41_qAqUvsF6a9EtxYAKBR81KgVn7SV81NYVlDpKGNway7Twvh-kVuhcfXl-_F0Ft5MUYCiJ"/>
+</div>
+<div>
+<div class="font-bold text-on-surface">Nova Labs</div>
+<div class="text-xs text-on-surface-variant">nova.adminnexus.io</div>
+</div>
+</div>
+</td>
+<td class="py-4 px-4">
+<span class="px-3 py-1 bg-primary-fixed text-on-primary-fixed-variant text-[11px] font-bold rounded-full">Enterprise</span>
+</td>
+<td class="py-4 px-4">
+<span class="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+<span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                                    Active
+                                </span>
+</td>
+<td class="py-4 px-4 font-medium text-on-surface">892</td>
+<td class="py-4 px-4 font-bold text-on-surface">$8,920.00</td>
+<td class="py-4 px-4 text-xs text-on-surface-variant">Mar 15, 2024</td>
+<td class="py-4 px-6 text-right">
+<button class="p-2 text-primary transition-colors bg-primary/10 rounded-lg">
+<span class="material-symbols-outlined" data-icon="open_in_new">open_in_new</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination -->
+<div class="py-5 px-8 flex justify-between items-center bg-surface-container-low/20">
+<div class="text-sm text-on-surface-variant">
+                        Showing <span class="font-bold text-on-surface">1 - 4</span> of 2,482 tenants
+                    </div>
+<div class="flex items-center gap-1">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined text-xl" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-on-primary text-xs font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container text-xs font-bold text-on-surface">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container text-xs font-bold text-on-surface">3</button>
+<span class="px-2 text-on-surface-variant">...</span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container text-xs font-bold text-on-surface">62</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bento Stats Grid (Extra value) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12">
+<div class="bg-surface-container-low p-6 rounded-2xl">
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Total Revenue</p>
+<h3 class="text-2xl font-black text-on-surface">$1.2M</h3>
+<div class="mt-2 flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+<span class="material-symbols-outlined text-xs" data-icon="trending_up">trending_up</span>
+                        +12.5% vs last month
+                    </div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-2xl">
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Active Users</p>
+<h3 class="text-2xl font-black text-on-surface">42.8k</h3>
+<div class="mt-2 flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+<span class="material-symbols-outlined text-xs" data-icon="trending_up">trending_up</span>
+                        +4.2k new this week
+                    </div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-2xl">
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Avg. Health Score</p>
+<h3 class="text-2xl font-black text-on-surface">94/100</h3>
+<div class="mt-2 flex items-center gap-1 text-[10px] font-bold text-on-tertiary-fixed-variant">
+<span class="material-symbols-outlined text-xs" data-icon="verified">verified</span>
+                        High stability across nodes
+                    </div>
+</div>
+<div class="bg-primary p-6 rounded-2xl text-on-primary shadow-xl shadow-primary/20">
+<p class="text-xs font-bold text-on-primary-container uppercase tracking-widest mb-1">Churn Rate</p>
+<h3 class="text-2xl font-black">0.8%</h3>
+<div class="mt-2 flex items-center gap-1 text-[10px] font-bold text-on-primary-container">
+<span class="material-symbols-outlined text-xs" data-icon="check_circle">check_circle</span>
+                        Below enterprise industry avg
+                    </div>
+</div>
+</div>
+</section>
 </main>
-{%- endblock %}
-{%- endblock %}
+<!-- Side Panel (Visual Mock) -->
+<div class="fixed inset-y-0 right-0 w-[480px] bg-white shadow-2xl z-[60] transform translate-x-0 transition-transform duration-300 flex flex-col border-l border-outline-variant/10">
+<!-- Header -->
+<div class="p-8 border-b border-outline-variant/10">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-4">
+<img alt="Nova Labs Logo" class="w-16 h-16 rounded-2xl object-cover shadow-lg" data-alt="modern tech company office interior with neon accents and large glass windows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdSeHkg9r3yOSIvnIF6OQkPHRgk9eaMZFnh2Kp_mKRjX5FaIDs4bYigKncLAzUB4aKBmWQ_9rKyoe3SPVrYnQ5b9eF60jfpz6nU0lGl2S7K5rNxMUo6ufmJvc0p7ze-eCE7BwTpiNzG7VEGcSoE7hBWw4IypBpLEpNih6-nPOQCi1jFZdDGj_VklOz22D1UTwowAskdtLuKk76H8l-T6EOpFxqnU5DT1_eAonHiGk-OWt-up8xNeyyNJrSO-CX0ZoZVijdSBa1ilXb"/>
+<div>
+<h4 class="text-2xl font-black text-on-surface">Nova Labs</h4>
+<p class="text-sm text-on-surface-variant">Tenant ID: TN-90234-NL</p>
+</div>
+</div>
+<button class="p-2 hover:bg-surface-container transition-colors rounded-full">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-primary-fixed text-on-primary-fixed-variant text-[11px] font-bold rounded-full">Enterprise Plan</span>
+<span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-[11px] font-bold rounded-full">Status: Active</span>
+</div>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-8 space-y-10 hide-scrollbar">
+<!-- Key Metrics -->
+<div class="grid grid-cols-2 gap-4">
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/5">
+<p class="text-[10px] font-bold text-on-surface-variant uppercase mb-1">Monthly MRR</p>
+<p class="text-xl font-bold text-on-surface">$8,920.00</p>
+</div>
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/5">
+<p class="text-[10px] font-bold text-on-surface-variant uppercase mb-1">Total Users</p>
+<p class="text-xl font-bold text-on-surface">892 / 1,000</p>
+</div>
+</div>
+<!-- Details -->
+<div class="space-y-4">
+<h5 class="text-sm font-black uppercase tracking-widest text-on-surface-variant">General Information</h5>
+<div class="space-y-3">
+<div class="flex justify-between py-2 border-b border-outline-variant/5">
+<span class="text-sm text-on-surface-variant">Admin Email</span>
+<span class="text-sm font-semibold text-on-surface">sarah.j@novalabs.io</span>
+</div>
+<div class="flex justify-between py-2 border-b border-outline-variant/5">
+<span class="text-sm text-on-surface-variant">Deployment Region</span>
+<span class="text-sm font-semibold text-on-surface">us-east-1 (N. Virginia)</span>
+</div>
+<div class="flex justify-between py-2 border-b border-outline-variant/5">
+<span class="text-sm text-on-surface-variant">Last Activity</span>
+<span class="text-sm font-semibold text-on-surface">2 minutes ago</span>
+</div>
+</div>
+</div>
+<!-- Chart Mock -->
+<div class="space-y-4">
+<h5 class="text-sm font-black uppercase tracking-widest text-on-surface-variant">API Usage (Last 7 Days)</h5>
+<div class="h-40 w-full bg-slate-50 rounded-2xl relative overflow-hidden flex items-end px-4 pb-4 gap-2">
+<div class="flex-1 bg-primary/20 h-[40%] rounded-t-lg"></div>
+<div class="flex-1 bg-primary/30 h-[65%] rounded-t-lg"></div>
+<div class="flex-1 bg-primary/40 h-[55%] rounded-t-lg"></div>
+<div class="flex-1 bg-primary/60 h-[85%] rounded-t-lg"></div>
+<div class="flex-1 bg-primary/40 h-[60%] rounded-t-lg"></div>
+<div class="flex-1 bg-primary/80 h-[95%] rounded-t-lg"></div>
+<div class="flex-1 bg-primary h-[75%] rounded-t-lg shadow-lg shadow-primary/20"></div>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="p-8 border-t border-outline-variant/10 bg-surface-container-low/30 grid grid-cols-2 gap-4">
+<button class="py-3 px-4 border border-outline-variant/30 rounded-xl text-sm font-bold text-on-surface hover:bg-white transition-all shadow-sm">
+                Edit Settings
+            </button>
+<button class="py-3 px-4 bg-primary text-on-primary rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all">
+                Login as Tenant
+            </button>
+</div>
+</div>
+<!-- Overlay backdrop for panel -->
+<div class="fixed inset-0 bg-on-surface/20 backdrop-blur-sm z-50"></div>
+</body></html>

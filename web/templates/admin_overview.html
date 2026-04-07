@@ -1,330 +1,448 @@
-{% extends "base.html" %}
-{% set tenant = admin %}
-{% block title %}Admin Overview — HostAI{% endblock %}
+<!DOCTYPE html>
 
-{% block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
-tailwind.config = {
-  darkMode: "class",
-  theme: { extend: { colors: {
-    "primary": "#aec6ff","primary-container":"#5d8ef1","on-primary":"#002e6b",
-    "surface":"#121319","surface-container":"#1e1f26","surface-container-lowest":"#0d0e14",
-    "surface-container-high":"#292930","on-surface":"#e3e1eb","on-surface-variant":"#c3c6d4",
-    "outline":"#424752","outline-variant":"#34343b","error":"#ffb4ab","tertiary":"#ffb960",
-    "secondary":"#bdf4ff","secondary-fixed-dim":"#00daf3",
-  }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
-}
-</script>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Precision Curator Admin Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#883700",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-variant": "#e0e3e5",
+                    "secondary-fixed-dim": "#b9c7df",
+                    "outline": "#727784",
+                    "on-primary-container": "#dfe8ff",
+                    "on-error": "#ffffff",
+                    "on-background": "#191c1e",
+                    "secondary": "#515f74",
+                    "surface-container-low": "#f2f4f6",
+                    "on-primary-fixed": "#001b3e",
+                    "error": "#ba1a1a",
+                    "error-container": "#ffdad6",
+                    "on-secondary-fixed": "#0d1c2e",
+                    "inverse-surface": "#2d3133",
+                    "secondary-fixed": "#d5e3fc",
+                    "on-tertiary-container": "#ffe3d6",
+                    "inverse-on-surface": "#eff1f3",
+                    "tertiary-fixed": "#ffdbcb",
+                    "on-secondary": "#ffffff",
+                    "inverse-primary": "#aac7ff",
+                    "surface-dim": "#d8dadc",
+                    "surface-container-highest": "#e0e3e5",
+                    "surface-container": "#eceef0",
+                    "primary-container": "#0066cc",
+                    "on-primary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "background": "#f7f9fb",
+                    "on-primary-fixed-variant": "#00458e",
+                    "surface": "#f7f9fb",
+                    "on-secondary-container": "#57657a",
+                    "primary-fixed": "#d7e3ff",
+                    "on-surface": "#191c1e",
+                    "secondary-container": "#d5e3fc",
+                    "on-tertiary-fixed": "#341100",
+                    "tertiary-fixed-dim": "#ffb692",
+                    "surface-tint": "#005cba",
+                    "primary": "#004e9f",
+                    "surface-bright": "#f7f9fb",
+                    "on-tertiary-fixed-variant": "#793000",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#414753",
+                    "surface-container-high": "#e6e8ea",
+                    "on-secondary-fixed-variant": "#3a485b",
+                    "outline-variant": "#c1c6d5",
+                    "tertiary-container": "#af4900",
+                    "primary-fixed-dim": "#aac7ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
 <style>
-body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
-.glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
-.material-symbols-outlined { font-variation-settings:'FILL' 1,'wght' 300,'GRAD' 0,'opsz' 24; }
-.admin-tab { padding-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; transition: color 0.2s, border-bottom-color 0.2s; border-bottom: 2px solid transparent; color: #8d909e; }
-.admin-tab:hover { color: #e3e1eb; }
-.admin-tab.active { color: #5B8DEF; border-bottom-color: #5B8DEF; }
-</style>
-{%- endblock %}
-
-{%- block nav %}{%- endblock %}
-
-{%- block main_wrapper %}
-{%- block content %}
-<!-- Sidebar -->
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(242, 244, 246, 0.8);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface flex min-h-screen">
+<!-- SideNavBar (Shared Component) -->
 <!-- Mobile hamburger -->
-<button onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full');document.getElementById('admin-sidebar-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('admin-sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="admin-sidebar-overlay"></div>
-<aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
-  <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
-<span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
+<!-- Sidebar overlay for mobile -->
+<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+<aside id="sidebar" class="h-screen w-64 fixed left-0 top-0 bg-[#f7f9fb] dark:bg-slate-950 flex flex-col py-8 px-4 border-r border-transparent z-50 -translate-x-full md:translate-x-0 transition-transform duration-300">
+<div class="mb-10 px-4">
+<h1 class="text-xl font-black text-[#191c1e] dark:text-white tracking-tighter">Curator Admin</h1>
+<p class="text-xs font-medium text-[#414753] dark:text-slate-400 opacity-70">Property Intelligence</p>
 </div>
-<span>HostAI</span>
+<nav class="flex-grow space-y-2">
+<!-- Active Item: Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 bg-[#004e9f]/10 text-[#004e9f] dark:text-blue-400 font-bold rounded-full translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] text-sm font-medium">Dashboard</span>
 </a>
-  <nav class="flex-1 px-4 space-y-1">
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/dashboard">
-      <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
-      <span class="material-symbols-outlined" data-icon="forum">forum</span> Conversations
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
-      <span class="material-symbols-outlined" data-icon="event_available">event_available</span> Reservations
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
-      <span class="material-symbols-outlined" data-icon="history">history</span> Activity
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
-      <span class="material-symbols-outlined" data-icon="analytics">analytics</span> Analytics
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
-                Voice AI
-            </a>
-      <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
-      <span class="material-symbols-outlined" data-icon="hub">hub</span> Workflow Center
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
-      <span class="material-symbols-outlined" data-icon="settings">settings</span> Settings
-    </a>
-    {% if is_admin(admin.email) %}
-    <a class="flex items-center gap-3 px-6 py-3 text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold transition-all duration-200" href="/admin">
-      <span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span> Admin Panel
-    </a>
-    {% endif %}
-  </nav>
-
-  <div class="p-6 border-t border-white/5">
-    <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
-      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-        {{ (admin.name or admin.email or 'H')[0]|upper }}
-      </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-white text-sm font-bold truncate">{{ admin.name or admin.email.split('@')[0]|title }}</p>
-        <p class="text-slate-500 text-xs truncate">Admin Account</p>
-      </div>
-    </div>
-    <form method="post" action="/logout">
-      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-      <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-red-400 transition-colors text-xs font-bold uppercase tracking-widest py-2">
-        <span class="material-symbols-outlined text-sm">logout</span>Sign Out
-      </button>
-    </form>
-  </div>
+<a class="flex items-center gap-3 px-4 py-3 text-[#414753] dark:text-slate-400 hover:bg-[#e6e8ea] dark:hover:bg-slate-800 transition-all rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-['Inter'] text-sm font-medium">Users</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#414753] dark:text-slate-400 hover:bg-[#e6e8ea] dark:hover:bg-slate-800 transition-all rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-['Inter'] text-sm font-medium">Revenue</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#414753] dark:text-slate-400 hover:bg-[#e6e8ea] dark:hover:bg-slate-800 transition-all rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="health_and_safety">health_and_safety</span>
+<span class="font-['Inter'] text-sm font-medium">System Health</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#414753] dark:text-slate-400 hover:bg-[#e6e8ea] dark:hover:bg-slate-800 transition-all rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Inter'] text-sm font-medium">Settings</span>
+</a>
+</nav>
+<div class="mt-auto px-4 flex items-center gap-3 border-t border-outline-variant/10 pt-6">
+<img alt="Admin Avatar" class="w-10 h-10 rounded-full object-cover" data-alt="portrait of a professional male administrator in his 40s with a clean haircut and modern business attire" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYg40SuKEFiycj0XN_m5RxVm4e6sUT3f-MaTQlA8umrF8Tm_5QA6Mao0k0dVung1AzYABUokLih2C_2p75ce_Atk-YohgTpoQ96nTu_hqZi9gWiCy1mEPfaKeEC1Rjat34Nfv0JF29Np1nNqeF20K6wi_RuwcMibfQdYerLk6ibvQEMeiwON7bLH-S8JoPMmT6zZAaTnduq5MYKAUm0Zc-vBtckfDb3bClrk-4NGcWrR6fEdZ9JwJOePi7ybccYuuRmgVOHNm2lu33"/>
+<div>
+<p class="text-sm font-bold text-on-surface">Alex Rivera</p>
+<p class="text-xs text-on-surface-variant">System Master</p>
+</div>
+</div>
 </aside>
-
-<!-- Main -->
-<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen relative">
-  <!-- Mobile hamburger menu -->
-  <button id="sidebar-toggle" class="md:hidden fixed top-4 left-4 z-40 p-2 text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all" onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full')">
-    <span class="material-symbols-outlined">menu</span>
-  </button>
-  <div class="absolute -top-48 -right-48 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
-  
-  <div class="mb-10 pt-4">
-    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">Admin Overview</h1>
-    <p class="text-slate-400 text-sm">Platform-wide metrics and tenant health</p>
-    
-    <!-- Admin Subnav -->
-    <div class="flex items-center gap-6 mt-6 border-b border-white/10 overflow-x-auto pb-1 whitespace-nowrap">
-      <a href="/admin" class="admin-tab active">Overview</a>
-      <a href="/admin/system" class="admin-tab">System Health</a>
-      <a href="/admin/ai" class="admin-tab">AI Engine</a>
-      <a href="/admin/costs" class="admin-tab">Profitability</a>
-      <a href="/admin/health_api" class="admin-tab">API Health</a>
-      <a href="/admin/voice-analytics" class="admin-tab">Voice Analytics</a>
-      <a href="/admin/voice-routing" class="admin-tab">Voice Routing</a>
-    </div>
-  </div>
-
-  <!-- Key Metrics -->
-  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-    <div class="glass-card p-5 rounded-2xl">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Tenants</p>
-      <p class="text-3xl font-extrabold text-white">{{ total_tenants }}</p>
-    </div>
-    <div class="glass-card p-5 rounded-2xl">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Paid Tenants</p>
-      <p class="text-3xl font-extrabold text-[#5B8DEF]">{{ paid_count }}</p>
-    </div>
-    <div class="glass-card p-5 rounded-2xl">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Free Plan</p>
-      <p class="text-3xl font-extrabold text-white">{{ free_count }}</p>
-    </div>
-    <div class="glass-card p-5 rounded-2xl">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Est. MRR</p>
-      <p class="text-3xl font-extrabold text-[#27c93f]">${{ mrr }}</p>
-    </div>
-    <div class="glass-card p-5 rounded-2xl">
-      <div class="flex items-center gap-1">
-        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Drafts (30d)</p>
-        <div class="tooltip-container">
-          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
-            <span style="font-size:0.8rem">ⓘ</span>
-          </button>
-          <div class="tooltip-content">AI-generated message drafts pending host review from the last 30 days</div>
-        </div>
-      </div>
-      <p class="text-3xl font-extrabold text-white">{{ draft_stats.total }}</p>
-    </div>
-    <div class="glass-card p-5 rounded-2xl">
-      <div class="flex items-center gap-1">
-        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Approval</p>
-        <div class="tooltip-container">
-          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
-            <span style="font-size:0.8rem">ⓘ</span>
-          </button>
-          <div class="tooltip-content">Percentage of drafted messages the host approved to send (higher = more trust in automation)</div>
-        </div>
-      </div>
-      <p class="text-3xl font-extrabold text-[#27c93f]">{{ draft_stats.approval_rate }}%</p>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-    <!-- Onboarding Funnel (Simplified) -->
-    <div class="glass-card p-6 rounded-3xl flex flex-col justify-center">
-      <h2 class="text-lg font-bold text-white mb-4">Onboarding</h2>
-      {% set funnel_vals = [funnel.get("0", 0), funnel.get("1", 0), funnel.get("2", 0), funnel.get("3", 0), funnel.get("4", 0), funnel.get("5", 0), funnel.get("complete", 0)] %}
-      {% set max_funnel = funnel_vals | max %}
-      <div class="flex items-center gap-4">
-        <div class="flex-1 h-2 bg-black/40 rounded-full overflow-hidden">
-          <div class="h-full bg-[#27c93f] rounded-full shadow-[0_0_12px_rgba(39,201,63,0.5)]" style="width:{% if max_funnel and max_funnel > 0 %}{{ ((funnel.get("complete", 0) | float) / max_funnel * 100) | int }}{% else %}0{% endif %}%"></div>
-        </div>
-        <div class="text-right">
-          <div class="text-sm font-bold text-[#27c93f]">{{ funnel["complete"] }}</div>
-          <div class="text-xs text-slate-500">Complete</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Draft Quality -->
-    <div class="glass-card p-6 rounded-3xl flex flex-col justify-between">
-      <h2 class="text-lg font-bold text-white mb-4">Draft Quality (30d)</h2>
-      <div class="flex flex-col gap-3">
-        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Total drafted</span><span class="font-bold text-white">{{ draft_stats.total }}</span></div>
-        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Approved</span><span class="font-bold text-[#27c93f]">{{ draft_stats.approved }}</span></div>
-        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Edited before send</span><span class="font-bold text-amber-500">{{ draft_stats.edited }}</span></div>
-        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Skipped</span><span class="font-bold text-rose-400">{{ draft_stats.skipped }}</span></div>
-        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Still pending</span><span class="font-bold text-slate-500">{{ draft_stats.pending }}</span></div>
-      </div>
-      <div class="mt-6 p-4 rounded-xl bg-white/5 flex items-center justify-between border border-white/10">
-        <span class="font-bold text-white text-sm">Approval rate</span>
-        <span class="font-extrabold text-2xl text-[#27c93f]">{{ draft_stats.approval_rate }}%</span>
-      </div>
-    </div>
-
-    <!-- Response Time Analytics -->
-    <div class="glass-card p-6 rounded-3xl flex flex-col justify-between">
-      <h2 class="text-lg font-bold text-white mb-4">Response Time (30d)</h2>
-      <div class="flex flex-col gap-3">
-        {% set total_drafts_approved = drafts | selectattr('status', 'equalto', 'approved') | list | length %}
-        {% set total_response_time = 0 %}
-        {% set total_count = 0 %}
-        {% for tid, stats in response_time_by_tenant.items() %}
-          {% set total_response_time = total_response_time + stats.avg * stats.count %}
-          {% set total_count = total_count + stats.count %}
-        {% endfor %}
-        {% set global_avg = (total_response_time / total_count) | round(1) if total_count > 0 else 0 %}
-        {% set p50_vals = response_time_by_tenant.values() | map(attribute='p50') | list %}
-        {% set p95_vals = response_time_by_tenant.values() | map(attribute='p95') | list %}
-        {% set p50_count = p50_vals | length %}
-        {% set p95_count = p95_vals | length %}
-        {% set global_p50 = ((p50_vals | sum) / p50_count) | round(1) if p50_count > 0 else 0 %}
-        {% set global_p95 = ((p95_vals | sum) / p95_count) | round(1) if p95_count > 0 else 0 %}
-
-        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Average time</span><span class="font-bold text-[#5B8DEF]">{{ global_avg }}s</span></div>
-        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">Median (p50)</span><span class="font-bold text-white">{{ global_p50 }}s</span></div>
-        <div class="flex justify-between items-center text-sm"><span class="text-slate-400">95th percentile (p95)</span><span class="font-bold text-amber-500">{{ global_p95 }}s</span></div>
-      </div>
-      <div class="mt-6 p-4 rounded-xl bg-white/5 text-xs text-slate-400 border border-white/10">
-        Time from draft creation to host approval across all tenants
-      </div>
-    </div>
-  </div>
-
-  <!-- Churn Signals -->
-  {% if churn_signals %}
-  <div class="glass-card rounded-3xl p-6 mb-8 border border-rose-500/30 bg-rose-500/5 relative overflow-hidden">
-    <div class="absolute top-0 right-0 w-32 h-32 bg-rose-500/20 rounded-full blur-[50px] pointer-events-none"></div>
-    <h2 class="text-lg font-bold text-rose-400 mb-4 flex items-center gap-2">
-      <span class="material-symbols-outlined">warning</span>
-      <span style="display:inline-flex;align-items:center;gap:0.4rem">
-        Churn Signals ({{ churn_signals | length }})
-        <div class="tooltip-container">
-          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#f87171">
-            <span style="font-size:0.8rem">ⓘ</span>
-          </button>
-          <div class="tooltip-content">Indicators that a tenant may be inactive: no activity, dead workers, failed syncs</div>
-        </div>
-      </span>
-    </h2>
-    <div class="flex flex-col gap-3 relative z-10">
-      {% for row in churn_signals %}
-      <div class="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5">
-        <div class="flex items-center gap-3">
-          <a href="/admin/tenants/{{ row.tenant.id }}" class="font-bold text-white hover:text-rose-300 transition-colors text-sm">{{ row.tenant.email }}</a>
-          <span class="px-2 py-0.5 bg-white/10 rounded text-[10px] font-bold uppercase tracking-wider text-slate-300">{{ row.plan }}</span>
-        </div>
-        <div class="text-xs text-rose-300 font-medium">
-          {% if row.worker_dead %}Worker thread dead · {% endif %}
-          {% if row.inactive_14d %}No activity 14+ days ({{ row.last_active.strftime("%b %d") }}){% endif %}
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Tenant Table -->
-  <div class="glass-card rounded-3xl overflow-hidden">
-    <div class="p-6 border-b border-white/5 flex justify-between items-center">
-      <h2 class="text-lg font-bold text-white">All Tenants ({{ total_tenants }})</h2>
-    </div>
-    <div class="overflow-x-auto">
-      <table class="w-full text-left whitespace-nowrap">
-        <thead class="text-[0.65rem] tracking-wider uppercase text-slate-500 bg-black/20 border-b border-white/5">
-          <tr>
-            <th class="px-6 py-3 font-bold">Email</th>
-            <th class="px-6 py-3 font-bold">Plan</th>
-            <th class="px-6 py-3 font-bold">Status</th>
-            <th class="px-6 py-3 font-bold">Onboarding</th>
-            <th class="px-6 py-3 font-bold">Worker</th>
-            <th class="px-6 py-3 font-bold">Active</th>
-            <th class="px-6 py-3 font-bold"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-white/5 text-sm">
-          {% for row in tenant_rows %}
-          <tr class="hover:bg-white/5 transition-colors {% if not row.tenant.is_active %}opacity-50{% endif %}">
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-2">
-                <a href="/admin/tenants/{{ row.tenant.id }}" class="font-bold text-white hover:text-[#5B8DEF] transition-colors text-[0.85rem]">{{ row.tenant.email }}</a>
-                {% if not row.tenant.email_verified %}
-                  <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold tracking-wider uppercase">Unverified</span>
-                {% endif %}
-              </div>
-            </td>
-            <td class="px-6 py-4">
-              <span class="px-2 py-1 rounded-md bg-white/10 text-slate-300 text-[0.7rem] font-bold tracking-wide uppercase">{{ row.plan }}</span>
-            </td>
-            <td class="px-6 py-4">
-              <span class="text-xs font-medium text-slate-400">{{ row.sub_status }}</span>
-            </td>
-            <td class="px-6 py-4">
-              {% if row.onboarding_complete %}
-                <span class="text-[#27c93f] font-bold text-xs"><span class="mr-1">✓</span>Complete</span>
-              {% else %}
-                <span class="text-slate-400 font-medium text-xs">Step {{ row.onboarding_step }}/5</span>
-              {% endif %}
-            </td>
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-2 text-[0.7rem] uppercase tracking-wider font-bold text-slate-400">
-                <span class="w-1.5 h-1.5 rounded-full {% if row.ws.email_running %}bg-[#27c93f]{% elif row.worker_dead %}bg-rose-500{% else %}bg-slate-600{% endif %}"></span>
-                {% if row.ws.email_running %}Running{% elif row.worker_dead %}Dead{% else %}Not configured{% endif %}
-              </div>
-            </td>
-            <td class="px-6 py-4 text-[0.8rem] font-medium {% if row.inactive_14d %}text-amber-500{% else %}text-slate-400{% endif %}">
-              {{ row.last_active.strftime("%Y-%m-%d") }}
-            </td>
-            <td class="px-6 py-4 text-right">
-              <a href="/admin/tenants/{{ row.tenant.id }}" class="inline-flex items-center justify-center px-4 py-1.5 rounded-xl text-xs font-bold text-[#aec6ff] border border-[rgba(174,198,255,0.2)] hover:bg-[rgba(174,198,255,0.1)] transition-colors">
-                View
-              </a>
-            </td>
-          </tr>
-          {% endfor %}
-          {% if not tenant_rows %}
-          <tr><td colspan="7" class="px-6 py-12 text-center text-slate-500 text-sm">No tenants yet.</td></tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+<!-- Main Content Wrapper -->
+<main class="ml-64 flex-grow flex flex-col min-h-screen">
+<!-- TopNavBar (Shared Component) -->
+<header class="w-full h-16 sticky top-0 z-40 bg-[#f2f4f6] dark:bg-slate-900 flex justify-between items-center px-8">
+<div class="flex items-center gap-6">
+<div class="relative group">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-high rounded-xl border-none text-sm focus:ring-2 focus:ring-primary w-64 transition-all" placeholder="Global search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:bg-[#e6e8ea] rounded-full transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-tertiary rounded-full"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-[#e6e8ea] rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Dashboard Canvas -->
+<div class="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
+<!-- Page Header -->
+<div class="flex justify-between items-end">
+<div>
+<h2 class="text-3xl font-bold tracking-tighter text-on-surface">System Overview</h2>
+<p class="text-on-surface-variant font-medium">Real-time intelligence and administrative metrics.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-6 py-2.5 rounded-xl bg-surface-container-highest text-on-surface-variant text-sm font-bold hover:scale-95 transition-all">
+                        Export Report
+                    </button>
+<button class="px-6 py-2.5 rounded-xl bg-primary-container text-on-primary text-sm font-bold shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all">
+                        Generate Insight
+                    </button>
+</div>
+</div>
+<!-- Key Metrics Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Total Active Users -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10 group">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary-fixed-dim/20 rounded-lg">
+<span class="material-symbols-outlined text-primary" data-icon="person">person</span>
+</div>
+<span class="text-xs font-bold text-primary px-2 py-1 bg-primary/5 rounded-full">+12.4%</span>
+</div>
+<p class="text-sm font-medium text-on-surface-variant mb-1">Total Active Users</p>
+<h3 class="text-3xl font-extrabold tracking-tight">14,282</h3>
+<div class="mt-4 h-1 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary w-3/4 rounded-full"></div>
+</div>
+</div>
+<!-- Global Revenue -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-tertiary-fixed/20 rounded-lg">
+<span class="material-symbols-outlined text-tertiary" data-icon="payments">payments</span>
+</div>
+<span class="text-xs font-bold text-tertiary px-2 py-1 bg-tertiary/5 rounded-full">+8.2%</span>
+</div>
+<p class="text-sm font-medium text-on-surface-variant mb-1">Global Revenue (MTD)</p>
+<h3 class="text-3xl font-extrabold tracking-tight">$842,500</h3>
+<p class="mt-4 text-xs font-medium text-on-surface-variant">vs $778.4k last month</p>
+</div>
+<!-- System Health -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-green-100 rounded-lg">
+<span class="material-symbols-outlined text-green-700" data-icon="memory">memory</span>
+</div>
+<span class="text-xs font-bold text-green-700 px-2 py-1 bg-green-50 rounded-full">STABLE</span>
+</div>
+<p class="text-sm font-medium text-on-surface-variant mb-1">System Health Score</p>
+<h3 class="text-3xl font-extrabold tracking-tight">99.8%</h3>
+<p class="mt-4 text-xs font-medium text-on-surface-variant">4 nodes active</p>
+</div>
+<!-- Active Properties -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-secondary-container rounded-lg">
+<span class="material-symbols-outlined text-secondary" data-icon="home_work">home_work</span>
+</div>
+</div>
+<p class="text-sm font-medium text-on-surface-variant mb-1">Active Properties</p>
+<h3 class="text-3xl font-extrabold tracking-tight">2,104</h3>
+<div class="mt-4 flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-primary-fixed border-2 border-surface-container-lowest"></div>
+<div class="w-6 h-6 rounded-full bg-secondary-fixed border-2 border-surface-container-lowest"></div>
+<div class="w-6 h-6 rounded-full bg-tertiary-fixed border-2 border-surface-container-lowest"></div>
+<div class="w-6 h-6 rounded-full bg-outline-variant border-2 border-surface-container-lowest flex items-center justify-center text-[8px] font-bold">+12</div>
+</div>
+</div>
+</div>
+<!-- Charts Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Revenue Chart Area -->
+<div class="lg:col-span-2 bg-surface-container-low rounded-xl p-8 border border-outline-variant/10">
+<div class="flex justify-between items-start mb-10">
+<div>
+<h3 class="text-lg font-bold">Revenue Growth</h3>
+<p class="text-sm text-on-surface-variant">Annualized trajectory &amp; projected earnings</p>
+</div>
+<select class="bg-surface-container-lowest border-none text-sm font-bold rounded-lg px-3 py-1.5 focus:ring-primary">
+<option>Last 6 Months</option>
+<option>Last Year</option>
+</select>
+</div>
+<!-- Chart Placeholder Visual -->
+<div class="relative h-64 flex items-end justify-between gap-2 px-2">
+<div class="w-full bg-primary/10 hover:bg-primary/20 transition-colors rounded-t-lg h-[40%] relative group">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-surface text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$120k</div>
+</div>
+<div class="w-full bg-primary/15 hover:bg-primary/20 transition-colors rounded-t-lg h-[55%] relative group">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-surface text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$145k</div>
+</div>
+<div class="w-full bg-primary/25 hover:bg-primary/20 transition-colors rounded-t-lg h-[45%] relative group">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-surface text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$138k</div>
+</div>
+<div class="w-full bg-primary/35 hover:bg-primary/20 transition-colors rounded-t-lg h-[70%] relative group">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-surface text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$192k</div>
+</div>
+<div class="w-full bg-primary/50 hover:bg-primary/60 transition-colors rounded-t-lg h-[65%] relative group">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-surface text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$188k</div>
+</div>
+<div class="w-full bg-primary hover:bg-primary/90 transition-colors rounded-t-lg h-[90%] relative group">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-surface text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$242k</div>
+</div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest px-2">
+<span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
+</div>
+</div>
+<!-- User Acquisition Breakdown -->
+<div class="bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/10">
+<h3 class="text-lg font-bold mb-1">User Acquisition</h3>
+<p class="text-sm text-on-surface-variant mb-8">Channel distribution by source</p>
+<div class="space-y-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center font-bold text-primary">Ab</div>
+<div class="flex-grow">
+<div class="flex justify-between text-sm font-bold mb-1">
+<span>Airbnb Sync</span>
+<span>42%</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[42%]"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center font-bold text-tertiary">Vr</div>
+<div class="flex-grow">
+<div class="flex justify-between text-sm font-bold mb-1">
+<span>VRBO</span>
+<span>28%</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[28%]"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center font-bold text-secondary">Dr</div>
+<div class="flex-grow">
+<div class="flex justify-between text-sm font-bold mb-1">
+<span>Direct Platform</span>
+<span>30%</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[30%]"></div>
+</div>
+</div>
+</div>
+</div>
+<button class="w-full mt-10 py-3 bg-surface-container text-on-surface font-bold text-sm rounded-xl hover:bg-surface-container-high transition-colors">
+                        View Channel Analytics
+                    </button>
+</div>
+</div>
+<!-- Lower Section: Monitors & Activity -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<!-- System Status Section -->
+<div class="bg-surface-container-low rounded-xl p-8 border border-outline-variant/10">
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-lg font-bold">System Status</h3>
+<span class="flex items-center gap-2 text-xs font-bold text-green-600">
+<span class="w-2 h-2 rounded-full bg-green-600 animate-pulse"></span>
+                            All Systems Operational
+                        </span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/5">
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-tighter mb-2">API Response</p>
+<p class="text-2xl font-black text-on-surface">124ms</p>
+<p class="text-[10px] text-green-600 font-bold mt-1">Excellent</p>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/5">
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-tighter mb-2">Database Load</p>
+<p class="text-2xl font-black text-on-surface">14.2%</p>
+<p class="text-[10px] text-on-surface-variant font-bold mt-1">Optimal Range</p>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/5">
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-tighter mb-2">Automation</p>
+<p class="text-2xl font-black text-on-surface">99.9%</p>
+<p class="text-[10px] text-green-600 font-bold mt-1">Success Rate</p>
+</div>
+</div>
+<!-- Real-time Monitor Graph Placeholder -->
+<div class="mt-8 p-4 bg-on-surface rounded-xl flex items-center justify-center gap-1 min-h-[120px]">
+<div class="h-8 w-1 bg-primary/40 rounded-full"></div>
+<div class="h-12 w-1 bg-primary/40 rounded-full"></div>
+<div class="h-16 w-1 bg-primary/60 rounded-full"></div>
+<div class="h-10 w-1 bg-primary/40 rounded-full"></div>
+<div class="h-14 w-1 bg-primary/80 rounded-full"></div>
+<div class="h-20 w-1 bg-primary rounded-full"></div>
+<div class="h-12 w-1 bg-primary/50 rounded-full"></div>
+<div class="h-18 w-1 bg-primary/70 rounded-full"></div>
+<div class="h-10 w-1 bg-primary/40 rounded-full"></div>
+<div class="h-8 w-1 bg-primary/30 rounded-full"></div>
+<div class="h-14 w-1 bg-primary/60 rounded-full"></div>
+<div class="h-24 w-1 bg-primary rounded-full"></div>
+<div class="h-16 w-1 bg-primary/40 rounded-full"></div>
+<div class="h-12 w-1 bg-primary/20 rounded-full"></div>
+<div class="h-10 w-1 bg-primary/40 rounded-full"></div>
+<p class="absolute text-[10px] font-bold text-surface opacity-30 uppercase tracking-[0.3em]">Live Core Stream</p>
+</div>
+</div>
+<!-- Recent Administrative Activity Feed -->
+<div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10 shadow-sm">
+<h3 class="text-lg font-bold mb-6">Recent Administrative Activity</h3>
+<div class="space-y-6">
+<div class="flex gap-4 items-start group">
+<div class="mt-1 w-2 h-2 rounded-full bg-primary shrink-0 group-hover:scale-150 transition-transform"></div>
+<div class="flex-grow">
+<p class="text-sm font-bold text-on-surface">New property verified</p>
+<p class="text-xs text-on-surface-variant mt-0.5">"Azure Heights Villa" added to system inventory.</p>
+<span class="text-[10px] font-medium text-outline mt-2 block">2 mins ago</span>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-2 hover:bg-surface-container rounded-lg transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="flex gap-4 items-start group">
+<div class="mt-1 w-2 h-2 rounded-full bg-tertiary shrink-0 group-hover:scale-150 transition-transform"></div>
+<div class="flex-grow">
+<p class="text-sm font-bold text-on-surface">Plan upgrade for User ID #882</p>
+<p class="text-xs text-on-surface-variant mt-0.5">Subscription moved from Basic to Premium Portfolio.</p>
+<span class="text-[10px] font-medium text-outline mt-2 block">14 mins ago</span>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-2 hover:bg-surface-container rounded-lg transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="flex gap-4 items-start group">
+<div class="mt-1 w-2 h-2 rounded-full bg-secondary shrink-0 group-hover:scale-150 transition-transform"></div>
+<div class="flex-grow">
+<p class="text-sm font-bold text-on-surface">System maintenance completed</p>
+<p class="text-xs text-on-surface-variant mt-0.5">Database indexing and cache clearance optimized across all clusters.</p>
+<span class="text-[10px] font-medium text-outline mt-2 block">1 hour ago</span>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-2 hover:bg-surface-container rounded-lg transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="flex gap-4 items-start group">
+<div class="mt-1 w-2 h-2 rounded-full bg-error shrink-0 group-hover:scale-150 transition-transform"></div>
+<div class="flex-grow">
+<p class="text-sm font-bold text-on-surface">Failed login attempt</p>
+<p class="text-xs text-on-surface-variant mt-0.5">3 failed attempts detected from IP 192.168.1.104. Account locked.</p>
+<span class="text-[10px] font-medium text-outline mt-2 block">3 hours ago</span>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-2 hover:bg-surface-container rounded-lg transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+<button class="w-full mt-8 py-3 text-primary font-bold text-sm hover:underline">
+                        View Full Audit Log
+                    </button>
+</div>
+</div>
+<!-- Property Highlight Card (Asymmetric Layout) -->
+<div class="relative bg-on-background rounded-3xl overflow-hidden min-h-[400px] flex flex-col md:flex-row shadow-2xl">
+<div class="w-full md:w-1/2 p-12 flex flex-col justify-center relative z-10">
+<span class="text-tertiary-fixed text-xs font-bold uppercase tracking-[0.3em] mb-4">Market Insight</span>
+<h3 class="text-4xl font-black text-white leading-tight mb-6">Strategic Expansion <br/><span class="text-primary-fixed-dim">Pacific Heights Portfolio</span></h3>
+<p class="text-white/60 text-lg mb-8 max-w-md">Our algorithm suggests a 24% revenue increase by consolidating these 12 properties into the unified luxury tier.</p>
+<div class="flex gap-4">
+<button class="bg-primary px-8 py-4 rounded-2xl text-white font-bold hover:scale-105 transition-transform">Explore Strategy</button>
+<button class="bg-white/10 backdrop-blur-md border border-white/20 px-8 py-4 rounded-2xl text-white font-bold hover:bg-white/20 transition-colors">Dismiss</button>
+</div>
+</div>
+<div class="w-full md:w-1/2 relative h-[300px] md:h-auto overflow-hidden">
+<img alt="Luxury Modern Architecture" class="absolute inset-0 w-full h-full object-cover opacity-60 scale-105 hover:scale-100 transition-transform duration-1000" data-alt="dramatic wide shot of a luxury ultra-modern glass villa at dusk with warm interior lighting and architectural pooling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsR2BZo93eQ0lryv9q-N2S5ag8IlmvAIvAFecaPsBKVt_FaDPFG0xqGdsFDCP9twXJDSJd0bUKsbYQzTR0MfhPBNrXqQM5MFg52JMfXqFLSYMcFlPnrV-exyjhWiT3V6a4g8eO0Xzxpl8J1WBv9JYLj3KCuJDLMhBX4f9B2OY7JTGXAKxU0yu_VL3_eMgYbNCWvGNTN7YV8pRWV0hFGcZIt24f_lEHamPBXfStS5nH2oUMlNszInYKStWqDh5aVrNz58cWa3V8Sd7a"/>
+<div class="absolute inset-0 bg-gradient-to-r from-on-background via-on-background/40 to-transparent"></div>
+</div>
+</div>
+</div>
+<footer class="mt-auto p-8 border-t border-outline-variant/10 bg-surface-container-low text-on-surface-variant flex justify-between items-center text-xs font-medium">
+<p>© 2024 Precision Curator Intelligence. All rights reserved.</p>
+<div class="flex gap-6">
+<a class="hover:text-primary" href="#">System Status</a>
+<a class="hover:text-primary" href="#">Documentation</a>
+<a class="hover:text-primary" href="#">Security Protocol</a>
+</div>
+</footer>
 </main>
-{%- endblock %}
-{%- endblock %}
+<!-- Contextual FAB (Restricted Use Case: Admin Action) -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</body></html>

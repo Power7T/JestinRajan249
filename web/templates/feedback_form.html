@@ -1,270 +1,262 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <title>Share Your Feedback — {{ property_name }}</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background: #f7f8fc;
-      color: #1a1a2e;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem;
-    }
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Precision Support - Feedback &amp; Bug Report</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 
-    .card {
-      background: #ffffff;
-      border-radius: 1.25rem;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
-      padding: 2.5rem 2rem;
-      width: 100%;
-      max-width: 440px;
-    }
-
-    .property-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #6366f1;
-      background: #eef2ff;
-      border-radius: 99px;
-      padding: 0.3rem 0.8rem;
-      margin-bottom: 1.25rem;
-    }
-
-    .property-tag svg {
-      width: 13px;
-      height: 13px;
-      fill: #6366f1;
-    }
-
-    h1 {
-      font-size: 1.45rem;
-      font-weight: 700;
-      color: #111827;
-      line-height: 1.3;
-      margin-bottom: 0.4rem;
-    }
-
-    .subtitle {
-      font-size: 0.9rem;
-      color: #6b7280;
-      margin-bottom: 2rem;
-    }
-
-    .section-label {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #374151;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.75rem;
-    }
-
-    /* Star Rating */
-    .stars-wrap {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1.75rem;
-    }
-
-    .star-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 0.25rem;
-      border-radius: 0.5rem;
-      transition: transform 0.15s ease;
-      line-height: 1;
-    }
-
-    .star-btn:hover { transform: scale(1.15); }
-    .star-btn:active { transform: scale(0.95); }
-
-    .star-btn svg {
-      width: 2.4rem;
-      height: 2.4rem;
-      display: block;
-      transition: fill 0.15s ease, stroke 0.15s ease;
-    }
-
-    .star-btn svg .star-path {
-      fill: #e5e7eb;
-      stroke: #d1d5db;
-      stroke-width: 1.5;
-      transition: fill 0.15s ease, stroke 0.15s ease;
-    }
-
-    .star-btn.active svg .star-path,
-    .star-btn.hover-active svg .star-path {
-      fill: #f59e0b;
-      stroke: #f59e0b;
-    }
-
-    .star-label {
-      font-size: 0.8rem;
-      color: #9ca3af;
-      margin-top: 0.5rem;
-      margin-bottom: 1.75rem;
-      min-height: 1.1em;
-      transition: color 0.2s;
-    }
-
-    /* Textarea */
-    textarea {
-      width: 100%;
-      border: 1.5px solid #e5e7eb;
-      border-radius: 0.75rem;
-      padding: 0.85rem 1rem;
-      font-size: 0.92rem;
-      font-family: inherit;
-      color: #111827;
-      background: #fafafa;
-      resize: vertical;
-      min-height: 110px;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      outline: none;
-      margin-bottom: 1.5rem;
-    }
-
-    textarea:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-      background: #fff;
-    }
-
-    textarea::placeholder { color: #9ca3af; }
-
-    /* Submit button */
-    .submit-btn {
-      width: 100%;
-      background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
-      color: #fff;
-      border: none;
-      border-radius: 0.85rem;
-      padding: 0.9rem 1rem;
-      font-size: 1rem;
-      font-weight: 700;
-      font-family: inherit;
-      cursor: pointer;
-      transition: opacity 0.2s, transform 0.15s;
-      letter-spacing: 0.01em;
-    }
-
-    .submit-btn:hover { opacity: 0.92; transform: translateY(-1px); }
-    .submit-btn:active { transform: translateY(0); }
-
-    .footer-note {
-      text-align: center;
-      font-size: 0.75rem;
-      color: #9ca3af;
-      margin-top: 1.25rem;
-    }
-
-    /* Hidden input for star value */
-    #rating-value { display: none; }
-
-    @media (max-width: 480px) {
-      .card { padding: 2rem 1.25rem; }
-      h1 { font-size: 1.25rem; }
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="property-tag">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-      {{ property_name }}
-    </div>
-
-    <h1>How was your stay, {{ guest_name }}?</h1>
-    <p class="subtitle">Your feedback helps us improve every stay.</p>
-
-    <form method="POST" action="/feedback/{{ token }}/submit" id="feedback-form">
-      <input type="hidden" name="rating" id="rating-value" value="">
-
-      <div class="section-label">Your rating</div>
-      <div class="stars-wrap" id="stars-container" role="group" aria-label="Star rating">
-        {% for i in range(1, 6) %}
-        <button type="button" class="star-btn" data-value="{{ i }}" aria-label="{{ i }} star{{ 's' if i != 1 else '' }}" title="{{ i }} star{{ 's' if i != 1 else '' }}">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path class="star-path" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-          </svg>
-        </button>
-        {% endfor %}
-      </div>
-
-      <p class="star-label" id="star-label"></p>
-
-      <div class="section-label">Comments</div>
-      <textarea name="comment" placeholder="Any comments or suggestions? (optional)" maxlength="1000"></textarea>
-
-      <button type="submit" class="submit-btn">Submit Feedback</button>
-    </form>
-
-    <p class="footer-note">Powered by HostAI &mdash; Your responses are private and secure.</p>
-  </div>
-
-  <script>
-    const labels = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
-    const labelColors = ['', '#ef4444', '#f97316', '#eab308', '#22c55e', '#10b981'];
-    const starBtns = document.querySelectorAll('.star-btn');
-    const ratingInput = document.getElementById('rating-value');
-    const starLabel = document.getElementById('star-label');
-    let selectedRating = 0;
-
-    function updateStars(hoverVal, selectedVal) {
-      const active = hoverVal || selectedVal;
-      starBtns.forEach(btn => {
-        const v = parseInt(btn.dataset.value, 10);
-        if (v <= active) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#eff0f9",
+                        "surface-container-high": "#e6e8f1",
+                        "surface-tint": "#005cba",
+                        "on-background": "#191c22",
+                        "primary": "#004e9f",
+                        "primary-container": "#0066cc",
+                        "on-primary-fixed-variant": "#00458e",
+                        "primary-fixed-dim": "#aac7ff",
+                        "on-primary-container": "#dfe8ff",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#883700",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#b0c7f5",
+                        "secondary-fixed": "#d7e3ff",
+                        "on-surface-variant": "#414753",
+                        "on-error": "#ffffff",
+                        "on-tertiary-container": "#ffe3d6",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-primary": "#aac7ff",
+                        "on-tertiary-fixed": "#341100",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "secondary-container": "#b9cffd",
+                        "surface-container-low": "#f2f3fc",
+                        "inverse-surface": "#2e3037",
+                        "secondary": "#495f87",
+                        "surface-container-highest": "#e1e2eb",
+                        "on-tertiary-fixed-variant": "#793000",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#30476d",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#c1c6d5",
+                        "surface-dim": "#d8d9e2",
+                        "surface": "#f9f9ff",
+                        "primary-fixed": "#d7e3ff",
+                        "surface-container": "#ecedf6",
+                        "surface-bright": "#f9f9ff",
+                        "on-secondary-fixed": "#001b3e",
+                        "surface-variant": "#e1e2eb",
+                        "on-primary-fixed": "#001b3e",
+                        "tertiary-fixed": "#ffdbcb",
+                        "background": "#f9f9ff",
+                        "on-secondary-container": "#425880",
+                        "outline": "#727784",
+                        "on-surface": "#191c22",
+                        "tertiary-container": "#af4900"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
         }
-      });
-      if (hoverVal) {
-        starLabel.textContent = labels[hoverVal];
-        starLabel.style.color = labelColors[hoverVal];
-      } else if (selectedVal) {
-        starLabel.textContent = labels[selectedVal];
-        starLabel.style.color = labelColors[selectedVal];
-      } else {
-        starLabel.textContent = '';
-      }
-    }
-
-    starBtns.forEach(btn => {
-      btn.addEventListener('mouseenter', () => {
-        updateStars(parseInt(btn.dataset.value, 10), selectedRating);
-      });
-      btn.addEventListener('mouseleave', () => {
-        updateStars(0, selectedRating);
-      });
-      btn.addEventListener('click', () => {
-        selectedRating = parseInt(btn.dataset.value, 10);
-        ratingInput.value = selectedRating;
-        updateStars(0, selectedRating);
-      });
-    });
-
-    document.getElementById('feedback-form').addEventListener('submit', function(e) {
-      if (!ratingInput.value) {
-        e.preventDefault();
-        starLabel.textContent = 'Please select a rating before submitting.';
-        starLabel.style.color = '#ef4444';
-      }
-    });
-  </script>
-</body>
-</html>
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #f9f9ff;
+            color: #191c22;
+            font-family: 'Inter', sans-serif;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-surface selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<nav class="bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl docked full-width top-0 z-50 sticky">
+<div class="flex justify-between items-center w-full px-8 py-4 max-w-[1440px] mx-auto">
+<div class="font-['Manrope'] text-xl font-bold tracking-tighter text-blue-700 dark:text-blue-400">
+                Precision Support
+            </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-slate-600 dark:text-slate-400 font-medium font-['Inter'] text-sm tracking-tight hover:text-blue-600 dark:hover:text-blue-300 transition-all duration-200" href="#">Dashboard</a>
+<a class="text-slate-600 dark:text-slate-400 font-medium font-['Inter'] text-sm tracking-tight hover:text-blue-600 dark:hover:text-blue-300 transition-all duration-200" href="#">Tickets</a>
+<a class="text-slate-600 dark:text-slate-400 font-medium font-['Inter'] text-sm tracking-tight hover:text-blue-600 dark:hover:text-blue-300 transition-all duration-200" href="#">Knowledge Base</a>
+<a class="text-slate-600 dark:text-slate-400 font-medium font-['Inter'] text-sm tracking-tight hover:text-blue-600 dark:hover:text-blue-300 transition-all duration-200" href="#">Community</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-primary text-on-primary px-5 py-2 xl rounded-xl text-sm font-semibold active:scale-[0.98] transition-transform">
+                    Report Bug
+                </button>
+<div class="h-8 w-8 rounded-full bg-surface-container overflow-hidden">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="close-up portrait of a professional man in a business setting with soft natural lighting and neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLZ19GPodITLxRzFzFxXrbvIhp2dDbMMyW1aiY-p_dz4NxsqR15R7_c3_X7Vl_bvs07u7MRbgk215sASCm_Um1vNPCrfLV7Z9GgCTczx0ZydbLWQFppvIt27TFASS_zWngfBh4LznxVY7MAAzzYgtfLuF6PmwV2qHn2dz7RxvnNprYa7yKaDn3Xq7LXI7_se-HXcZvw3nG1YGIOmuS1WIZcEYH4XEt4DICUAWKWIWgyVMN04Ov6JMCV1wBBlx6JtLMMICTeyohAAl2"/>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="max-w-[1440px] mx-auto px-8 py-16">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+<!-- Left Side: Editorial Introduction -->
+<div class="lg:col-span-4 space-y-10">
+<header>
+<span class="text-primary font-bold tracking-widest text-[0.65rem] uppercase mb-4 block">Feedback Hub</span>
+<h1 class="font-headline text-5xl font-bold tracking-tight text-on-background leading-tight">
+                        Shape the <br/><span class="text-primary">Next Exhibit.</span>
+</h1>
+<p class="mt-6 text-on-surface-variant body-md max-w-sm leading-relaxed">
+                        We don't just fix bugs; we curate experiences. Your feedback is the direct input we use to refine our precision tools.
+                    </p>
+</header>
+<div class="space-y-6">
+<section class="bg-surface-container-low p-8 xl rounded-xl">
+<h3 class="font-headline font-semibold text-on-surface mb-4">Support Hours</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-xs text-on-surface-variant font-medium">Monday — Friday</span>
+<span class="text-xs font-bold text-primary">08:00 - 20:00 EST</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-xs text-on-surface-variant font-medium">Saturday</span>
+<span class="text-xs font-bold text-primary">10:00 - 16:00 EST</span>
+</div>
+</div>
+</section>
+<section class="p-8 border-l-2 border-primary-container">
+<h3 class="font-headline font-semibold text-on-surface mb-4">Common Questions</h3>
+<div class="space-y-6">
+<details class="group cursor-pointer">
+<summary class="list-none text-sm font-semibold text-on-surface flex justify-between items-center">
+                                    How long for bug fixes?
+                                    <span class="material-symbols-outlined text-sm group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<p class="text-xs text-on-surface-variant mt-2 leading-relaxed">Critical bugs are addressed within 24 hours. Feature requests are reviewed weekly by our product council.</p>
+</details>
+<details class="group cursor-pointer">
+<summary class="list-none text-sm font-semibold text-on-surface flex justify-between items-center">
+                                    Can I track my report?
+                                    <span class="material-symbols-outlined text-sm group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<p class="text-xs text-on-surface-variant mt-2 leading-relaxed">Yes, once submitted, you will receive a tracking ID via email and an entry in your Tickets dashboard.</p>
+</details>
+</div>
+</section>
+</div>
+</div>
+<!-- Right Side: The Form Canvas -->
+<div class="lg:col-span-8 bg-surface-container-lowest p-10 xl rounded-xl shadow-[0_20px_40px_rgba(25,28,34,0.04)]">
+<form action="#" class="space-y-8">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Category Selection -->
+<div class="space-y-3">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Category</label>
+<div class="relative">
+<select class="w-full bg-surface-container border-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 xl rounded-xl py-4 px-5 text-sm appearance-none cursor-pointer">
+<option>General Feedback</option>
+<option>Bug Report</option>
+<option>Feature Request</option>
+<option>Billing Inquiry</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">unfold_more</span>
+</div>
+</div>
+<!-- Subject -->
+<div class="space-y-3">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Subject</label>
+<input class="w-full bg-surface-container border-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 xl rounded-xl py-4 px-5 text-sm" placeholder="Brief summary of your inquiry" type="text"/>
+</div>
+</div>
+<!-- Description -->
+<div class="space-y-3">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Description</label>
+<textarea class="w-full bg-surface-container border-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 xl rounded-xl py-4 px-5 text-sm resize-none" placeholder="Provide as much detail as possible. If it's a bug, list the steps to reproduce..." rows="6"></textarea>
+</div>
+<!-- Attachments -->
+<div class="space-y-3">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Attachments</label>
+<div class="group relative border-2 border-dashed border-outline-variant/30 bg-surface-container-low hover:bg-surface-container-highest transition-colors rounded-xl p-12 text-center cursor-pointer">
+<input class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" type="file"/>
+<div class="space-y-4">
+<div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto shadow-sm group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="cloud_upload">cloud_upload</span>
+</div>
+<div class="text-sm">
+<span class="font-bold text-primary">Click to upload</span>
+<span class="text-on-surface-variant"> or drag and drop</span>
+</div>
+<p class="text-[0.65rem] text-on-surface-variant uppercase tracking-widest">PNG, JPG, PDF up to 10MB</p>
+</div>
+</div>
+</div>
+<!-- Submit -->
+<div class="flex items-center justify-between pt-6 border-t border-surface-container-high">
+<div class="flex items-center gap-3 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span class="text-[0.7rem] font-medium leading-tight">Your data is secured with <br/>end-to-end encryption.</span>
+</div>
+<button class="bg-primary hover:bg-primary-container text-on-primary px-10 py-4 xl rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-all" type="submit">
+                            Submit Feedback
+                        </button>
+</div>
+</form>
+</div>
+</div>
+<!-- Sentiment/Metric Breakout (Asymmetry) -->
+<div class="mt-32 grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="bg-surface-bright p-8 xl rounded-xl">
+<span class="text-3xl font-headline font-extrabold text-primary mb-2 block">98%</span>
+<span class="text-xs uppercase tracking-widest font-bold text-on-surface-variant">Resolution Rate</span>
+</div>
+<div class="bg-surface-bright p-8 xl rounded-xl">
+<span class="text-3xl font-headline font-extrabold text-primary mb-2 block">2.4h</span>
+<span class="text-xs uppercase tracking-widest font-bold text-on-surface-variant">Avg. Response Time</span>
+</div>
+<div class="bg-tertiary-container p-8 xl rounded-xl flex items-center gap-4">
+<span class="material-symbols-outlined text-on-tertiary-container text-4xl" data-icon="sentiment_very_satisfied">sentiment_very_satisfied</span>
+<div>
+<span class="text-xs uppercase tracking-widest font-bold text-on-tertiary-container/80 block">User Sentiment</span>
+<span class="text-lg font-headline font-bold text-on-tertiary-container">Consistently High</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-[#f2f3fc] dark:bg-slate-900 w-full py-12 px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="font-['Manrope'] font-extrabold text-slate-900 dark:text-white">
+            Precision Curator
+        </div>
+<div class="flex gap-8">
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#">Documentation</a>
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#">Privacy Policy</a>
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors underline underline-offset-4 text-blue-700 dark:text-blue-400" href="#">Status</a>
+</div>
+<div class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">
+            © 2024 Precision Curator. Built for authority.
+        </div>
+</footer>
+</body></html>

@@ -1,200 +1,511 @@
-{% extends "base.html" %}
-{% set tenant = admin %}
-{% block title %}Voice Routing — HostAI Admin{% endblock %}
+<!DOCTYPE html>
 
-{% block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
-tailwind.config = {
-  darkMode: "class",
-  theme: { extend: { colors: {
-    "primary": "#aec6ff","primary-container":"#5d8ef1","on-primary":"#002e6b",
-    "surface":"#121319","surface-container":"#1e1f26","surface-container-lowest":"#0d0e14",
-    "surface-container-high":"#292930","on-surface":"#e3e1eb","on-surface-variant":"#c3c6d4",
-    "outline":"#424752","outline-variant":"#34343b","error":"#ffb4ab","tertiary":"#ffb960",
-    "secondary":"#bdf4ff","secondary-fixed-dim":"#00daf3",
-  }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
-}
-</script>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VoiceCore Pro | Precision Router</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#e6e8ea",
+                    "inverse-on-surface": "#eff1f3",
+                    "primary-fixed-dim": "#aac7ff",
+                    "on-primary-fixed-variant": "#00458e",
+                    "primary-container": "#0066cc",
+                    "surface-tint": "#005cba",
+                    "primary": "#004e9f",
+                    "on-background": "#191c1e",
+                    "secondary-fixed-dim": "#b9c7df",
+                    "secondary-fixed": "#d5e3fc",
+                    "on-primary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "error-container": "#ffdad6",
+                    "tertiary": "#883700",
+                    "on-primary-container": "#dfe8ff",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-primary": "#aac7ff",
+                    "on-tertiary-container": "#ffe3d6",
+                    "on-error": "#ffffff",
+                    "on-surface-variant": "#414753",
+                    "on-error-container": "#93000a",
+                    "on-secondary-fixed-variant": "#3a485b",
+                    "surface-container-highest": "#e0e3e5",
+                    "secondary": "#515f74",
+                    "on-tertiary-fixed-variant": "#793000",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed-dim": "#ffb692",
+                    "secondary-container": "#d5e3fc",
+                    "on-tertiary-fixed": "#341100",
+                    "surface-container-low": "#f2f4f6",
+                    "inverse-surface": "#2d3133",
+                    "surface": "#f7f9fb",
+                    "primary-fixed": "#d7e3ff",
+                    "surface-dim": "#d8dadc",
+                    "outline-variant": "#c1c6d5",
+                    "on-secondary-container": "#57657a",
+                    "surface-variant": "#e0e3e5",
+                    "on-secondary-fixed": "#0d1c2e",
+                    "tertiary-fixed": "#ffdbcb",
+                    "on-primary-fixed": "#001b3e",
+                    "background": "#f7f9fb",
+                    "surface-container": "#eceef0",
+                    "surface-bright": "#f7f9fb",
+                    "on-surface": "#191c1e",
+                    "tertiary-container": "#af4900",
+                    "outline": "#727784"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
 <style>
-body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
-.glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
-.material-symbols-outlined { font-variation-settings:'FILL' 1,'wght' 300,'GRAD' 0,'opsz' 24; }
-.admin-tab { padding-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; transition: color 0.2s, border-bottom-color 0.2s; border-bottom: 2px solid transparent; color: #8d909e; }
-.admin-tab:hover { color: #e3e1eb; }
-.admin-tab.active { color: #5B8DEF; border-bottom-color: #5B8DEF; }
-</style>
-{%- endblock %}
-
-{%- block nav %}{%- endblock %}
-
-{%- block main_wrapper %}
-{%- block content %}
-<!-- Sidebar -->
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-fixed">
+<div class="flex h-screen overflow-hidden">
+<!-- SideNavBar Component -->
 <!-- Mobile hamburger -->
-<button onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full');document.getElementById('admin-sidebar-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('admin-sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="admin-sidebar-overlay"></div>
-<aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
-  <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
-<span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
+<!-- Sidebar overlay for mobile -->
+<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+<aside id="sidebar" class="flex-none bg-[#f7f9fb] dark:bg-[#191c1e] h-screen w-64 docked left-0 flex flex-col h-full py-6 space-y-4 font-['Inter'] text-sm font-medium fixed left-0 top-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300">
+<div class="px-8 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-lg">alt_route</span>
 </div>
-<span>HostAI</span>
+<div class="flex flex-col">
+<span class="text-lg font-black text-[#004e9f] dark:text-[#4796ff] leading-none">Global Router</span>
+<span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Precision Curator v2.4</span>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Routing (Active) -->
+<a class="bg-[#0066CC] text-white rounded-full mx-4 px-4 py-3 flex items-center gap-3 transition-all -translate-y-0.5 duration-200" href="#">
+<span class="material-symbols-outlined">alt_route</span>
+<span>Routing</span>
 </a>
-  <nav class="flex-1 px-4 space-y-1">
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/dashboard">
-      <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
-      <span class="material-symbols-outlined" data-icon="forum">forum</span> Conversations
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
-      <span class="material-symbols-outlined" data-icon="event_available">event_available</span> Reservations
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
-      <span class="material-symbols-outlined" data-icon="history">history</span> Activity
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
-      <span class="material-symbols-outlined" data-icon="analytics">analytics</span> Analytics
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
-                Voice AI
-            </a>
-      <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
-      <span class="material-symbols-outlined" data-icon="hub">hub</span> Workflow Center
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
-      <span class="material-symbols-outlined" data-icon="settings">settings</span> Settings
-    </a>
-    {% if is_admin(admin.email) %}
-    <a class="flex items-center gap-3 px-6 py-3 text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold transition-all duration-200" href="/admin">
-      <span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span> Admin Panel
-    </a>
-    {% endif %}
-  </nav>
-
-  <div class="p-6 border-t border-white/5">
-    <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
-      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-        {{ (admin.name or admin.email or 'H')[0]|upper }}
-      </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-white text-sm font-bold truncate">{{ admin.name or admin.email.split('@')[0]|title }}</p>
-        <p class="text-slate-500 text-xs truncate">Admin Account</p>
-      </div>
-    </div>
-    <form method="post" action="/logout">
-      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-      <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-red-400 transition-colors text-xs font-bold uppercase tracking-widest py-2">
-        <span class="material-symbols-outlined text-sm">logout</span>Sign Out
-      </button>
-    </form>
-  </div>
+<!-- Providers -->
+<a class="text-[#414753] dark:text-[#c1c6d5] mx-4 px-4 py-3 flex items-center gap-3 hover:text-[#191c1e] dark:hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">settings_input_component</span>
+<span>Providers</span>
+</a>
+<!-- Logs -->
+<a class="text-[#414753] dark:text-[#c1c6d5] mx-4 px-4 py-3 flex items-center gap-3 hover:text-[#191c1e] dark:hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span>Logs</span>
+</a>
+<!-- Analytics -->
+<a class="text-[#414753] dark:text-[#c1c6d5] mx-4 px-4 py-3 flex items-center gap-3 hover:text-[#191c1e] dark:hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span>Analytics</span>
+</a>
+</nav>
+<div class="pt-6 mt-6 border-t border-outline-variant/10">
+<a class="text-[#414753] dark:text-[#c1c6d5] mx-4 px-4 py-3 flex items-center gap-3 hover:text-[#191c1e] dark:hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">lan</span>
+<span>System Health</span>
+</a>
+<a class="text-[#414753] dark:text-[#c1c6d5] mx-4 px-4 py-3 flex items-center gap-3 hover:text-[#191c1e] dark:hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">support_agent</span>
+<span>Support</span>
+</a>
+</div>
+<div class="px-6 mt-auto">
+<div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl">
+<img class="w-10 h-10 rounded-lg object-cover" data-alt="close up professional portrait of a technical system administrator in a modern office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHg1LhuwDzs_cE-s9mxKvqCtsFz6lNR3Y0Ict_ca7cS7k7PyJdccK84o4qSHQChyyNHi_afNCBZAH1K6aLiJ9MCkJ_-KK5JDopv_YNamaMovV5pBF8w96xM0anwMKX0oTlqO5n6UybTkrT_z2Fn-F_LnyJv1U_6QBOuTyZHRiQVOfaptDGGTSugr92oNOrOP9tpBajT99T-qSl-onxqhI7wTWMlrYl-QK0TGbT1S_N90UDiqswG98nBbpUEN6r9cSNUOXb6o9DWIk4"/>
+<div class="flex flex-col">
+<span class="text-xs font-bold truncate">System Node</span>
+<span class="text-[10px] text-on-surface-variant">Administrator</span>
+</div>
+</div>
+</div>
 </aside>
-
-<!-- Main -->
-<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen relative">
-  <!-- Mobile hamburger menu -->
-  <button id="sidebar-toggle" class="md:hidden fixed top-4 left-4 z-40 p-2 text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all" onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full')">
-    <span class="material-symbols-outlined">menu</span>
-  </button>
-  <div class="absolute -top-48 -right-48 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
-  
-  <div class="mb-10 pt-4">
-    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">Voice Routing</h1>
-    <p class="text-slate-400 text-sm">Configure how incoming calls are handled and escalated.</p>
-    
-    <!-- Admin Subnav -->
-    <div class="flex items-center gap-6 mt-6 border-b border-white/10 overflow-x-auto pb-1 whitespace-nowrap">
-      <a href="/admin" class="admin-tab">Overview</a>
-      <a href="/admin/system" class="admin-tab">System Health</a>
-      <a href="/admin/ai" class="admin-tab">AI Engine</a>
-      <a href="/admin/costs" class="admin-tab">Profitability</a>
-      <a href="/admin/health_api" class="admin-tab">API Health</a>
-      <a href="/admin/voice-analytics" class="admin-tab">Voice Analytics</a>
-      <a href="/admin/voice-routing" class="admin-tab active">Voice Routing</a>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    <!-- Config -->
-    <div class="glass-card p-6 rounded-3xl h-fit">
-      <h2 class="text-lg font-bold text-white mb-4">Global Default Route</h2>
-      <form method="POST" action="/api/admin/voice-routing/config" class="space-y-4">
-        <div>
-          <label class="block text-sm font-bold text-slate-300 mb-2">Default Action</label>
-          <select name="default_route" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-200 focus:outline-[#5B8DEF] focus:border-transparent transition-all">
-            <option value="ai" {% if not routing_config or routing_config.default_route == 'ai' %}selected{% endif %}>AI Voice Agent (Default)</option>
-            <option value="voicemail" {% if routing_config and routing_config.default_route == 'voicemail' %}selected{% endif %}>Direct to Voicemail</option>
-            <option value="host" {% if routing_config and routing_config.default_route == 'host' %}selected{% endif %}>Call Host Phone</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-bold text-slate-300 mb-2">Host Routing Number</label>
-          <input type="text" name="host_routing_number" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-[#5B8DEF] transition-all" placeholder="+1234567890" value="{{ routing_config.host_routing_number if routing_config else '' }}">
-        </div>
-        <div class="flex items-center gap-3 pt-2">
-          <input type="checkbox" name="fallback_sms" id="fallback_sms" class="w-5 h-5 rounded border-white/20 bg-white/5 text-[#5B8DEF] cursor-pointer" {% if not routing_config or routing_config.fallback_sms %}checked{% endif %}>
-          <label for="fallback_sms" class="text-sm text-slate-300 font-medium cursor-pointer">Fallback to SMS if unanswered</label>
-        </div>
-        <div class="flex items-center gap-3 pt-2">
-          <input type="checkbox" name="queue_hold_music" id="queue_hold_music" class="w-5 h-5 rounded border-white/20 bg-white/5 text-[#5B8DEF] cursor-pointer" {% if routing_config and routing_config.queue_hold_music %}checked{% endif %}>
-          <label for="queue_hold_music" class="text-sm text-slate-300 font-medium cursor-pointer">Play hold music during complex tasks</label>
-        </div>
-        <button type="button" class="mt-4 px-5 py-2.5 bg-[#5B8DEF] hover:bg-blue-600 text-[#002e6b] hover:text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all font-['Plus_Jakarta_Sans'] group flex items-center gap-2">
-          Save Configuration
-        </button>
-      </form>
-    </div>
-
-    <!-- Smart rules -->
-    <div class="glass-card p-6 rounded-3xl h-fit">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-lg font-bold text-white">Smart Escalation Rules</h2>
-        <button class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg text-xs transition-colors border border-white/5">
-          + New Rule
-        </button>
-      </div>
-
-      <div class="space-y-4">
-        {% if routing_rules %}
-          {% for rule in routing_rules %}
-          <div class="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
-            <div class="flex justify-between items-start mb-2">
-              <span class="font-bold text-slate-200">{{ rule.name }}</span>
-              {% if rule.is_active %}
-                <span class="text-[10px] font-bold tracking-wider uppercase text-[#27c93f]">Active</span>
-              {% else %}
-                <span class="text-[10px] font-bold tracking-wider uppercase text-slate-500">Disabled</span>
-              {% endif %}
-            </div>
-            <div class="flex flex-col gap-2 text-sm text-slate-400">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[1rem] text-rose-400" style="font-variation-settings:'FILL' 0">gavel</span>
-                If <span class="font-mono text-xs bg-white/5 px-1 py-0.5 rounded">{{ rule.condition_type }}</span> = <span class="font-mono text-xs text-rose-400">{{ rule.condition_value }}</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[1rem] text-[#5B8DEF]" style="font-variation-settings:'FILL' 0">arrow_right_alt</span>
-                Then <strong class="text-[#5B8DEF]">{{ rule.action|title }}</strong>
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-        {% else %}
-          <div class="text-center p-8 bg-white/5 rounded-xl border border-white/5">
-            <span class="material-symbols-outlined text-4xl text-slate-600 mb-2">rule_folder</span>
-            <p class="text-slate-400 text-sm font-medium">No smart routing rules set up.</p>
-            <p class="text-slate-500 text-xs mt-1">Add rules to automatically escalate difficult calls.</p>
-          </div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
+<!-- Main Canvas -->
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+<!-- TopNavBar Component -->
+<header class="bg-white dark:bg-[#191c1e] flex justify-between items-center px-8 py-3 w-full border-b border-opacity-15 border-[#c1c6d5] font-['Inter'] tracking-tight">
+<div class="flex items-center gap-6">
+<span class="text-xl font-bold text-[#191c1e] dark:text-white">VoiceCore Pro</span>
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm w-80 focus:ring-1 focus:ring-primary" placeholder="Search routes, nodes, or logs..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Status: Operational
+                    </div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-[#f7f9fb] p-2 rounded-lg transition-colors">help</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-[#f7f9fb] p-2 rounded-lg transition-colors">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-[#f7f9fb] p-2 rounded-lg transition-colors">settings</button>
+</div>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-8 space-y-8 bg-surface-container-low">
+<!-- Hero Metrics & Health -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<div class="col-span-1 md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-6">
+<!-- Metric Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
+<div class="flex items-center justify-between mb-4">
+<span class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider">Active Stream Count</span>
+<span class="material-symbols-outlined text-primary">call</span>
+</div>
+<div class="flex flex-col">
+<span class="text-3xl font-black text-on-surface -tracking-wider">1,429</span>
+<div class="flex items-center gap-1 mt-1 text-emerald-600">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span class="text-xs font-bold">+12.4% vs peak</span>
+</div>
+</div>
+</div>
+<!-- Metric Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
+<div class="flex items-center justify-between mb-4">
+<span class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider">Global Latency (Avg)</span>
+<span class="material-symbols-outlined text-primary">speed</span>
+</div>
+<div class="flex flex-col">
+<span class="text-3xl font-black text-on-surface -tracking-wider">42ms</span>
+<div class="flex items-center gap-1 mt-1 text-emerald-600">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+<span class="text-xs font-bold">Within SLA</span>
+</div>
+</div>
+</div>
+<!-- Metric Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
+<div class="flex items-center justify-between mb-4">
+<span class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider">ACD Efficiency</span>
+<span class="material-symbols-outlined text-primary">timer</span>
+</div>
+<div class="flex flex-col">
+<span class="text-3xl font-black text-on-surface -tracking-wider">8.2m</span>
+<div class="flex items-center gap-1 mt-1 text-on-tertiary-fixed-variant">
+<span class="material-symbols-outlined text-sm">info</span>
+<span class="text-xs font-bold">Stable Trend</span>
+</div>
+</div>
+</div>
+</div>
+<!-- VoIP Provider Health Section -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
+<span class="text-on-surface-variant text-[10px] font-black uppercase tracking-widest block mb-4">Core Nodes</span>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold">Twilio</span>
+<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 rounded font-bold">LIVE</span>
+</div>
+<span class="text-xs font-mono text-on-surface-variant">99.99%</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold">Vonage</span>
+<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 rounded font-bold">LIVE</span>
+</div>
+<span class="text-xs font-mono text-on-surface-variant">99.98%</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold">Telnyx</span>
+<div class="w-2 h-2 rounded-full bg-amber-500"></div>
+</div>
+<span class="text-xs font-mono text-amber-600">JITTER</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Active Call Monitoring - Real-time Ticker -->
+<section class="bg-surface-container-lowest rounded-2xl shadow-xl shadow-primary/5 overflow-hidden">
+<div class="p-6 border-b border-outline-variant/10 flex items-center justify-between">
+<div>
+<h2 class="text-xl font-black text-on-surface tracking-tight">Active Call Monitoring</h2>
+<p class="text-on-surface-variant text-xs mt-1">Live throughput tracking across all edge clusters</p>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 text-xs font-bold px-4 py-2 bg-primary text-white rounded-full transition-all hover:scale-95 duration-150">
+<span class="material-symbols-outlined text-sm">pause_circle</span>
+                                Pause Stream
+                            </button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Source</th>
+<th class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Destination</th>
+<th class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Provider</th>
+<th class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Duration</th>
+<th class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Latency</th>
+<th class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Cost/Min</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold">+1 (212) 555-0198</span>
+<span class="text-[10px] text-on-surface-variant">New York, US</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold">+44 20 7946 0958</span>
+<span class="text-[10px] text-on-surface-variant">London, UK</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-xs" style="font-variation-settings: 'FILL' 1;">router</span>
+</div>
+<span class="text-sm font-medium">Twilio Premium</span>
+</div>
+</td>
+<td class="py-4 px-6 font-mono text-sm text-on-surface-variant">04:12</td>
+<td class="py-4 px-6">
+<span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">28ms</span>
+</td>
+<td class="py-4 px-6 text-sm font-bold">$0.008</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-4 px-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold">+49 30 901820</span>
+<span class="text-[10px] text-on-surface-variant">Berlin, DE</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold">+81 3 5321 1111</span>
+<span class="text-[10px] text-on-surface-variant">Tokyo, JP</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-md bg-secondary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-xs" style="font-variation-settings: 'FILL' 1;">cloud</span>
+</div>
+<span class="text-sm font-medium">Vonage Core</span>
+</div>
+</td>
+<td class="py-4 px-6 font-mono text-sm text-on-surface-variant">12:45</td>
+<td class="py-4 px-6">
+<span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded">142ms</span>
+</td>
+<td class="py-4 px-6 text-sm font-bold">$0.012</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-4 px-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold">+1 (415) 555-9482</span>
+<span class="text-[10px] text-on-surface-variant">San Francisco, US</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex flex-col">
+<span class="text-sm font-bold">+1 (604) 555-0102</span>
+<span class="text-[10px] text-on-surface-variant">Vancouver, CA</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-xs" style="font-variation-settings: 'FILL' 1;">router</span>
+</div>
+<span class="text-sm font-medium">Twilio Premium</span>
+</div>
+</td>
+<td class="py-4 px-6 font-mono text-sm text-on-surface-variant">01:08</td>
+<td class="py-4 px-6">
+<span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">34ms</span>
+</td>
+<td class="py-4 px-6 text-sm font-bold">$0.008</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Two-Column Asymmetric Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Routing Rules Engine (Bento Style) -->
+<section class="lg:col-span-2 space-y-6">
+<div class="flex items-center justify-between">
+<h2 class="text-lg font-bold">Active Routing Matrix</h2>
+<button class="text-xs font-bold text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">add</span>
+                                Create Rule
+                            </button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Rule Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10 hover:border-primary/20 transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">public</span>
+<span class="font-bold text-on-surface">Tier 1 Global</span>
+</div>
+<span class="text-[10px] font-black px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">ACTIVE</span>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Region</span>
+<span class="font-medium">All (Worldwide)</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Primary</span>
+<span class="font-medium">Twilio Elastic</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Fallback</span>
+<span class="font-medium">Vonage API</span>
+</div>
+<div class="h-1 w-full bg-surface-container-low rounded-full overflow-hidden mt-2">
+<div class="h-full bg-primary w-full"></div>
+</div>
+</div>
+</div>
+<!-- Rule Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10 hover:border-primary/20 transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary">map</span>
+<span class="font-bold text-on-surface">EU Compliance Path</span>
+</div>
+<span class="text-[10px] font-black px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">ACTIVE</span>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Region</span>
+<span class="font-medium">European Union</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Primary</span>
+<span class="font-medium">Local Node DE-1</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Fallback</span>
+<span class="font-medium">Telnyx EU</span>
+</div>
+<div class="h-1 w-full bg-surface-container-low rounded-full overflow-hidden mt-2">
+<div class="h-full bg-tertiary w-3/4"></div>
+</div>
+</div>
+</div>
+<!-- Rule Card 3 (Status Paused) -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10 hover:border-primary/20 transition-all cursor-pointer opacity-75">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant">flight_takeoff</span>
+<span class="font-bold text-on-surface">APAC Direct</span>
+</div>
+<span class="text-[10px] font-black px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant">PAUSED</span>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Region</span>
+<span class="font-medium">South-East Asia</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Primary</span>
+<span class="font-medium">SingTel Carrier</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Fallback</span>
+<span class="font-medium">Twilio HK</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Routing Logic Configuration (Glassmorphism Card) -->
+<section class="lg:col-span-1 space-y-6">
+<h2 class="text-lg font-bold">Heuristic Engine</h2>
+<div class="relative overflow-hidden bg-white/60 backdrop-blur-xl p-8 rounded-2xl border border-white/40 shadow-xl shadow-primary/5">
+<!-- Background gradient blob -->
+<div class="absolute -top-12 -right-12 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
+<div class="space-y-8 relative z-10">
+<div>
+<div class="flex items-center justify-between mb-2">
+<label class="text-sm font-bold text-on-surface">Least-Cost Routing</label>
+<div class="w-10 h-5 bg-primary rounded-full relative flex items-center px-1">
+<div class="w-3 h-3 bg-white rounded-full ml-auto"></div>
+</div>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Prioritize financial efficiency by selecting the cheapest available carrier meeting minimum jitter thresholds.</p>
+</div>
+<div>
+<div class="flex items-center justify-between mb-2">
+<label class="text-sm font-bold text-on-surface">Quality-Based Routing</label>
+<div class="w-10 h-5 bg-surface-container-highest rounded-full relative flex items-center px-1">
+<div class="w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Ignore cost factors to prioritize carriers with historically low packet loss and highest MOS scores.</p>
+</div>
+<div>
+<div class="flex items-center justify-between mb-2">
+<label class="text-sm font-bold text-on-surface">Geographic Stickiness</label>
+<div class="w-10 h-5 bg-primary rounded-full relative flex items-center px-1">
+<div class="w-3 h-3 bg-white rounded-full ml-auto"></div>
+</div>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Force connections through regional edge nodes to satisfy GDPR and CCPA residency requirements.</p>
+</div>
+<div class="pt-4">
+<button class="w-full py-4 bg-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-transform duration-200">
+<span class="material-symbols-outlined text-sm">auto_mode</span>
+                                        Propagate Core Logic
+                                    </button>
+</div>
+</div>
+</div>
+<!-- Data Visual Asset -->
+<div class="relative h-48 rounded-2xl overflow-hidden group">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="abstract 3d visualization of global network data flow with glowing lines connecting points on a dark architectural surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhpgWGptN_ISAy40ndIR7w2xrJQ9dOHckQTA6g6EkRTYmttiZfP_ZJW8Tsp0ijWtvI1vpxbNhO45O98RpU_wRA5Ft9ICNdyRMfEoRwG2o1E2ZHTnytKFtqMKRpxLgbkzU8pdonDr_pgzzjI88YjSXh5BSwcQTbmdAI7vk-0AKht437r6nny533ptz8fYUmbtqimQcapwVmPhdSRRJyC3VPwvnqsMVCpTjtCoD1z_zBgRJTqFsWNAmjidMPZJdS6qCC5G-a1xew_pWw"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/80 to-transparent flex flex-col justify-end p-6">
+<span class="text-xs font-bold text-primary-fixed tracking-widest uppercase">System Intelligence</span>
+<span class="text-white font-bold">Predictive Routing Active</span>
+</div>
+</div>
+</section>
+</div>
+</div>
 </main>
-{%- endblock %}
-{%- endblock %}
+</div>
+<!-- Floating Quick Action (Supressed for this layout per rules, but showing context) -->
+<!-- The FAB is suppressed because this is a deep management/dashboard view -->
+</body></html>

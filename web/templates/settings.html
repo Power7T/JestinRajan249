@@ -1,1618 +1,327 @@
-{%- extends "base.html" %}
-{%- block title %}Settings — HostAI{%- endblock %}
+<!DOCTYPE html>
 
-{%- block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Precision Curator - Account Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              "surface-dim": "#121319",
-              "tertiary-fixed-dim": "#ffb960",
-              "tertiary-container": "#ca8103",
-              "on-error": "#690005",
-              "on-tertiary-fixed": "#2a1700",
-              "secondary-fixed-dim": "#00daf3",
-              "primary": "#aec6ff",
-              "surface-container": "#1e1f26",
-              "tertiary": "#ffb960",
-              "primary-fixed-dim": "#aec6ff",
-              "on-tertiary": "#472a00",
-              "inverse-on-surface": "#2f3037",
-              "surface": "#121319",
-              "secondary": "#bdf4ff",
-              "outline": "#8d909e",
-              "surface-variant": "#34343b",
-              "inverse-surface": "#e3e1eb",
-              "on-primary-container": "#00275e",
-              "background": "#121319",
-              "error-container": "#93000a",
-              "surface-bright": "#383940",
-              "primary-fixed": "#d8e2ff",
-              "primary-container": "#5d8ef1",
-              "on-secondary-container": "#00616d",
-              "secondary-container": "#00e3fd",
-              "on-surface": "#e3e1eb",
-              "surface-container-highest": "#34343b",
-              "on-secondary-fixed-variant": "#004f58",
-              "on-secondary-fixed": "#001f24",
-              "surface-container-lowest": "#0d0e14",
-              "on-tertiary-container": "#3e2400",
-              "surface-container-low": "#1a1b22",
-              "on-surface-variant": "#c3c6d4",
-              "surface-container-high": "#292930",
-              "on-secondary": "#00363d",
-              "error": "#ffb4ab",
-              "secondary-fixed": "#9cf0ff",
-              "on-primary-fixed-variant": "#004397",
-              "inverse-primary": "#1e5bba",
-              "on-primary-fixed": "#001a43",
-              "surface-tint": "#aec6ff",
-              "on-error-container": "#ffdad6",
-              "on-primary": "#002e6b",
-              "outline-variant": "#424752",
-              "on-background": "#e3e1eb",
-              "tertiary-fixed": "#ffddb8",
-              "on-tertiary-fixed-variant": "#653e00"
+
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#af4900",
+                        "surface": "#f7f9fb",
+                        "on-error": "#ffffff",
+                        "primary-fixed": "#d7e3ff",
+                        "primary-container": "#0066cc",
+                        "on-tertiary-container": "#ffe3d6",
+                        "surface-container-high": "#e6e8ea",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "primary-fixed-dim": "#aac7ff",
+                        "on-tertiary-fixed-variant": "#793000",
+                        "secondary": "#515f74",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-container-low": "#f2f4f6",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "surface-variant": "#e0e3e5",
+                        "on-primary-fixed-variant": "#00458e",
+                        "on-surface": "#191c1e",
+                        "on-error-container": "#93000a",
+                        "outline": "#727784",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#57657a",
+                        "surface-container-highest": "#e0e3e5",
+                        "background": "#f7f9fb",
+                        "primary": "#004e9f",
+                        "surface-tint": "#005cba",
+                        "on-tertiary-fixed": "#341100",
+                        "surface-container": "#eceef0",
+                        "surface-bright": "#f7f9fb",
+                        "on-surface-variant": "#414753",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#883700",
+                        "secondary-fixed": "#d5e3fc",
+                        "on-background": "#191c1e",
+                        "inverse-surface": "#2d3133",
+                        "outline-variant": "#c1c6d5",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#d8dadc",
+                        "secondary-container": "#d5e3fc",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "on-primary-container": "#dfe8ff",
+                        "inverse-primary": "#aac7ff",
+                        "on-primary-fixed": "#001b3e",
+                        "tertiary-fixed": "#ffdbcb",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "on-tertiary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
             },
-            fontFamily: {
-              "headline": ["Plus Jakarta Sans"],
-              "body": ["Plus Jakarta Sans"],
-              "label": ["Plus Jakarta Sans"]
-            },
-            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
-          },
-        },
-      }
+        }
     </script>
 <style>
-        body {
-            background-color: #08090F;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            color: #e3e1eb;
-        }
+        body { font-family: 'Inter', sans-serif; }
         .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
-        .glass-card {
-            background: rgba(26, 27, 34, 0.7);
-            backdrop-filter: blur(24px);
-            border-top: 1px solid rgba(174, 198, 255, 0.1);
-            border-left: 1px solid rgba(174, 198, 255, 0.1);
-        }
-        .text-gradient-primary {
-            background: linear-gradient(135deg, #aec6ff 0%, #5d8ef1 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .btn-gradient {
-            background: linear-gradient(135deg, #aec6ff 0%, #5d8ef1 100%);
-            box-shadow: 0px 0px 12px rgba(174, 198, 255, 0.3);
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e0e3e5; border-radius: 10px; }
     </style>
-
-<style>
-/* Settings Compat Layer — maps old CSS vars to the Obsidian system */
-:root {
-  --surface: #1a1b22;
-  --bg: #08090F;
-  --bg-2: #121319;
-  --bg-3: #1e1f26;
-  --bg-4: #292930;
-  --border: rgba(66,71,82,0.5);
-  --border-2: rgba(174,198,255,0.2);
-  --text-1: #e3e1eb;
-  --text-2: #c3c6d4;
-  --text-3: #8d909e;
-  --accent: #5B8DEF;
-  --accent-2: #aec6ff;
-  --accent-glow: rgba(91,141,239,0.3);
-  --success: #27c93f;
-  --success-bg: rgba(39,201,63,0.1);
-  --success-border: rgba(39,201,63,0.3);
-  --danger: #ffb4ab;
-  --danger-bg: rgba(255,180,171,0.1);
-  --danger-border: rgba(255,180,171,0.3);
-  --warn: #ffbd2e;
-  --warn-bg: rgba(255,189,46,0.1);
-  --warn-border: rgba(255,189,46,0.3);
-  --radius: 0.75rem;
-  --radius-sm: 0.5rem;
-  --radius-lg: 1rem;
-  --t: 0.15s ease;
-  --nav-h: 64px;
-  --rose: #ff6b8a;
-}
-.settings-compat h1{font-size:1.8rem;font-weight:800;margin-bottom:1rem;color:#e3e1eb}
-.settings-compat h2{font-size:1.1rem;font-weight:700;margin-bottom:0.75rem;color:#e3e1eb}
-.settings-compat h3{font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;color:#c3c6d4}
-.settings-compat .card,.settings-compat .form-section,.settings-compat .channel-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
-.settings-compat label{display:block;font-size:0.78rem;font-weight:600;color:#8d909e;margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.06em}
-.settings-compat input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.settings-compat select,.settings-compat textarea{width:100%;background:#0d0e14 !important;border:1px solid rgba(66,71,82,0.4) !important;border-radius:0.5rem;padding:0.6rem 0.85rem;color:#e3e1eb !important;font-size:0.85rem;margin-bottom:1rem;outline:none;transition:border-color 0.15s}
-.settings-compat input:focus,.settings-compat select:focus,.settings-compat textarea:focus{border-color:#5B8DEF}
-.settings-compat textarea{min-height:4rem;resize:vertical}
-.settings-compat .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1.1rem;border-radius:0.5rem;font-size:0.84rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none}
-.settings-compat .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
-.settings-compat .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
-.settings-compat .btn-outline:hover{background:rgba(174,198,255,0.08)}
-.settings-compat .btn-success{background:rgba(39,201,63,0.15);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
-.settings-compat .btn-sm{padding:0.3rem 0.75rem;font-size:0.77rem}
-.settings-compat .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:0.5rem}
-.settings-compat table{width:100%;border-collapse:collapse;font-size:0.84rem}
-.settings-compat th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
-.settings-compat td{padding:0.6rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.15);color:#c3c6d4}
-.settings-compat .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.85rem}
-.settings-compat .checklist-item{display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid rgba(66,71,82,0.2);font-size:0.84rem;color:#c3c6d4}
-.settings-compat .check-icon.done{color:#27c93f}
-.settings-compat .check-icon.todo{color:#424752}
-.settings-compat .checklist-action{margin-left:auto}
-.settings-compat .chip{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:0.72rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.25rem}
-.settings-compat .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
-.settings-compat .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
-.settings-compat .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
-.settings-compat .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.5rem}
-.settings-compat .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.5rem;margin-bottom:0.75rem}
-.settings-compat .copy-box{display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem}
-.settings-compat .copy-box input{margin-bottom:0;font-family:monospace}
-.settings-compat .channel-section{opacity:1}
-.settings-compat .channel-section.locked{opacity:0.5;pointer-events:none}
-.settings-compat .channel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
-.settings-compat .channel-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
-.settings-compat .active-badge{font-size:0.72rem;background:rgba(39,201,63,0.1);color:#27c93f;border:1px solid rgba(39,201,63,0.3);padding:3px 10px;border-radius:999px;font-weight:700}
-.settings-compat .lock-badge{font-size:0.72rem;background:rgba(255,180,171,0.1);color:#ffb4ab;border:1px solid rgba(255,180,171,0.3);padding:3px 10px;border-radius:999px;font-weight:700;text-decoration:none}
-.settings-compat .token-display{font-family:monospace;font-size:0.82rem;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:8px 12px;word-break:break-all;color:#aec6ff;margin-bottom:0.75rem}
-.settings-compat .download-box{background:rgba(39,201,63,0.06);border:1px solid rgba(39,201,63,0.2);border-radius:0.75rem;padding:1.25rem}
-.settings-compat .workflow-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.85rem}
-.settings-compat .workflow-card{background:#0d0e14;border:1px solid rgba(66,71,82,0.3);border-radius:0.75rem;padding:1.1rem;transition:all 0.15s}
-.settings-compat .workflow-card:hover{border-color:#5B8DEF}
-.settings-compat .workflow-card h3{font-size:0.88rem;margin-bottom:0.4rem;color:#e3e1eb;text-transform:none;letter-spacing:0}
-.settings-compat .workflow-card p{font-size:0.8rem;color:#8d909e;line-height:1.6}
-.settings-compat select[multiple]{height:auto;min-height:80px}
-.settings-compat input[type=checkbox]{width:1.25rem !important;height:1.25rem !important;margin-bottom:0;margin-right:0.4rem;border-radius:0.25rem;accent-color:#5B8DEF}
-.settings-compat details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
-.settings-compat .accordion-body{margin-top:1rem;padding:1rem;background:#0d0e14;border-radius:0.5rem;border:1px solid rgba(66,71,82,0.3)}
-</style>
-
-{%- endblock %}
-
-{%- block nav %}{%- endblock %}
-
-{%- block main_wrapper %}
-{%- block content %}
-<!-- SideNavBar -->
+</head>
+<body class="bg-surface text-on-surface antialiased flex h-screen overflow-hidden">
 <!-- SideNavBar Shell -->
-<!-- SideNavBar Shell -->
-<!-- Mobile hamburger -->
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
-  <span class="material-symbols-outlined">menu</span>
-</button>
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
-<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
-<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
-<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
+<aside id="sidebar" class="flex flex-col py-6 gap-y-4 h-full bg-slate-100 dark:bg-slate-950 w-64 flex-shrink-0 z-30 fixed left-0 top-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold overflow-hidden">
+<img alt="Alex Rivers" class="w-full h-full object-cover" data-alt="Close up professional headshot of a senior property manager in a well-lit modern office environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgVl1MoheabmuMmVMSnCF2HLWhpJHTYlzQsgRvoz-RUk1CqpqJ8A2Sn9m4HxWEUx9Pg2wa0Up6Y2E472BaNLYcIKq_ca3_iEEBJWmvBfJjUGijiMg59v_7e7Qb5mG2wH-pxcsjpMKYDD9tGEIp-LlIxAfkIcZtYOS0fYMQ_9pNyLh8RODoOA8qaHcbodVebNXnD8pnFJe38zQqfHFX1BtIAcdd2zH1ONCMzfDRcUrOHLndfFC5N4-rCXB8hkL6CrkhDWyjATOc5vaB"/>
 </div>
-<span>HostAI</span>
-</a>
-<nav class="flex-1 px-4 space-y-1">
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<div>
+<h2 class="font-inter text-sm font-semibold text-on-surface">Alex Rivers</h2>
+<p class="font-inter text-xs text-on-surface-variant">Senior Administrator</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center text-slate-600 dark:text-slate-400 px-4 py-3 mx-2 font-inter text-sm font-medium hover:text-blue-600 dark:hover:text-blue-300 transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="dashboard">dashboard</span>
                 Dashboard
             </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
-<span class="material-symbols-outlined" data-icon="forum">forum</span>
-                Conversations
+<a class="flex items-center text-slate-600 dark:text-slate-400 px-4 py-3 mx-2 font-inter text-sm font-medium hover:text-blue-600 dark:hover:text-blue-300 transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="domain">domain</span>
+                Properties
             </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
-<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
-                Reservations
+<a class="flex items-center text-slate-600 dark:text-slate-400 px-4 py-3 mx-2 font-inter text-sm font-medium hover:text-blue-600 dark:hover:text-blue-300 transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="groups">groups</span>
+                Tenants
             </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
-<span class="material-symbols-outlined" data-icon="history">history</span>
-                Activity
+<a class="flex items-center text-slate-600 dark:text-slate-400 px-4 py-3 mx-2 font-inter text-sm font-medium hover:text-blue-600 dark:hover:text-blue-300 transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="payments">payments</span>
+                Finances
             </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
-<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
-                Analytics
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
-<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
-                Revenue & ROI
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
-                Voice AI
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
-<span class="material-symbols-outlined" data-icon="hub">hub</span>
-                Operations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<a class="flex items-center bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full px-4 py-3 mx-2 font-inter text-sm font-medium hover:text-blue-600 dark:hover:text-blue-300 transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="settings">settings</span>
                 Settings
             </a>
-{% if tenant is defined and tenant and is_admin(tenant.email) %}
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
-<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
-                Admin
-            </a>
-{% endif %}
 </nav>
-<div class="mt-auto p-6 space-y-4">
-<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
-<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
-  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
-</div>
-<div class="flex-1 min-w-0">
-<p class="text-white font-bold truncate">{{ tenant.first_name or "Your Account" }}</p>
-<p class="text-slate-500 text-xs truncate">Host Administrator</p>
-</div>
-</div>
-<form method="post" action="/logout">
-  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
-    <span class="material-symbols-outlined text-sm">logout</span>
-    Sign Out
-  </button>
-</form>
+<div class="mt-auto space-y-1">
+<a class="flex items-center text-slate-600 dark:text-slate-400 px-4 py-3 mx-2 font-inter text-sm font-medium hover:text-blue-600 dark:hover:text-blue-300 transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="contact_support">contact_support</span>
+                Support
+            </a>
+<a class="flex items-center text-slate-600 dark:text-slate-400 px-4 py-3 mx-2 font-inter text-sm font-medium hover:text-blue-600 dark:hover:text-blue-300 transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="logout">logout</span>
+                Logout
+            </a>
 </div>
 </aside>
-
-<!-- Main Content Area -->
-<main class="flex-1 md:ml-[260px] relative">
-<!-- TopAppBar -->
+<div class="flex-1 flex flex-col h-full relative overflow-hidden bg-surface-container-low">
 <!-- TopNavBar Shell -->
-<!-- TopNavBar Shell -->
-<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
-<div class="flex items-center flex-1 max-w-md">
-<div class="relative w-full">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
-<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts, or analytics..." type="text"/>
+<header class="flex justify-between items-center px-8 h-16 w-full bg-slate-50 dark:bg-slate-900 border-b-0 sticky top-0 z-20 transition-colors">
+<div class="flex items-center gap-8">
+<h1 class="text-xl font-bold text-slate-900 dark:text-slate-50 font-inter tracking-tight">Precision Curator</h1>
+<nav class="hidden lg:flex items-center gap-6">
+<a class="text-slate-500 dark:text-slate-400 font-inter tracking-tight hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors px-2 py-1" href="#">Overview</a>
+<a class="text-blue-700 dark:text-blue-400 font-semibold border-b-2 border-blue-700 font-inter tracking-tight hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors px-2 py-1" href="#">Account</a>
+<a class="text-slate-500 dark:text-slate-400 font-inter tracking-tight hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors px-2 py-1" href="#">Team</a>
+</nav>
 </div>
-</div>
-<div class="flex items-center gap-6">
-<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-full">
 <span class="material-symbols-outlined" data-icon="notifications">notifications</span>
-<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
 </button>
-<div class="h-8 w-px bg-white/10"></div>
-<div class="flex items-center gap-3 cursor-pointer group">
-<span class="text-slate-200 group-hover:text-white transition-colors">Account</span>
-<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
-</div>
-</div>
+<button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-full">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
 </div>
 </header>
-
-<!-- Settings Content Canvas -->
-<div class="pt-24 pb-16 px-10 max-w-5xl mx-auto">
-<div class="mb-10">
-<h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">Settings</h1>
-<p class="text-slate-400">Configure your properties, channels, workflows and team.</p>
-{% if saved %}
-<div class="mt-4 bg-primary/10 border border-primary/30 text-primary px-6 py-3 rounded-xl text-sm font-semibold">
-  ✓ Settings saved — AI workers restarted with new configuration.
+<!-- Main Content Area (Editorial Spacing) -->
+<main class="flex-1 overflow-y-auto custom-scrollbar">
+<div class="max-w-5xl mx-auto py-12 px-8 lg:px-16 space-y-24">
+<!-- Page Title Section -->
+<section>
+<h2 class="text-4xl font-extrabold text-on-surface tracking-tight mb-2">Account Settings</h2>
+<p class="text-on-surface-variant text-lg">Manage your personal identity, communication preferences, and security protocols.</p>
+</section>
+<!-- 1. Account Profile Section (Bento Grid Style) -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+<div class="md:col-span-4">
+<h3 class="text-2xl font-bold text-on-surface tracking-tight mb-2">Account Profile</h3>
+<p class="text-on-surface-variant text-sm">Update your public profile and how we address you across the platform.</p>
 </div>
-{% endif %}
+<div class="md:col-span-8 bg-surface-container-lowest p-8 rounded-xl space-y-8">
+<div class="flex items-center gap-8">
+<div class="relative group">
+<div class="w-24 h-24 rounded-full overflow-hidden bg-surface-container shadow-sm border-4 border-surface-container-lowest">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="Portrait of a professional man in high-end office wear looking confident, soft studio lighting with minimal depth of field" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0fAo0Wy87qiyceEVVhjC3ftMusekECAnsz4u53Gx9RpvFI4HSGNi4AKYJ3R1c3IcDuGk891FHD1Xec5VS2dyuDAOD2cekqx0XWB_ZvpDcOUJoXXBLx1VzGWMKl0J6owuDVuqP3v27De_yogaQn_veVMSHmLZFQcacB676g7K86tBthtKNTVu7t5t7Gm5Li_c0jVgveKC1rCcjJVllZ18NS-NuwYRi1NRkjU5TrS7w5ZtZ9ySA57aNEHhbVCBZdZN7cKgaP4z1o-92"/>
 </div>
-<div class="settings-compat">
-
-
-
-
-
-
-<!-- Tab Navigation -->
-<style>
-  [data-section]:not([data-section="general"]) {
-    display: none !important;
-  }
-</style>
-<div style="display:flex; gap:24px; margin-bottom:32px; border-bottom:1px solid rgba(255,255,255,0.08); position:sticky; top:0; background:rgba(8,9,15,0.95); backdrop-filter:blur(8px); padding:16px 0; z-index:10">
-  <button type="button" class="settings-tab active" data-tab="general" onclick="switchTab('general')" style="color:#aec6ff; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid #5B8DEF; transition:all 0.2s">General</button>
-  <button type="button" class="settings-tab" data-tab="channels" onclick="switchTab('channels')" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Channels</button>
-  <button type="button" class="settings-tab" data-tab="email" onclick="switchTab('email')" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Email</button>
-  <button type="button" class="settings-tab" data-tab="automation" onclick="switchTab('automation')" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Automation</button>
+<button class="absolute bottom-0 right-0 p-2 bg-primary text-on-primary rounded-full shadow-lg hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+</button>
 </div>
-
-<form method="post" action="/settings">
-  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-
-  <!-- ── Property ─────────────────────────────────────────────────── -->
-  <div class="form-section" data-section="general">
-    <h2>Property</h2>
-    <label>Property name(s)</label>
-    <input type="text" name="property_names" value="{{ cfg.property_names or '' }}" placeholder="Beach House, City Flat">
-    <p class="help-text">Comma-separated if multiple properties.</p>
-
-    <div class="form-row">
-      <div>
-        <label>Property city</label>
-        <input type="text" name="property_city" value="{{ cfg.property_city or '' }}" placeholder="Goa">
-      </div>
-      <div>
-        <label>Property type</label>
-        <input type="text" name="property_type" value="{{ cfg.property_type or '' }}" placeholder="Villa / Apartment / Hotel">
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Check-in time</label>
-        <input type="time" name="check_in_time" class="time-field" data-initial="{{ cfg.check_in_time or '' }}">
-      </div>
-      <div>
-        <label>Check-out time</label>
-        <input type="time" name="check_out_time" class="time-field" data-initial="{{ cfg.check_out_time or '' }}">
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Max guests</label>
-        <input type="text" name="max_guests" value="{{ cfg.max_guests or '' }}" placeholder="4">
-      </div>
-      <div>
-        <label>Quiet hours</label>
-        <div style="display:flex;gap:0.5rem;align-items:center;">
-          <input type="time" id="q-start" class="time-field" data-initial="" style="margin:0;">
-          <span style="color:var(--text-3);font-size:0.85rem">to</span>
-          <input type="time" id="q-end" class="time-field" data-initial="" style="margin:0;">
-          <input type="hidden" name="quiet_hours" id="quiet-hours-val" data-initial="{{ cfg.quiet_hours or '' }}" value="{{ cfg.quiet_hours or '' }}">
-        </div>
-      </div>
-    </div>
-
-    <h3 id="policies" style="font-size:0.95rem;margin-top:1.25rem">
-      <span style="display:inline-flex;align-items:center;gap:0.4rem">
-        Structured stay policies
-        <div class="tooltip-container">
-          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
-            <span style="font-size:0.85rem">ⓘ</span>
-          </button>
-          <div class="tooltip-content">AI uses these rules to validate draft messages—ensures it never contradicts house rules (e.g., 'no pets')</div>
-        </div>
-      </span>
-    </h3>
-    <p class="help-text">These fields are used to validate drafts so HostAI does not promise something that conflicts with house policy.</p>
-    <label>Pet policy</label>
-    <textarea name="pet_policy" placeholder="Describe whether pets are allowed and any fee or size limit.">{{ cfg.pet_policy or '' }}</textarea>
-    <label>Refund policy</label>
-    <textarea name="refund_policy" placeholder="Describe when refunds are allowed and when they are not.">{{ cfg.refund_policy or '' }}</textarea>
-    <div class="form-row">
-      <div>
-        <label>Early check-in policy</label>
-        <textarea name="early_checkin_policy" placeholder="Describe when early check-in is possible.">{{ cfg.early_checkin_policy or '' }}</textarea>
-      </div>
-      <div>
-        <label>Early check-in fee</label>
-        <input type="text" name="early_checkin_fee" value="{{ cfg.early_checkin_fee or '' }}" placeholder="$25">
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Late checkout policy</label>
-        <textarea name="late_checkout_policy" placeholder="Describe when late checkout is possible.">{{ cfg.late_checkout_policy or '' }}</textarea>
-      </div>
-      <div>
-        <label>Late checkout fee</label>
-        <input type="text" name="late_checkout_fee" value="{{ cfg.late_checkout_fee or '' }}" placeholder="$30">
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Parking policy</label>
-        <textarea name="parking_policy" placeholder="Describe parking availability, location, and any restrictions.">{{ cfg.parking_policy or '' }}</textarea>
-      </div>
-      <div>
-        <label>Smoking policy</label>
-        <textarea name="smoking_policy" placeholder="Describe where smoking is or is not allowed.">{{ cfg.smoking_policy or '' }}</textarea>
-      </div>
-    </div>
-
-    <label>House rules</label>
-    <textarea name="house_rules" placeholder="List the rules guests need to follow during the stay.">{{ cfg.house_rules or '' }}</textarea>
-    <label>Amenities</label>
-    <textarea name="amenities" placeholder="List the amenities available to guests.">{{ cfg.amenities or '' }}</textarea>
-    <label>FAQ / Guest guide</label>
-    <textarea name="faq" placeholder="Add the questions guests ask most often and the answers you want HostAI to use.">{{ cfg.faq or '' }}</textarea>
-    <label>Custom instructions for HostAI</label>
-    <textarea name="custom_instructions" placeholder="Add any tone, escalation, or response rules you want the AI to follow.">{{ cfg.custom_instructions or '' }}</textarea>
-  </div>
-
-  <!-- ── Guest Messaging ────────────────────────────────────────────────────── -->
-  <div class="form-section" data-section="general">
-    <h2>Guest messaging</h2>
-    <label>Custom welcome message for guest check-ins</label>
-    <textarea name="guest_welcome_template" placeholder="Hi {guest_name}! Welcome to {property_name}. Your room is {room}. Check-in is now available. Let me know if you need anything!">{{ cfg.guest_welcome_template or '' }}</textarea>
-    <p class="help-text">Leave blank for default message. Use variables: {guest_name}, {property_name}, {room}</p>
-  </div>
-
-  <!-- ── Calendar ────────────────────────────────────────────────────── -->
-  <div class="form-section" data-section="general">
-    <h2>Calendar & imports</h2>
-    <label>Airbnb iCal URL(s)</label>
-    <textarea name="ical_urls" placeholder="https://www.airbnb.com/calendar/ical/...ics&#10;One per line or comma-separated">{{ cfg.ical_urls or '' }}</textarea>
-    <p class="help-text">Airbnb → Calendar → Availability settings → Export Calendar → copy .ics link</p>
-  </div>
-
-  <!-- ── Email ────────────────────────────────────────────────────── -->
-  <div class="form-section" data-section="email">
-    <h2>Email intake</h2>
-    <label>How HostAI should receive guest emails</label>
-    <select name="email_ingest_mode">
-      <option value="forwarding" {% if (cfg.email_ingest_mode or 'imap') == 'forwarding' %}selected{% endif %}>Forward Airbnb emails to HostAI (recommended)</option>
-      <option value="imap" {% if (cfg.email_ingest_mode or 'imap') == 'imap' %}selected{% endif %}>Connect mailbox with IMAP / SMTP</option>
-    </select>
-    <label>Your private HostAI forwarding address</label>
-    <div class="copy-box">
-      <input type="text" readonly value="{{ inbound_email_address }}" id="inbound-forward-address">
-      <button type="button" class="btn btn-outline copy-btn" data-target="inbound-forward-address">Copy</button>
-    </div>
-    <p class="help-text">
-      Recommended: create an auto-forward rule for Airbnb guest emails to this address. HostAI will receive them through the inbound email webhook at <code>{{ inbound_webhook_url }}</code>.
-    </p>
-
-    <details>
-      <summary>Advanced fallback: connect mailbox with IMAP / SMTP</summary>
-      <div class="accordion-body">
-        <div class="form-row">
-          <div>
-            <label>IMAP host</label>
-            <input type="text" name="imap_host" value="{{ cfg.imap_host or '' }}" placeholder="imap.gmail.com">
-          </div>
-          <div>
-            <label>SMTP host</label>
-            <input type="text" name="smtp_host" value="{{ cfg.smtp_host or '' }}" placeholder="smtp.gmail.com">
-          </div>
-        </div>
-        <label>Email address</label>
-        <input type="email" name="email_address" value="{{ cfg.email_address or '' }}" placeholder="yourhost@gmail.com">
-        <label>
-          <span style="display:inline-flex;align-items:center;gap:0.3rem">
-            App password <span style="color:var(--text-3);font-weight:400">(leave blank to keep existing)</span>
-            <div class="tooltip-container">
-              <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
-                <span style="font-size:0.75rem">ⓘ</span>
-              </button>
-              <div class="tooltip-content">Google requires app-specific passwords for third-party apps (regular password won't work). Get it at: myaccount.google.com/apppasswords</div>
-            </div>
-          </span>
-        </label>
-        <input type="password" name="email_password" placeholder="xxxx xxxx xxxx xxxx">
-        <p class="help-text">
-          Gmail: <a href="https://myaccount.google.com/apppasswords" target="_blank">Create an App Password</a> →
-          Google Account → Security → App Passwords.
-        </p>
-      </div>
-    </details>
-  </div>
-  <!-- Hidden mode fields -->
-  <input type="hidden" name="wa_mode" value="meta_cloud">
-  <input type="hidden" name="sms_mode" value="twilio">
-
-  <!-- WhatsApp: Meta Cloud API -->
-  <div data-section="channels" style="background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); border-radius: 24px; padding: 24px; margin-bottom: 32px; border: 1px solid rgba(93,141,241,0.15)">
-    <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; line-height: 1.5">
-      <div>
-        <p style="font-size:0.65rem;font-weight:700;color:#aec6ff;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px">Setup</p>
-        <h2 style="font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:8px">WhatsApp Configuration</h2>
-        <p style="font-size:0.875rem;color:#9ca3af;max-width:50rem">Official WhatsApp Business Cloud API — no hardware needed, scales to 10,000+ messages/day.</p>
-      </div>
-      <span style="align-self:flex-start;padding:6px 12px;border-radius:9999px;font-size:0.75rem;font-weight:700;background:{% if cfg and cfg.wa_mode == 'meta_cloud' %}rgba(34,197,94,0.1){% else %}rgba(255,255,255,0.05){% endif %};color:{% if cfg and cfg.wa_mode == 'meta_cloud' %}#4ade80{% else %}#9ca3af{% endif %}">
-        {% if cfg and cfg.wa_mode == 'meta_cloud' %}Configured{% else %}Not Setup{% endif %}
-      </span>
-    </div>
-
-    {% set wa_has_token = cfg and cfg.whatsapp_token_enc %}
-    {% set wa_has_number = cfg and (cfg.whatsapp_number or '') %}
-    {% set wa_has_phone_id = cfg and (cfg.whatsapp_phone_id or '') %}
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px">
-      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
-        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">Access Token</p>
-        <p style="font-size:0.875rem;font-weight:600;color:{% if wa_has_token %}#4ade80{% else %}#fbbf24{% endif %}">{% if wa_has_token %}Configured{% else %}Missing{% endif %}</p>
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">From Meta Cloud API</p>
-      </div>
-      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
-        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">Phone Number</p>
-        <p style="font-size:0.875rem;font-weight:600;color:{% if wa_has_number %}#4ade80{% else %}#fbbf24{% endif %}">{% if wa_has_number %}Ready{% else %}Missing{% endif %}</p>
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Your WhatsApp Business number</p>
-      </div>
-      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
-        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">Phone ID</p>
-        <p style="font-size:0.875rem;font-weight:600;color:{% if wa_has_phone_id %}#4ade80{% else %}#fbbf24{% endif %}">{% if wa_has_phone_id %}Ready{% else %}Missing{% endif %}</p>
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Required for API connectivity</p>
-      </div>
-    </div>
-
-    <!-- Setup Guide (Collapsible) -->
-    <div style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.08)">
-      <button type="button" onclick="toggleWAGuide()" style="background: none; border: none; color: #aec6ff; cursor: pointer; font-size: 0.875rem; font-weight: 600; padding: 0; display: flex; gap: 8px; align-items: center;">
-        <span id="wa-guide-arrow">▸</span>
-        <span>How to get your WhatsApp credentials</span>
-      </button>
-      <div id="wa-guide" style="display: none; margin-top: 16px; padding: 16px; background: rgba(93,141,241,0.08); border-radius: 12px; font-size: 0.875rem; color: #b4c9ff; line-height: 1.6">
-        <ol style="margin: 0; padding-left: 20px; list-style: decimal">
-          <li style="margin-bottom: 8px">Go to <strong>developers.facebook.com</strong> → My Apps → Create App (choose Business type)</li>
-          <li style="margin-bottom: 8px">Add WhatsApp product → API Setup → copy <strong>Phone Number ID</strong> and <strong>Temporary access token</strong></li>
-          <li style="margin-bottom: 8px">Phone Number ID → <strong>Phone ID</strong> field below; Access Token → <strong>Access Token</strong> field</li>
-          <li>Set webhook URL + verify token in Meta Console (webhook tab) to match your <strong>Webhook Verify Token</strong> below</li>
-        </ol>
-      </div>
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
-      <div>
-        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">WhatsApp Number</label>
-        <input type="text" name="whatsapp_number" value="{{ cfg.whatsapp_number or '' }}" placeholder="+15550001234" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">E.164 format: +1 415 555 0100</p>
-      </div>
-      <div>
-        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Access Token</label>
-        <input type="password" name="whatsapp_token" placeholder="••••••••" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Meta Developer Console → WhatsApp → API Setup</p>
-      </div>
-      <div>
-        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Phone ID</label>
-        <input type="text" name="whatsapp_phone_id" value="{{ cfg.whatsapp_phone_id or '' }}" placeholder="123456789" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Numeric ID from Meta Console → API Setup</p>
-      </div>
-      <div style="grid-column: span 2">
-        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Webhook Verify Token</label>
-        <input type="text" name="whatsapp_verify_token" value="{{ cfg.whatsapp_verify_token or '' }}" placeholder="your_verify_token" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Any random string — use it in Meta webhook config too</p>
-      </div>
-    </div>
-
-    <!-- Webhook URL -->
-    <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08)">
-      <p style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:12px">Webhook URL</p>
-      <p style="font-size:0.875rem;color:#b4c9ff;margin-bottom:12px">Copy this URL into Meta Developer Console for webhook setup:</p>
-      <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px">
-        <input type="text" readonly value="{{ app_base_url }}/whatsapp/webhook/{{ cfg.tenant_id }}" id="wa-webhook-url" style="padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;font-family:monospace">
-        <button type="button" class="copy-btn" data-target="wa-webhook-url" style="padding:8px 16px;background:rgba(93,141,241,0.2);border:1px solid rgba(93,141,241,0.3);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Copy</button>
-      </div>
-    </div>
-
-    <!-- Test Your WhatsApp Bot -->
-    <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08)">
-      <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px">
-        <span style="font-size:1.5rem">🤖</span>
-        <div>
-          <p style="font-size:0.75rem;font-weight:700;color:#aec6ff;text-transform:uppercase;letter-spacing:0.05em;margin:0">Test Your WhatsApp Bot</p>
-          <p style="font-size:0.875rem;color:#9ca3af;margin:4px 0 0 0">Simulate a guest message to see how your AI responds</p>
-        </div>
-      </div>
-
-      <!-- Bot Test Inputs -->
-      <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; margin-bottom:20px">
-        <div>
-          <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Guest Name</label>
-          <input type="text" id="sim-name" value="Alex" placeholder="Guest name" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        </div>
-        <div>
-          <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Message</label>
-          <input type="text" id="sim-msg" value="Hi, what time is check-in?" placeholder="Guest message" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        </div>
-        <button type="button" onclick="simulateWABot()" style="align-self:flex-end; padding:8px 16px;background:rgba(93,141,241,0.3);border:1px solid rgba(93,141,241,0.5);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Simulate ▶</button>
-      </div>
-
-      <!-- Chat Bubbles -->
-      <div id="wa-bot-chat" style="display:none">
-        <!-- Guest Bubble -->
-        <div style="margin-bottom:12px; display:flex; justify-content:flex-start">
-          <div style="max-width:70%; padding:12px 16px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:16px; border-bottom-left-radius:4px">
-            <p style="font-size:0.75rem; font-weight:700; color:#9ca3af; margin:0 0 6px 0; text-transform:uppercase">👤 <span id="chat-guest-name">Alex</span></p>
-            <p style="margin:0; color:#e3e1eb; font-size:0.875rem; line-height:1.4" id="chat-guest-msg"></p>
-          </div>
-        </div>
-
-        <!-- AI Bubble -->
-        <div style="margin-bottom:12px; display:flex; justify-content:flex-end">
-          <div style="max-width:70%; padding:12px 16px; background:rgba(93,141,241,0.15); border:1px solid rgba(93,141,241,0.3); border-radius:16px; border-bottom-right-radius:4px">
-            <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px">
-              <span style="font-size:0.75rem; font-weight:700; color:#aec6ff; text-transform:uppercase">🤖 AI Host</span>
-              <span style="font-size:0.7rem; font-weight:700; color:#fbbf24; background:rgba(251,191,36,0.15); padding:2px 6px; border-radius:4px; text-transform:uppercase" id="chat-type"></span>
-              <span style="font-size:0.7rem; font-weight:700; color:#4ade80; background:rgba(74,222,128,0.15); padding:2px 6px; border-radius:4px" id="chat-confidence"></span>
-            </div>
-            <p style="margin:0; color:#e3e1eb; font-size:0.875rem; line-height:1.4; white-space:pre-wrap" id="chat-ai-msg"></p>
-            <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(93,141,241,0.2)">
-              <a href="/dashboard" style="font-size:0.75rem; color:#aec6ff; text-decoration:none; font-weight:600">View on Dashboard ↗</a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Loading / Error State -->
-      <div id="wa-bot-loading" style="display:none; text-align:center; padding:20px">
-        <p style="color:#9ca3af; font-size:0.875rem">⏳ Generating response...</p>
-      </div>
-      <div id="wa-bot-error" style="display:none; padding:12px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); border-radius:8px; color:#fca5a5; font-size:0.875rem"></div>
-    </div>
-  </div>
-
-  <!-- ── SMS / Twilio ─────────────────────────────────────────────── -->
-  <div data-section="channels" style="background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); border-radius: 24px; padding: 24px; margin-bottom: 32px; border: 1px solid rgba(93,141,241,0.15)">
-    <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
-      <div>
-        <p style="font-size:0.65rem;font-weight:700;color:#aec6ff;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px">Setup</p>
-        <h2 style="font-size:1.5rem;font-weight:700;color:#fff;">SMS — Twilio</h2>
-      </div>
-      <p style="font-size:0.875rem;color:#b4c9ff;line-height:1.5">
-        Reach guests who don't use WhatsApp. Bring your own Twilio number.
-      </p>
-      <div style="display: flex; gap: 12px; align-items: center;">
-        <div style="padding: 4px 12px; border-radius: 12px; background: {% if cfg.twilio_account_sid %}rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3){% else %}rgba(107,114,128,0.15); border: 1px solid rgba(107,114,128,0.3){% endif %}">
-          <p style="font-size:0.75rem;font-weight:700;color:{% if cfg.twilio_account_sid %}#4ade80{% else %}#9ca3af{% endif %};text-transform:uppercase;letter-spacing:0.05em;margin:0">{% if cfg.twilio_account_sid %}Configured{% else %}Not Setup{% endif %}</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Setup Guide (Collapsible) -->
-    <div style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.08)">
-      <button type="button" onclick="toggleSMSGuide()" style="background: none; border: none; color: #aec6ff; cursor: pointer; font-size: 0.875rem; font-weight: 600; padding: 0; display: flex; gap: 8px; align-items: center;">
-        <span id="sms-guide-arrow">▸</span>
-        <span>How to get your Twilio credentials</span>
-      </button>
-      <div id="sms-guide" style="display: none; margin-top: 16px; padding: 16px; background: rgba(93,141,241,0.08); border-radius: 12px; font-size: 0.875rem; color: #b4c9ff; line-height: 1.6">
-        <ol style="margin: 0; padding-left: 20px; list-style: decimal">
-          <li style="margin-bottom: 8px">Sign up at <strong>twilio.com</strong> → Console → Account Info (copy <strong>Account SID</strong> + <strong>Auth Token</strong>)</li>
-          <li style="margin-bottom: 8px">Phone Numbers → Manage → Buy a number (make sure it supports SMS)</li>
-          <li>Click your number → Messaging → Webhook URL → paste the URL below (POST)</li>
-        </ol>
-      </div>
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px">
-      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
-        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">Twilio Credentials</p>
-        <p style="font-size:0.875rem;font-weight:600;color:{% if cfg.twilio_account_sid %}#4ade80{% else %}#fbbf24{% endif %}">{% if cfg.twilio_account_sid %}Configured{% else %}Missing{% endif %}</p>
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Account SID & Auth Token</p>
-      </div>
-      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
-        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">From Number</p>
-        <p style="font-size:0.875rem;font-weight:600;color:{% if cfg.twilio_from_number %}#4ade80{% else %}#fbbf24{% endif %}">{% if cfg.twilio_from_number %}Ready{% else %}Missing{% endif %}</p>
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Your Twilio phone number</p>
-      </div>
-      <div style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); padding: 16px">
-        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#9ca3af;margin-bottom:8px">Mode</p>
-        <p style="font-size:0.875rem;font-weight:600;color:{% if cfg.sms_notify_number %}#4ade80{% else %}#fbbf24{% endif %}">{% if cfg.sms_notify_number %}Enabled{% else %}Disabled{% endif %}</p>
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Notification number</p>
-      </div>
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
-      <div>
-        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Twilio Account SID</label>
-        <input type="text" name="twilio_account_sid" value="{{ cfg.twilio_account_sid or '' }}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Twilio Console → Account Info (starts with AC)</p>
-      </div>
-      <div>
-        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Auth Token</label>
-        <input type="password" name="twilio_auth_token" placeholder="••••••••" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Twilio Console → Account Info → eye icon to reveal</p>
-      </div>
-      <div>
-        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">From Number</label>
-        <input type="text" name="twilio_from_number" value="{{ cfg.twilio_from_number or '' }}" placeholder="+15550001234" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Your purchased Twilio number in E.164 format</p>
-      </div>
-      <div>
-        <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Notify Number</label>
-        <input type="text" name="sms_notify_number" value="{{ cfg.sms_notify_number or '' }}" placeholder="+15550001234" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Where to send incoming SMS alerts</p>
-      </div>
-    </div>
-
-    <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08)">
-      <p style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:12px">Webhook Configuration</p>
-      <p style="font-size:0.875rem;color:#b4c9ff;margin-bottom:12px">Copy this URL into Twilio Console for incoming message webhooks:</p>
-      <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px">
-        <input type="text" readonly value="{{ app_base_url }}/sms/webhook/{{ cfg.tenant_id }}" id="sms-webhook-url" style="padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;font-family:monospace">
-        <button type="button" class="copy-btn" data-target="sms-webhook-url" style="padding:8px 16px;background:rgba(93,141,241,0.2);border:1px solid rgba(93,141,241,0.3);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Copy</button>
-      </div>
-      <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Phone Numbers → Active Numbers → Messaging → Webhook URL (POST)</p>
-    </div>
-
-    <!-- Test Message -->
-    <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08)">
-      <p style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:12px">Send Test Message</p>
-      <p style="font-size:0.875rem;color:#b4c9ff;margin-bottom:12px">Verify SMS is working by sending a test message to any number:</p>
-      <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px">
-        <input type="text" id="sms-test-phone" placeholder="+1 415 555 0100" style="padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        <button type="button" onclick="sendTestSMS()" style="padding:8px 16px;background:rgba(93,141,241,0.3);border:1px solid rgba(93,141,241,0.5);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Send Test</button>
-      </div>
-      <div id="sms-test-result" style="display:none;margin-top:12px;padding:12px;border-radius:8px;font-size:0.875rem;font-weight:600"></div>
-    </div>
-  </div>
-
-  <div class="channel-section" style="margin-top:1.5rem">
-    <div class="channel-header">
-      <span class="channel-title">📞 Voice AI</span>
-      <span style="font-size:0.75rem;color:var(--text-3)">Managed on the Voice AI page</span>
-    </div>
-    <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">
-      Voice AI settings now live on the dedicated Voice AI page so this page stays focused on core tenant settings.
-    </p>
-    <!-- STEP 1: Enable Voice AI -->
-    <div class="form-row">
-      <div>
-        <label>Enable Voice AI</label>
-        <select name="voice_enabled" onchange="updateVoiceAIFields()">
-          <option value="false" {% if not tenant.voice_enabled %}selected{% endif %}>Disabled</option>
-          <option value="true" {% if tenant.voice_enabled %}selected{% endif %}>Enabled</option>
-        </select>
-      </div>
-    </div>
-
-    {% if tenant.voice_enabled %}
-
-    <!-- STEP 2: Twilio Account SID -->
-    <div style="background:#f9f9f9;padding:1rem;border-radius:8px;margin-top:1rem">
-      <label style="font-weight:600">📌 Step 1: Twilio Account SID</label>
-      <input type="text" name="voice_twilio_account_sid" id="twilio_sid"
-             value="{{ cfg.voice_twilio_account_sid or '' }}"
-             placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-             style="font-family:monospace;margin-top:0.5rem">
-      <small style="color:#666;display:block;margin-top:0.5rem">
-        Find it in <a href="https://console.twilio.com" target="_blank" style="color:#5B8DEF;text-decoration:underline">Twilio Console</a> → Account → API Credentials
-      </small>
-    </div>
-
-    <!-- STEP 3: Twilio Auth Token -->
-    <div style="background:#f9f9f9;padding:1rem;border-radius:8px;margin-top:1rem">
-      <label style="font-weight:600">🔐 Step 2: Twilio Auth Token</label>
-      <input type="password" name="voice_twilio_auth_token" id="twilio_token"
-             placeholder="••••••••••••••••••••••••••••••••••"
-             style="font-family:monospace;margin-top:0.5rem">
-      <small style="color:#666;display:block;margin-top:0.5rem">
-        Same page, click "Show" next to Auth Token to reveal it
-      </small>
-    </div>
-
-    <!-- STEP 4: Select Phone Number -->
-    <div style="background:#f9f9f9;padding:1rem;border-radius:8px;margin-top:1rem">
-      <label style="font-weight:600">📱 Step 3: Twilio Phone Number</label>
-      <button type="button" class="btn btn-outline" onclick="fetchTwilioPhoneNumbers()"
-              style="width:100%;margin-top:0.5rem;margin-bottom:0.5rem">
-        🔄 Fetch My Phone Numbers
-      </button>
-      <select name="voice_twilio_from_number" id="phone_number_select">
-        <option value="">-- Click "Fetch My Phone Numbers" above --</option>
-      </select>
-      <div id="phone_error" style="display:none;color:#c33;font-size:0.85rem;margin-top:0.5rem"></div>
-      <div id="phone_success" style="display:none;color:#363;font-size:0.85rem;margin-top:0.5rem"></div>
-    </div>
-
-    <!-- STEP 5: Voice Selection -->
-    <div style="background:#f9f9f9;padding:1rem;border-radius:8px;margin-top:1rem">
-      <label style="font-weight:600">🎙️ Step 4: Choose Voice</label>
-      <select name="voice_elevenlabs_voice_id" style="margin-top:0.5rem">
-        <option value="EXAVITQu4vr4xnSDxMaL" {% if (cfg.voice_elevenlabs_voice_id or 'EXAVITQu4vr4xnSDxMaL') == 'EXAVITQu4vr4xnSDxMaL' %}selected{% endif %}>Rachel — Female (Friendly)</option>
-        <option value="VR6AewLTigWG4xSOukaG" {% if cfg.voice_elevenlabs_voice_id == 'VR6AewLTigWG4xSOukaG' %}selected{% endif %}>Arnold — Male (Professional)</option>
-        <option value="pNInz6obpgDQGcFmaJgB" {% if cfg.voice_elevenlabs_voice_id == 'pNInz6obpgDQGcFmaJgB' %}selected{% endif %}>Adam — Male (Calm)</option>
-        <option value="MF3mGyEYCl7XYWbV9V6O" {% if cfg.voice_elevenlabs_voice_id == 'MF3mGyEYCl7XYWbV9V6O' %}selected{% endif %}>Elli — Female (Energetic)</option>
-      </select>
-    </div>
-
-    <!-- STEP 6: Call Forwarding (Optional) -->
-    <div style="background:#f9f9f9;padding:1rem;border-radius:8px;margin-top:1rem">
-      <label style="font-weight:600">📞 Step 5: Call Forwarding (Optional)</label>
-      <div style="margin-top:0.75rem">
-        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:normal">
-          <input type="checkbox" name="voice_forward_enabled" value="true"
-                 {% if cfg.voice_forward_enabled %}checked{% endif %}
-                 onchange="updateForwardingField()">
-          Enable call forwarding to my phone when AI can't answer
-        </label>
-      </div>
-      <div id="forwarding_field" style="display:{% if cfg.voice_forward_enabled %}block{% else %}none{% endif %};margin-top:0.75rem">
-        <label style="font-size:0.9rem;display:block;margin-bottom:0.3rem">Your phone number (for call transfer)</label>
-        <input type="text" name="voice_forward_number"
-               value="{{ cfg.voice_forward_number or '' }}"
-               placeholder="+1 (555) 123-4567"
-               style="margin-top:0.3rem">
-        <small style="color:#666;display:block;margin-top:0.3rem">
-          When AI can't help with a question, it will transfer the call to this number. Include country code.
-        </small>
-      </div>
-    </div>
-
-    {% endif %}
-  </div>
-
-  <button type="submit" class="btn btn-primary">Save settings</button>
-</form>
-
-<div class="form-section" id="workflow-automation" data-section="automation" style="margin-top:2.5rem">
-  <h2>Automation Rules</h2>
-  <p class="help-text">Use this to auto-send routine replies while keeping risky conversations in review.</p>
-  {% if automation_rules %}
-  <table style="margin-bottom:1rem">
-    <thead>
-      <tr><th>Name</th><th>Channel</th><th>Mode</th><th>Confidence</th><th>Properties</th><th></th></tr>
-    </thead>
-    <tbody>
-      {% for rule in automation_rules %}
-      <tr>
-        <td>{{ rule.name }}</td>
-        <td>{{ rule.channel }}</td>
-        <td>{{ (rule.actions_json or {}).get('mode', 'auto_send') }}</td>
-        <td>{{ "%.2f"|format(rule.confidence_threshold or 0) }}</td>
-        <td>{{ ((rule.conditions_json or {}).get('properties') or [])|join(', ') or 'All' }}</td>
-        <td>
-          <form method="post" action="/settings/automation/{{ rule.id }}/delete">
-            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-            <button type="submit" class="btn btn-outline btn-sm">Remove</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-
-  <form method="post" action="/settings/automation">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <div class="form-row">
-      <div>
-        <label>Rule name</label>
-        <input type="text" name="name" placeholder="Auto-send routine stay questions" required>
-      </div>
-      <div>
-        <label>Channel</label>
-        <select name="channel">
-          <option value="any">Any</option>
-          <option value="email">Email</option>
-          <option value="whatsapp">WhatsApp</option>
-          <option value="sms">SMS</option>
-          <option value="pms">PMS</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Message types</label>
-        <select name="msg_types" multiple>
-          <option value="routine" selected>Routine</option>
-          <option value="complex">Complex</option>
-        </select>
-      </div>
-      <div>
-        <label>Mode</label>
-        <select name="mode">
-          <option value="auto_send">Auto-send</option>
-          <option value="review">Review</option>
-          <option value="escalate">Escalate</option>
-        </select>
-      </div>
-    </div>
-    <label>Minimum confidence</label>
-    <input type="text" name="min_confidence" value="0.85">
-    <label>Property scope</label>
-    <input type="text" name="properties" placeholder="Beach House, City Flat">
-    <div class="form-row">
-      <div>
-        <label>Stay stages</label>
-        <select name="stay_stages" multiple>
-          <option value="pre_arrival">Pre-arrival</option>
-          <option value="arrival_day">Arrival day</option>
-          <option value="in_stay" selected>In stay</option>
-          <option value="checkout_day">Checkout day</option>
-          <option value="post_checkout">Post-checkout</option>
-        </select>
-      </div>
-      <div>
-        <label>Minimum guest history score</label>
-        <input type="text" name="min_guest_history_score" value="0.50">
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label><input type="checkbox" name="allow_complex" value="1"> Allow complex auto-send when other safeguards pass</label>
-      </div>
-      <div>
-        <label><input type="checkbox" name="allow_negative_sentiment" value="1"> Allow negative guest sentiment</label>
-      </div>
-    </div>
-    <button type="submit" class="btn btn-outline btn-sm">Add automation rule</button>
-  </form>
+<div class="space-y-1">
+<h4 class="font-bold text-lg text-on-surface">Profile Picture</h4>
+<p class="text-sm text-on-surface-variant">Recommended size: 800x800px. JPG, PNG or WebP.</p>
+<div class="flex gap-4 mt-2">
+<button class="text-sm font-semibold text-primary hover:underline">Upload new</button>
+<button class="text-sm font-semibold text-error/80 hover:underline">Remove</button>
 </div>
-
-<div class="form-section" id="workflow-team" style="margin-top:2.5rem">
-  <h2>Team Roles</h2>
-  <p class="help-text">Track who handles owner, front desk, maintenance, and cleaner workflows.</p>
-  {% if team_members %}
-  <table style="margin-bottom:1rem">
-    <thead>
-      <tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Property scope</th><th></th></tr>
-    </thead>
-    <tbody>
-      {% for member in team_members %}
-      <tr>
-        <td>{{ member.display_name }}</td>
-        <td>{{ member.role|replace('_', ' ') }}</td>
-        <td>{{ member.email or '—' }}</td>
-        <td>{{ member.phone or '—' }}</td>
-        <td>{{ member.property_scope or 'All properties' }}</td>
-        <td>
-          <form method="post" action="/settings/team/{{ member.id }}/delete">
-            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-            <button type="submit" class="btn btn-outline btn-sm">Remove</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-
-  <form method="post" action="/settings/team">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <div class="form-row">
-      <div>
-        <label>Name</label>
-        <input type="text" name="display_name" placeholder="Operations manager" required>
-      </div>
-      <div>
-        <label>Role</label>
-        <select name="role">
-          <option value="owner">Owner</option>
-          <option value="manager" selected>Manager</option>
-          <option value="front_desk">Front desk</option>
-          <option value="maintenance">Maintenance</option>
-          <option value="cleaner">Cleaner</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Email</label>
-        <input type="email" name="email" placeholder="ops@example.com">
-      </div>
-      <div>
-        <label>Phone</label>
-        <input type="text" name="phone" placeholder="+1 555 000 0000">
-      </div>
-    </div>
-    <label>Property scope</label>
-    <input type="text" name="property_scope" placeholder="Beach House, City Flat">
-    <p class="help-text">Leave blank for all properties. Use this for per-property dashboards and issue routing.</p>
-    <button type="submit" class="btn btn-outline btn-sm">Add team member</button>
-  </form>
 </div>
-
-<!-- ── Property Context Uploads ─────────────────────────────────── -->
-<div class="form-section" id="uploads" style="margin-top:2.5rem">
-  <h2>Property Context Uploads</h2>
-  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
-    Upload PDF documents to automatically extract and save house rules or FAQ text.
-    Extracted text is used by the AI when generating replies.
-  </p>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
-    <!-- House Rules PDF -->
-    <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:1.25rem">
-      <h3 style="font-size:0.9rem;font-weight:700;margin-bottom:0.5rem">📋 House Rules</h3>
-      {% if cfg.house_rules %}
-      <p style="font-size:0.78rem;color:#28a745;margin-bottom:0.75rem">
-        ✓ {{ cfg.house_rules|length }} characters saved
-      </p>
-      {% else %}
-      <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.75rem">No house rules uploaded yet.</p>
-      {% endif %}
-      <form method="post" action="/settings/upload-house-rules" enctype="multipart/form-data">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <input type="file" name="rules_pdf" accept=".pdf"
-               style="font-size:0.82rem;margin-bottom:0.75rem">
-        <button type="submit" class="btn btn-outline btn-sm">Upload PDF</button>
-      </form>
-    </div>
-
-    <!-- FAQ PDF -->
-    <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:1.25rem">
-      <h3 style="font-size:0.9rem;font-weight:700;margin-bottom:0.5rem">❓ FAQ / Guest Info</h3>
-      {% if cfg.faq %}
-      <p style="font-size:0.78rem;color:#28a745;margin-bottom:0.75rem">
-        ✓ {{ cfg.faq|length }} characters saved
-      </p>
-      {% else %}
-      <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.75rem">No FAQ uploaded yet.</p>
-      {% endif %}
-      <form method="post" action="/settings/upload-faq" enctype="multipart/form-data">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <input type="file" name="faq_pdf" accept=".pdf"
-               style="font-size:0.82rem;margin-bottom:0.75rem">
-        <button type="submit" class="btn btn-outline btn-sm">Upload PDF</button>
-      </form>
-    </div>
-  </div>
-  <p class="help-text" style="margin-top:1rem">
-    Tip: format FAQ PDFs with "Q: question" and "A: answer" pairs for best results.
-    PDFs up to 4MB are supported.
-  </p>
 </div>
-
-<!-- ── Vendors ────────────────────────────────────────────────────── -->
-<div class="form-section" id="vendors" style="margin-top:2.5rem">
-  <h2>Vendors</h2>
-  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1rem">
-    Contacts for cleaners, maintenance crew, etc. Used for automatic dispatch prompts.
-  </p>
-
-  {% if vendors %}
-  <table>
-    <thead>
-      <tr><th>Category</th><th>Name</th><th>Phone</th><th>Notes</th><th></th></tr>
-    </thead>
-    <tbody>
-    {% for v in vendors %}
-      <tr id="vendor-row-{{ v.id }}">
-        <td>{{ v.category|replace('_', ' ') }}</td>
-        <td>{{ v.name }}</td>
-        <td>{{ v.phone }}</td>
-        <td style="color:var(--text-3);font-size:0.8rem">{{ v.notes or '' }}</td>
-        <td style="white-space:nowrap">
-          <button type="button" class="btn btn-outline btn-sm"
-                  class="toggle-vendor-edit" data-id="{{ v.id }}">Edit</button>
-          <form method="post" action="/vendors/{{ v.id }}/delete" style="display:inline">
-            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-            <button type="submit" class="btn btn-outline btn-sm confirm-submit"
-                    data-confirm="Remove {{ v.name }}?">Remove</button>
-          </form>
-        </td>
-      </tr>
-      <tr id="vendor-edit-{{ v.id }}" style="display:none;background:var(--bg-2)">
-        <td colspan="5" style="padding:0.75rem">
-          <form method="post" action="/vendors/{{ v.id }}/edit"
-                style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end">
-            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-            <div>
-              <label style="font-size:0.78rem">Name</label>
-              <input type="text" name="name" value="{{ v.name }}"
-                     style="width:140px;margin-bottom:0" required>
-            </div>
-            <div>
-              <label style="font-size:0.78rem">Phone</label>
-              <input type="text" name="phone" value="{{ v.phone }}"
-                     style="width:140px;margin-bottom:0" required>
-            </div>
-            <div>
-              <label style="font-size:0.78rem">Notes</label>
-              <input type="text" name="notes" value="{{ v.notes or '' }}"
-                     style="width:180px;margin-bottom:0">
-            </div>
-            <button type="submit" class="btn btn-primary btn-sm">Save</button>
-            <button type="button" class="btn btn-outline btn-sm toggle-vendor-edit"
-                    data-id="{{ v.id }}">Cancel</button>
-          </form>
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  <br>
-  {% endif %}
-
-  <form method="post" action="/vendors/add">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <div class="form-row">
-      <div>
-        <label>Category</label>
-        <select name="category">
-          <option value="cleaners">Cleaners</option>
-          <option value="ac_technicians">AC Technicians</option>
-          <option value="plumbers">Plumbers</option>
-          <option value="electricians">Electricians</option>
-          <option value="locksmiths">Locksmiths</option>
-        </select>
-      </div>
-      <div>
-        <label>Name</label>
-        <input type="text" name="name" placeholder="Maria Lopez" required>
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Phone (WhatsApp)</label>
-        <input type="text" name="phone" placeholder="+1 555 000 0000" required>
-      </div>
-      <div>
-        <label>Notes (optional)</label>
-        <input type="text" name="notes" placeholder="Available 8am–6pm">
-      </div>
-    </div>
-    <button type="submit" class="btn btn-outline">+ Add vendor</button>
-  </form>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Full Name</label>
+<input class="w-full bg-surface border-none rounded-lg px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary-container transition-all" placeholder="Enter name" type="text" value="Alex Rivers"/>
 </div>
-
-<!-- ── PMS Integration ───────────────────────────────────────────── -->
-<div class="form-section">
-  <h2>PMS Integration</h2>
-  <p class="help-text">
-    If you use a Property Management System (Guesty, Hostaway, Lodgify, or any other PMS
-    with an open API), connect it here. HostAI will pull guest messages directly from your
-    PMS inbox — no email monitoring needed.
-  </p>
-
-  {% if pms_integrations %}
-  <table style="margin-bottom:1rem">
-    <thead>
-      <tr><th>PMS</th><th>Status</th><th>Last synced</th><th></th></tr>
-    </thead>
-    <tbody>
-    {% for p in pms_integrations %}
-      <tr>
-        <td style="text-transform:capitalize;font-weight:600">{{ p.pms_type }}</td>
-        <td><span class="active-badge">Active</span></td>
-        <td style="color:var(--text-3);font-size:0.85rem">
-          {{ p.last_synced_at.strftime('%b %d, %H:%M UTC') if p.last_synced_at else 'Not yet synced' }}
-        </td>
-        <td>
-          <button type="button" class="btn btn-outline btn-sm delete-pms-btn"
-                  data-id="{{ p.id }}" data-type="{{ p.pms_type }}">Remove</button>
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-
-  <form id="pmsForm" method="post" action="/settings/pms">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-
-    <label>PMS System</label>
-    <select name="pms_type" id="pmsType" style="margin-bottom:1rem">
-      <option value="">— Select your PMS —</option>
-      <option value="guesty">Guesty</option>
-      <option value="hostaway">Hostaway</option>
-      <option value="lodgify">Lodgify</option>
-      <option value="generic">Other (Generic REST API)</option>
-    </select>
-
-    <!-- Guesty -->
-    <div id="fields-guesty" class="pms-fields" style="display:none">
-      <p class="help-text">Guesty uses OAuth2. Enter your <strong>Client ID</strong> and
-        <strong>Client Secret</strong> from the Guesty developer portal, separated by <code>|||</code>.<br>
-        Example: <code>your_client_id|||your_client_secret</code>
-      </p>
-      <label>Client ID <code>|||</code> Client Secret</label>
-      <input type="password" name="api_key" placeholder="client_id|||client_secret" autocomplete="new-password">
-    </div>
-
-    <!-- Hostaway -->
-    <div id="fields-hostaway" class="pms-fields" style="display:none">
-      <p class="help-text">Hostaway uses OAuth2. Enter your <strong>Client ID</strong> and
-        <strong>Client Secret</strong> separated by <code>|||</code>.<br>
-        Example: <code>your_client_id|||your_client_secret</code>
-      </p>
-      <label>Client ID <code>|||</code> Client Secret</label>
-      <input type="password" name="api_key" placeholder="client_id|||client_secret" autocomplete="new-password">
-    </div>
-
-    <!-- Lodgify -->
-    <div id="fields-lodgify" class="pms-fields" style="display:none">
-      <p class="help-text">Enter your Lodgify <strong>API Key</strong> from Account Settings → API.</p>
-      <label>API Key</label>
-      <input type="password" name="api_key" placeholder="Your Lodgify API key" autocomplete="new-password">
-    </div>
-
-    <!-- Generic -->
-    <div id="fields-generic" class="pms-fields" style="display:none">
-      <p class="help-text">
-        For any other PMS with a REST API. Provide your API key and the JSON configuration
-        that maps the API responses to our expected format.
-        <a href="https://docs.hostai.app/pms-generic" target="_blank">Configuration guide →</a>
-      </p>
-      <label>API Key / Auth Token</label>
-      <input type="password" name="api_key" placeholder="Your API key or bearer token" autocomplete="new-password">
-      <label>Base URL (optional)</label>
-      <input type="text" name="base_url" placeholder="https://api.yourpms.com">
-      <label>JSON Configuration</label>
-      <textarea name="account_id" rows="6" placeholder='{
-  "inbox_url": "/messages",
-  "send_url": "/messages/{reservation_id}",
-  "reservations_url": "/reservations",
-  "auth_header": "X-Api-Key",
-  "message_id_path": "id",
-  "guest_name_path": "guest.name",
-  "text_path": "body",
-  "received_at_path": "created_at"
-}'></textarea>
-    </div>
-
-    <div style="display:flex;gap:0.75rem;margin-top:1rem;align-items:center">
-      <button type="button" class="btn btn-outline" id="test-pms-btn">Test connection</button>
-      <button type="submit" class="btn btn-primary" id="pmsSaveBtn" disabled>Save PMS</button>
-      <span id="pmsTestResult" style="font-size:0.875rem"></span>
-    </div>
-  </form>
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Email Address</label>
+<input class="w-full bg-surface border-none rounded-lg px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary-container transition-all" placeholder="Enter email" type="email" value="alex.rivers@precisioncurator.com"/>
 </div>
-
-<script nonce="{{ request.state.csp_nonce }}">
-function copyField(id) {
-  const el = document.getElementById(id);
-  el.select();
-  document.execCommand('copy');
-}
-
-function updatePMSFields() {
-  const type = document.getElementById('pmsType').value;
-  document.querySelectorAll('.pms-fields').forEach(el => el.style.display = 'none');
-  if (type) {
-    const target = document.getElementById('fields-' + type);
-    if (target) target.style.display = 'block';
-  }
-  const saveBtn = document.getElementById('pmsSaveBtn');
-  if (saveBtn) saveBtn.disabled = !type;
-  const resultEl = document.getElementById('pmsTestResult');
-  if (resultEl) resultEl.textContent = '';
-}
-
-async function testPMS() {
-  const form = document.getElementById('pmsForm');
-  const data = new FormData(form);
-  const resultEl = document.getElementById('pmsTestResult');
-  if (resultEl) resultEl.textContent = 'Testing…';
-  try {
-    const resp = await fetch('/api/pms/test', { method: 'POST', body: data });
-    const json = await resp.json();
-    if (resultEl) {
-      resultEl.style.color = json.ok ? '#155724' : '#721c24';
-      resultEl.textContent = json.message;
-    }
-    const saveBtn = document.getElementById('pmsSaveBtn');
-    if (json.ok && saveBtn) saveBtn.disabled = false;
-  } catch (e) {
-    if (resultEl) {
-      resultEl.style.color = '#721c24';
-      resultEl.textContent = 'Network error — try again';
-    }
-  }
-}
-
-async function deletePMS(id, type) {
-  const confirmed = await showConfirm('Remove ' + type + ' integration?');
-  if (!confirmed) return;
-  const csrf = document.querySelector('[name=csrf_token]').value;
-  await fetch('/settings/pms/' + id, {
-    method: 'DELETE',
-    headers: { 'X-CSRF-Token': csrf },
-  });
-  showToast(type + ' integration removed', 'success');
-  setTimeout(() => location.reload(), 500);
-}
-
-function toggleVendorEdit(id) {
-  const editRow = document.getElementById('vendor-edit-' + id);
-  if (editRow) editRow.style.display = editRow.style.display === 'none' ? 'table-row' : 'none';
-}
-
-// ── Event Listeners ──────────────────────────────────────────
-document.addEventListener('click', (e) => {
-    // Copy buttons
-    if (e.target.classList.contains('copy-btn')) {
-        const targetId = e.target.getAttribute('data-target');
-        copyField(targetId);
-        const oldText = e.target.textContent;
-        e.target.textContent = 'Copied!';
-        setTimeout(() => e.target.textContent = oldText, 1500);
-    }
-    
-    // Vendor edit
-    if (e.target.classList.contains('toggle-vendor-edit')) {
-        toggleVendorEdit(e.target.getAttribute('data-id'));
-    }
-    
-    // PMS delete
-    if (e.target.classList.contains('delete-pms-btn')) {
-        deletePMS(e.target.getAttribute('data-id'), e.target.getAttribute('data-type'));
-    }
-    
-    // Test PMS
-    if (e.target.id === 'test-pms-btn') {
-        testPMS();
-    }
-});
-
-// Format 'time' inputs to ensure "HH:MM" (24hr)
-document.querySelectorAll('.time-field').forEach(el => {
-    const val = el.getAttribute('data-initial');
-    if(val && val.includes('M')) {
-        const isPM = val.toUpperCase().includes('PM');
-        const parts = val.replace(/[^0-9:]/g, '').split(':');
-        if(parts.length >= 2) {
-            let h = parseInt(parts[0]) || 0;
-            const m = parts[1];
-            if(isPM && h < 12) h += 12;
-            if(!isPM && h === 12) h = 0;
-            el.value = h.toString().padStart(2,'0') + ':' + m;
-        } else {
-            el.value = val;
-        }
-    } else if(val) {
-        el.value = val;
-    }
-    
-    if(el.id === 'q-start' || el.id === 'q-end') {
-        el.addEventListener('change', () => {
-            const s = document.getElementById('q-start').value;
-            const e = document.getElementById('q-end').value;
-            const qVal = document.getElementById('quiet-hours-val');
-            if(qVal) {
-                if(s && e) qVal.value = s + " to " + e;
-                else if(s) qVal.value = s + " onwards";
-                else qVal.value = "";
-            }
-        });
-    }
-});
-
-// Set quiet hours initial vals
-const qVal = document.getElementById('quiet-hours-val');
-if (qVal) {
-    const raw = qVal.getAttribute('data-initial') || '';
-    const startEl = document.getElementById('q-start');
-    const endEl = document.getElementById('q-end');
-    const parts = raw.split(/ to | - | – /i);
-    if (parts.length === 2 && startEl && endEl) {
-        startEl.setAttribute('data-initial', parts[0]);
-        endEl.setAttribute('data-initial', parts[1]);
-        startEl.value = parts[0];
-        endEl.value = parts[1];
-    } else if (parts.length === 1 && startEl) {
-        startEl.setAttribute('data-initial', parts[0]);
-        startEl.value = parts[0];
-    }
-}
-
-// PMS type change
-const pmsTypeSelect = document.getElementById('pmsType');
-if (pmsTypeSelect) {
-    pmsTypeSelect.addEventListener('change', updatePMSFields);
-}
-
-// Voice AI settings toggle
-function updateVoiceAIFields() {
-    const enabled = document.querySelector('[name="voice_enabled"]').value === 'true';
-    const voiceSection = document.querySelector('[name="voice_twilio_account_sid"]')?.parentElement?.parentElement;
-    if (voiceSection) {
-        voiceSection.style.display = enabled ? 'block' : 'none';
-    }
-}
-
-// Call forwarding toggle
-function updateForwardingField() {
-    const enabled = document.querySelector('[name="voice_forward_enabled"]')?.checked;
-    const field = document.getElementById('forwarding_field');
-    if (field) {
-        field.style.display = enabled ? 'block' : 'none';
-    }
-}
-
-// Twilio phone number fetcher
-async function fetchTwilioPhoneNumbers() {
-    const sid = document.getElementById('twilio_sid').value;
-    const token = document.getElementById('twilio_token').value;
-    const errorDiv = document.getElementById('phone_error');
-    const successDiv = document.getElementById('phone_success');
-    const selectDropdown = document.getElementById('phone_number_select');
-
-    // Clear messages
-    errorDiv.style.display = 'none';
-    successDiv.style.display = 'none';
-
-    if (!sid || !token) {
-        errorDiv.textContent = '⚠️ Please enter both Account SID and Auth Token first';
-        errorDiv.style.display = 'block';
-        return;
-    }
-
-    // Show loading state
-    selectDropdown.innerHTML = '<option>⏳ Fetching phone numbers...</option>';
-    selectDropdown.disabled = true;
-
-    try {
-        const response = await fetch('/api/twilio/phone-numbers', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({account_sid: sid, auth_token: token})
-        });
-
-        const data = await response.json();
-
-        if (data.status === 200 && data.numbers && data.numbers.length > 0) {
-            selectDropdown.innerHTML = '<option value="">-- Select a phone number --</option>';
-            data.numbers.forEach(num => {
-                const option = document.createElement('option');
-                option.value = num.number;
-                option.textContent = num.number + ' (' + (num.friendly_name || 'Unnamed') + ')';
-                selectDropdown.appendChild(option);
-            });
-            selectDropdown.disabled = false;
-            successDiv.textContent = '✓ Found ' + data.numbers.length + ' phone number(s). Select one above.';
-            successDiv.style.display = 'block';
-        } else {
-            selectDropdown.innerHTML = '<option value="">-- No phone numbers found --</option>';
-            selectDropdown.disabled = true;
-            errorDiv.textContent = data.error || '❌ Could not fetch phone numbers. Check your credentials.';
-            errorDiv.style.display = 'block';
-        }
-    } catch (error) {
-        selectDropdown.innerHTML = '<option value="">-- Error --</option>';
-        selectDropdown.disabled = true;
-        errorDiv.textContent = '❌ Error: ' + error.message;
-        errorDiv.style.display = 'block';
-    }
-}
-
-// Setup guide toggles
-function toggleWAGuide() {
-    const guide = document.getElementById('wa-guide');
-    const arrow = document.getElementById('wa-guide-arrow');
-    if (guide.style.display === 'none') {
-        guide.style.display = 'block';
-        arrow.textContent = '▾';
-    } else {
-        guide.style.display = 'none';
-        arrow.textContent = '▸';
-    }
-}
-
-function toggleSMSGuide() {
-    const guide = document.getElementById('sms-guide');
-    const arrow = document.getElementById('sms-guide-arrow');
-    if (guide.style.display === 'none') {
-        guide.style.display = 'block';
-        arrow.textContent = '▾';
-    } else {
-        guide.style.display = 'none';
-        arrow.textContent = '▸';
-    }
-}
-
-// WhatsApp test message
-async function sendTestWA() {
-    const phone = document.getElementById('wa-test-phone').value;
-    const result = document.getElementById('wa-test-result');
-
-    if (!phone.trim()) {
-        result.style.display = 'block';
-        result.textContent = '❌ Please enter a phone number';
-        result.style.color = '#f87171';
-        return;
-    }
-
-    result.style.display = 'block';
-    result.textContent = '⏳ Sending...';
-    result.style.color = '#9ca3af';
-
-    const fd = new FormData();
-    fd.append('to_phone', phone);
-    fd.append('csrf_token', '{{ request.state.csrf_token }}');
-
-    try {
-        const resp = await fetch('/api/test-whatsapp', {method: 'POST', body: fd});
-        const data = await resp.json();
-        result.textContent = data.message || data.error;
-        result.style.color = data.ok ? '#4ade80' : '#f87171';
-    } catch (error) {
-        result.textContent = '❌ Error: ' + error.message;
-        result.style.color = '#f87171';
-    }
-}
-
-// SMS test message
-async function sendTestSMS() {
-    const phone = document.getElementById('sms-test-phone').value;
-    const result = document.getElementById('sms-test-result');
-
-    if (!phone.trim()) {
-        result.style.display = 'block';
-        result.textContent = '❌ Please enter a phone number';
-        result.style.color = '#f87171';
-        return;
-    }
-
-    result.style.display = 'block';
-    result.textContent = '⏳ Sending...';
-    result.style.color = '#9ca3af';
-
-    const fd = new FormData();
-    fd.append('to_phone', phone);
-    fd.append('csrf_token', '{{ request.state.csrf_token }}');
-
-    try {
-        const resp = await fetch('/api/test-sms', {method: 'POST', body: fd});
-        const data = await resp.json();
-        result.textContent = data.message || data.error;
-        result.style.color = data.ok ? '#4ade80' : '#f87171';
-    } catch (error) {
-        result.textContent = '❌ Error: ' + error.message;
-        result.style.color = '#f87171';
-    }
-}
-
-// Tab switching
-function switchTab(tabName) {
-    // Hide all sections
-    document.querySelectorAll('[data-section]').forEach(el => {
-        el.style.display = 'none';
-    });
-
-    // Show selected section
-    document.querySelectorAll(`[data-section="${tabName}"]`).forEach(el => {
-        el.style.display = 'block';
-    });
-
-    // Update tab styles
-    document.querySelectorAll('.settings-tab').forEach(tab => {
-        if (tab.dataset.tab === tabName) {
-            tab.style.color = '#aec6ff';
-            tab.style.borderBottomColor = '#5B8DEF';
-        } else {
-            tab.style.color = '#9ca3af';
-            tab.style.borderBottomColor = 'transparent';
-        }
-    });
-}
-
-// WhatsApp Bot Simulator
-async function simulateWABot() {
-    const guestName = document.getElementById('sim-name').value.trim() || 'Demo Guest';
-    const message = document.getElementById('sim-msg').value.trim();
-    const chatDiv = document.getElementById('wa-bot-chat');
-    const loadingDiv = document.getElementById('wa-bot-loading');
-    const errorDiv = document.getElementById('wa-bot-error');
-
-    // Hide previous results
-    chatDiv.style.display = 'none';
-    errorDiv.style.display = 'none';
-    loadingDiv.style.display = 'block';
-
-    if (!message) {
-        loadingDiv.style.display = 'none';
-        errorDiv.style.display = 'block';
-        errorDiv.textContent = '❌ Please enter a message';
-        return;
-    }
-
-    const fd = new FormData();
-    fd.append('guest_name', guestName);
-    fd.append('message', message);
-    fd.append('csrf_token', '{{ request.state.csrf_token }}');
-
-    try {
-        const resp = await fetch('/api/simulate/json', {method: 'POST', body: fd});
-        const data = await resp.json();
-
-        if (!data.ok) {
-            throw new Error(data.error || 'Simulation failed');
-        }
-
-        // Populate chat bubbles
-        document.getElementById('chat-guest-name').textContent = guestName;
-        document.getElementById('chat-guest-msg').textContent = message;
-        document.getElementById('chat-ai-msg').textContent = data.draft;
-        document.getElementById('chat-type').textContent = data.msg_type.toUpperCase();
-        document.getElementById('chat-confidence').textContent = data.confidence + '% sure';
-
-        // Show chat
-        loadingDiv.style.display = 'none';
-        chatDiv.style.display = 'block';
-
-    } catch (error) {
-        loadingDiv.style.display = 'none';
-        errorDiv.style.display = 'block';
-        errorDiv.textContent = '❌ ' + error.message;
-    }
-}
-</script>
+<div class="space-y-2 sm:col-span-2">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Phone Number</label>
+<input class="w-full bg-surface border-none rounded-lg px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary-container transition-all" placeholder="Enter phone" type="tel" value="+1 (555) 234-8890"/>
+</div>
+</div>
+</div>
+</section>
+<!-- 2. Notification Channels Section (Asymmetric / Glass-lite) -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+<div class="md:col-span-4">
+<h3 class="text-2xl font-bold text-on-surface tracking-tight mb-2">Notification Channels</h3>
+<p class="text-on-surface-variant text-sm">Fine-tune how and when you receive intelligence reports and alerts.</p>
+</div>
+<div class="md:col-span-8 space-y-4">
+<!-- Email Digest Card -->
+<div class="flex items-center justify-between p-6 bg-surface-container-lowest rounded-xl hover:shadow-md transition-shadow">
+<div class="flex gap-4">
+<div class="w-12 h-12 bg-primary-fixed rounded-xl flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Email Digest</h4>
+<p class="text-sm text-on-surface-variant">Daily summary of property performance and maintenance tasks.</p>
+</div>
+</div>
+<button class="relative inline-flex h-6 w-11 items-center rounded-full bg-primary transition-colors focus:outline-none ring-2 ring-offset-2 ring-transparent">
+<span class="translate-x-6 inline-block h-4 w-4 transform rounded-full bg-white transition-transform"></span>
+</button>
+</div>
+<!-- SMS Alerts Card -->
+<div class="flex items-center justify-between p-6 bg-surface-container-lowest rounded-xl hover:shadow-md transition-shadow">
+<div class="flex gap-4">
+<div class="w-12 h-12 bg-secondary-fixed rounded-xl flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="sms">sms</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">SMS Alerts</h4>
+<p class="text-sm text-on-surface-variant">Instant text notifications for urgent tenant inquiries.</p>
+</div>
+</div>
+<button class="relative inline-flex h-6 w-11 items-center rounded-full bg-outline-variant transition-colors focus:outline-none">
+<span class="translate-x-1 inline-block h-4 w-4 transform rounded-full bg-white transition-transform"></span>
+</button>
+</div>
+<!-- Mobile Push Card -->
+<div class="flex items-center justify-between p-6 bg-surface-container-lowest rounded-xl hover:shadow-md transition-shadow">
+<div class="flex gap-4">
+<div class="w-12 h-12 bg-tertiary-fixed rounded-xl flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Mobile Push</h4>
+<p class="text-sm text-on-surface-variant">Direct notifications on your primary mobile device.</p>
+</div>
+</div>
+<button class="relative inline-flex h-6 w-11 items-center rounded-full bg-primary transition-colors focus:outline-none">
+<span class="translate-x-6 inline-block h-4 w-4 transform rounded-full bg-white transition-transform"></span>
+</button>
+</div>
+</div>
+</section>
+<!-- 3. Security Section -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+<div class="md:col-span-4">
+<h3 class="text-2xl font-bold text-on-surface tracking-tight mb-2">Security</h3>
+<p class="text-on-surface-variant text-sm">Protect your architectural data and administrative access.</p>
+</div>
+<div class="md:col-span-8 bg-surface-container-lowest p-8 rounded-xl space-y-8">
+<div class="space-y-6">
+<div class="flex items-center gap-3 text-primary mb-4">
+<span class="material-symbols-outlined" data-icon="lock">lock</span>
+<span class="font-bold">Password Management</span>
+</div>
+<div class="grid grid-cols-1 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">New Password</label>
+<div class="relative">
+<input class="w-full bg-surface border-none rounded-lg px-4 py-3 text-on-surface pr-12" placeholder="••••••••••••" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg" data-icon="visibility">visibility</span>
+</button>
+</div>
+</div>
+<button class="w-fit bg-secondary-container text-on-secondary-container px-6 py-3 rounded-xl font-bold hover:-translate-y-0.5 transition-transform shadow-sm">Update Password</button>
+</div>
+</div>
+<div class="pt-8 border-t border-outline-variant/15 flex items-center justify-between">
+<div class="flex gap-4">
+<div class="w-12 h-12 bg-tertiary-fixed-dim rounded-xl flex items-center justify-center text-on-tertiary-fixed-variant">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Two-Factor Authentication</h4>
+<p class="text-sm text-on-surface-variant">Add an extra layer of security to your account.</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-bold text-tertiary-container uppercase tracking-tight mr-2">Inactive</span>
+<button class="relative inline-flex h-6 w-11 items-center rounded-full bg-outline-variant transition-colors focus:outline-none">
+<span class="translate-x-1 inline-block h-4 w-4 transform rounded-full bg-white transition-transform"></span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer Actions -->
+<div class="flex items-center justify-end gap-6 pt-12 border-t border-outline-variant/15">
+<button class="text-on-surface-variant font-bold hover:text-on-surface transition-colors">Discard Changes</button>
+<button class="bg-primary-container text-on-primary-container px-10 py-4 rounded-xl font-extrabold shadow-lg shadow-primary/20 hover:-translate-y-1 transition-transform">Save Configuration</button>
 </div>
 </div>
 </main>
-{%- endblock %}
-{%- endblock %}
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden flex justify-around items-center bg-slate-50 dark:bg-slate-900 h-16 w-full fixed bottom-0 z-30 px-4">
+<button class="flex flex-col items-center justify-center text-slate-500">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-500">
+<span class="material-symbols-outlined" data-icon="domain">domain</span>
+</button>
+<button class="flex flex-col items-center justify-center text-blue-700">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-500">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</button>
+</nav>
+</div>
+</body></html>

@@ -1,212 +1,391 @@
-{% extends "base.html" %}
-{% set tenant = admin %}
-{% block title %}Voice AI Pricing Configuration — Admin{% endblock %}
+<!DOCTYPE html>
 
-{% block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
-tailwind.config = {
-  darkMode: "class",
-  theme: { extend: { colors: {
-    "primary": "#aec6ff","primary-container":"#5d8ef1","on-primary":"#002e6b",
-    "surface":"#121319","surface-container":"#1e1f26","surface-container-lowest":"#0d0e14",
-    "surface-container-high":"#292930","on-surface":"#e3e1eb","on-surface-variant":"#c3c6d4",
-    "outline":"#424752","outline-variant":"#34343b","error":"#ffb4ab","tertiary":"#ffb960",
-    "secondary":"#bdf4ff","secondary-fixed-dim":"#00daf3",
-  }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
-}
-</script>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Voice Configuration | Vista Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#dfe8ff",
+                        "inverse-primary": "#aac7ff",
+                        "primary": "#004e9f",
+                        "tertiary-container": "#af4900",
+                        "on-primary-fixed": "#001b3e",
+                        "surface-container-low": "#f2f4f6",
+                        "secondary": "#515f74",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface": "#f7f9fb",
+                        "inverse-surface": "#2d3133",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "primary-container": "#0066cc",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e0e3e5",
+                        "on-primary-fixed-variant": "#00458e",
+                        "on-primary": "#ffffff",
+                        "background": "#f7f9fb",
+                        "tertiary-fixed": "#ffdbcb",
+                        "primary-fixed": "#d7e3ff",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "on-background": "#191c1e",
+                        "secondary-fixed": "#d5e3fc",
+                        "on-surface": "#191c1e",
+                        "tertiary": "#883700",
+                        "surface-tint": "#005cba",
+                        "secondary-container": "#d5e3fc",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "surface-dim": "#d8dadc",
+                        "surface-container-high": "#e6e8ea",
+                        "on-tertiary-container": "#ffe3d6",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "on-error-container": "#93000a",
+                        "outline": "#727784",
+                        "outline-variant": "#c1c6d5",
+                        "on-tertiary-fixed": "#341100",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-tertiary-fixed-variant": "#793000",
+                        "on-surface-variant": "#414753",
+                        "surface-bright": "#f7f9fb",
+                        "on-error": "#ffffff",
+                        "on-secondary-container": "#57657a",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-container": "#eceef0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
 <style>
-body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
-.glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
-.material-symbols-outlined { font-variation-settings:'FILL' 1,'wght' 300,'GRAD' 0,'opsz' 24; }
-
-.compat-input { width: 100%; border-radius: 0.5rem; border: 1px solid rgba(66,71,82,0.4); background: #0d0e14; color: #e3e1eb; padding: 0.6rem 0.8rem; font-size: 0.85rem; transition: border-color 0.15s; outline: none; margin-bottom: 0.5rem; }
-.compat-input:focus { border-color: #5B8DEF; }
-</style>
-{%- endblock %}
-
-{%- block nav %}{%- endblock %}
-
-{%- block main_wrapper %}
-{%- block content %}
-<!-- Sidebar -->
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c6d5; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex h-screen overflow-hidden">
+<!-- SideNavBar Component -->
 <!-- Mobile hamburger -->
-<button onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full');document.getElementById('admin-sidebar-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('admin-sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="admin-sidebar-overlay"></div>
-<aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain">
-  <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
-<span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
+<!-- Sidebar overlay for mobile -->
+<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+<aside id="sidebar" class="h-screen w-64 bg-surface-container-low flex flex-col py-6 space-y-4 flex-shrink-0 fixed left-0 top-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-xl">V</div>
+<div>
+<h2 class="text-on-surface font-bold text-sm leading-tight">Admin Portal</h2>
+<p class="text-on-surface-variant text-[10px] uppercase tracking-wider font-semibold">Precision Curator</p>
 </div>
-<span>HostAI</span>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full px-4 py-2 mx-2 transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings_voice">settings_voice</span>
+<span class="text-sm font-medium">Voice Services</span>
 </a>
-  <nav class="flex-1 px-4 space-y-1">
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/admin">
-      <span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span> Admin Panel
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/admin/pricing">
-      <span class="material-symbols-outlined" data-icon="currency_exchange">currency_exchange</span> Plan Pricing
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF] font-bold transition-all duration-200" href="/admin/voice-pricing">
-      <span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span> Voice Pricing
-    </a>
-  </nav>
-
-  <div class="p-6 border-t border-white/5">
-    <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
-      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-        {{ (admin.name or admin.email or 'H')[0]|upper }}
-      </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-sm font-bold text-white truncate">{{ admin.email }}</p>
-        <p class="text-xs text-slate-400 truncate">Admin</p>
-      </div>
-    </div>
-  </div>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="router">router</span>
+<span class="text-sm font-medium">SIP Trunking</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dialpad">dialpad</span>
+<span class="text-sm font-medium">Numbers</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="bar_chart">bar_chart</span>
+<span class="text-sm font-medium">Analytics</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="code">code</span>
+<span class="text-sm font-medium">API Keys</span>
+</a>
+</nav>
+<div class="px-4 mt-auto pt-4 space-y-1">
+<div class="p-4 rounded-xl bg-primary-container text-white mb-4 relative overflow-hidden">
+<div class="relative z-10">
+<p class="text-xs font-medium opacity-80">Current Tier</p>
+<p class="text-lg font-bold mb-2">Enterprise Plan</p>
+<button class="w-full py-2 bg-white text-primary text-xs font-bold rounded-lg shadow-sm hover:bg-surface transition-colors">Upgrade Plan</button>
+</div>
+<div class="absolute -right-4 -bottom-4 w-20 h-20 bg-white/10 rounded-full blur-2xl"></div>
+</div>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:text-blue-700 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="support_agent">support_agent</span>
+<span class="text-sm font-medium">Support</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:text-blue-700 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="text-sm font-medium">Documentation</span>
+</a>
+</div>
 </aside>
-
-<main class="md:ml-[260px] min-h-screen pt-[80px] px-4 md:px-8 pb-8 bg-[#08090F]">
-  <div class="max-w-7xl mx-auto">
-    <div class="mb-8">
-      <div class="flex items-center gap-6 mb-6">
-        <a href="/admin" class="flex items-center gap-1 text-slate-400 hover:text-white transition-colors text-sm font-bold bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
-          <span class="material-symbols-outlined text-sm">arrow_back</span> Admin Overview
-        </a>
-      </div>
-
-      <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">Voice AI Pricing</h1>
-      <p class="text-slate-400 text-sm">Manage voice add-on pricing tiers — ensure profitability with aggressive pricing</p>
-    </div>
-
-    {% if request.query_params.get('msg') == 'updated' %}
-    <div class="bg-[#27c93f]/10 border border-[#27c93f]/30 text-[#27c93f] px-4 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
-      <span class="material-symbols-outlined text-sm">check_circle</span> Voice pricing updated successfully. Changes take effect immediately.
-    </div>
-    {% endif %}
-
-    <!-- Info Banner -->
-    <div class="glass-card rounded-2xl p-6 mb-8 border border-yellow-500/20">
-      <div class="flex gap-4">
-        <span class="material-symbols-outlined text-yellow-500 flex-shrink-0">info</span>
-        <div class="text-sm">
-          <p class="font-bold text-yellow-500 mb-1">Pricing Strategy</p>
-          <p class="text-slate-400">
-            Voice API costs ~$0.018/minute. Current pricing maintains 9.6x-21.7x markup.
-            Higher overage rates ($0.049/min) discourage abuse and encourage tier upgrades.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Pricing Cards Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      {% for tier in voice_tiers %}
-      <div class="glass-card rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between">
-        <div class="absolute -top-20 -right-20 w-40 h-40 bg-white/5 rounded-full blur-[40px] pointer-events-none"></div>
-
-        <form method="post" action="/admin/voice-pricing/{{ tier.voice_tier }}" class="flex flex-col h-full gap-6">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-
-          <div class="mb-2">
-            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Tier: <span class="text-white">{{ tier.voice_tier }}</span></label>
-            <input type="text" name="display_name" class="compat-input text-lg font-bold" value="{{ tier.display_name }}" required>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Monthly Price (USD)</label>
-              <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
-                <input type="number" name="monthly_price" class="compat-input pl-7" value="{{ tier.monthly_price_usd }}" step="0.01" min="0" required>
-              </div>
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Overage Per Min (USD)</label>
-              <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
-                <input type="number" name="overage_per_minute" class="compat-input pl-7" value="{{ tier.overage_per_minute_usd }}" step="0.001" min="0" required>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Minutes Included</label>
-              <input type="number" name="minutes_included" class="compat-input" value="{{ tier.minutes_included or '' }}" placeholder="(blank = unlimited)">
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Surge Threshold (%)</label>
-              <input type="number" name="surge_threshold" class="compat-input" value="{{ (tier.surge_threshold * 100) | round(0) | int }}" step="1" min="0" max="100" required>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Surge Multiplier (e.g., 1.15 = +15%)</label>
-            <input type="number" name="surge_multiplier" class="compat-input" value="{{ tier.surge_multiplier }}" step="0.01" min="1.0" required>
-          </div>
-
-          <div class="p-4 rounded-xl bg-black/40 border border-white/5 shadow-inner mt-auto">
-            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Economics</h3>
-            <div class="space-y-2 text-sm">
-              <div class="flex justify-between items-center">
-                <span class="text-slate-500">Cost Basis</span>
-                <span class="font-mono text-blue-400">${{ tier.cost_basis_usd | round(2) }}/mo</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-slate-500">Markup Ratio</span>
-                <span class="font-mono text-emerald-400 font-bold">{{ tier.markup_ratio | round(1) }}x ✓</span>
-              </div>
-              <div class="border-t border-white/10 pt-2 mt-2">
-                <div class="flex justify-between items-center">
-                  <span class="text-slate-500">Profit Margin</span>
-                  <span class="font-mono text-emerald-400 font-bold">{{ ((tier.monthly_price_usd - tier.cost_basis_usd) / tier.monthly_price_usd * 100) | round(0) | int }}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button type="submit" class="w-full mt-2 py-3 bg-[#aec6ff]/10 hover:bg-[#aec6ff]/20 text-[#aec6ff] text-sm font-extrabold rounded-xl border border-[#aec6ff]/20 transition-all flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-sm">save</span> Update Pricing
-          </button>
-        </form>
-      </div>
-      {% endfor %}
-    </div>
-
-    <!-- Guidance Section -->
-    <div class="glass-card rounded-2xl p-6 border border-slate-600/20">
-      <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
-        <span class="material-symbols-outlined">lightbulb</span> Pricing Guidance
-      </h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-400">
-        <div>
-          <h3 class="font-bold text-white mb-2">Cost Structure</h3>
-          <ul class="space-y-1 text-xs">
-            <li>✓ Twilio: $0.01/min</li>
-            <li>✓ Deepgram STT: $0.0043/min</li>
-            <li>✓ OpenAI: $0.0005/call</li>
-            <li>✓ ElevenLabs: $0.003/min</li>
-            <li><strong>Total: $0.018/min</strong></li>
-          </ul>
-        </div>
-        <div>
-          <h3 class="font-bold text-white mb-2">Healthy Markups</h3>
-          <ul class="space-y-1 text-xs">
-            <li>✓ Light: 21.7x (Excellent)</li>
-            <li>✓ Standard: 14.6x (Excellent)</li>
-            <li>✓ Professional: 9.6x (Very Good)</li>
-            <li>✓ Unlimited: 5.5x (Acceptable)</li>
-            <li><strong>Target: &gt;70% margin</strong></li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </div>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto bg-surface-container-low flex flex-col">
+<!-- TopNavBar Component -->
+<header class="flex justify-between items-center px-8 py-4 w-full bg-slate-50 dark:bg-slate-900 border-b-0 sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<h1 class="text-xl font-bold text-slate-900 dark:text-white font-inter tracking-tight">Voice Configuration</h1>
+<nav class="hidden md:flex gap-6">
+<a class="text-blue-700 dark:text-blue-400 font-semibold border-b-2 border-blue-700 dark:border-blue-400 pb-1" href="#">Dashboard</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200" href="#">Inventory</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200" href="#">Billing</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container rounded-full border-none focus:ring-2 focus:ring-primary text-sm w-64" placeholder="Search resources..." type="text"/>
+</div>
+<button class="p-2 text-slate-500 hover:bg-slate-200/50 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="h-8 w-px bg-outline-variant/30 mx-1"></div>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all active:scale-95">
+                    Save Changes
+                </button>
+</div>
+</header>
+<div class="p-8 space-y-8 max-w-7xl mx-auto w-full">
+<!-- Bento Section: Global Metrics & Quick Config -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Global Pricing Rules (Metric Group) -->
+<div class="lg:col-span-8 bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h2 class="text-2xl font-bold tracking-tight text-on-surface">Global Pricing Rules</h2>
+<p class="text-on-surface-variant text-sm mt-1">Default rates for standard traffic profiles.</p>
+</div>
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Active System</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+<div class="flex flex-col">
+<span class="text-on-surface-variant font-medium text-xs uppercase tracking-widest mb-2">Voice Rate</span>
+<div class="flex items-baseline gap-1">
+<span class="text-3xl font-extrabold text-on-surface tracking-tighter">$0.02</span>
+<span class="text-on-surface-variant text-sm font-medium">/min</span>
+</div>
+<p class="mt-4 text-xs text-on-surface-variant leading-relaxed">Applied to all domestic inbound and outbound voice calls.</p>
+</div>
+<div class="flex flex-col">
+<span class="text-on-surface-variant font-medium text-xs uppercase tracking-widest mb-2">Connection Fee</span>
+<div class="flex items-baseline gap-1">
+<span class="text-3xl font-extrabold text-on-surface tracking-tighter">$0.05</span>
+<span class="text-on-surface-variant text-sm font-medium">/call</span>
+</div>
+<p class="mt-4 text-xs text-on-surface-variant leading-relaxed">One-time per-call initiation fee for successful handshakes.</p>
+</div>
+<div class="flex flex-col">
+<span class="text-on-surface-variant font-medium text-xs uppercase tracking-widest mb-2">Monthly Allowance</span>
+<div class="flex items-baseline gap-1">
+<span class="text-3xl font-extrabold text-on-surface tracking-tighter">5,000</span>
+<span class="text-on-surface-variant text-sm font-medium">mins</span>
+</div>
+<p class="mt-4 text-xs text-on-surface-variant leading-relaxed">Included minutes before variable billing kicks in.</p>
+</div>
+</div>
+</div>
+<!-- Interactive Cost Calculator Widget -->
+<div class="lg:col-span-4 bg-primary text-white rounded-xl p-8 flex flex-col relative overflow-hidden">
+<div class="relative z-10">
+<h3 class="text-lg font-bold mb-1">Cost Calculator</h3>
+<p class="text-primary-fixed-dim text-xs mb-6">Estimate your monthly operational cost.</p>
+<div class="space-y-6">
+<div>
+<label class="text-[10px] uppercase font-bold tracking-widest opacity-80 mb-2 block">Monthly Minutes</label>
+<input class="w-full h-1 bg-primary-container rounded-lg appearance-none cursor-pointer accent-white" type="range"/>
+<div class="flex justify-between mt-2 text-xs font-medium">
+<span>0</span>
+<span>100k</span>
+</div>
+</div>
+<div>
+<label class="text-[10px] uppercase font-bold tracking-widest opacity-80 mb-2 block">Projected Calls</label>
+<input class="bg-primary-container border-none rounded-lg w-full text-white placeholder-white/50 focus:ring-white" type="number" value="1250"/>
+</div>
+<div class="pt-6 border-t border-white/10 mt-6">
+<p class="text-[10px] uppercase font-bold tracking-widest opacity-80 mb-1">Estimated Cost</p>
+<div class="text-4xl font-extrabold tracking-tight">$2,450.00</div>
+<p class="text-[10px] mt-2 opacity-60">*Based on standard provider aggregation.</p>
+</div>
+</div>
+</div>
+<!-- Decorative Element -->
+<div class="absolute -right-20 -top-20 w-64 h-64 bg-white/5 rounded-full"></div>
+</div>
+</div>
+<!-- Regional Pricing Table -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<div class="p-8 flex justify-between items-center">
+<div>
+<h2 class="text-xl font-bold text-on-surface">Regional Pricing &amp; Providers</h2>
+<p class="text-on-surface-variant text-sm">Override global rules based on geographic latency and vendor preference.</p>
+</div>
+<button class="flex items-center gap-2 text-primary font-bold text-sm hover:underline">
+<span class="material-symbols-outlined text-lg" data-icon="add">add</span>
+                        Add New Region
+                    </button>
+</div>
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b-0">
+<th class="px-8 py-4 text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Region</th>
+<th class="px-8 py-4 text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Preferred Provider</th>
+<th class="px-8 py-4 text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Inbound Rate</th>
+<th class="px-8 py-4 text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Outbound Rate</th>
+<th class="px-8 py-4 text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Status</th>
+<th class="px-8 py-4 text-right"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-700">
+<span class="material-symbols-outlined text-lg" data-icon="public">public</span>
+</div>
+<span class="font-bold text-on-surface">North America (US)</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<img class="w-6 h-6 rounded-md" data-alt="Logotype representing cloud communications technology provider Twilio in a minimalist clean corporate style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqqY0QFR4VYmBUq9gTlrFJZGc6tdo-l5fXDPoYfxf_qOMmlIeZmCmcO9RntCoBhf2ffKHHBUlFsFVWpj2z5MI-NWTHj1VulwaFbW7nQKdpEyfJHlHhQPEzgPn7-vHOp18qQqKi6ZCfV3aqYYNkSZMqS30FiugMHsbDfCaQqGq_3ekeWO1UtbaLSIz7c5_-UWQiY_VXGTROQRD1Kyyq3g9PdMRGlBUqDGxfCmliKkU4At85lq34qhUiffIC1DNjQ0cMX_BebqqO48L_"/>
+<span class="text-sm font-medium">Twilio</span>
+</div>
+</td>
+<td class="px-8 py-6 text-sm font-semibold">$0.0085/min</td>
+<td class="px-8 py-6 text-sm font-semibold">$0.0130/min</td>
+<td class="px-8 py-6">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">Optimal</span>
+</td>
+<td class="px-8 py-6 text-right">
+<button class="p-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-700">
+<span class="material-symbols-outlined text-lg" data-icon="euro">euro</span>
+</div>
+<span class="font-bold text-on-surface">European Union (EU)</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<img class="w-6 h-6 rounded-md" data-alt="Logotype for Vonage communication services in a high-tech sleek corporate digital identity style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQ0LBrIKjjol9tyrsoZte8l2RpC3d6gwx0XnqmeJCMP1spNvREKreLYaf759guEmKCnNSNl4pb-3dxZN_AuoN1bnFor5CxOHenG2Eedtw1ZDJqLfsSqlKmdURB4_TxeGe-CiN-DTYhw1fQ9gBXfLgju2TSlJXJdh-NY3dbBKlQwUFxSmIpiduAy-CSS6nUt93R57b7jgO8AkCwu839gFh8OqLvVEGCY0catbiAGj9y23ra-BwVELHcqzRmLeGYa6rJtA6RpEWvJvDD"/>
+<span class="text-sm font-medium">Vonage</span>
+</div>
+</td>
+<td class="px-8 py-6 text-sm font-semibold">$0.0120/min</td>
+<td class="px-8 py-6 text-sm font-semibold">$0.0180/min</td>
+<td class="px-8 py-6">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">Standard</span>
+</td>
+<td class="px-8 py-6 text-right">
+<button class="p-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-purple-700">
+<span class="material-symbols-outlined text-lg" data-icon="language">language</span>
+</div>
+<span class="font-bold text-on-surface">Asia Pacific (ASIA)</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-md bg-secondary flex items-center justify-center text-white text-[8px] font-bold">AWS</div>
+<span class="text-sm font-medium">Amazon Chime</span>
+</div>
+</td>
+<td class="px-8 py-6 text-sm font-semibold">$0.0240/min</td>
+<td class="px-8 py-6 text-sm font-semibold">$0.0350/min</td>
+<td class="px-8 py-6">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-tertiary-fixed text-on-tertiary-fixed">High Cost</span>
+</td>
+<td class="px-8 py-6 text-right">
+<button class="p-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Provider Network Status (Secondary Grid) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-container p-6 rounded-xl border border-outline-variant/10 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-lowest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+</div>
+<div>
+<p class="text-on-surface font-bold">Network Latency</p>
+<p class="text-on-surface-variant text-xs">Avg: 142ms</p>
+</div>
+</div>
+<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+</div>
+<div class="bg-surface-container p-6 rounded-xl border border-outline-variant/10 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-lowest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+</div>
+<div>
+<p class="text-on-surface font-bold">Success Rate</p>
+<p class="text-on-surface-variant text-xs">Voice: 99.98%</p>
+</div>
+</div>
+<span class="w-2 h-2 rounded-full bg-green-500"></span>
+</div>
+<div class="bg-surface-container p-6 rounded-xl border border-outline-variant/10 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-lowest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="shield">shield</span>
+</div>
+<div>
+<p class="text-on-surface font-bold">Fraud Filter</p>
+<p class="text-on-surface-variant text-xs">Active Shielding</p>
+</div>
+</div>
+<span class="w-2 h-2 rounded-full bg-green-500"></span>
+</div>
+</div>
+</div>
 </main>
-{%- endblock %}
-{%- endblock %}
+<!-- FAB Suppression Logic: Not rendered on Settings/Configuration screen -->
+</body></html>

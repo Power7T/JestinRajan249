@@ -1,264 +1,403 @@
-{% extends "base.html" %}
-{% block title %}Automation Rules — HostAI{% endblock %}
+<!DOCTYPE html>
 
-{% block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
-tailwind.config = {
-  darkMode: "class",
-  theme: { extend: { colors: {
-    "primary": "#aec6ff","primary-container":"#5d8ef1","on-primary":"#002e6b",
-    "surface":"#121319","surface-container":"#1e1f26","surface-container-lowest":"#0d0e14",
-    "surface-container-high":"#292930","on-surface":"#e3e1eb","on-surface-variant":"#c3c6d4",
-    "outline":"#424752","outline-variant":"#34343b","error":"#ffb4ab","tertiary":"#ffb960",
-    "secondary":"#bdf4ff","secondary-fixed-dim":"#00daf3",
-  }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
-}
-</script>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Automation Rules | Precision Curator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#ffdbcb",
+                        "surface-container-high": "#e6e8ea",
+                        "inverse-primary": "#aac7ff",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-fixed": "#d7e3ff",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "on-secondary-container": "#57657a",
+                        "on-tertiary-fixed": "#341100",
+                        "primary-container": "#0066cc",
+                        "inverse-surface": "#2d3133",
+                        "on-tertiary-container": "#ffe3d6",
+                        "on-surface": "#191c1e",
+                        "secondary-container": "#d5e3fc",
+                        "background": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "on-background": "#191c1e",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "tertiary-container": "#af4900",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "on-primary-fixed-variant": "#00458e",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "tertiary": "#883700",
+                        "surface-variant": "#e0e3e5",
+                        "on-tertiary-fixed-variant": "#793000",
+                        "on-primary-container": "#dfe8ff",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#eceef0",
+                        "on-surface-variant": "#414753",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#d8dadc",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface": "#f7f9fb",
+                        "outline-variant": "#c1c6d5",
+                        "secondary": "#515f74",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#001b3e",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-tint": "#005cba",
+                        "surface-bright": "#f7f9fb",
+                        "outline": "#727784",
+                        "secondary-fixed": "#d5e3fc",
+                        "on-error-container": "#93000a",
+                        "primary": "#004e9f",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
 <style>
-body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
-.glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
-.material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 200,'GRAD' 0,'opsz' 24; }
-/* Compat layer */
-:root{--surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;--border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);--text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;--accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);--success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);--danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);--warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.2);--radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;}
-.compat h1{font-size:1.6rem;font-weight:800;color:#e3e1eb;margin-bottom:0.25rem}.compat h2{font-size:1.05rem;font-weight:700;color:#e3e1eb;margin-bottom:0.65rem}.compat h3{font-size:0.9rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
-.compat .card,.compat .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
-.compat label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
-.compat input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.compat select,.compat textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
-.compat input:focus,.compat select:focus,.compat textarea:focus{border-color:#5B8DEF}
-.compat .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
-.compat .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
-.compat .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
-.compat .btn-outline:hover{background:rgba(174,198,255,0.08)}
-.compat .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
-.compat .btn-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
-.compat .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
-.compat .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
-.compat .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
-.compat .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
-.compat table{width:100%;border-collapse:collapse;font-size:0.84rem}
-.compat th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
-.compat td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
-.compat .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
-.compat .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
-.compat .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
-.compat .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
-.compat .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem}
-.compat .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
-.compat .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
-.compat .alert-error,.compat .alert-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
-.compat .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
-.compat .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
-.compat .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
-.compat .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
-.compat .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;background:rgba(174,198,255,0.08);color:#aec6ff;margin-left:0.2rem}
-.compat .timeline{display:flex;flex-direction:column}
-.compat .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
-.compat .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
-.compat .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
-.compat .timeline-text{font-size:0.8rem;color:#8d909e}
-.compat .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
-.compat .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
-.compat .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
-.compat .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
-.compat .card-meta{font-size:0.75rem;color:#8d909e}
-.compat .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-.compat code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
-.compat input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
-.compat details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
-</style>
-{%- endblock %}
-
-{%- block nav %}{%- endblock %}
-
-{%- block main_wrapper %}
-{%- block content %}
-<!-- Sidebar -->
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-nav {
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex min-h-screen">
+<!-- SideNavBar (Authority: JSON & Design System) -->
 <!-- Mobile hamburger -->
 <button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
 <!-- Sidebar overlay for mobile -->
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
-<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
-<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
-<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
+<aside id="sidebar" class="fixed left-0 top-0 h-full flex flex-col p-4 gap-2 w-64 bg-slate-100 dark:bg-slate-900 z-40 -translate-x-full md:translate-x-0 transition-transform duration-300">
+<div class="px-4 py-6 mb-4">
+<h1 class="text-lg font-black text-blue-800 dark:text-blue-200 tracking-tighter">Precision Curator</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Admin Console</p>
 </div>
-<span>HostAI</span>
-</a>
-<nav class="flex-1 px-4 space-y-1">
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<nav class="flex-1 flex flex-col gap-2">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all hover:translate-x-1 duration-300" href="#">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-                Dashboard
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
-<span class="material-symbols-outlined" data-icon="forum">forum</span>
-                Conversations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
-<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
-                Reservations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
-<span class="material-symbols-outlined" data-icon="history">history</span>
-                Activity
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
-<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
-                Analytics
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
-<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
-                Revenue & ROI
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
-                Voice AI
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
-<span class="material-symbols-outlined" data-icon="hub">hub</span>
-                Operations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
-                Settings
-            </a>
-{% if tenant is defined and tenant and is_admin(tenant.email) %}
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
-<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
-                Admin
-            </a>
-{% endif %}
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="domain">domain</span>
+<span class="text-sm font-medium">Properties</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="text-sm font-medium">Leasing</span>
+</a>
+<a class="flex items-center gap-3 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-100 rounded-full px-4 py-3 hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="auto_settings" style="font-variation-settings: 'FILL' 1;">auto_mode</span>
+<span class="text-sm font-medium">Automation</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="text-sm font-medium">Reports</span>
+</a>
 </nav>
-<div class="mt-auto p-6 space-y-4">
-<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
-<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
-  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
-</div>
-<div class="flex-1 min-w-0">
-<p class="text-white font-bold truncate">{{ tenant.first_name or "Your Account" }}</p>
-<p class="text-slate-500 text-xs truncate">Host Administrator</p>
-</div>
-</div>
-<form method="post" action="/logout">
-  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
-    <span class="material-symbols-outlined text-sm">logout</span>
-    Sign Out
-  </button>
-</form>
+<div class="mt-auto flex flex-col gap-2 pt-4 border-t border-slate-200/50 dark:border-slate-800/50">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="text-sm font-medium">Support</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="text-sm font-medium">Logout</span>
+</a>
 </div>
 </aside>
-<!-- Main -->
-<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
-<div class="flex items-center flex-1 max-w-md">
-<div class="relative w-full">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
-<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search..." type="text"/>
-</div>
-</div>
+<!-- Main Content Canvas -->
+<main class="ml-64 flex-1 flex flex-col min-h-screen">
+<!-- TopNavBar (Authority: JSON) -->
+<header class="sticky top-0 w-full flex justify-between items-center px-8 h-16 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-xl z-50 shadow-sm dark:shadow-none">
+<div class="flex items-center gap-8">
 <div class="flex items-center gap-6">
-<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-sans antialiased tracking-tight text-sm" href="#">Portfolio</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-sans antialiased tracking-tight text-sm" href="#">Analytics</a>
+<a class="text-blue-700 dark:text-blue-400 font-semibold border-b-2 border-blue-700 dark:border-blue-400 pb-1 font-sans antialiased tracking-tight text-sm" href="#">Automation</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-sans antialiased tracking-tight text-sm" href="#">Maintenance</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-primary hover:bg-primary-container text-on-primary px-4 py-2 rounded-xl text-sm font-semibold transition-all Active:scale-95">
+                    Create Rule
+                </button>
+<div class="h-6 w-px bg-slate-200/50 dark:bg-slate-800/50"></div>
+<button class="text-slate-500 hover:text-slate-900 transition-colors">
 <span class="material-symbols-outlined" data-icon="notifications">notifications</span>
-<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
 </button>
-<div class="h-8 w-px bg-white/10"></div>
-<div class="flex items-center gap-3 cursor-pointer group">
-<span class="text-slate-200 group-hover:text-white transition-colors">Account</span>
-<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
-</div>
-</div>
+<button class="text-slate-500 hover:text-slate-900 transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<img alt="User profile" class="w-8 h-8 rounded-full object-cover" data-alt="professional headshot of a property manager in a corporate office setting with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBB9AZ2FiKUxD5hImKL1XsBKnPBlz4mDe3o0gnIWHyT1lDMvHo7z_xiHLi2XqSh6Xx_65uY0pnMUE2rWrITRQrDt7TXb9UmQ8-l_9_JnngeNCvlY812_FoV-BshYnAQmaNOyihiH9TuLqzgyHFPNxWNA02Q0rVbEW1L7_RhTybz8LBDfKjQ0LyBKXcuJO4xfrmpRHaFdbniwJ1UZhXaVxd8QK2PnaLoMiagKR0YeeFJFLSueU8EOxRg1DCjUXRn_NTIfRsk2sPvjn3"/>
 </div>
 </header>
-<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen">
-  <div class="mb-8 pt-4">
-    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Automation Rules</h1>
-    <p class="text-slate-400 text-sm">Configure auto-send rules and escalation logic</p>
-  </div>
-  <div class="compat">
-<h1>Automation Rules</h1>
-<p class="section-lead">
-  The host should not review every message. Rules decide when HostAI can send, when it should wait for approval, and when it must escalate.
-</p>
-
-<div class="workflow-grid" style="margin-bottom:1rem">
-  <div class="workflow-card">
-    <h3><span style="display:inline-flex;align-items:center;gap:0.4rem">Trigger<div class="tooltip-container"><button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e;font-size:0.85rem"><span>ⓘ</span></button><div class="tooltip-content">Events that cause a rule to fire (Inbound message, Arrival reminder, Checkout follow-up, Vendor update)</div></div></span></h3>
-    <p>What happened: guest message, arrival reminder, checkout follow-up, or vendor request.</p>
-    <div class="chip-row"><span class="chip">Guest message</span><span class="chip">Calendar event</span><span class="chip">Vendor issue</span></div>
-  </div>
-  <div class="workflow-card">
-    <h3><span style="display:inline-flex;align-items:center;gap:0.4rem">Condition<div class="tooltip-container"><button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e;font-size:0.85rem"><span>ⓘ</span></button><div class="tooltip-content">Rules that must be true for the trigger to execute (e.g., only if routine intent, only if confidence &lt; 0.6)</div></div></span></h3>
-    <p>When the rule should apply: routine intent, confidence threshold, property scope, or channel-specific behavior.</p>
-    <div class="chip-row"><span class="chip">Routine</span><span class="chip">Low confidence</span><span class="chip">Property scope</span></div>
-  </div>
-  <div class="workflow-card">
-    <h3><span style="display:inline-flex;align-items:center;gap:0.4rem">Action<div class="tooltip-container"><button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e;font-size:0.85rem"><span>ⓘ</span></button><div class="tooltip-content">What happens when rule fires: Auto-send = send immediately; Draft = require approval; Escalate = flag for ops; Maintenance = create task</div></div></span></h3>
-    <p>What HostAI should do: auto-send, draft only, escalate, schedule, or create a maintenance ticket.</p>
-    <div class="chip-row"><span class="chip">Auto-send</span><span class="chip">Draft</span><span class="chip">Escalate</span></div>
-  </div>
+<!-- Editorial Content Area -->
+<div class="p-12 max-w-7xl mx-auto w-full">
+<!-- Page Header -->
+<div class="flex justify-between items-end mb-12">
+<div class="max-w-2xl">
+<h2 class="text-4xl font-bold tracking-tight text-on-surface mb-3">Automation Rules</h2>
+<p class="text-on-surface-variant text-lg">Manage and optimize your property operations with intelligent, event-based workflows.</p>
 </div>
-
-<div class="card" style="margin-bottom:1rem">
-  <h2 style="margin-bottom:0.75rem">Rule builder</h2>
-  <div class="form-row">
-    <div>
-      <label>Rule name</label>
-      <input type="text" placeholder="Auto-send Wi-Fi replies">
-    </div>
-    <div>
-      <label>Scope</label>
-      <select>
-        <option>All properties</option>
-        <option>Selected property</option>
-        <option>Selected room type</option>
-      </select>
-    </div>
-  </div>
-  <div class="form-row">
-    <div>
-      <label>Trigger</label>
-      <select>
-        <option>Inbound guest message</option>
-        <option>Arrival date approaching</option>
-        <option>Checkout date reached</option>
-        <option>Vendor update</option>
-      </select>
-    </div>
-    <div>
-      <label>Action</label>
-      <select>
-        <option>Auto-send draft</option>
-        <option>Save as pending draft</option>
-        <option>Escalate to host</option>
-        <option>Create maintenance task</option>
-      </select>
-    </div>
-  </div>
-  <label>Rule notes</label>
-  <textarea placeholder="Example: Auto-send only when the guest asks about Wi-Fi, towels, or parking and the reservation has a mapped room number."></textarea>
-  <p class="help-text">This is the UI shell for a future rule engine. It is designed so the backend can wire the same concepts later without changing the host-facing experience.</p>
+<div class="flex gap-4">
+<button class="group flex items-center gap-2 bg-primary-container text-on-primary-container px-6 py-3 rounded-xl font-bold transition-all hover:-translate-y-0.5 hover:shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-xl" data-icon="add">add</span>
+                        + Create New Rule
+                    </button>
 </div>
-
-<div class="workflow-grid">
-  <div class="workflow-card">
-    <h3><span style="display:inline-flex;align-items:center;gap:0.4rem">Routine<div class="tooltip-container"><button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e;font-size:0.85rem"><span>ⓘ</span></button><div class="tooltip-content">Non-critical guest requests like Wi-Fi, towels, parking, checkout extension, local recommendations</div></div></span></h3>
-    <p>Reply to Wi-Fi requests automatically. Escalate refunds and complaints. Create maintenance tasks from "AC is broken" or "leak" messages.</p>
-  </div>
-  <div class="workflow-card">
-    <h3><span style="display:inline-flex;align-items:center;gap:0.4rem">Confidence Threshold<div class="tooltip-container"><button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e;font-size:0.85rem"><span>ⓘ</span></button><div class="tooltip-content">AI confidence score (0-100) that it understood the request. Lower = require manual review. Recommended: 0.75+</div></div></span></h3>
-    <p>Prefer automation for routine asks, draft for ambiguity, and escalation for anything involving money, safety, or property damage.</p>
-  </div>
-  <div class="workflow-card">
-    <h3>Fallbacks</h3>
-    <p>If a PMS is not available, use CSV or manual booking intake to keep the rule engine fed with stay context.</p>
-  </div>
 </div>
-  </div>
+<!-- Bento Grid of Metrics (Supporting the Precision Theme) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+<div class="col-span-1 bg-surface-container-lowest p-8 rounded-xl shadow-sm">
+<p class="text-on-surface-variant text-sm font-medium mb-1">Active Rules</p>
+<h3 class="text-3xl font-bold text-primary">12</h3>
+<div class="mt-2 text-xs text-green-600 font-bold">+2 this month</div>
+</div>
+<div class="col-span-1 bg-surface-container-lowest p-8 rounded-xl shadow-sm">
+<p class="text-on-surface-variant text-sm font-medium mb-1">Weekly Triggers</p>
+<h3 class="text-3xl font-bold text-primary">842</h3>
+<div class="mt-2 text-xs text-on-surface-variant">98.2% success rate</div>
+</div>
+<div class="col-span-2 bg-primary text-on-primary p-8 rounded-xl relative overflow-hidden">
+<div class="relative z-10">
+<p class="text-on-primary-container text-sm font-medium mb-1">Efficiency Gain</p>
+<h3 class="text-3xl font-bold">14.2 Hours</h3>
+<p class="mt-2 text-sm text-on-primary-container/80">Saved per week through intelligent messaging</p>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-10">
+<span class="material-symbols-outlined text-9xl" data-icon="auto_awesome">auto_awesome</span>
+</div>
+</div>
+</div>
+<!-- Rules List Table (Modern Editorial Style) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden mb-16">
+<div class="px-8 py-6 border-b border-surface-container flex justify-between items-center bg-surface-container-low/30">
+<h4 class="font-bold text-lg">Active Automations</h4>
+<div class="flex gap-2">
+<button class="p-2 hover:bg-surface-container rounded-lg transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="filter_list">filter_list</span>
+</button>
+<button class="p-2 hover:bg-surface-container rounded-lg transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="px-8 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Rule Name/Description</th>
+<th class="px-8 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Trigger</th>
+<th class="px-8 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Action</th>
+<th class="px-8 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
+<th class="px-8 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-8 py-6">
+<div class="font-bold text-on-surface">Auto-Confirm Booking</div>
+<div class="text-xs text-on-surface-variant">Instantly confirm and block calendar</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="event_available">event_available</span>
+<span class="text-sm">New Reservation</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-xl" data-icon="send">send</span>
+<span class="text-sm">Send Confirmation Message</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center">
+<div class="w-10 h-5 bg-primary rounded-full relative flex items-center px-1">
+<div class="w-3.5 h-3.5 bg-white rounded-full absolute right-1"></div>
+</div>
+<span class="ml-3 text-sm font-medium text-primary">Enabled</span>
+</div>
+</td>
+<td class="px-8 py-6 text-right">
+<div class="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 hover:bg-secondary-container rounded-lg text-secondary transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+</button>
+<button class="p-2 hover:bg-error-container rounded-lg text-error transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="bg-surface-container-low/20 hover:bg-surface-container-low transition-colors group">
+<td class="px-8 py-6">
+<div class="font-bold text-on-surface">Check-in Instructions</div>
+<div class="text-xs text-on-surface-variant">Digital guide for seamless arrivals</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="schedule">schedule</span>
+<span class="text-sm">24h before arrival</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-xl" data-icon="chat">chat</span>
+<span class="text-sm">WhatsApp Guest Guide</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center">
+<div class="w-10 h-5 bg-primary rounded-full relative flex items-center px-1">
+<div class="w-3.5 h-3.5 bg-white rounded-full absolute right-1"></div>
+</div>
+<span class="ml-3 text-sm font-medium text-primary">Enabled</span>
+</div>
+</td>
+<td class="px-8 py-6 text-right">
+<div class="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 hover:bg-secondary-container rounded-lg text-secondary transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+</button>
+<button class="p-2 hover:bg-error-container rounded-lg text-error transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-8 py-6">
+<div class="font-bold text-on-surface/50">Post-Stay Review Request</div>
+<div class="text-xs text-on-surface-variant">Automated reputation management</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2 opacity-50">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="timer">timer</span>
+<span class="text-sm">2h after checkout</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center gap-2 opacity-50">
+<span class="material-symbols-outlined text-secondary text-xl" data-icon="mail">mail</span>
+<span class="text-sm">Email Review Link</span>
+</div>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center">
+<div class="w-10 h-5 bg-outline-variant rounded-full relative flex items-center px-1">
+<div class="w-3.5 h-3.5 bg-white rounded-full absolute left-1"></div>
+</div>
+<span class="ml-3 text-sm font-medium text-on-surface-variant">Disabled</span>
+</div>
+</td>
+<td class="px-8 py-6 text-right">
+<div class="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 hover:bg-secondary-container rounded-lg text-secondary transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+</button>
+<button class="p-2 hover:bg-error-container rounded-lg text-error transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Templates Section (Asymmetric Editorial Layout) -->
+<div class="mb-20">
+<div class="flex items-center gap-4 mb-8">
+<h2 class="text-2xl font-bold text-on-surface">Rule Templates</h2>
+<div class="flex-1 h-px bg-outline-variant/30"></div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Template 1 -->
+<div class="flex flex-col bg-surface-container-low rounded-xl p-8 transition-transform hover:-translate-y-1">
+<div class="w-12 h-12 bg-primary-container text-on-primary-container rounded-lg flex items-center justify-center mb-6">
+<span class="material-symbols-outlined" data-icon="sell">sell</span>
+</div>
+<h4 class="text-xl font-bold mb-2">Early Check-in Offer</h4>
+<p class="text-on-surface-variant text-sm mb-8 leading-relaxed">Automate upsells based on real-time occupancy. Send custom offers to guests when rooms are ready early.</p>
+<button class="mt-auto flex items-center gap-2 text-primary font-bold text-sm group">
+                            Use Template
+                            <span class="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- Template 2 -->
+<div class="flex flex-col bg-surface-container-low rounded-xl p-8 transition-transform hover:-translate-y-1 border-2 border-transparent hover:border-primary-fixed">
+<div class="w-12 h-12 bg-tertiary-container text-on-tertiary-container rounded-lg flex items-center justify-center mb-6">
+<span class="material-symbols-outlined" data-icon="cleaning_services">cleaning_services</span>
+</div>
+<h4 class="text-xl font-bold mb-2">Maintenance Alert</h4>
+<p class="text-on-surface-variant text-sm mb-8 leading-relaxed">Trigger cleaning and maintenance tasks automatically after long stays or specific events.</p>
+<button class="mt-auto flex items-center gap-2 text-primary font-bold text-sm group">
+                            Use Template
+                            <span class="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- Template 3 -->
+<div class="flex flex-col bg-slate-900 text-white rounded-xl p-8 transition-transform hover:-translate-y-1 relative overflow-hidden">
+<div class="relative z-10">
+<div class="w-12 h-12 bg-white/10 text-white rounded-lg flex items-center justify-center mb-6 backdrop-blur">
+<span class="material-symbols-outlined" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<h4 class="text-xl font-bold mb-2">VIP Guest Welcome</h4>
+<p class="text-white/70 text-sm mb-8 leading-relaxed">Special actions for repeat bookers. Automate personal notes or welcome amenities for loyalty guests.</p>
+<button class="mt-auto flex items-center gap-2 text-blue-400 font-bold text-sm group">
+                                Use Template
+                                <span class="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<div class="absolute -right-10 -bottom-10 opacity-10">
+<span class="material-symbols-outlined text-[200px]" data-icon="verified_user">verified_user</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Contextual CTA Footer Section -->
+<div class="bg-primary-fixed p-12 rounded-2xl flex flex-col md:flex-row items-center gap-12 relative overflow-hidden">
+<div class="flex-1 z-10">
+<h3 class="text-3xl font-bold text-on-primary-fixed mb-4">Need a custom integration?</h3>
+<p class="text-on-primary-fixed-variant text-lg max-w-md">Our developer API allows you to create complex rules and connect to over 200+ external services.</p>
+<button class="mt-8 bg-on-primary-fixed text-primary-fixed px-8 py-3 rounded-xl font-bold hover:bg-slate-800 transition-colors">Explore API Docs</button>
+</div>
+<div class="w-full md:w-1/3 z-10">
+<img alt="Dashboard visualization" class="rounded-xl shadow-2xl rotate-3" data-alt="clean minimal UI dashboard with abstract data charts and blue accents in high key lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB27KSiOacG3XMQQzgRmqwpKECKFbEXbQoIpbdMtAerGChOcvcDZwkLeo5_PUbQU5jQDc4PtQ44UOEJvM0811YbydKv3pKS3jdumxJG5bf0ctWWjfEQb9-urzh9YKOtbavAvq9WNj-dkJVAGvuLNr7TORD_wgMN356FSG1AEyu7WGQj87V7LVMbMgM1vr0YfaJ9W7z4Pchx6DiInsNvB6CME4LjgtdVATd-IklGqUdMwen_X4NQKiReFCdGIjWXGp6RgPlXTPjomBap"/>
+</div>
+<!-- Abstract visual element -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+</div>
+</div>
 </main>
-{%- endblock %}
-{%- endblock %}
+</body></html>

@@ -1,640 +1,373 @@
-{%- extends "base.html" %}
-{%- block title %}Analytics — HostAI{%- endblock %}
+<!DOCTYPE html>
 
-{%- block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Precision Curator | Analytics Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              "surface-dim": "#121319",
-              "tertiary-fixed-dim": "#ffb960",
-              "tertiary-container": "#ca8103",
-              "on-error": "#690005",
-              "on-tertiary-fixed": "#2a1700",
-              "secondary-fixed-dim": "#00daf3",
-              "primary": "#aec6ff",
-              "surface-container": "#1e1f26",
-              "tertiary": "#ffb960",
-              "primary-fixed-dim": "#aec6ff",
-              "on-tertiary": "#472a00",
-              "inverse-on-surface": "#2f3037",
-              "surface": "#121319",
-              "secondary": "#bdf4ff",
-              "outline": "#8d909e",
-              "surface-variant": "#34343b",
-              "inverse-surface": "#e3e1eb",
-              "on-primary-container": "#00275e",
-              "background": "#121319",
-              "error-container": "#93000a",
-              "surface-bright": "#383940",
-              "primary-fixed": "#d8e2ff",
-              "primary-container": "#5d8ef1",
-              "on-secondary-container": "#00616d",
-              "secondary-container": "#00e3fd",
-              "on-surface": "#e3e1eb",
-              "surface-container-highest": "#34343b",
-              "on-secondary-fixed-variant": "#004f58",
-              "on-secondary-fixed": "#001f24",
-              "surface-container-lowest": "#0d0e14",
-              "on-tertiary-container": "#3e2400",
-              "surface-container-low": "#1a1b22",
-              "on-surface-variant": "#c3c6d4",
-              "surface-container-high": "#292930",
-              "on-secondary": "#00363d",
-              "error": "#ffb4ab",
-              "secondary-fixed": "#9cf0ff",
-              "on-primary-fixed-variant": "#004397",
-              "inverse-primary": "#1e5bba",
-              "on-primary-fixed": "#001a43",
-              "surface-tint": "#aec6ff",
-              "on-error-container": "#ffdad6",
-              "on-primary": "#002e6b",
-              "outline-variant": "#424752",
-              "on-background": "#e3e1eb",
-              "tertiary-fixed": "#ffddb8",
-              "on-tertiary-fixed-variant": "#653e00"
+
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#e0e3e5",
+                        "surface": "#f7f9fb",
+                        "inverse-primary": "#aac7ff",
+                        "on-tertiary-fixed": "#341100",
+                        "error": "#ba1a1a",
+                        "primary-fixed": "#d7e3ff",
+                        "secondary-fixed": "#d5e3fc",
+                        "on-secondary-container": "#57657a",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "on-surface-variant": "#414753",
+                        "on-primary-fixed": "#001b3e",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#ffdbcb",
+                        "primary-fixed-dim": "#aac7ff",
+                        "on-primary-container": "#dfe8ff",
+                        "inverse-surface": "#2d3133",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#f7f9fb",
+                        "on-surface": "#191c1e",
+                        "tertiary": "#883700",
+                        "surface-container-high": "#e6e8ea",
+                        "on-background": "#191c1e",
+                        "secondary": "#515f74",
+                        "error-container": "#ffdad6",
+                        "outline": "#727784",
+                        "on-tertiary-fixed-variant": "#793000",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "secondary-container": "#d5e3fc",
+                        "on-tertiary-container": "#ffe3d6",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "outline-variant": "#c1c6d5",
+                        "on-secondary": "#ffffff",
+                        "primary": "#004e9f",
+                        "surface-container-highest": "#e0e3e5",
+                        "background": "#f7f9fb",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#af4900",
+                        "surface-tint": "#005cba",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-primary-fixed-variant": "#00458e",
+                        "primary-container": "#0066cc",
+                        "surface-container-low": "#f2f4f6",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#eceef0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
             },
-            fontFamily: {
-              "headline": ["Plus Jakarta Sans"],
-              "body": ["Plus Jakarta Sans"],
-              "label": ["Plus Jakarta Sans"]
-            },
-            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
-          },
-        },
-      }
+        }
     </script>
 <style>
-        body {
-            background-color: #08090F;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            color: #e3e1eb;
-        }
+        body { font-family: 'Inter', sans-serif; }
         .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
-        .glass-card {
-            background: rgba(26, 27, 34, 0.7);
+        .glass-nav {
             backdrop-filter: blur(24px);
-            border-top: 1px solid rgba(174, 198, 255, 0.1);
-            border-left: 1px solid rgba(174, 198, 255, 0.1);
+            -webkit-backdrop-filter: blur(24px);
         }
     </style>
-<style>
-/* Compat layer — maps old CSS variables to Obsidian tokens */
-:root{
-  --surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;
-  --border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);
-  --text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;
-  --accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);
-  --success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);
-  --danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);
-  --warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.3);
-  --radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;--nav-h:64px;
-  --rose:#ff6b8a;--kpi-yellow:#ffbd2e;
-}
-.compat-layer h1{font-size:1.8rem;font-weight:800;margin-bottom:0.25rem;color:#e3e1eb}
-.compat-layer h2{font-size:1.1rem;font-weight:700;margin-bottom:0.75rem;color:#e3e1eb}
-.compat-layer h3{font-size:0.92rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
-.compat-layer .card,.compat-layer .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
-.compat-layer label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
-.compat-layer input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.compat-layer select,.compat-layer textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
-.compat-layer input:focus,.compat-layer select:focus,.compat-layer textarea:focus{border-color:#5B8DEF}
-.compat-layer .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
-.compat-layer .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
-.compat-layer .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
-.compat-layer .btn-outline:hover{background:rgba(174,198,255,0.08)}
-.compat-layer .btn-success{background:rgba(39,201,63,0.12);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
-.compat-layer .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
-.compat-layer .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
-.compat-layer .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
-.compat-layer .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
-.compat-layer .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
-.compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
-.compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
-.compat-layer td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
-.compat-layer tr:hover td{background:rgba(174,198,255,0.02)}
-.compat-layer .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
-.compat-layer .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
-.compat-layer .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
-.compat-layer .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
-.compat-layer .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;margin-bottom:0.3rem}
-.compat-layer .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
-.compat-layer .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
-.compat-layer .csv-banner{background:rgba(255,189,46,0.07);border:1px solid rgba(255,189,46,0.2);color:#ffbd2e;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap}
-.compat-layer .csv-banner a{color:#aec6ff}
-.compat-layer .analytics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
-.compat-layer .analytics-widget{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.25rem;text-align:center}
-.compat-layer .widget-value{font-size:2rem;font-weight:800;color:#aec6ff;font-family:'Plus Jakarta Sans',sans-serif}
-.compat-layer .widget-label{font-size:0.72rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.06em;margin-top:0.25rem}
-.compat-layer .widget-sub{font-size:0.7rem;color:#424752;margin-top:0.15rem}
-.compat-layer .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
-.compat-layer .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
-.compat-layer .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
-.compat-layer .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
-.compat-layer .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;margin-left:0.2rem;background:rgba(174,198,255,0.08);color:#aec6ff}
-.compat-layer .badge-escalation{background:rgba(255,180,171,0.1);color:#ffb4ab}
-.compat-layer .badge-whatsapp{background:rgba(39,201,63,0.1);color:#27c93f}
-.compat-layer .badge-email{background:rgba(91,141,239,0.1);color:#5B8DEF}
-.compat-layer .badge-sms{background:rgba(255,189,46,0.1);color:#ffbd2e}
-.compat-layer .draft-text{font-size:0.85rem;line-height:1.6;color:#c3c6d4;white-space:pre-wrap;background:#0d0e14;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.75rem;border:1px solid rgba(66,71,82,0.2)}
-.compat-layer .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
-.compat-layer .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
-.compat-layer .timeline{display:flex;flex-direction:column;gap:0}
-.compat-layer .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
-.compat-layer .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
-.compat-layer .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
-.compat-layer .timeline-text{font-size:0.8rem;color:#8d909e}
-.compat-layer input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
-.compat-layer .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
-.compat-layer .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
-.compat-layer .card-meta{font-size:0.75rem;color:#8d909e}
-.compat-layer .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-.compat-layer details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
-.compat-layer code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
-</style>
-{%- endblock %}
-
-{%- block nav %}{%- endblock %}
-
-{%- block main_wrapper %}
-{%- block content %}
-<!-- SideNavBar -->
-<!-- SideNavBar Shell -->
-<!-- SideNavBar Shell -->
+</head>
+<body class="bg-surface text-on-surface">
+<!-- Top Navigation Bar -->
+<nav class="fixed top-0 w-full z-50 flex items-center justify-between px-8 h-16 w-full bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-sm">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-slate-900 dark:text-slate-50">Precision Curator</span>
+<div class="hidden md:flex items-center gap-6">
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-inter tracking-tight transition-colors" href="#">Portfolio</a>
+<a class="text-blue-700 dark:text-blue-400 font-semibold border-b-2 border-blue-700 dark:border-blue-400 pb-1 font-inter tracking-tight" href="#">Analytics</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-inter tracking-tight transition-colors" href="#">Financials</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-inter tracking-tight transition-colors" href="#">Team</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+<div class="h-8 w-[1px] bg-slate-200/20"></div>
+<button class="bg-primary-container text-on-primary-container px-4 py-2 rounded-xl text-sm font-semibold transition-colors active:scale-95 duration-200">Generate Report</button>
+<button class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm active:scale-95 duration-200">Add Property</button>
+</div>
+</nav>
+<!-- Side Navigation -->
 <!-- Mobile hamburger -->
 <button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
 <!-- Sidebar overlay for mobile -->
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
-<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
-<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
-<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
+<aside id="sidebar" class="h-screen w-64 fixed left-0 top-0 bg-slate-50 dark:bg-slate-950 flex flex-col py-6 px-4 gap-y-8 pt-20 border-r border-outline-variant/10 -translate-x-full md:translate-x-0 transition-transform duration-300">
+<div class="flex items-center gap-3 px-2">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden">
+<img alt="Property Manager" class="w-full h-full object-cover" data-alt="professional portrait of a high-end property manager in a modern office with glass windows and minimalist decor" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBY3dHOY4krhg_S5mUt9x813Nei1eTn2nVQiqErehN2tWli65CzNgtNDJZbw5qCCGipO5QwiEDF8KGZlcD0gYO4tOPS_3PR2Js0FzmouZemcNKtCjIWlMMmnA49edjLFodZz7gVqQmm-DUe6P9vJ66EN1FGDjMfRhNgB3JekSa08zdTRh_A6NdXQ7ZvcUDLXp5ecN1CgJK_6XgzvYipgG7c7vt14k-BypbX8sEd8X4ApXfYvbI_a0i5g1Z2u9flLjK9MKE6x8GmqKyZ"/>
 </div>
-<span>HostAI</span>
-</a>
-<nav class="flex-1 px-4 space-y-1">
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<div>
+<p class="text-sm font-black text-blue-700 dark:text-blue-400">Admin Portal</p>
+<p class="text-xs text-slate-500">Managing 24 Properties</p>
+</div>
+</div>
+<div class="flex flex-col gap-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="#">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-                Dashboard
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span>Inquiries</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span>Bookings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="domain">domain</span>
+<span>Properties</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="#">
 <span class="material-symbols-outlined" data-icon="forum">forum</span>
-                Conversations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
-<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
-                Reservations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
-<span class="material-symbols-outlined" data-icon="history">history</span>
-                Activity
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
-<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
-                Analytics
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
-<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
-                Revenue & ROI
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
-                Voice AI
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
-<span class="material-symbols-outlined" data-icon="hub">hub</span>
-                Operations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
-                Settings
-            </a>
-{% if tenant is defined and tenant and is_admin(tenant.email) %}
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
-<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
-                Admin
-            </a>
-{% endif %}
-</nav>
-<div class="mt-auto p-6 space-y-4">
-<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
-<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
-  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+<span>Messages</span>
+</a>
 </div>
-<div class="flex-1 min-w-0">
-<p class="text-white font-bold truncate">{{ tenant.first_name or "Your Account" }}</p>
-<p class="text-slate-500 text-xs truncate">Host Administrator</p>
-</div>
-</div>
-<form method="post" action="/logout">
-  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
-    <span class="material-symbols-outlined text-sm">logout</span>
-    Sign Out
-  </button>
-</form>
+<div class="mt-auto flex flex-col gap-y-1">
+<button class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span>Help Center</span>
+</button>
+<button class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Log Out</span>
+</button>
 </div>
 </aside>
-<!-- TopNavBar Shell -->
-<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
-<div class="flex items-center flex-1 max-w-md">
-<div class="relative w-full">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
-<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts, or analytics..." type="text"/>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 px-10 pb-12 min-h-screen">
+<!-- Dashboard Header -->
+<header class="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
+<div>
+<h1 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Analytics Overview</h1>
+<p class="text-on-surface-variant text-lg">Performance intelligence across your property portfolio.</p>
 </div>
+<div class="flex gap-4 items-center bg-surface-container-low p-2 rounded-full shadow-sm">
+<div class="flex items-center gap-2 px-4 py-2 bg-surface-container-lowest rounded-full">
+<span class="material-symbols-outlined text-sm text-primary" data-icon="calendar_month">calendar_month</span>
+<select class="bg-transparent border-none focus:ring-0 text-sm font-medium text-on-surface py-0 cursor-pointer">
+<option>Last 30 Days</option>
+<option>Last 90 Days</option>
+<option>Year to Date</option>
+</select>
 </div>
-<div class="flex items-center gap-6">
-<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
-<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
-<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
-</button>
-<div class="h-8 w-px bg-white/10"></div>
-<div class="flex items-center gap-3 cursor-pointer group">
-<span class="text-slate-200 group-hover:text-white transition-colors">Account</span>
-<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
-</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-surface-container-lowest rounded-full">
+<span class="material-symbols-outlined text-sm text-primary" data-icon="domain">domain</span>
+<select class="bg-transparent border-none focus:ring-0 text-sm font-medium text-on-surface py-0 cursor-pointer">
+<option>All Properties</option>
+<option>The Glass House</option>
+<option>Skyline Penthouse</option>
+<option>Urban Retreat</option>
+</select>
 </div>
 </div>
 </header>
-
-<!-- Main Content Area -->
-<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen">
-<div class="mb-8">
-  <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Analytics</h1>
-  <p class="text-slate-400 text-sm">Track your AI performance, revenue, and occupancy trends</p>
+<!-- KPI Row -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+<!-- KPI 1 -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border-l-4 border-primary">
+<p class="label-md text-on-surface-variant font-medium mb-1">Total Inquiries</p>
+<div class="flex items-baseline gap-3 mb-4">
+<h2 class="text-4xl font-bold tracking-tight text-on-surface">1,284</h2>
+<span class="text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">+12.5%</span>
 </div>
-<div class="compat-layer">
-<div class="analytics-page">
-  <div class="page-header">
-    <h1>Analytics Dashboard</h1>
-
-    <div class="filters">
-      <div class="date-range">
-        <a href="?range_days=7" {% if range_days == 7 %}class="active"{% endif %}>7 days</a>
-        <a href="?range_days=30" {% if range_days == 30 %}class="active"{% endif %}>30 days</a>
-        <a href="?range_days=90" {% if range_days == 90 %}class="active"{% endif %}>90 days</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- KPI Cards -->
-  <div class="kpi-cards">
-    <div class="kpi-card">
-      <div class="kpi-value">{{ kpis['drafts']['total'] | default(0) }}</div>
-      <div class="kpi-label">Total Drafts</div>
-      <div class="kpi-subtext">in selected period</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ '%.0f'|format(kpis['drafts']['approval_rate'] | default(0)) }}%</div>
-      <div class="kpi-label">Approval Rate</div>
-      <div class="kpi-subtext">of pending drafts approved</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ '%.0f'|format(((kpis['drafts']['avg_response_seconds'] or 0) / 60)) }}m</div>
-      <div class="kpi-label">Avg Response</div>
-      <div class="kpi-subtext">time to approve</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ kpis['reservations']['active_stays'] | default(0) }}</div>
-      <div class="kpi-label">Active Stays</div>
-      <div class="kpi-subtext">in progress</div>
-    </div>
-  </div>
-
-  <!-- Guest Contact Stats -->
-  <div class="kpi-cards" style="margin-top: 2rem;">
-    <h3 style="grid-column: 1 / -1; margin: 0 0 1rem 0; font-size: 1rem;">Guest Check-ins</h3>
-    <div class="kpi-card">
-      <div class="kpi-value">{{ guest_contact_stats.total_guests | default(0) }}</div>
-      <div class="kpi-label">Total Guests</div>
-      <div class="kpi-subtext">added for check-in</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ guest_contact_stats.sent_pct | default(0) }}%</div>
-      <div class="kpi-label">Welcome Sent</div>
-      <div class="kpi-subtext">{{ guest_contact_stats.welcome_sent | default(0) }} guests</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ guest_contact_stats.welcome_pending | default(0) }}</div>
-      <div class="kpi-label">Pending</div>
-      <div class="kpi-subtext">not yet sent</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ guest_contact_stats.welcome_failed | default(0) }}</div>
-      <div class="kpi-label">Failed</div>
-      <div class="kpi-subtext">delivery errors</div>
-    </div>
-  </div>
-
-  <!-- Auto-Send Stats -->
-  <div class="kpi-cards" style="margin-top: 2rem;">
-    <h3 style="grid-column: 1 / -1; margin: 0 0 1rem 0; font-size: 1rem;">🤖 Message Automation</h3>
-    <div class="kpi-card">
-      <div class="kpi-value">{{ auto_send_stats.auto_send_pct | default(0) }}%</div>
-      <div class="kpi-label">Auto-Sent</div>
-      <div class="kpi-subtext">{{ auto_send_stats.auto_sent | default(0) }} of {{ auto_send_stats.total | default(0) }}</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ auto_send_stats.pending | default(0) }}</div>
-      <div class="kpi-label">Pending Review</div>
-      <div class="kpi-subtext">need your decision</div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-value">{{ auto_send_stats.total | default(0) }}</div>
-      <div class="kpi-label">Total Messages</div>
-      <div class="kpi-subtext">in this period</div>
-    </div>
-  </div>
-
-  <!-- Charts Section -->
-  <script src="https://unpkg.com/chart.js@4/dist/chart.umd.min.js"></script>
-
-  <div class="charts-grid">
-    <div class="chart-container">
-      <h3>Daily Draft Volume</h3>
-      <canvas id="dailyVolumeChart"></canvas>
-    </div>
-
-    <div class="chart-container">
-      <h3>Approval Rate Trend</h3>
-      <canvas id="approvalRateChart"></canvas>
-    </div>
-
-    <div class="chart-container">
-      <h3>Message Channels</h3>
-      <canvas id="channelBreakdownChart"></canvas>
-    </div>
-
-    <div class="chart-container">
-      <h3>Guest Sentiment</h3>
-      <canvas id="sentimentChart"></canvas>
-    </div>
-  </div>
-
-  <!-- Historical Snapshots -->
-  {% if snapshots %}
-  <div class="snapshots-section">
-    <h2>Historical KPI Snapshots</h2>
-    <div class="snapshots-table">
-      <div class="snapshot-header">
-        <div>Date</div>
-        <div>Drafts</div>
-        <div>Approval Rate</div>
-        <div>Avg Response</div>
-      </div>
-      {% for snap in snapshots | reverse %}
-      <div class="snapshot-row">
-        <div>{{ snap.period_start.strftime('%b %d, %Y') }}</div>
-        <div>{{ snap.total_drafts }}</div>
-        <div>{{ '%.0f'|format(snap.approval_rate | default(0)) }}%</div>
-        <div>{{ '%.0f'|format(((snap.avg_response_seconds or 0) / 60)) }}m</div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
+<div class="h-12 w-full flex items-end gap-1">
+<div class="bg-primary-fixed-dim w-full rounded-t-sm h-1/2"></div>
+<div class="bg-primary-fixed-dim w-full rounded-t-sm h-3/4"></div>
+<div class="bg-primary-fixed-dim w-full rounded-t-sm h-1/2"></div>
+<div class="bg-primary-fixed-dim w-full rounded-t-sm h-2/3"></div>
+<div class="bg-primary w-full rounded-t-sm h-full"></div>
 </div>
-
-<style>
-  .analytics-page {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-  }
-  .page-header {
-    margin-bottom: 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .page-header h1 { font-size: 2rem; margin: 0; color: #e3e1eb; }
-  .filters { display: flex; gap: 1rem; }
-  .date-range {
-    display: flex;
-    gap: 0.5rem;
-    background: rgba(26,27,34,0.7);
-    padding: 0.5rem;
-    border-radius: 8px;
-    border: 1px solid rgba(66,71,82,0.4);
-  }
-  .date-range a {
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #c3c6d4;
-    text-decoration: none;
-    transition: all 150ms ease;
-  }
-  .date-range a:hover { background: rgba(174,198,255,0.06); color: #e3e1eb; }
-  .date-range a.active { background: #5B8DEF; color: #fff; }
-  .kpi-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-  .kpi-card {
-    background: rgba(26,27,34,0.7);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(174,198,255,0.08);
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 24px rgba(0,0,0,0.3);
-  }
-  .kpi-value { font-size: 2rem; font-weight: 800; color: #aec6ff; margin-bottom: 0.5rem; }
-  .kpi-label { font-size: 0.95rem; font-weight: 600; color: #e3e1eb; margin-bottom: 0.3rem; }
-  .kpi-subtext { font-size: 0.8rem; color: #8d909e; }
-  .charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 2rem;
-    margin-bottom: 3rem;
-  }
-  .chart-container {
-    background: rgba(26,27,34,0.7);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(174,198,255,0.08);
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 24px rgba(0,0,0,0.3);
-  }
-  .chart-container h3 { font-size: 1rem; margin-bottom: 1rem; color: #e3e1eb; font-weight: 700; }
-  .chart-container canvas { max-height: 300px; }
-  .snapshots-section { margin-top: 3rem; }
-  .snapshots-section h2 { font-size: 1.3rem; margin-bottom: 1rem; color: #e3e1eb; font-weight: 700; }
-  .snapshots-table {
-    background: rgba(26,27,34,0.7);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(174,198,255,0.08);
-    border-radius: 12px;
-    overflow: hidden;
-  }
-  .snapshot-header,
-  .snapshot-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1.2fr 1.2fr;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid rgba(66,71,82,0.2);
-    font-size: 0.9rem;
-  }
-  .snapshot-header {
-    background: rgba(13,14,20,0.6);
-    font-weight: 600;
-    color: #8d909e;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .snapshot-row:last-child { border-bottom: none; }
-  .snapshot-row { color: #c3c6d4; }
-  .snapshot-row:hover { background: rgba(174,198,255,0.03); }
-  @media (max-width: 768px) {
-    .page-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-    .charts-grid { grid-template-columns: 1fr; }
-    .snapshot-header, .snapshot-row { grid-template-columns: 1fr; gap: 0.5rem; }
-  }
-</style>
-
-<script nonce="{{ request.state.csp_nonce }}">
-  const snapshots = {{ snapshots_data | tojson }} || [];
-
-  // Extract dates and values from snapshots
-  const dates = snapshots.map(s => new Date(s.period_start).toLocaleDateString());
-  const draftsData = snapshots.map(s => s.total_drafts || 0);
-  const approvalData = snapshots.map(s => ((s.approval_rate || 0) * 100).toFixed(1));
-
-  // Daily Volume Chart
-  const dailyCtx = document.getElementById('dailyVolumeChart')?.getContext('2d');
-  if (dailyCtx) {
-    new Chart(dailyCtx, {
-      type: 'bar',
-      data: {
-        labels: dates || ['Day 1', 'Day 2', 'Day 3'],
-        datasets: [{
-          label: 'Drafts',
-          data: draftsData || [4, 6, 3],
-          backgroundColor: 'rgba(79, 142, 247, 0.85)',
-          borderColor: 'rgba(232, 160, 32, 1)',
-          borderWidth: 1,
-          borderRadius: 4,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } },
-      },
-    });
-  }
-
-  // Approval Rate Chart
-  const approvalCtx = document.getElementById('approvalRateChart')?.getContext('2d');
-  if (approvalCtx) {
-    new Chart(approvalCtx, {
-      type: 'line',
-      data: {
-        labels: dates || ['Day 1', 'Day 2', 'Day 3'],
-        datasets: [{
-          label: 'Approval Rate %',
-          data: approvalData || [75, 80, 72],
-          borderColor: 'rgba(34, 197, 94, 1)',
-          backgroundColor: 'rgba(34, 197, 94, 0.1)',
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: 'rgba(34, 197, 94, 1)',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { min: 0, max: 100 } },
-      },
-    });
-  }
-
-  // Channel Breakdown Chart
-  const channelCtx = document.getElementById('channelBreakdownChart')?.getContext('2d');
-  if (channelCtx) {
-    new Chart(channelCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['WhatsApp', 'Email', 'SMS'],
-        datasets: [{
-          data: [45, 30, 25],
-          backgroundColor: [
-            'rgba(79, 142, 247, 0.85)',
-            'rgba(255, 77, 109, 0.8)',
-            'rgba(34, 197, 94, 0.8)',
-          ],
-          borderColor: ['#fff', '#fff', '#fff'],
-          borderWidth: 2,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: { legend: { position: 'bottom' } },
-      },
-    });
-  }
-
-  // Sentiment Chart
-  const sentimentCtx = document.getElementById('sentimentChart')?.getContext('2d');
-  if (sentimentCtx) {
-    new Chart(sentimentCtx, {
-      type: 'bar',
-      data: {
-        labels: ['Week 1', 'Week 2', 'Week 3'],
-        datasets: [
-          {
-            label: 'Positive',
-            data: [20, 22, 19],
-            backgroundColor: 'rgba(34, 197, 94, 0.8)',
-          },
-          {
-            label: 'Neutral',
-            data: [30, 28, 32],
-            backgroundColor: 'rgba(79, 142, 247, 0.85)',
-          },
-          {
-            label: 'Negative',
-            data: [5, 4, 6],
-            backgroundColor: 'rgba(255, 77, 109, 0.8)',
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        indexAxis: 'x',
-        scales: { x: { stacked: false }, y: { stacked: false } },
-      },
-    });
-  }
-</script>
+</div>
+<!-- KPI 2 -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border-l-4 border-secondary">
+<p class="label-md text-on-surface-variant font-medium mb-1">Avg. Response Time</p>
+<div class="flex items-baseline gap-3 mb-4">
+<h2 class="text-4xl font-bold tracking-tight text-on-surface">12m</h2>
+<span class="text-sm font-bold text-emerald-600 flex items-center gap-1">
+<span class="material-symbols-outlined text-base" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Good
+                    </span>
+</div>
+<p class="text-sm text-on-surface-variant">4 minutes faster than previous 30 days.</p>
+</div>
+<!-- KPI 3 -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border-l-4 border-tertiary">
+<p class="label-md text-on-surface-variant font-medium mb-1">Conversion Rate</p>
+<div class="flex items-baseline gap-3 mb-4">
+<h2 class="text-4xl font-bold tracking-tight text-on-surface">64%</h2>
+<span class="text-sm font-bold text-primary bg-primary-fixed px-2 py-0.5 rounded-full">+8% vs Prev</span>
+</div>
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full w-[64%]"></div>
+</div>
+</div>
+</div>
+<!-- Main Chart Section -->
+<section class="bg-surface-container-lowest p-10 rounded-xl shadow-sm mb-12">
+<div class="flex justify-between items-center mb-10">
+<div>
+<h3 class="text-2xl font-bold tracking-tight">Guest Inquiries Over Time</h3>
+<p class="text-on-surface-variant">Visualizing daily inquiry volume and engagement.</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 text-xs font-semibold bg-primary-fixed text-primary rounded-full">Daily</button>
+<button class="px-4 py-2 text-xs font-semibold hover:bg-surface-container rounded-full transition-colors">Weekly</button>
+</div>
+</div>
+<!-- Mock Line Chart Area -->
+<div class="w-full h-[320px] relative">
+<div class="absolute inset-0 flex items-end justify-between px-2">
+<!-- Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between opacity-5">
+<div class="border-t border-on-surface w-full"></div>
+<div class="border-t border-on-surface w-full"></div>
+<div class="border-t border-on-surface w-full"></div>
+<div class="border-t border-on-surface w-full"></div>
+</div>
+<!-- Vector Path Visualization via simple bars for design fidelity -->
+<div class="flex-1 h-[60%] mx-1 bg-gradient-to-t from-primary/5 to-primary/20 rounded-t-xl"></div>
+<div class="flex-1 h-[45%] mx-1 bg-gradient-to-t from-primary/5 to-primary/20 rounded-t-xl"></div>
+<div class="flex-1 h-[75%] mx-1 bg-gradient-to-t from-primary/5 to-primary/20 rounded-t-xl"></div>
+<div class="flex-1 h-[90%] mx-1 bg-gradient-to-t from-primary/5 to-primary/20 rounded-t-xl border-t-4 border-primary shadow-[0_-8px_24px_rgba(0,78,159,0.1)]"></div>
+<div class="flex-1 h-[65%] mx-1 bg-gradient-to-t from-primary/5 to-primary/20 rounded-t-xl"></div>
+<div class="flex-1 h-[40%] mx-1 bg-gradient-to-t from-primary/5 to-primary/20 rounded-t-xl"></div>
+<div class="flex-1 h-[55%] mx-1 bg-gradient-to-t from-primary/5 to-primary/20 rounded-t-xl"></div>
+<div class="flex-1 h-[70%] mx-1 bg-gradient-to-t from-primary/5 to-primary/20 rounded-t-xl"></div>
+</div>
+</div>
+<div class="flex justify-between mt-6 px-2 text-xs font-medium text-on-surface-variant uppercase tracking-widest">
+<span>01 Oct</span>
+<span>08 Oct</span>
+<span>15 Oct</span>
+<span>22 Oct</span>
+<span>30 Oct</span>
+</div>
+</section>
+<!-- Two Column Deep Dive -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- Response Distribution -->
+<div class="bg-surface-container-low p-8 rounded-xl">
+<h3 class="text-xl font-bold tracking-tight mb-8">Message Response Times</h3>
+<div class="space-y-6">
+<div class="group">
+<div class="flex justify-between text-sm mb-2">
+<span class="text-on-surface-variant font-medium">&lt; 5 Minutes</span>
+<span class="font-bold">42%</span>
+</div>
+<div class="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full w-[42%] group-hover:opacity-80 transition-opacity"></div>
+</div>
+</div>
+<div class="group">
+<div class="flex justify-between text-sm mb-2">
+<span class="text-on-surface-variant font-medium">5 - 15 Minutes</span>
+<span class="font-bold">38%</span>
+</div>
+<div class="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full w-[38%] group-hover:opacity-80 transition-opacity"></div>
+</div>
+</div>
+<div class="group">
+<div class="flex justify-between text-sm mb-2">
+<span class="text-on-surface-variant font-medium">15 - 60 Minutes</span>
+<span class="font-bold">15%</span>
+</div>
+<div class="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-secondary-fixed-dim rounded-full w-[15%] group-hover:opacity-80 transition-opacity"></div>
+</div>
+</div>
+<div class="group">
+<div class="flex justify-between text-sm mb-2">
+<span class="text-on-surface-variant font-medium">1 Hour +</span>
+<span class="font-bold">5%</span>
+</div>
+<div class="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-outline-variant rounded-full w-[5%] group-hover:opacity-80 transition-opacity"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Booking Trends -->
+<div class="bg-surface-container-low p-8 rounded-xl relative overflow-hidden">
+<div class="flex justify-between items-start mb-8">
+<h3 class="text-xl font-bold tracking-tight">Booking Trends</h3>
+<div class="flex gap-4">
+<div class="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
+<div class="w-2.5 h-2.5 rounded-full bg-primary"></div> Airbnb
+                        </div>
+<div class="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
+<div class="w-2.5 h-2.5 rounded-full bg-tertiary"></div> VRBO
+                        </div>
+<div class="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
+<div class="w-2.5 h-2.5 rounded-full bg-secondary"></div> Direct
+                        </div>
+</div>
+</div>
+<!-- Stylized Bento-like Trend Cards -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between h-32">
+<p class="text-xs font-semibold text-on-surface-variant">Direct Bookings</p>
+<div>
+<p class="text-2xl font-black text-on-surface">284</p>
+<p class="text-[10px] text-emerald-600 font-bold">+18% growth</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between h-32">
+<p class="text-xs font-semibold text-on-surface-variant">RevPAR</p>
+<div>
+<p class="text-2xl font-black text-on-surface">$142.50</p>
+<p class="text-[10px] text-on-surface-variant font-bold">Stable this week</p>
+</div>
+</div>
+<div class="col-span-2 bg-primary p-6 rounded-xl text-white flex items-center justify-between">
+<div>
+<p class="text-xs font-bold opacity-80 uppercase tracking-tighter">Total Portfolio Revenue</p>
+<p class="text-3xl font-black">$42,902.00</p>
+</div>
+<button class="bg-white/20 backdrop-blur-md p-3 rounded-full hover:bg-white/30 transition-colors">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+</button>
+</div>
+</div>
+</div>
 </div>
 </main>
-{%- endblock %}
-{%- endblock %}
+<!-- Floating Quick Action Button -->
+<div class="fixed bottom-8 right-8 z-40">
+<button class="flex items-center gap-2 bg-primary text-white pl-4 pr-6 py-4 rounded-full shadow-2xl hover:-translate-y-1 active:scale-95 transition-all duration-300">
+<span class="material-symbols-outlined" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="font-bold text-sm">Quick Insights</span>
+</button>
+</div>
+</body></html>

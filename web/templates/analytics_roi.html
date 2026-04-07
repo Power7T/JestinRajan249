@@ -1,266 +1,462 @@
-{%- extends "base.html" %}
-{%- block title %}Revenue & ROI — HostAI{%- endblock %}
+<!DOCTYPE html>
 
-{%- block head %}
-<script src="https://cdn.js.mux.ai/v1/chart.js" nonce="{{ request.state.csp_nonce }}"></script>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
-tailwind.config = {
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        "surface-dim": "#121319",
-        "surface": "#121319",
-        "surface-container": "#1e1f26",
-        "primary": "#aec6ff",
-        "on-primary": "#002e6b",
-        "error": "#ffb4ab",
-      }
-    }
-  }
-}
-</script>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Precision Curator | ROI Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+
 <style>
-  body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color: #e3e1eb; }
-  .glass-card { background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24; }
-</style>
-{%- endblock %}
-
-{%- block main_wrapper %}
-{%- block content %}
-<!-- Sidebar -->
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-container": "#dfe8ff",
+                      "on-tertiary-fixed-variant": "#793000",
+                      "on-primary": "#ffffff",
+                      "on-tertiary-container": "#ffe3d6",
+                      "surface-container-high": "#e6e8ea",
+                      "tertiary-fixed": "#ffdbcb",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary-fixed": "#0d1c2e",
+                      "error-container": "#ffdad6",
+                      "surface-variant": "#e0e3e5",
+                      "on-surface-variant": "#414753",
+                      "surface-container": "#eceef0",
+                      "secondary-fixed": "#d5e3fc",
+                      "primary-fixed": "#d7e3ff",
+                      "primary-container": "#0066cc",
+                      "tertiary-container": "#af4900",
+                      "surface-dim": "#d8dadc",
+                      "surface-tint": "#005cba",
+                      "on-primary-fixed": "#001b3e",
+                      "tertiary-fixed-dim": "#ffb692",
+                      "on-secondary-container": "#57657a",
+                      "on-primary-fixed-variant": "#00458e",
+                      "surface-bright": "#f7f9fb",
+                      "inverse-surface": "#2d3133",
+                      "outline": "#727784",
+                      "on-error": "#ffffff",
+                      "surface": "#f7f9fb",
+                      "secondary-container": "#d5e3fc",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-highest": "#e0e3e5",
+                      "background": "#f7f9fb",
+                      "on-secondary": "#ffffff",
+                      "secondary": "#515f74",
+                      "outline-variant": "#c1c6d5",
+                      "on-tertiary-fixed": "#341100",
+                      "primary-fixed-dim": "#aac7ff",
+                      "on-error-container": "#93000a",
+                      "error": "#ba1a1a",
+                      "inverse-on-surface": "#eff1f3",
+                      "tertiary": "#883700",
+                      "surface-container-low": "#f2f4f6",
+                      "on-secondary-fixed-variant": "#3a485b",
+                      "on-background": "#191c1e",
+                      "on-surface": "#191c1e",
+                      "secondary-fixed-dim": "#b9c7df",
+                      "primary": "#004e9f",
+                      "inverse-primary": "#aac7ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "fontFamily": {
+                      "headline": ["Inter"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex">
+<!-- SideNavBar (Authority Source: JSON & Design System) -->
 <!-- Mobile hamburger -->
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
-<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col font-['Plus_Jakarta_Sans'] text-sm font-medium">
-<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-[#5B8DEF] flex items-center justify-center">
-<span class="material-symbols-outlined text-[#002e6b] text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
+<!-- Sidebar overlay for mobile -->
+<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+<aside id="sidebar" class="h-screen w-64 fixed left-0 top-0 flex flex-col gap-y-6 py-8 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300">
+<div class="px-6 flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="domain">domain</span>
 </div>
-<span>HostAI</span>
-</a>
-<nav class="flex-1 px-4 space-y-1">
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>Dashboard</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
-<span class="material-symbols-outlined" data-icon="forum">forum</span>Conversations</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
-<span class="material-symbols-outlined" data-icon="event_available">event_available</span>Reservations</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
-<span class="material-symbols-outlined" data-icon="history">history</span>Activity</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
-<span class="material-symbols-outlined" data-icon="analytics">analytics</span>Analytics</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
-<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>Revenue & ROI</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>Voice AI</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
-<span class="material-symbols-outlined" data-icon="hub">hub</span>Operations</a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>Settings</a>
-{% if tenant is defined and tenant and is_admin(tenant.email) %}
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
-<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>Admin</a>
-{% endif %}
+<div>
+<h2 class="text-lg font-black text-slate-900 dark:text-slate-50 leading-none">Global Realty</h2>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant mt-1">Enterprise Tier</p>
+</div>
+</div>
+<nav class="flex-1 mt-4">
+<div class="text-slate-500 dark:text-slate-400 px-4 py-3 mx-2 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all cursor-pointer flex items-center gap-3 group">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-sans text-sm font-medium">Dashboard</span>
+</div>
+<div class="text-slate-500 dark:text-slate-400 px-4 py-3 mx-2 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all cursor-pointer flex items-center gap-3 group">
+<span class="material-symbols-outlined" data-icon="domain">domain</span>
+<span class="font-sans text-sm font-medium">Portfolio</span>
+</div>
+<div class="text-slate-500 dark:text-slate-400 px-4 py-3 mx-2 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all cursor-pointer flex items-center gap-3 group">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-sans text-sm font-medium">Revenue</span>
+</div>
+<div class="text-slate-500 dark:text-slate-400 px-4 py-3 mx-2 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all cursor-pointer flex items-center gap-3 group">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-sans text-sm font-medium">Expenses</span>
+</div>
+<!-- ACTIVE TAB: Reports (closest match to Analytics Dashboard) -->
+<div class="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full px-4 py-3 mx-2 translate-x-1 duration-300 flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-sans text-sm font-medium">Reports</span>
+</div>
 </nav>
-<div class="mt-auto p-6 space-y-4">
-<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
-<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
-  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+<div class="mt-auto px-2">
+<div class="text-slate-500 dark:text-slate-400 px-4 py-3 mx-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span class="font-sans text-sm font-medium">Support</span>
 </div>
-<div class="flex-1 min-w-0">
-<p class="text-white font-bold truncate">{{ tenant.first_name or tenant.email if tenant else "Your Account" }}</p>
-<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+<div class="text-slate-500 dark:text-slate-400 px-4 py-3 mx-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-sans text-sm font-medium">Sign Out</span>
 </div>
-</div>
-<form method="post" action="/logout">
-  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
-    <span class="material-symbols-outlined text-sm">logout</span>Sign Out
-  </button>
-</form>
 </div>
 </aside>
-
-<!-- Main -->
-<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen">
-    <div class="mb-10">
-      <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">Revenue & ROI</h1>
-      <p class="text-slate-400 text-sm">Value delivered by your AI assistant</p>
-    </div>
-
-    <!-- KPI Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <!-- Hours Saved -->
-      <div class="glass-card rounded-3xl p-8">
-        <div class="flex items-center justify-between mb-4">
-          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Hours Saved</p>
-          <span class="material-symbols-outlined text-primary text-2xl">schedule</span>
-        </div>
-        <p class="text-4xl font-extrabold text-white mb-2">{{ total_hours_saved }}</p>
-        <p class="text-slate-400 text-xs">In the last {{ range_days }} days</p>
-      </div>
-
-      <!-- Messages Handled -->
-      <div class="glass-card rounded-3xl p-8">
-        <div class="flex items-center justify-between mb-4">
-          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Messages Handled</p>
-          <span class="material-symbols-outlined text-secondary-fixed-dim text-2xl">mail</span>
-        </div>
-        <p class="text-4xl font-extrabold text-white mb-2">{{ total_messages_handled }}</p>
-        <p class="text-slate-400 text-xs">AI-generated responses</p>
-      </div>
-
-      <!-- Automation Rate -->
-      <div class="glass-card rounded-3xl p-8">
-        <div class="flex items-center justify-between mb-4">
-          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Automation Rate</p>
-          <span class="material-symbols-outlined text-tertiary text-2xl">trending_up</span>
-        </div>
-        <p class="text-4xl font-extrabold text-white mb-2">{{ automation_rate }}%</p>
-        <p class="text-slate-400 text-xs">Messages auto-approved</p>
-      </div>
-
-      <!-- Estimated Value -->
-      <div class="glass-card rounded-3xl p-8 border border-primary/30 bg-primary/5">
-        <div class="flex items-center justify-between mb-4">
-          <p class="text-[0.65rem] font-bold text-primary uppercase tracking-widest">Est. Value</p>
-          <span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1;">verified</span>
-        </div>
-        <p class="text-4xl font-extrabold text-primary mb-2">${{ estimated_value }}</p>
-        <p class="text-slate-400 text-xs">At ${{ hourly_rate }}/hr saved labor</p>
-      </div>
-    </div>
-
-    <!-- Weekly Trend Chart -->
-    <div class="glass-card rounded-3xl p-8 mb-8">
-      <h2 class="text-lg font-bold text-white mb-6">Weekly Trend</h2>
-      <canvas id="roi-chart" class="h-64"></canvas>
-    </div>
-
-    <!-- Breakdown -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Value Breakdown -->
-      <div class="glass-card rounded-3xl p-6">
-        <h3 class="text-lg font-bold text-white mb-4">Value Sources</h3>
-        <ul class="space-y-3 text-sm">
-          <li class="flex justify-between items-center">
-            <span class="text-slate-400">Time savings</span>
-            <span class="font-bold text-white">{{ total_hours_saved }}h</span>
-          </li>
-          <li class="flex justify-between items-center">
-            <span class="text-slate-400">Messages automated</span>
-            <span class="font-bold text-primary">{{ total_approvals }}</span>
-          </li>
-          <li class="flex justify-between items-center">
-            <span class="text-slate-400">Total messages</span>
-            <span class="font-bold text-white">{{ total_messages_handled }}</span>
-          </li>
-          <li class="pt-2 border-t border-white/10 flex justify-between items-center">
-            <span class="text-slate-300">Estimated value</span>
-            <span class="font-extrabold text-primary text-lg">${{ estimated_value }}</span>
-          </li>
-        </ul>
-      </div>
-
-      <!-- Recommendations -->
-      <div class="glass-card rounded-3xl p-6 border border-primary/20 bg-primary/5">
-        <h3 class="text-lg font-bold text-primary mb-4">💡 Tips to Maximize ROI</h3>
-        <ul class="space-y-2 text-sm text-slate-400">
-          <li class="flex gap-2">
-            <span class="text-primary font-bold">•</span>
-            <span>Enable <strong>auto-send</strong> for routine messages to increase automation rate</span>
-          </li>
-          <li class="flex gap-2">
-            <span class="text-primary font-bold">•</span>
-            <span>Use <strong>automation rules</strong> to escalate complex messages automatically</span>
-          </li>
-          <li class="flex gap-2">
-            <span class="text-primary font-bold">•</span>
-            <span>Complete your <strong>knowledge base</strong> for better AI understanding</span>
-          </li>
-          <li class="flex gap-2">
-            <span class="text-primary font-bold">•</span>
-            <span>Check <strong>Analytics</strong> for detailed performance insights</span>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </main>
-
-<script nonce="{{ request.state.csp_nonce }}">
-document.addEventListener('DOMContentLoaded', function() {
-  const ctx = document.getElementById('roi-chart');
-  if (!ctx) return;
-
-  const snapshots = {{ snapshots_data | tojson }};
-  const labels = snapshots.map(s => new Date(s.period_start).toLocaleDateString());
-  const hours = snapshots.map(s => s.saved_hours);
-  const messages = snapshots.map(s => s.messages);
-
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: 'Hours Saved',
-          data: hours,
-          borderColor: '#aec6ff',
-          backgroundColor: 'rgba(174, 198, 255, 0.1)',
-          tension: 0.4,
-          fill: true,
-          yAxisID: 'y',
-        },
-        {
-          label: 'Messages Handled',
-          data: messages,
-          borderColor: '#ffb960',
-          backgroundColor: 'rgba(255, 185, 96, 0.1)',
-          tension: 0.4,
-          fill: true,
-          yAxisID: 'y1',
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      scales: {
-        y: {
-          type: 'linear',
-          display: true,
-          position: 'left',
-          ticks: { color: '#8d909e' },
-          grid: { color: 'rgba(255, 255, 255, 0.05)' }
-        },
-        y1: {
-          type: 'linear',
-          display: true,
-          position: 'right',
-          ticks: { color: '#8d909e' },
-          grid: { color: 'rgba(255, 255, 255, 0)' }
-        },
-        x: {
-          ticks: { color: '#8d909e' },
-          grid: { color: 'rgba(255, 255, 255, 0.05)' }
-        }
-      },
-      plugins: {
-        legend: {
-          labels: { color: '#e0e0e0', usePointStyle: true }
-        }
-      }
-    }
-  });
-});
-</script>
-{%- endblock %}
-{%- endblock %}
+<main class="flex-1 ml-64 min-h-screen flex flex-col">
+<!-- TopNavBar (Authority Source: JSON) -->
+<header class="w-full sticky top-0 z-50 flex justify-between items-center px-8 py-3 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm shadow-blue-900/5">
+<div class="flex items-center gap-8">
+<h1 class="text-xl font-bold tracking-tighter text-slate-900 dark:text-slate-50">The Precision Curator</h1>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" data-icon="search">search</span>
+<input class="bg-slate-100 dark:bg-slate-800 border-none rounded-full py-1.5 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary-container w-64 transition-all" placeholder="Search portfolios..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 duration-200 transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 duration-200 transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-slate-200">
+<img class="w-full h-full object-cover" data-alt="close-up portrait of a professional property manager in a modern office setting with soft natural light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBhG66-TdB41HZ5tTXRcfVoUTEekULJpN_a7Ga13fs2bfiivRLQi--AA6XfbxjkRKqv5UpNzao9loS_LgeT4lYFmxSFqynLR9Gcgm43DBmdfXzngkd8AMVOUP-VbA1pKSgveolHiNBphZRhiU9PTzQaA4FKw_kiGWABmnN6SDFMDTgsvLwiUj89w7eYfzvhZx7d8f0YdwAyqP7QcRoLZdaM-8yQs6zuFFm74bqWkVQVYgyiysYASq0nb9Q35-B_vZuDWsiGOLCP1ci"/>
+</div>
+</div>
+</header>
+<section class="p-8 space-y-8">
+<!-- Header & Filters -->
+<div class="flex justify-between items-end">
+<div>
+<h2 class="text-3xl font-extrabold tracking-tight text-on-surface">ROI Analytics Dashboard</h2>
+<p class="text-on-surface-variant text-sm mt-1">Real-time performance across Global Realty portfolio.</p>
+</div>
+<div class="flex gap-3 bg-surface-container-low p-1.5 rounded-full shadow-sm">
+<div class="flex items-center gap-2 px-4 py-1.5 bg-surface-container-lowest rounded-full cursor-pointer hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-sm text-primary" data-icon="calendar_today">calendar_today</span>
+<span class="text-xs font-semibold">Last 12 Months</span>
+</div>
+<div class="flex items-center gap-2 px-4 py-1.5 hover:bg-surface-container-high rounded-full cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-sm text-on-surface-variant" data-icon="filter_list">filter_list</span>
+<span class="text-xs font-semibold">Filters</span>
+</div>
+<button class="flex items-center gap-2 px-5 py-1.5 bg-primary-container text-white rounded-full text-xs font-bold shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="download">download</span>
+                        Export PDF
+                    </button>
+</div>
+</div>
+<!-- Key Metrics (Editorial Spacing) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border-l-4 border-primary">
+<p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest mb-2">Total Revenue</p>
+<h3 class="text-4xl font-black text-on-surface tracking-tighter">$124.5k</h3>
+<div class="flex items-center gap-1 mt-4 text-green-600 text-xs font-bold">
+<span class="material-symbols-outlined text-sm" data-icon="trending_up">trending_up</span>
+                        12.4% vs last period
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border-l-4 border-secondary">
+<p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest mb-2">Operating Costs</p>
+<h3 class="text-4xl font-black text-on-surface tracking-tighter">$45.2k</h3>
+<div class="flex items-center gap-1 mt-4 text-red-500 text-xs font-bold">
+<span class="material-symbols-outlined text-sm" data-icon="trending_up">trending_up</span>
+                        3.1% vs last period
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border-l-4 border-primary-container">
+<p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest mb-2">Net Profit</p>
+<h3 class="text-4xl font-black text-on-surface tracking-tighter">$79.3k</h3>
+<div class="flex items-center gap-1 mt-4 text-green-600 text-xs font-bold">
+<span class="material-symbols-outlined text-sm" data-icon="trending_up">trending_up</span>
+                        18.7% vs last period
+                    </div>
+</div>
+<div class="bg-tertiary-fixed p-8 rounded-xl shadow-sm">
+<p class="text-on-tertiary-fixed-variant text-xs font-medium uppercase tracking-widest mb-2">Average ROI</p>
+<h3 class="text-4xl font-black text-on-tertiary-fixed tracking-tighter">63.7%</h3>
+<div class="flex items-center gap-1 mt-4 text-on-tertiary-fixed-variant text-xs font-bold opacity-70">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+                        Above target (60%)
+                    </div>
+</div>
+</div>
+<!-- Visual Charts Section (Bento Grid Style) -->
+<div class="grid grid-cols-12 gap-8">
+<!-- ROI Trends Chart (Large) -->
+<div class="col-span-8 bg-surface-container-lowest p-8 rounded-xl shadow-sm relative overflow-hidden group">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h4 class="text-lg font-bold text-on-surface">ROI Trends</h4>
+<p class="text-xs text-on-surface-variant">Year-over-year performance growth</p>
+</div>
+<div class="flex items-center gap-2 text-[10px] font-bold">
+<span class="w-3 h-3 rounded-full bg-primary"></span> 2023
+                            <span class="w-3 h-3 rounded-full bg-outline-variant"></span> 2022
+                        </div>
+</div>
+<!-- Placeholder for Chart Visual -->
+<div class="h-64 flex items-end justify-between gap-4 px-4 relative">
+<!-- Simulated Line Chart -->
+<div class="absolute inset-x-0 bottom-12 h-px bg-slate-100"></div>
+<div class="absolute inset-x-0 bottom-32 h-px bg-slate-100"></div>
+<div class="absolute inset-x-0 bottom-52 h-px bg-slate-100"></div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar">
+<div class="w-full bg-primary-fixed-dim/20 rounded-t-lg h-24 group-hover:bg-primary-fixed-dim/40 transition-all"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">Jan</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar">
+<div class="w-full bg-primary-fixed-dim/20 rounded-t-lg h-28"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">Feb</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar">
+<div class="w-full bg-primary-container rounded-t-lg h-36 relative">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white px-2 py-1 rounded text-[10px] opacity-0 group-hover/bar:opacity-100 transition-opacity">63%</div>
+</div>
+<span class="text-[10px] text-on-surface-variant font-medium">Mar</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar">
+<div class="w-full bg-primary-container rounded-t-lg h-48"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">Apr</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar">
+<div class="w-full bg-primary-container rounded-t-lg h-40"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">May</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar">
+<div class="w-full bg-primary-container rounded-t-lg h-56"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">Jun</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar">
+<div class="w-full bg-primary-container rounded-t-lg h-44"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">Jul</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar">
+<div class="w-full bg-primary-container rounded-t-lg h-52"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">Aug</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group/bar">
+<div class="w-full bg-primary-container rounded-t-lg h-60"></div>
+<span class="text-[10px] text-on-surface-variant font-medium">Sep</span>
+</div>
+</div>
+</div>
+<!-- Profit by Source (Donut Chart) -->
+<div class="col-span-4 bg-surface-container-low p-8 rounded-xl shadow-sm flex flex-col">
+<h4 class="text-lg font-bold text-on-surface mb-2">Profit by Source</h4>
+<p class="text-xs text-on-surface-variant mb-8">Channel contribution breakdown</p>
+<div class="flex-1 flex items-center justify-center relative">
+<!-- Simulated Donut -->
+<div class="w-40 h-40 rounded-full border-[12px] border-primary border-t-tertiary border-r-secondary border-b-primary-container/30 relative flex items-center justify-center">
+<div class="text-center">
+<span class="text-2xl font-black block leading-none">$79.3k</span>
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-tighter">Total Profit</span>
+</div>
+</div>
+</div>
+<div class="mt-8 grid grid-cols-2 gap-4">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase">Direct</p>
+<p class="text-xs font-bold">42%</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase">Airbnb</p>
+<p class="text-xs font-bold">28%</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase">VRBO</p>
+<p class="text-xs font-bold">18%</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container/30"></span>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase">Booking</p>
+<p class="text-xs font-bold">12%</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Detailed Breakdown Table (No-Divider Zebra Rule) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="px-8 py-6 flex justify-between items-center border-b border-outline-variant/10">
+<div>
+<h4 class="text-lg font-bold text-on-surface">Property Performance Breakdown</h4>
+<p class="text-xs text-on-surface-variant">Detailed view of asset unit yields</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 text-xs font-bold hover:bg-surface-container rounded-full transition-colors">Filters</button>
+<button class="px-4 py-2 text-xs font-bold bg-secondary-container text-on-secondary-container rounded-full">Columns</button>
+</div>
+</div>
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="px-8 py-4 text-[10px] font-bold uppercase text-on-surface-variant">Property Name</th>
+<th class="px-8 py-4 text-[10px] font-bold uppercase text-on-surface-variant">Revenue</th>
+<th class="px-8 py-4 text-[10px] font-bold uppercase text-on-surface-variant">Maintenance</th>
+<th class="px-8 py-4 text-[10px] font-bold uppercase text-on-surface-variant">Utilities</th>
+<th class="px-8 py-4 text-[10px] font-bold uppercase text-on-surface-variant">Fees</th>
+<th class="px-8 py-4 text-[10px] font-bold uppercase text-on-surface-variant">Profit</th>
+<th class="px-8 py-4 text-[10px] font-bold uppercase text-on-surface-variant text-right">ROI %</th>
+</tr>
+</thead>
+<tbody class="text-sm font-medium">
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="apartment">apartment</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">The Azure Lofts</p>
+<p class="text-[10px] text-on-surface-variant">Seattle, WA</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">$42,500</td>
+<td class="px-8 py-6 text-on-surface-variant">$3,200</td>
+<td class="px-8 py-6 text-on-surface-variant">$1,100</td>
+<td class="px-8 py-6 text-on-surface-variant">$4,250</td>
+<td class="px-8 py-6 font-bold text-primary">$33,950</td>
+<td class="px-8 py-6 text-right">
+<span class="bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full text-xs font-bold">79.8%</span>
+</td>
+</tr>
+<tr class="bg-surface-container-low/30 hover:bg-surface-container-low transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="villa">villa</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Summit Ridge Estates</p>
+<p class="text-[10px] text-on-surface-variant">Aspen, CO</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">$38,200</td>
+<td class="px-8 py-6 text-on-surface-variant">$8,400</td>
+<td class="px-8 py-6 text-on-surface-variant">$2,800</td>
+<td class="px-8 py-6 text-on-surface-variant">$3,820</td>
+<td class="px-8 py-6 font-bold text-primary">$23,180</td>
+<td class="px-8 py-6 text-right">
+<span class="bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full text-xs font-bold">60.6%</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="home_work">home_work</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Cypress Gardens</p>
+<p class="text-[10px] text-on-surface-variant">Portland, OR</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">$22,800</td>
+<td class="px-8 py-6 text-on-surface-variant">$2,100</td>
+<td class="px-8 py-6 text-on-surface-variant">$1,450</td>
+<td class="px-8 py-6 text-on-surface-variant">$2,280</td>
+<td class="px-8 py-6 font-bold text-primary">$16,970</td>
+<td class="px-8 py-6 text-right">
+<span class="bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full text-xs font-bold">74.4%</span>
+</td>
+</tr>
+<tr class="bg-surface-container-low/30 hover:bg-surface-container-low transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="house">house</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Park Avenue Suites</p>
+<p class="text-[10px] text-on-surface-variant">San Francisco, CA</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">$21,000</td>
+<td class="px-8 py-6 text-on-surface-variant">$12,000</td>
+<td class="px-8 py-6 text-on-surface-variant">$1,800</td>
+<td class="px-8 py-6 text-on-surface-variant">$2,100</td>
+<td class="px-8 py-6 font-bold text-primary">$5,100</td>
+<td class="px-8 py-6 text-right">
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full text-xs font-bold">24.2%</span>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="px-8 py-4 bg-surface-container flex justify-between items-center">
+<p class="text-xs text-on-surface-variant">Showing 4 of 12 active properties</p>
+<div class="flex gap-1">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white text-xs font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-xs font-bold">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-xs font-bold">3</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Floating Action (Highly Contextual - Suppressed as per rule, only used on dashboard primary) -->
+<div class="fixed bottom-8 right-8">
+<button class="bg-primary text-white px-6 py-4 rounded-full shadow-2xl shadow-primary/40 flex items-center gap-3 active:scale-95 transition-all hover:-translate-y-1">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+<span class="font-bold tracking-tight">Add Asset</span>
+</button>
+</div>
+</main>
+</body></html>
