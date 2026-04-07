@@ -7385,14 +7385,14 @@ async def simulate_booking_welcome(
         from web.crypto import decrypt
         token = decrypt(cfg.whatsapp_token_enc)
         phone_normalized = guest_phone.replace("+", "").strip()
-        wa_error: dict = {}
-        sent = send_whatsapp(cfg.whatsapp_phone_id, token, phone_normalized, welcome_text, error_detail=wa_error)
+        wa_detail: dict = {}
+        sent = send_whatsapp(cfg.whatsapp_phone_id, token, phone_normalized, welcome_text, error_detail=wa_detail)
     except Exception as e:
         logger.error(f"[{tenant_id}] Booking simulate send error: {e}")
         return JSONResponse({"ok": False, "error": f"Failed to send via WhatsApp: {str(e)}"}, status_code=500)
 
     if not sent:
-        detail = wa_error.get("body", "")
+        detail = wa_detail.get("body", "")
         try:
             import json as _json
             parsed = _json.loads(detail)
@@ -7400,15 +7400,27 @@ async def simulate_booking_welcome(
         except Exception:
             meta_msg = detail
         err_msg = (
-            f"WhatsApp API error (HTTP {wa_error.get('code', '?')}): {meta_msg}"
+            f"WhatsApp API error (HTTP {wa_detail.get('code', '?')}): {meta_msg}"
             if meta_msg
             else "WhatsApp send failed. Check your Phone ID, Access Token, and phone number format (+E.164)."
         )
         return JSONResponse({"ok": False, "error": err_msg}, status_code=400)
 
+    # Extract Meta message ID from response body for confirmation
+    meta_msg_id = None
+    try:
+        import json as _json
+        resp_data = _json.loads(wa_detail.get("body", "{}"))
+        messages = resp_data.get("messages", [])
+        if messages:
+            meta_msg_id = messages[0].get("id")
+    except Exception:
+        pass
+
     return JSONResponse({
         "ok": True,
         "welcome_text": welcome_text,
+        "meta_msg_id": meta_msg_id,
         "message": f"✅ Booking welcome message sent to {guest_phone} via WhatsApp",
     })
 

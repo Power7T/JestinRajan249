@@ -47,7 +47,11 @@ def send_whatsapp(phone_id: str, token: str, to_phone: str, text: str,
         )
         try:
             with urllib.request.urlopen(req, timeout=15) as resp:
-                log.info("Meta WA sent to %s: %s", to, resp.status)
+                resp_body = resp.read().decode(errors="replace")
+                log.info("Meta WA sent to %s: HTTP %s — %s", to, resp.status, resp_body[:300])
+                if error_detail is not None:
+                    error_detail['code'] = resp.status
+                    error_detail['body'] = resp_body
                 return True
         except urllib.error.HTTPError as e:
             body = e.read().decode(errors="replace")[:500]

@@ -667,9 +667,11 @@
       <div id="bk-loading" style="display:none; margin-top:12px; font-size:0.875rem; color:#9ca3af">⏳ Sending welcome message...</div>
       <div id="bk-error" style="display:none; margin-top:12px; padding:12px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); border-radius:8px; color:#fca5a5; font-size:0.875rem"></div>
       <div id="bk-result" style="display:none; margin-top:12px; padding:16px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25); border-radius:12px">
-        <p style="font-size:0.75rem;font-weight:700;color:#4ade80;text-transform:uppercase;margin:0 0 10px 0">✅ Welcome Sent</p>
+        <p style="font-size:0.75rem;font-weight:700;color:#4ade80;text-transform:uppercase;margin:0 0 4px 0">✅ Accepted by Meta</p>
+        <p id="bk-result-msgid" style="font-size:0.7rem;color:#6b7280;font-family:monospace;margin:0 0 10px 0"></p>
         <p style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 6px 0">Message Preview</p>
         <p id="bk-result-text" style="margin:0; color:#e3e1eb; font-size:0.875rem; line-height:1.5; white-space:pre-wrap; background:rgba(255,255,255,0.04); padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,0.08)"></p>
+        <p style="font-size:0.75rem;color:#6b7280;margin:10px 0 0 0">⚠️ "Accepted" means Meta received it. Delivery depends on: the number being active on WhatsApp, and whether you're within the 24-hour reply window (or using an approved template).</p>
       </div>
     </div>
   </div>
@@ -1643,6 +1645,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (data.ok) {
                     resultText.textContent = data.welcome_text;
+                    var msgIdEl = document.getElementById('bk-result-msgid');
+                    msgIdEl.textContent = data.meta_msg_id ? 'Meta msg ID: ' + data.meta_msg_id : 'No message ID returned — check Meta logs';
                     resultDiv.style.display = 'block';
                 } else {
                     errorDiv.textContent = data.error || 'Unknown error';
