@@ -3,7 +3,7 @@
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Guest Contacts | Vista Management</title>
+<title>Guest Contacts | Host Assistant</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -139,7 +139,7 @@
 <header class="w-full top-0 sticky z-30 bg-[#f7f9fb] dark:bg-slate-900 border-b border-[#f2f4f6] dark:border-slate-800">
 <div class="flex justify-between items-center px-8 py-4 w-full max-w-[1440px] mx-auto">
 <div class="flex items-center gap-8 flex-1">
-<span class="text-xl font-bold text-[#191c1e] dark:text-slate-100 tracking-tighter">Vista Management</span>
+<span class="text-xl font-bold text-[#191c1e] dark:text-slate-100 tracking-tighter">Host Assistant</span>
 <div class="relative w-full max-w-md">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
 <input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary text-sm" placeholder="Search across directory..." type="text"/>
@@ -157,7 +157,7 @@
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
 </button>
 </div>
-<img alt="User profile" class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10" data-alt="Close-up portrait of a professional man in a modern office with soft natural lighting and minimalist background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEuzfr7mXY_RleSovkQmjsVwzDeyGM7LrqsdNzH4Z5z3FnNCvs5vvTRbjfWySLX19PgJIa2ZNwpWoPPXrfmhF4nVDzSrXsqgjac0gnT-tRDRN9fFJgqWPeA9FRDS9AU6PZhEb2L2bGv0IRDvqE2l2VhP2dsnG42apNQS0IBPpkP5aSKcBepfB_A8UatkoAZZ_XLFhHNdCrNKjUvEKUBf0hmUykAPjL1X2TH1kRed4xdjY2bc4xgLBaUyBPiPDlTFq83ApEG-YF2CNY"/>
+<img alt="User profile" class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10" data-alt="Close-up portrait of a professional man in a modern office with soft natural lighting and minimalist background" src="" onerror="this.style.display='none'"/>
 </div>
 </div>
 </header>
@@ -237,156 +237,11 @@
 </tr>
 </thead>
 <tbody class="divide-y divide-outline-variant/10">
-<!-- Row 1 -->
-<tr class="hover:bg-surface-container-low transition-colors cursor-pointer group">
-<td class="px-6 py-5">
-<div class="flex items-center gap-3">
-<img alt="Elena Rostova" class="w-10 h-10 rounded-full object-cover" data-alt="Professional portrait of a woman with a friendly expression in a bright studio setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjt8KjLdkvAH9NRnqg0T4Kj0BzFxVGl0DmfeDDbvQfUDcXR0jKE9K49KGsK0KMzspGC2FVwUcg_JAFCR6upkFyTUBfTfy51oPeXC3YW52pPDtYBv6BrUenwsiVlYZzmTyNpK1-Dx052Va8quthsz4LHnyJjaNbLZgee9udxjjfnC_uO_s9Fc5KuLM27L1pv12wkOFWv5udwG-xuZN5Gn8Mo05bgB674_rV3EutqQdazl-GBpe6pY-lxlZkBa_11w4n5vZPraOcz5_h"/>
-<div>
-<p class="font-bold text-on-surface">Elena Rostova</p>
-<p class="text-xs text-on-surface-variant">Guest since 2022</p>
-</div>
-</div>
-</td>
-<td class="px-6 py-5">
-<div class="text-sm">
-<p class="text-on-surface font-medium">+1 (555) 012-3456</p>
-<p class="text-on-surface-variant">elena.rostova@email.com</p>
-</div>
-</td>
-<td class="px-6 py-5">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-sm text-primary" data-icon="domain">domain</span>
-<span class="text-sm font-semibold">Modern Loft, Downtown</span>
-</div>
-</td>
-<td class="px-6 py-5">
-<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-full">
-<span class="material-symbols-outlined text-[14px]" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
-                                        Verified
-                                    </span>
-</td>
-<td class="px-6 py-5">
-<span class="text-sm text-on-surface-variant">Oct 14, 2023</span>
-</td>
-<td class="px-6 py-5 text-right">
-<button class="p-2 opacity-0 group-hover:opacity-100 hover:bg-surface-container-highest rounded-full transition-all">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 2 -->
-<tr class="hover:bg-surface-container-low transition-colors cursor-pointer group">
-<td class="px-6 py-5">
-<div class="flex items-center gap-3">
-<img alt="Marcus Sterling" class="w-10 h-10 rounded-full object-cover" data-alt="Close up of a businessman in a dark suit against a neutral architectural background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbmguq4TZd1QFIWppsooNQWxR8EgBFTajPcKNI-OzKqtDhMfyiv9bccJFFglE2xvkbNUchFCs_4rEIMD0VmgtDDJ670SNHjmjqogsSPqp-dxdYzNaPvYy_sNWIv_zJ-wo_q3SaXpUrZJ5MPnBk2XblkknBg0uqX1MwnjZDGFbE3bWgj-7ccnh-6uYPHAI5_4TSbtOc4xGqHqj1eclWP8m1HEXCl55Of6f1wsqH0_mrtPBwinZK-mMvnK9Nc6ATXfQ8nAhOBEPq98BT"/>
-<div>
-<p class="font-bold text-on-surface">Marcus Sterling</p>
-<p class="text-xs text-on-surface-variant">Guest since 2023</p>
-</div>
-</div>
-</td>
-<td class="px-6 py-5">
-<div class="text-sm">
-<p class="text-on-surface font-medium">+1 (555) 987-6543</p>
-<p class="text-on-surface-variant">m.sterling@outlook.com</p>
-</div>
-</td>
-<td class="px-6 py-5">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-sm text-primary" data-icon="domain">domain</span>
-<span class="text-sm font-semibold">Seaside Villa, Malibu</span>
-</div>
-</td>
-<td class="px-6 py-5">
-<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed text-xs font-bold rounded-full">
-<span class="material-symbols-outlined text-[14px]" data-icon="pending">pending</span>
-                                        Pending
-                                    </span>
-</td>
-<td class="px-6 py-5">
-<span class="text-sm text-on-surface-variant">Nov 02, 2023</span>
-</td>
-<td class="px-6 py-5 text-right">
-<button class="p-2 opacity-0 group-hover:opacity-100 hover:bg-surface-container-highest rounded-full transition-all">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 3 -->
-<tr class="hover:bg-surface-container-low transition-colors cursor-pointer group">
-<td class="px-6 py-5">
-<div class="flex items-center gap-3">
-<img alt="Sarah Jenkins" class="w-10 h-10 rounded-full object-cover" data-alt="Candid portrait of a young woman laughing in a brightly lit modern apartment interior" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBONij8UREtI5UbZd67r2_En7zqrrzX-50FrUSl6wkAXcmCPDANCjwrSFE9cMYOBxqfu-zezXGpJYQnKdZTEVHFn-ZOE08iJwmUmhOw7aZY_Fsf7tUhYdA7JkpiW7-tvw4GYxi2SzzWgrbxI4BXKSp02uEBenpp9wKAbJQGpaJz35JBz4GW3nI6SsS0EQTDQvlo9-iWkw0y__BdNB1PJbkHjTjciGEQHyuSATN3uaiqNAIxOsypxVvdC0MBkUk-qj9MOKEA5e_TI-yy"/>
-<div>
-<p class="font-bold text-on-surface">Sarah Jenkins</p>
-<p class="text-xs text-on-surface-variant">Guest since 2021</p>
-</div>
-</div>
-</td>
-<td class="px-6 py-5">
-<div class="text-sm">
-<p class="text-on-surface font-medium">+1 (555) 234-5678</p>
-<p class="text-on-surface-variant">sarah.j@travel.co</p>
-</div>
-</td>
-<td class="px-6 py-5">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-sm text-primary" data-icon="domain">domain</span>
-<span class="text-sm font-semibold">Urban Studio, Seattle</span>
-</div>
-</td>
-<td class="px-6 py-5">
-<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-full">
-<span class="material-symbols-outlined text-[14px]" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
-                                        Verified
-                                    </span>
-</td>
-<td class="px-6 py-5">
-<span class="text-sm text-on-surface-variant">Yesterday</span>
-</td>
-<td class="px-6 py-5 text-right">
-<button class="p-2 opacity-0 group-hover:opacity-100 hover:bg-surface-container-highest rounded-full transition-all">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
-</td>
-</tr>
-<!-- Row 4 -->
-<tr class="hover:bg-surface-container-low transition-colors cursor-pointer group">
-<td class="px-6 py-5">
-<div class="flex items-center gap-3">
-<img alt="David Chen" class="w-10 h-10 rounded-full object-cover" data-alt="Portrait of a young Asian man in professional attire with soft bokeh city lights in background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvJzs5T9-HvJv2ip1QcSGYXEWcuVA8ur2SADe1hKB0vWqqi9Tcni756xZQo9j_b9dy4HhJrLuOIHS-R3U4Wme5N-ieW9Pmga6HaSx8PC5y2GpHr1lNXuNhGYZir5L6fkdmZhO5L953YbLBYsqMoDQVLlyTBFD8Rqbqsf1u9DI-yK4bWGn7d-nvkxBgxa8vk_jx46IAexlduNicyYuAPuUUpgTI8t5nb4FYcrLE-cAoB0yaKSLPvqKoQXIh5Df_Vobb3qTHauBmWMFd"/>
-<div>
-<p class="font-bold text-on-surface">David Chen</p>
-<p class="text-xs text-on-surface-variant">Guest since 2023</p>
-</div>
-</div>
-</td>
-<td class="px-6 py-5">
-<div class="text-sm">
-<p class="text-on-surface font-medium">+1 (555) 456-7890</p>
-<p class="text-on-surface-variant">dchen@techglobal.com</p>
-</div>
-</td>
-<td class="px-6 py-5">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-sm text-primary" data-icon="domain">domain</span>
-<span class="text-sm font-semibold">Mountain Retreat, Aspen</span>
-</div>
-</td>
-<td class="px-6 py-5">
-<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-full">
-<span class="material-symbols-outlined text-[14px]" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
-                                        Verified
-                                    </span>
-</td>
-<td class="px-6 py-5">
-<span class="text-sm text-on-surface-variant">Oct 28, 2023</span>
-</td>
-<td class="px-6 py-5 text-right">
-<button class="p-2 opacity-0 group-hover:opacity-100 hover:bg-surface-container-highest rounded-full transition-all">
-<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
-</button>
+<tr>
+<td colspan="6" class="px-6 py-16 text-center">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant/40 block mb-3">group</span>
+<p class="text-on-surface-variant font-medium">No guest contacts yet.</p>
+<p class="text-sm text-on-surface-variant/60 mt-1">Guest profiles will appear here after their first booking.</p>
 </td>
 </tr>
 </tbody>
@@ -394,7 +249,7 @@
 </div>
 <!-- Pagination -->
 <div class="px-6 py-4 bg-surface-container-low/30 border-t border-outline-variant/10 flex items-center justify-between">
-<p class="text-sm text-on-surface-variant">Showing <span class="font-bold text-on-surface">1-10</span> of 1,284 guests</p>
+<p class="text-sm text-on-surface-variant">Showing <span class="font-bold text-on-surface">1-10</span> of 0 guests</p>
 <div class="flex gap-2">
 <button class="px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-container-highest rounded-xl transition-all" onclick="history.back()">Previous</button>
 <button class="px-4 py-2 text-sm font-bold bg-primary-fixed text-on-primary-fixed rounded-xl hover:bg-primary-fixed-dim transition-all" onclick="history.forward()">Next</button>

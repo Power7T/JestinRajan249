@@ -3,7 +3,7 @@
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Precision Curator - Account Settings</title>
+<title>Host Assistant - Account Settings</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -93,10 +93,10 @@
 <div class="px-6 mb-8">
 <div class="flex items-center gap-3">
 <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold overflow-hidden">
-<img alt="Alex Rivers" class="w-full h-full object-cover" data-alt="Close up professional headshot of a senior property manager in a well-lit modern office environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgVl1MoheabmuMmVMSnCF2HLWhpJHTYlzQsgRvoz-RUk1CqpqJ8A2Sn9m4HxWEUx9Pg2wa0Up6Y2E472BaNLYcIKq_ca3_iEEBJWmvBfJjUGijiMg59v_7e7Qb5mG2wH-pxcsjpMKYDD9tGEIp-LlIxAfkIcZtYOS0fYMQ_9pNyLh8RODoOA8qaHcbodVebNXnD8pnFJe38zQqfHFX1BtIAcdd2zH1ONCMzfDRcUrOHLndfFC5N4-rCXB8hkL6CrkhDWyjATOc5vaB"/>
+<img alt="{{ tenant.name | default("") }}" class="w-full h-full object-cover" data-alt="Close up professional headshot of a senior property manager in a well-lit modern office environment" src="" onerror="this.style.display='none'"/>
 </div>
 <div>
-<h2 class="font-inter text-sm font-semibold text-on-surface">Alex Rivers</h2>
+<h2 class="font-inter text-sm font-semibold text-on-surface">{{ tenant.name | default("") }}</h2>
 <p class="font-inter text-xs text-on-surface-variant">Senior Administrator</p>
 </div>
 </div>
@@ -138,7 +138,7 @@
 <!-- TopNavBar Shell -->
 <header class="flex justify-between items-center px-8 h-16 w-full bg-slate-50 dark:bg-slate-900 border-b-0 sticky top-0 z-20 transition-colors">
 <div class="flex items-center gap-8">
-<h1 class="text-xl font-bold text-slate-900 dark:text-slate-50 font-inter tracking-tight">Precision Curator</h1>
+<h1 class="text-xl font-bold text-slate-900 dark:text-slate-50 font-inter tracking-tight">Host Assistant</h1>
 <nav class="hidden lg:flex items-center gap-6">
 <a class="text-slate-500 dark:text-slate-400 font-inter tracking-tight hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors px-2 py-1" href="/admin/overview">Overview</a>
 <a class="text-blue-700 dark:text-blue-400 font-semibold border-b-2 border-blue-700 font-inter tracking-tight hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors px-2 py-1" href="/settings">Account</a>
@@ -172,7 +172,7 @@
 <div class="flex items-center gap-8">
 <div class="relative group">
 <div class="w-24 h-24 rounded-full overflow-hidden bg-surface-container shadow-sm border-4 border-surface-container-lowest">
-<img alt="Profile" class="w-full h-full object-cover" data-alt="Portrait of a professional man in high-end office wear looking confident, soft studio lighting with minimal depth of field" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0fAo0Wy87qiyceEVVhjC3ftMusekECAnsz4u53Gx9RpvFI4HSGNi4AKYJ3R1c3IcDuGk891FHD1Xec5VS2dyuDAOD2cekqx0XWB_ZvpDcOUJoXXBLx1VzGWMKl0J6owuDVuqP3v27De_yogaQn_veVMSHmLZFQcacB676g7K86tBthtKNTVu7t5t7Gm5Li_c0jVgveKC1rCcjJVllZ18NS-NuwYRi1NRkjU5TrS7w5ZtZ9ySA57aNEHhbVCBZdZN7cKgaP4z1o-92"/>
+<img alt="Profile" class="w-full h-full object-cover" data-alt="Portrait of a professional man in high-end office wear looking confident, soft studio lighting with minimal depth of field" src="" onerror="this.style.display='none'"/>
 </div>
 <button class="absolute bottom-0 right-0 p-2 bg-primary text-on-primary rounded-full shadow-lg hover:scale-105 transition-transform">
 <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
@@ -190,7 +190,7 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
 <div class="space-y-2">
 <label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Full Name</label>
-<input class="w-full bg-surface border-none rounded-lg px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary-container transition-all" placeholder="Enter name" type="text" value="Alex Rivers"/>
+<input class="w-full bg-surface border-none rounded-lg px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary-container transition-all" placeholder="Enter name" type="text" value="{{ tenant.name | default("") }}"/>
 </div>
 <div class="space-y-2">
 <label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Email Address</label>

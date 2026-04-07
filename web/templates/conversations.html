@@ -3,7 +3,7 @@
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Precision Curator | Conversations</title>
+<title>Host Assistant | Conversations</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -92,7 +92,7 @@
 <!-- TopNavBar -->
 <header class="bg-slate-50 dark:bg-slate-900 font-sans text-sm tracking-tight docked full-width top-0 border-b-0 flex justify-between items-center h-16 px-6 w-full fixed z-50">
 <div class="flex items-center gap-4">
-<span class="text-xl font-bold text-blue-900 dark:text-blue-100 tracking-tighter">Precision Curator</span>
+<span class="text-xl font-bold text-blue-900 dark:text-blue-100 tracking-tighter">Host Assistant</span>
 </div>
 <div class="flex items-center gap-2">
 <div class="relative mr-4 hidden md:block">
@@ -107,7 +107,7 @@
 <button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors rounded-full">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
 </button>
-<img alt="Manager Profile" class="w-8 h-8 rounded-full ml-2 object-cover" data-alt="professional headshot of a property manager in a modern office setting with soft natural light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1PNg6bIdoe8SXZxt7NRUQGgpAaaG69vxOq1D7L5JQC_2yEGWp_yKT3xO-Dc3k064sgQfVbVXLy3-5cbsGimIYlx3BOf-aUqnKjpqL1Zbl-0x6cX_CESFH02bwWOfoJ3wTt2MglQL-VTrEvEZ9JJblZO5Z1htZPtF3d9GJYBiSgceW-LzfzdhlkBM86KlGsr528LIlAX5JFLtZh1B3Oq07OtK076mtFQWcU9U_NazPT-xjYGLRtvMNFAXNRPTNCXalgG86tSev9rD1"/>
+<img alt="Manager Profile" class="w-8 h-8 rounded-full ml-2 object-cover" data-alt="professional headshot of a property manager in a modern office setting with soft natural light" src="" onerror="this.style.display='none'"/>
 </div>
 </header>
 <div class="flex h-screen pt-16">
@@ -172,45 +172,45 @@
 <!-- Active Conversation -->
 <div class="bg-surface-container-lowest rounded-xl p-4 flex gap-4 cursor-pointer hover:shadow-md transition-shadow">
 <div class="relative">
-<img alt="Elena Rostova" class="w-12 h-12 rounded-full object-cover" data-alt="portrait of a professional woman with a friendly smile, neutral background, soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2BCwnxO1-d-3Cfv_sLoYkKfbH1XcuGptJOEBui4irP_4ethYO1llUh31XMx6SRppfMiwiHflc6_AzDCDQd36CRvD9cCj4wlgZG49nw9j-RESjbhvaLmaYcqakgi0dJn_SCqeG4wYq2D528ke9Do0ZpefHQfP9A-bSQEkXYCrVaK6n-UQH7vAjcfRtcAhm8mto8Ht_L5ztMKNlNYj3cpEM7Pvl41jQZofWR_glQDs8BXLsYRjQqV0RjN5u2fauxs1HDelWNvUE-jLl"/>
+<img alt="{{ tenant.name | default("Guest") }}" class="w-12 h-12 rounded-full object-cover" data-alt="portrait of a professional woman with a friendly smile, neutral background, soft studio lighting" src="" onerror="this.style.display='none'"/>
 <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
 </div>
 <div class="flex-1 min-w-0">
 <div class="flex justify-between items-baseline mb-1">
-<h3 class="font-bold text-sm text-on-surface truncate">Elena Rostova</h3>
+<h3 class="font-bold text-sm text-on-surface truncate">{{ tenant.name | default("Guest") }}</h3>
 <span class="text-[10px] font-medium text-on-surface-variant">10:42 AM</span>
 </div>
 <p class="text-xs text-primary font-medium truncate">Hi, what's the Wi-Fi password for the...</p>
 <div class="flex justify-between items-center mt-2">
-<span class="text-[10px] px-2 py-0.5 bg-surface-container rounded-full text-on-secondary-container">The Glass Loft</span>
+<span class="text-[10px] px-2 py-0.5 bg-surface-container rounded-full text-on-secondary-container">your property</span>
 <span class="bg-primary px-1.5 py-0.5 rounded-full text-[10px] text-white font-bold">2</span>
 </div>
 </div>
 </div>
 <!-- Other Conversations -->
 <div class="rounded-xl p-4 flex gap-4 cursor-pointer hover:bg-surface-container-high transition-colors">
-<img alt="Marcus Thorne" class="w-12 h-12 rounded-full object-cover" data-alt="portrait of a man with spectacles in a modern urban setting, warm sunlight, professional look" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDW4kcYSGNVbQeScDB1TzEiR7UQtp37FnxbfoTNX3q1uIwhNNjTxWNKiu7yn_PuGa1q5NEg789AbXKU8wSDi0VtBMN_k-UL1NLs1awslGALbbT-UMKmtXyXJ16Xu6NL_gQacEqZTri-KLzcB9ubFF76Uogo7bHhZfwi1GUWqakcv3l66qQdyf5ctrJH9t0c2LE5SgPrTB9xWSR55_Dpp0NYEOTT84XziWxbEfBefSj2isMuaQZOOEwlDfuIBCciGynoqG-5hvJEhS-D"/>
+<img alt="Guest" class="w-12 h-12 rounded-full object-cover" data-alt="portrait of a man with spectacles in a modern urban setting, warm sunlight, professional look" src="" onerror="this.style.display='none'"/>
 <div class="flex-1 min-w-0">
 <div class="flex justify-between items-baseline mb-1">
-<h3 class="font-bold text-sm text-on-surface truncate">Marcus Thorne</h3>
+<h3 class="font-bold text-sm text-on-surface truncate">Guest</h3>
 <span class="text-[10px] font-medium text-on-surface-variant">Yesterday</span>
 </div>
 <p class="text-xs text-on-surface-variant truncate">Thank you for the early check-in!</p>
 <div class="flex items-center mt-2">
-<span class="text-[10px] px-2 py-0.5 bg-surface-container rounded-full text-on-secondary-container">Garden Suite</span>
+<span class="text-[10px] px-2 py-0.5 bg-surface-container rounded-full text-on-secondary-container">your property</span>
 </div>
 </div>
 </div>
 <div class="rounded-xl p-4 flex gap-4 cursor-pointer hover:bg-surface-container-high transition-colors">
-<img alt="Sarah Jenkins" class="w-12 h-12 rounded-full object-cover" data-alt="portrait of a woman in business casual attire, minimalist architectural background, clean lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCj540JlMW8OXHhMNvG9gD8AQRzcZWSf5f-P8kdc1C_VnQKZsWy5Dyp_uCrhu-LWOVeRmxZxAqo4gsPFomljv2hywTeQXLqkJAilm2YBlxdpkISKbQoInezCdYYxsC5YXHcO01MURVvh74B15OsPipxWx6ebAqxfAOcS2XFZ_L9UR9fKwa4POeUTjkxalqRsWoL0A3v9WV8ok5we-6W2eCf0ePR1WsldZOJqR5HWxy34_gDwVd4m4RFcaYUUN0xAblLBQD-1AyYvRLY"/>
+<img alt="Guest" class="w-12 h-12 rounded-full object-cover" data-alt="portrait of a woman in business casual attire, minimalist architectural background, clean lighting" src="" onerror="this.style.display='none'"/>
 <div class="flex-1 min-w-0">
 <div class="flex justify-between items-baseline mb-1">
-<h3 class="font-bold text-sm text-on-surface truncate">Sarah Jenkins</h3>
+<h3 class="font-bold text-sm text-on-surface truncate">Guest</h3>
 <span class="text-[10px] font-medium text-on-surface-variant">Oct 26</span>
 </div>
 <p class="text-xs text-on-surface-variant truncate">The heating seems to be off in the...</p>
 <div class="flex items-center mt-2">
-<span class="text-[10px] px-2 py-0.5 bg-surface-container rounded-full text-on-secondary-container">Penthouse A</span>
+<span class="text-[10px] px-2 py-0.5 bg-surface-container rounded-full text-on-secondary-container">your property</span>
 </div>
 </div>
 </div>
@@ -220,7 +220,7 @@
 <!-- Thread Header -->
 <div class="glass-header h-16 px-6 flex items-center justify-between border-b-0 sticky top-0 z-10">
 <div class="flex items-center gap-3">
-<h2 class="text-lg font-bold text-on-surface">Elena Rostova</h2>
+<h2 class="text-lg font-bold text-on-surface">{{ tenant.name | default("Guest") }}</h2>
 <div class="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-bold">
 <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
                             WhatsApp
@@ -293,8 +293,8 @@
 <!-- Pane 3: Guest Context Panel -->
 <section class="w-80 bg-surface flex flex-col h-full border-l border-transparent hidden xl:flex">
 <div class="p-8 flex flex-col items-center text-center">
-<img alt="Elena Rostova Large" class="w-24 h-24 rounded-full object-cover mb-4 ring-4 ring-white shadow-xl" data-alt="high resolution close up of a smiling woman, bright and clear aesthetics, professional look" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDT755kEl8pGR8JzJRoUojHvQK6JPbgNFtlPdjVMlVL3O89MlypzW5TKWisRy40IHkGRvOz6A50HtDO9ku5Qvoc3gsCig-z7LyvS8_ffo5yLkTd7yzzyKmb55eNk_OsVLL43HMla4Vswxlou0IbfIzPAtUyka35szpA1KM7CeqZhoSvS1sv90HosLsrDi34L2Y65Qm8EZsBzb6eqvlIedNiTS1OKB2GNmISSimI42i5aMKzbyRkwP4SqyS5nKMe6ztudNeJUQvzjE0E"/>
-<h2 class="text-xl font-extrabold text-on-surface tracking-tight">Elena Rostova</h2>
+<img alt="{{ tenant.name | default("Guest") }} Large" class="w-24 h-24 rounded-full object-cover mb-4 ring-4 ring-white shadow-xl" data-alt="high resolution close up of a smiling woman, bright and clear aesthetics, professional look" src="" onerror="this.style.display='none'"/>
+<h2 class="text-xl font-extrabold text-on-surface tracking-tight">{{ tenant.name | default("Guest") }}</h2>
 <p class="text-sm text-on-surface-variant font-medium">Guest since 2021</p>
 <div class="grid grid-cols-2 gap-4 w-full mt-8">
 <div class="bg-surface-container-lowest p-4 rounded-xl text-left border-b-2 border-primary-fixed">
@@ -317,7 +317,7 @@
 <div class="flex gap-3">
 <span class="material-symbols-outlined text-primary" data-icon="apartment">apartment</span>
 <div>
-<p class="text-xs font-bold text-on-surface">The Glass Loft</p>
+<p class="text-xs font-bold text-on-surface">your property</p>
 <p class="text-[11px] text-on-surface-variant">Unit 402 • Penthouse</p>
 </div>
 </div>
