@@ -106,7 +106,9 @@
 </div>
 <!-- Error message -->
 {% if error %}
-<div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{{ error }}</div>
+<div style="background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:500;margin-bottom:8px">
+  ⚠ {{ error }}
+</div>
 {% endif %}
 <!-- Form -->
 <form class="space-y-6" method="post" action="/login">

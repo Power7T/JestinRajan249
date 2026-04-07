@@ -1430,10 +1430,14 @@ def login_post(
         resp.set_cookie("session", token, httponly=True,
                         samesite="strict", secure=is_secure, max_age=TOKEN_HOURS * 3600)
         return resp
+    except HTTPException as exc:
+        log.warning("Login HTTPException [%s]: %s", exc.status_code, exc.detail)
+        return templates.TemplateResponse("login.html",
+                                          {"request": request, "error": exc.detail})
     except Exception as exc:
         log.error("Unexpected error in login_post: %s\n%s", exc, traceback.format_exc())
         return templates.TemplateResponse("login.html",
-                                          {"request": request, "error": "An error occurred. Please try again."})
+                                          {"request": request, "error": f"An error occurred: {type(exc).__name__}"})
 
 
 @app.get("/signup", response_class=HTMLResponse)
