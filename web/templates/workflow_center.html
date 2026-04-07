@@ -105,8 +105,8 @@
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
 <input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full text-sm w-64 focus:ring-1 focus:ring-primary" placeholder="Search workflows..." type="text"/>
 </div>
-<button class="material-symbols-outlined text-slate-600">notifications</button>
-<button class="material-symbols-outlined text-slate-600">help_outline</button>
+<button class="material-symbols-outlined text-slate-600" onclick="window.location.href="/activity"">notifications</button>
+<button class="material-symbols-outlined text-slate-600" onclick="window.location.href="/settings"">help_outline</button>
 <a href="/workflow_center" class="bg-primary text-on-primary px-5 py-2 rounded-full text-sm font-semibold hover:bg-primary-container transition-all active:scale-95">New Workflow</a>
 </div>
 </header>
@@ -132,15 +132,15 @@
 <span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
 <span class="text-sm font-semibold tracking-wide uppercase">Workflows</span>
 </a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-all" href="#">
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-all" href="/analytics">
 <span class="material-symbols-outlined" data-icon="bolt">bolt</span>
 <span class="text-sm font-semibold tracking-wide uppercase">Automations</span>
 </a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-all" href="#">
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-all" href="/analytics">
 <span class="material-symbols-outlined" data-icon="insights">insights</span>
 <span class="text-sm font-semibold tracking-wide uppercase">Analytics</span>
 </a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-all" href="#">
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-all" href="/settings">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
 <span class="text-sm font-semibold tracking-wide uppercase">Settings</span>
 </a>
@@ -149,13 +149,13 @@
 <div class="p-4 bg-primary-container rounded-xl mb-4">
 <p class="text-xs text-on-primary-container font-semibold mb-2">PRO FEATURES</p>
 <p class="text-sm text-white font-bold mb-3">Upgrade Plan</p>
-<button class="w-full bg-white text-primary py-2 rounded-lg text-xs font-bold uppercase tracking-wider">Upgrade</button>
+<button class="w-full bg-white text-primary py-2 rounded-lg text-xs font-bold uppercase tracking-wider" onclick="window.location.href="/pricing"">Upgrade</button>
 </div>
-<a class="flex items-center gap-3 text-slate-500 px-4 py-2 hover:text-slate-900 transition-colors" href="#">
+<a class="flex items-center gap-3 text-slate-500 px-4 py-2 hover:text-slate-900 transition-colors" href="/settings">
 <span class="material-symbols-outlined" data-icon="contact_support">contact_support</span>
 <span class="text-xs font-semibold uppercase">Support</span>
 </a>
-<a class="flex items-center gap-3 text-slate-500 px-4 py-2 hover:text-error transition-colors" href="#">
+<a class="flex items-center gap-3 text-slate-500 px-4 py-2 hover:text-error transition-colors" href="/logout">
 <span class="material-symbols-outlined" data-icon="logout">logout</span>
 <span class="text-xs font-semibold uppercase">Sign Out</span>
 </a>
@@ -175,8 +175,8 @@
 <img alt="Team member" class="w-8 h-8 rounded-full border-2 border-white" data-alt="professional male executive with glasses smiling warmly in a bright corporate office environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8COwokP5LY3Vm9IsPvcFZkqdj6EQ9gGMm8J0Yd3j8y5brPQiQmOLQz6W5EBvQZbc0MML07E9a-U8pF32BlShWV9Xma33dV7Kvq9jIjarm19xFK59RBb_h7jP8TnljMoWoYfUEH_6F3xNTYtjgHwMLdRoXFXlxOT0e65svQbae95hDlMhk5kRX_NVS6Xy8bK1QNvtcdB3Vb0HhLnHCNj5E-aigmH69cBSqzgPJ3JzgA0e7PXfEeOjomnpmsEdXh1MPT2Y_-7MHGJel"/>
 <div class="w-8 h-8 rounded-full border-2 border-white bg-surface-container-high flex items-center justify-center text-[10px] font-bold">+3</div>
 </div>
-<button class="text-slate-600 hover:text-primary material-symbols-outlined">zoom_in</button>
-<button class="text-slate-600 hover:text-primary material-symbols-outlined">zoom_out</button>
+<button class="text-slate-600 hover:text-primary material-symbols-outlined" onclick="document.body.style.zoom = (parseFloat(document.body.style.zoom||1)+0.1).toString()">zoom_in</button>
+<button class="text-slate-600 hover:text-primary material-symbols-outlined" onclick="document.body.style.zoom = (parseFloat(document.body.style.zoom||1)-0.1).toString()">zoom_out</button>
 <div class="h-6 w-px bg-outline-variant/20 mx-2"></div>
 <button class="bg-surface-container-high text-on-surface px-4 py-1.5 rounded-lg text-sm font-semibold">Test Workflow</button>
 <a href="/workflow_center" class="bg-primary text-on-primary px-6 py-1.5 rounded-lg text-sm font-semibold">Publish</a>

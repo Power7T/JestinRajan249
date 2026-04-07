@@ -110,8 +110,8 @@
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
 <input class="pl-10 pr-4 py-1.5 rounded-full bg-surface-container border-none text-sm focus:ring-2 focus:ring-primary" placeholder="Search logs..." type="text"/>
 </div>
-<button class="material-symbols-outlined p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors" data-icon="notifications">notifications</button>
-<button class="material-symbols-outlined p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors" data-icon="settings">settings</button>
+<button class="material-symbols-outlined p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors" data-icon="notifications" onclick="window.location.href="/activity"">notifications</button>
+<button class="material-symbols-outlined p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors" data-icon="settings" onclick="window.location.href="/settings"">settings</button>
 <img alt="Manager profile" class="w-8 h-8 rounded-full object-cover" data-alt="Professional headshot of a property manager in a light-filled modern office setting with blurred architectural details" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLdLWYTNvqTpX4C7JJzitI-_u-LlxO8T2J97AItXMgICuz91TxKWfeI7m6maQuEFt9abvGPqXb1AoN_FQUYxaRaDpu0qE3WaAFJ7yiXVIhwotE6RQL9jYmbT9U3MLtJ-wAstPG_dQahtG0tcVKVrrpXH_SOX7CdDpfJD_LvPAzFD6AqSZEORufrRkxdvsyYJMyjj5zgOoUDWvJi2cdblZjpjopf0CRuDtnAVPwHX97S4S6iGqOwtnbqOsSBgGH7iW1BPjXi9wkHq1p"/>
 </div>
 </div>
@@ -139,25 +139,25 @@
 <span class="material-symbols-outlined" data-icon="domain">domain</span>
                     Portfolio
                 </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-full hover:-translate-y-0.5 transition-transform duration-200" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-full hover:-translate-y-0.5 transition-transform duration-200" href="/billing">
 <span class="material-symbols-outlined" data-icon="payments">payments</span>
                     Financials
                 </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-full hover:-translate-y-0.5 transition-transform duration-200" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-full hover:-translate-y-0.5 transition-transform duration-200" href="/reservations">
 <span class="material-symbols-outlined" data-icon="build">build</span>
                     Maintenance
                 </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-full hover:-translate-y-0.5 transition-transform duration-200" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-full hover:-translate-y-0.5 transition-transform duration-200" href="/reservations">
 <span class="material-symbols-outlined" data-icon="description">description</span>
                     Documents
                 </a>
 </nav>
 <div class="mt-auto border-t border-outline-variant/20 pt-4 space-y-1">
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-full transition-colors" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-full transition-colors" href="/settings">
 <span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
                     Help
                 </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-full transition-colors text-error" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-full transition-colors text-error" href="/logout">
 <span class="material-symbols-outlined" data-icon="logout">logout</span>
                     Sign Out
                 </a>
@@ -175,10 +175,10 @@
 <div class="glass-nav rounded-full px-8 py-4 flex items-center gap-6 shadow-sm">
 <span class="text-sm font-semibold text-primary uppercase tracking-widest">Filter by</span>
 <div class="flex gap-2">
-<button class="px-5 py-2 rounded-full bg-primary text-white text-sm font-medium shadow-lg shadow-primary/20">All Activity</button>
-<button class="px-5 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-medium hover:bg-surface-container-highest transition-colors">Reservations</button>
-<button class="px-5 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-medium hover:bg-surface-container-highest transition-colors">System</button>
-<button class="px-5 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-medium hover:bg-surface-container-highest transition-colors">Communication</button>
+<button class="px-5 py-2 rounded-full bg-primary text-white text-sm font-medium shadow-lg shadow-primary/20" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">All Activity</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-medium hover:bg-surface-container-highest transition-colors" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Reservations</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-medium hover:bg-surface-container-highest transition-colors" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">System</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-medium hover:bg-surface-container-highest transition-colors" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Communication</button>
 </div>
 <div class="ml-auto flex gap-4">
 <button class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors">
@@ -216,7 +216,7 @@
 </div>
 </div>
 <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-<button class="material-symbols-outlined text-outline" data-icon="more_vert">more_vert</button>
+<button class="material-symbols-outlined text-outline" data-icon="more_vert" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">more_vert</button>
 </div>
 </article>
 <!-- Activity Card: Reservation Created -->
@@ -236,7 +236,7 @@
 </div>
 </div>
 <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-<button class="material-symbols-outlined text-outline" data-icon="more_vert">more_vert</button>
+<button class="material-symbols-outlined text-outline" data-icon="more_vert" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">more_vert</button>
 </div>
 </article>
 <!-- Date Header -->
@@ -260,7 +260,7 @@
 </div>
 </div>
 <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-<button class="material-symbols-outlined text-outline" data-icon="more_vert">more_vert</button>
+<button class="material-symbols-outlined text-outline" data-icon="more_vert" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">more_vert</button>
 </div>
 </article>
 <!-- Activity Card: Maintenance -->
@@ -280,7 +280,7 @@
 </div>
 </div>
 <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-<button class="material-symbols-outlined text-outline" data-icon="more_vert">more_vert</button>
+<button class="material-symbols-outlined text-outline" data-icon="more_vert" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">more_vert</button>
 </div>
 </article>
 </div>
@@ -290,8 +290,8 @@
 <p class="text-sm text-on-surface-variant">Showing 1-20 of 2,491 total events recorded.</p>
 </div>
 <div class="flex gap-4">
-<button class="px-6 py-2.5 rounded-full border border-outline-variant text-sm font-bold text-on-surface-variant hover:bg-white hover:text-primary transition-all">Previous</button>
-<button class="px-8 py-2.5 rounded-full bg-primary-container text-white text-sm font-bold shadow-lg shadow-primary/30 -translate-y-[2px] active:translate-y-0 transition-transform">Next Page</button>
+<button class="px-6 py-2.5 rounded-full border border-outline-variant text-sm font-bold text-on-surface-variant hover:bg-white hover:text-primary transition-all" onclick="history.back()">Previous</button>
+<button class="px-8 py-2.5 rounded-full bg-primary-container text-white text-sm font-bold shadow-lg shadow-primary/30 -translate-y-[2px] active:translate-y-0 transition-transform" onclick="history.forward()">Next Page</button>
 </div>
 </footer>
 </main>

@@ -166,7 +166,7 @@
 <div class="flex items-center space-x-6">
 <a href="/settings" class="material-symbols-outlined text-slate-500 hover:text-slate-900 transition-colors" data-icon="help">Help</a>
 <div class="relative">
-<button class="material-symbols-outlined text-slate-500 hover:text-slate-900 transition-colors" data-icon="notifications">notifications</button>
+<button class="material-symbols-outlined text-slate-500 hover:text-slate-900 transition-colors" data-icon="notifications" onclick="window.location.href="/activity"">notifications</button>
 <span class="absolute top-0 right-0 w-2 h-2 bg-on-primary-container rounded-full border-2 border-white"></span>
 </div>
 <div class="flex items-center space-x-3 border-l pl-6 border-outline-variant/30">
@@ -238,9 +238,9 @@
 <p class="text-on-surface-variant text-sm mt-1">Aggregate revenue velocity across all tiers</p>
 </div>
 <div class="flex bg-surface-container-low p-1 rounded-lg">
-<button class="px-3 py-1 text-xs font-bold bg-white shadow-sm rounded-md">6m</button>
-<button class="px-3 py-1 text-xs font-medium text-on-surface-variant">1y</button>
-<button class="px-3 py-1 text-xs font-medium text-on-surface-variant">All</button>
+<button class="px-3 py-1 text-xs font-bold bg-white shadow-sm rounded-md" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">6m</button>
+<button class="px-3 py-1 text-xs font-medium text-on-surface-variant" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">1y</button>
+<button class="px-3 py-1 text-xs font-medium text-on-surface-variant" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">All</button>
 </div>
 </div>
 <div class="h-64 flex items-end justify-between space-x-2 relative group">

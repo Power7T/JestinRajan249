@@ -101,8 +101,8 @@
 <a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 font-sans tracking-tight" href="/activity">Analytics</a>
 </nav>
 <div class="flex items-center gap-4">
-<button class="material-symbols-outlined text-on-surface-variant hover:bg-slate-100/50 dark:hover:bg-slate-800/50 p-2 rounded-full transition-all">notifications</button>
-<button class="material-symbols-outlined text-on-surface-variant hover:bg-slate-100/50 dark:hover:bg-slate-800/50 p-2 rounded-full transition-all">settings</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-slate-100/50 dark:hover:bg-slate-800/50 p-2 rounded-full transition-all" onclick="window.location.href="/activity"">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-slate-100/50 dark:hover:bg-slate-800/50 p-2 rounded-full transition-all" onclick="window.location.href="/settings"">settings</button>
 <img alt="User profile" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="Professional headshot of a property manager in a modern office, soft natural lighting, professional and approachable expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0RFMs_6LonOO-lzJnmXfna_cl7GXkYqmMwvIfI-RqiCNn7_6_CI_oVrd3tk0GCrbFmPFhK05zI-89aIjQny9C8c8JCDgKHorw6jsABZPM9zPdh1UBm3HazMYTFU5TBIkEu71eXL6szGwaFO2Q3coSOlMPlpw5wvdO_jW1fLeoLg6HoRp7EY4hWB2SSO5ruMHf-HZ-FAc1mFxePAVqExUQccsKCX79M6c0aSIkPXDVJ0F_ODMCRUCH2QT6sO4H-HTOEooh90KHr0Us"/>
 </div>
 </div>
@@ -127,13 +127,13 @@
 <a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 ml-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all font-sans text-sm font-medium" href="/activity">
 <span class="material-symbols-outlined">calendar_month</span> Reservation History
                 </a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 ml-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all font-sans text-sm font-medium" href="#">
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 ml-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all font-sans text-sm font-medium" href="/guest_timeline">
 <span class="material-symbols-outlined">chat</span> Message Log
                 </a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 ml-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all font-sans text-sm font-medium" href="#">
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 ml-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all font-sans text-sm font-medium" href="/activity">
 <span class="material-symbols-outlined">timeline</span> Interaction Timeline
                 </a>
-<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 ml-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all font-sans text-sm font-medium" href="#">
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-2 ml-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all font-sans text-sm font-medium" href="/activity">
 <span class="material-symbols-outlined">edit_note</span> Internal Notes
                 </a>
 </nav>
@@ -175,7 +175,7 @@
 <div class="bg-surface-container-low rounded-xl p-8">
 <div class="flex justify-between items-center mb-6">
 <h2 class="text-xl font-bold text-on-surface tracking-tight">Reservation History</h2>
-<button class="text-primary text-sm font-semibold hover:underline">View All</button>
+<button class="text-primary text-sm font-semibold hover:underline" onclick="window.location.href="/activity"">View All</button>
 </div>
 <div class="space-y-4">
 <!-- Reservation Item -->
@@ -304,7 +304,7 @@
 </div>
 </div>
 </div>
-<button class="w-full mt-10 bg-surface-container-highest text-on-surface py-3 rounded-xl text-sm font-bold hover:bg-slate-300 transition-colors">Load Older Activity</button>
+<button class="w-full mt-10 bg-surface-container-highest text-on-surface py-3 rounded-xl text-sm font-bold hover:bg-slate-300 transition-colors" onclick="this.textContent="Loading..."; setTimeout(()=>{this.textContent="Load Older Activity"},1000)">Load Older Activity</button>
 </div>
 </div>
 </div>

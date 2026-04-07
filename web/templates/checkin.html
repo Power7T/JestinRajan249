@@ -128,23 +128,23 @@
 </div>
 </div>
 <nav class="flex-1 space-y-1">
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="#">
+<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="/dashboard">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
 <span>Overview</span>
 </a>
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="#">
+<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="/reservations">
 <span class="material-symbols-outlined" data-icon="event_note">event_note</span>
 <span>Reservations</span>
 </a>
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="#">
+<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="/guest_timeline">
 <span class="material-symbols-outlined" data-icon="calendar_view_day">calendar_view_day</span>
 <span>Timeline</span>
 </a>
-<a class="flex items-center gap-3 bg-blue-50 text-blue-700 rounded-full py-3 px-6 mx-2 text-sm font-medium font-inter" href="#">
+<a class="flex items-center gap-3 bg-blue-50 text-blue-700 rounded-full py-3 px-6 mx-2 text-sm font-medium font-inter" href="/checkin">
 <span class="material-symbols-outlined" data-icon="login">login</span>
 <span>Check-ins</span>
 </a>
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="#">
+<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 text-sm font-medium font-inter" href="/dashboard">
 <span class="material-symbols-outlined" data-icon="domain">domain</span>
 <span>Units</span>
 </a>
@@ -156,11 +156,11 @@
                 </button>
 </div>
 <div class="mt-auto space-y-1 border-t border-slate-200 pt-4">
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 transition-all text-sm font-medium font-inter" href="#">
+<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 transition-all text-sm font-medium font-inter" href="/settings">
 <span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
 <span>Support</span>
 </a>
-<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 transition-all text-sm font-medium font-inter" href="#">
+<a class="flex items-center gap-3 text-slate-500 py-3 px-6 mx-2 hover:text-slate-900 transition-all text-sm font-medium font-inter" href="/settings">
 <span class="material-symbols-outlined" data-icon="person_outline">person_outline</span>
 <span>Account</span>
 </a>
@@ -236,7 +236,7 @@
 <div class="px-8 py-6 flex justify-between items-center border-b border-surface-container">
 <h3 class="text-xl font-bold">Upcoming Arrivals</h3>
 <div class="flex gap-2">
-<button class="px-4 py-2 text-xs font-bold rounded-full bg-surface-container text-on-surface-variant">Sort by Time</button>
+<button class="px-4 py-2 text-xs font-bold rounded-full bg-surface-container text-on-surface-variant" onclick="this.textContent = this.textContent.includes("↑") ? "Sort by Time ↓" : "Sort by Time ↑"">Sort by Time</button>
 <a href="/activity" class="px-4 py-2 text-xs font-bold rounded-full text-primary hover:bg-primary-fixed transition-colors">Export Daily List</a>
 </div>
 </div>

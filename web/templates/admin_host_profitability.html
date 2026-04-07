@@ -174,9 +174,7 @@
 <p class="text-on-surface-variant mt-1">Real-time expenditure analysis across the precision ecosystem.</p>
 </div>
 <div class="flex gap-3">
-<button class="px-5 py-2.5 rounded-xl text-sm font-semibold bg-surface-container-lowest text-on-surface border border-outline-variant/15 hover:translate-y-[-2px] transition-all">
-                        Download Report
-                    </button>
+<button class="px-5 py-2.5 rounded-xl text-sm font-semibold bg-surface-container-lowest text-on-surface border border-outline-variant/15 hover:translate-y-[-2px] transition-all" onclick="this.textContent="Downloading..."; setTimeout(()=>{this.textContent="Download Report"},2000)">Download Report</button>
 <a href="/billing" class="px-5 py-2.5 rounded-xl text-sm font-semibold bg-primary-container text-on-primary-container hover:translate-y-[-2px] transition-all">Adjust Budgets</a>
 </div>
 </div>
@@ -340,9 +338,7 @@
 <p class="text-sm font-medium text-on-secondary-fixed-variant mt-1 leading-snug">Switching to Reserved Instances for Database Cluster B could save $840/mo.</p>
 </div>
 </div>
-<button class="w-full mt-6 py-3 rounded-xl border border-outline text-xs font-bold hover:bg-surface-container transition-colors">
-                            View All Predictions
-                        </button>
+<button class="w-full mt-6 py-3 rounded-xl border border-outline text-xs font-bold hover:bg-surface-container transition-colors" onclick="window.location.href="/activity"">View All Predictions</button>
 </div>
 <!-- Breakdown by Service -->
 <div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10">

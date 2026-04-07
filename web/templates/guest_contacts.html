@@ -118,17 +118,17 @@
 <span class="font-['Inter'] text-sm font-medium">Leasing</span>
 </a>
 <!-- Financials -->
-<a class="flex items-center gap-3 text-[#414753] dark:text-slate-400 px-4 py-3 hover:text-[#004e9f] dark:hover:text-white transition-all hover:translate-x-1 duration-200" href="#">
+<a class="flex items-center gap-3 text-[#414753] dark:text-slate-400 px-4 py-3 hover:text-[#004e9f] dark:hover:text-white transition-all hover:translate-x-1 duration-200" href="/billing">
 <span class="material-symbols-outlined" data-icon="payments">payments</span>
 <span class="font-['Inter'] text-sm font-medium">Financials</span>
 </a>
 </nav>
 <div class="mt-auto space-y-2 border-t border-[#f2f4f6] dark:border-slate-800 pt-6">
-<a class="flex items-center gap-3 text-[#414753] dark:text-slate-400 px-4 py-3 hover:text-[#004e9f] transition-all" href="#">
+<a class="flex items-center gap-3 text-[#414753] dark:text-slate-400 px-4 py-3 hover:text-[#004e9f] transition-all" href="/settings">
 <span class="material-symbols-outlined" data-icon="help">help</span>
 <span class="font-['Inter'] text-sm font-medium">Help Center</span>
 </a>
-<a class="flex items-center gap-3 text-[#414753] dark:text-slate-400 px-4 py-3 hover:text-[#004e9f] transition-all" href="#">
+<a class="flex items-center gap-3 text-[#414753] dark:text-slate-400 px-4 py-3 hover:text-[#004e9f] transition-all" href="/logout">
 <span class="material-symbols-outlined" data-icon="logout">logout</span>
 <span class="font-['Inter'] text-sm font-medium">Logout</span>
 </a>
@@ -396,8 +396,8 @@
 <div class="px-6 py-4 bg-surface-container-low/30 border-t border-outline-variant/10 flex items-center justify-between">
 <p class="text-sm text-on-surface-variant">Showing <span class="font-bold text-on-surface">1-10</span> of 1,284 guests</p>
 <div class="flex gap-2">
-<button class="px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-container-highest rounded-xl transition-all">Previous</button>
-<button class="px-4 py-2 text-sm font-bold bg-primary-fixed text-on-primary-fixed rounded-xl hover:bg-primary-fixed-dim transition-all">Next</button>
+<button class="px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-container-highest rounded-xl transition-all" onclick="history.back()">Previous</button>
+<button class="px-4 py-2 text-sm font-bold bg-primary-fixed text-on-primary-fixed rounded-xl hover:bg-primary-fixed-dim transition-all" onclick="history.forward()">Next</button>
 </div>
 </div>
 </div>

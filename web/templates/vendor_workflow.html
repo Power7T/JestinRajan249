@@ -114,8 +114,8 @@
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
 <input class="pl-10 pr-4 py-2 bg-surface-container-low rounded-full border-none text-sm focus:ring-2 focus:ring-primary outline-none w-64" placeholder="Search workflows..." type="text"/>
 </div>
-<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container transition-colors rounded-full">notifications</button>
-<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container transition-colors rounded-full">settings</button>
+<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container transition-colors rounded-full" onclick="window.location.href="/activity"">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container transition-colors rounded-full" onclick="window.location.href="/settings"">settings</button>
 <a href="/vendor_workflow" class="bg-primary text-on-primary px-4 py-2 rounded-xl font-medium text-sm hover:translate-y-[-2px] transition-all duration-150 active:scale-95 shadow-md">Add Vendor</a>
 <img alt="User profile" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="professional male headshot for user profile with warm studio lighting and neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOmG5kdpQJCAt1g8k1dOA_j9YZOAb33B7TWiwqJNqy2ebE8Gi-M5z19tA7jbypjvVZNns4W_ceM0yq4Vz7TSgc8YY46UW7M6lNSdKwbb6Ys2wFki98ow4fUFosIyRXoA4bO2hRuws6yXN1mBOvPSukfgDiejKUxS1UUYFVKUnijefVoS9P3yog6EkA2kamN2lvInMhklwJaXcZlQR6FyQiHwVjddYbmBfcYGm2PToSKY39wViTvHphXUfD1EQ0IDZn2V7MesB3nGMD"/>
 </div>
@@ -135,21 +135,21 @@
 </div>
 </div>
 <div class="flex-1 space-y-1">
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-lg mx-2 transition-colors" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-lg mx-2 transition-colors" href="/vendor_workflow">
 <span class="material-symbols-outlined">groups</span>
 <span class="font-sans text-sm font-medium">Vendor Directory</span>
 </a>
-<a class="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg mx-2 my-1 px-4 py-3" href="#">
+<a class="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg mx-2 my-1 px-4 py-3" href="/automation_rules">
 <span class="material-symbols-outlined">account_tree</span>
 <span class="font-sans text-sm font-medium">Workflow Builder</span>
 </a>
 </div>
 <div class="mt-auto space-y-1">
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-lg mx-2 transition-colors" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-lg mx-2 transition-colors" href="/settings">
 <span class="material-symbols-outlined">help</span>
 <span class="font-sans text-sm font-medium">Help Center</span>
 </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-lg mx-2 transition-colors" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 px-4 py-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-lg mx-2 transition-colors" href="/logout">
 <span class="material-symbols-outlined">logout</span>
 <span class="font-sans text-sm font-medium">Log Out</span>
 </a>
@@ -164,7 +164,7 @@
 <span class="px-2 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold rounded-full uppercase tracking-tighter">Draft</span>
 </div>
 <div class="flex items-center gap-3">
-<button class="px-4 py-1.5 text-sm font-medium text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">History</button>
+<button class="px-4 py-1.5 text-sm font-medium text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" onclick="window.location.href="/activity"">History</button>
 <a href="/workflow_center" class="px-4 py-1.5 text-sm font-medium bg-secondary-container text-on-secondary-fixed-variant rounded-lg hover:translate-y-[-1px] transition-all">Test Run</a>
 <a href="/workflow_center" class="px-6 py-1.5 text-sm font-semibold bg-primary text-on-primary rounded-lg hover:translate-y-[-2px] shadow-sm transition-all">Publish Workflow</a>
 </div>
@@ -246,7 +246,7 @@
 <div class="w-72 bg-white rounded-2xl shadow-lg border border-primary/20 p-5 workflow-connector mb-8 z-10">
 <div class="flex items-center justify-between mb-4">
 <span class="px-2 py-0.5 bg-primary-fixed text-on-primary-fixed text-[9px] font-bold rounded uppercase tracking-widest">Trigger</span>
-<button class="material-symbols-outlined text-sm text-outline-variant">more_vert</button>
+<button class="material-symbols-outlined text-sm text-outline-variant" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">more_vert</button>
 </div>
 <div class="flex items-center gap-3">
 <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
@@ -262,7 +262,7 @@
 <div class="w-72 bg-white rounded-2xl shadow-md p-5 workflow-connector mb-8 z-10">
 <div class="flex items-center justify-between mb-4">
 <span class="px-2 py-0.5 bg-secondary-fixed text-on-secondary-fixed text-[9px] font-bold rounded uppercase tracking-widest">Action</span>
-<button class="material-symbols-outlined text-sm text-outline-variant">more_vert</button>
+<button class="material-symbols-outlined text-sm text-outline-variant" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">more_vert</button>
 </div>
 <div class="flex items-center gap-3">
 <div class="w-10 h-10 rounded-xl bg-secondary-container flex items-center justify-center text-secondary">
@@ -283,7 +283,7 @@
 <div class="w-72 bg-white rounded-2xl shadow-md p-5 workflow-connector mb-8 z-10">
 <div class="flex items-center justify-between mb-4">
 <span class="px-2 py-0.5 bg-secondary-fixed text-on-secondary-fixed text-[9px] font-bold rounded uppercase tracking-widest">Action</span>
-<button class="material-symbols-outlined text-sm text-outline-variant">more_vert</button>
+<button class="material-symbols-outlined text-sm text-outline-variant" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">more_vert</button>
 </div>
 <div class="flex items-center gap-3">
 <div class="w-10 h-10 rounded-xl bg-secondary-container flex items-center justify-center text-secondary">
@@ -358,9 +358,7 @@
 </label>
 </div>
 </div>
-<button class="w-full mt-12 py-3 bg-error-container text-on-error-container rounded-xl text-xs font-bold hover:bg-error transition-colors hover:text-on-error">
-                            Delete This Step
-                        </button>
+<button class="w-full mt-12 py-3 bg-error-container text-on-error-container rounded-xl text-xs font-bold hover:bg-error transition-colors hover:text-on-error" onclick="if(confirm('Delete this item? This cannot be undone.')){ this.textContent='Deleted'; this.disabled=true }">Delete This Step</button>
 </div>
 </aside>
 </div>

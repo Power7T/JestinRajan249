@@ -116,33 +116,33 @@
 <h3 class="text-lg font-black text-blue-800 dark:text-blue-300">Management</h3>
 <p class="text-xs text-on-surface-variant opacity-70">Precision Curator</p>
 </div>
-<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full flex items-center gap-3 transition-all duration-300 hover:translate-x-1" href="#">
+<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full flex items-center gap-3 transition-all duration-300 hover:translate-x-1" href="/dashboard">
 <span class="material-symbols-outlined">dashboard</span>
 <span class="font-inter text-sm font-medium">Dashboard</span>
 </a>
-<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full flex items-center gap-3 transition-all duration-300 hover:translate-x-1" href="#">
+<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full flex items-center gap-3 transition-all duration-300 hover:translate-x-1" href="/analytics">
 <span class="material-symbols-outlined">event_seat</span>
 <span class="font-inter text-sm font-medium">Occupancy</span>
 </a>
-<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full flex items-center gap-3 transition-all duration-300 hover:translate-x-1" href="#">
+<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full flex items-center gap-3 transition-all duration-300 hover:translate-x-1" href="/analytics">
 <span class="material-symbols-outlined">speed</span>
 <span class="font-inter text-sm font-medium">Response Time</span>
 </a>
-<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full flex items-center gap-3 transition-all duration-300 hover:translate-x-1" href="#">
+<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full flex items-center gap-3 transition-all duration-300 hover:translate-x-1" href="/analytics">
 <span class="material-symbols-outlined">trending_down</span>
 <span class="font-inter text-sm font-medium">Bounce Rates</span>
 </a>
-<a class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full mx-4 px-4 py-3 flex items-center gap-3" href="#">
+<a class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full mx-4 px-4 py-3 flex items-center gap-3" href="/settings">
 <span class="material-symbols-outlined">settings</span>
 <span class="font-inter text-sm font-medium">Settings</span>
 </a>
 <div class="mt-auto px-4 flex flex-col gap-2">
 <a href="/analytics" class="bg-primary text-on-primary py-3 px-6 rounded-full font-bold shadow-md hover:translate-y-[-2px] transition-transform mx-4 mb-4">New Report</a>
-<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 flex items-center gap-3" href="#">
+<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 flex items-center gap-3" href="/settings">
 <span class="material-symbols-outlined">help</span>
 <span class="text-sm">Support</span>
 </a>
-<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 flex items-center gap-3" href="#">
+<a class="text-slate-600 dark:text-slate-400 mx-4 px-4 py-3 hover:text-slate-900 dark:hover:text-slate-100 flex items-center gap-3" href="/logout">
 <span class="material-symbols-outlined">logout</span>
 <span class="text-sm">Logout</span>
 </a>
@@ -162,10 +162,10 @@
 <!-- Filter Controls - Tonal Layering -->
 <div class="flex flex-col md:flex-row gap-4 mb-10 items-start md:items-center">
 <div class="flex gap-2 p-1 bg-surface-container rounded-full w-fit">
-<button class="px-5 py-2 rounded-full text-sm font-bold bg-surface-container-lowest shadow-sm text-primary">All Alerts</button>
-<button class="px-5 py-2 rounded-full text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Performance</button>
-<button class="px-5 py-2 rounded-full text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">System</button>
-<button class="px-5 py-2 rounded-full text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Bookings</button>
+<button class="px-5 py-2 rounded-full text-sm font-bold bg-surface-container-lowest shadow-sm text-primary" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">All Alerts</button>
+<button class="px-5 py-2 rounded-full text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Performance</button>
+<button class="px-5 py-2 rounded-full text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">System</button>
+<button class="px-5 py-2 rounded-full text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Bookings</button>
 </div>
 <div class="flex items-center gap-3 ml-auto">
 <span class="text-sm font-medium text-on-surface-variant">Severity:</span>
@@ -201,12 +201,8 @@
                             Occupancy rates for your downtown properties have fallen below 45% for the upcoming month. Immediate pricing adjustment or promotional campaign suggested.
                         </p>
 <div class="mt-auto flex gap-4 pt-6">
-<button class="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-full text-sm font-bold hover:translate-y-[-2px] transition-transform flex items-center gap-2">
-                                Review Strategy
-                            </button>
-<button class="text-on-surface-variant hover:text-on-surface px-4 py-2.5 rounded-full text-sm font-medium transition-colors">
-                                Dismiss
-                            </button>
+<button class="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-full text-sm font-bold hover:translate-y-[-2px] transition-transform flex items-center gap-2" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Review Strategy</button>
+<button class="text-on-surface-variant hover:text-on-surface px-4 py-2.5 rounded-full text-sm font-medium transition-colors" onclick="this.closest('.bg-white, .rounded, [class*="card"], article, section').remove(); event.stopPropagation()">Dismiss</button>
 </div>
 </div>
 </div>
@@ -268,8 +264,7 @@
                                     Reservation confirmed for <span class="font-bold text-on-surface">Modern Loft Space</span> from Oct 12 - Oct 18. Guest profile: Sarah Jenkins (Superhost status).
                                 </p>
 <div class="flex gap-4">
-<button class="text-sm font-bold text-primary flex items-center gap-1 hover:gap-2 transition-all">
-                                        View Details <span class="material-symbols-outlined text-sm">arrow_forward</span>
+<button class="text-sm font-bold text-primary flex items-center gap-1 hover:gap-2 transition-all" onclick="window.location.href="/billing"">View Details<span class="material-symbols-outlined text-sm">arrow_forward</span>
 </button>
 </div>
 </div>

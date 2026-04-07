@@ -109,8 +109,8 @@
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
 <input class="pl-10 pr-4 py-2 bg-surface-container border-none rounded-full text-xs focus:ring-2 focus:ring-primary w-64" placeholder="Search parameters..." type="text"/>
 </div>
-<button class="material-symbols-outlined text-on-surface-variant hover:bg-slate-50 p-2 rounded-full transition-colors">notifications</button>
-<button class="material-symbols-outlined text-on-surface-variant hover:bg-slate-50 p-2 rounded-full transition-colors">help_outline</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-slate-50 p-2 rounded-full transition-colors" onclick="window.location.href="/activity"">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-slate-50 p-2 rounded-full transition-colors" onclick="window.location.href="/settings"">help_outline</button>
 <img alt="Admin Profile Avatar" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="professional headshot of a mature executive male with short hair and confident expression against a neutral studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6_9Q-jhJFltUMf-D9QzdZPkCRbwx7y_NsDD_OI9iCSWpN21tFEt5K7sR-7syFFssAGrpb7vOQrZJLCyX4jGQXC1Ui3KLhzQSRyO84i2-QAliePUZUNPXrPl3gZorrG4y88bdBhkhg6uy4wRrfgftRtlGElwvg0GOPkpjOjk-bnFKnKH8n_g9NhjO-kEJcFW1rEElHfiWvSHUNkgKXHPDep2Q4AG33V6k4UEhoHQ_lNbQ1uWuPgsjnuCnsaTuDktM_o9-IRaQyZj_N"/>
 </div>
 </header>
@@ -153,10 +153,10 @@
 <a href="/billing" class="w-full py-2 bg-primary text-on-primary text-xs font-bold rounded-lg active:scale-95 transition-transform">Upgrade Plan</a>
 </div>
 <div class="space-y-1">
-<a class="flex items-center gap-3 text-slate-600 px-4 py-2 hover:text-primary transition-colors" href="#">
+<a class="flex items-center gap-3 text-slate-600 px-4 py-2 hover:text-primary transition-colors" href="/settings">
 <span class="material-symbols-outlined">support_agent</span> Support
                 </a>
-<a class="flex items-center gap-3 text-error px-4 py-2 hover:bg-error-container/20 transition-colors" href="#">
+<a class="flex items-center gap-3 text-error px-4 py-2 hover:bg-error-container/20 transition-colors" href="/logout">
 <span class="material-symbols-outlined">logout</span> Logout
                 </a>
 </div>
@@ -224,7 +224,7 @@
 </div>
 </div>
 <div class="pt-8 border-t border-surface-container flex gap-2">
-<button class="flex-1 py-3 bg-secondary-container text-on-secondary-container font-bold rounded-xl hover:bg-primary/10 transition-colors">Edit Plan</button>
+<button class="flex-1 py-3 bg-secondary-container text-on-secondary-container font-bold rounded-xl hover:bg-primary/10 transition-colors" onclick="window.location.href="/admin/pricing"">Edit Plan</button>
 <button class="p-3 bg-surface-container text-on-surface-variant rounded-xl hover:text-error transition-colors"><span class="material-symbols-outlined">delete</span></button>
 </div>
 </div>
@@ -260,7 +260,7 @@
 </div>
 </div>
 <div class="pt-8 flex gap-2">
-<button class="flex-1 py-3 bg-white text-primary font-bold rounded-xl hover:bg-primary-fixed transition-colors">Edit Pro Plan</button>
+<button class="flex-1 py-3 bg-white text-primary font-bold rounded-xl hover:bg-primary-fixed transition-colors" onclick="window.location.href="/admin/pricing"">Edit Pro Plan</button>
 <button class="p-3 bg-primary-container text-white rounded-xl hover:bg-primary-fixed-variant transition-colors"><span class="material-symbols-outlined">toggle_on</span></button>
 </div>
 </div>
@@ -291,7 +291,7 @@
 </div>
 </div>
 <div class="pt-8 border-t border-surface-container flex gap-2">
-<button class="flex-1 py-3 bg-secondary-container text-on-secondary-container font-bold rounded-xl hover:bg-primary/10 transition-colors">Edit Plan</button>
+<button class="flex-1 py-3 bg-secondary-container text-on-secondary-container font-bold rounded-xl hover:bg-primary/10 transition-colors" onclick="window.location.href="/admin/pricing"">Edit Plan</button>
 <button class="p-3 bg-surface-container text-on-surface-variant rounded-xl hover:text-error transition-colors"><span class="material-symbols-outlined">delete</span></button>
 </div>
 </div>
@@ -418,7 +418,7 @@
 <span class="material-symbols-outlined text-4xl mb-4" data-weight="fill">lightbulb</span>
 <h4 class="text-lg font-black tracking-tight mb-2">Revenue Insight</h4>
 <p class="text-sm opacity-90 leading-relaxed mb-6">Increasing the Pro plan by $10 led to a 12% revenue growth with less than 1% churn in Q3.</p>
-<button class="px-4 py-2 bg-on-tertiary-container text-tertiary-container font-black text-xs rounded-lg uppercase tracking-widest">Run Simulation</button>
+<button class="px-4 py-2 bg-on-tertiary-container text-tertiary-container font-black text-xs rounded-lg uppercase tracking-widest" onclick="this.textContent="Running..."; setTimeout(()=>{this.textContent="Run Simulation"},2000)">Run Simulation</button>
 </div>
 </div>
 </section>
@@ -433,7 +433,7 @@
 <span class="text-sm font-medium text-on-surface-variant italic">Unsaved changes in "Pro" and "Starter" plans...</span>
 </div>
 <div class="flex gap-4">
-<button class="px-8 py-3 text-on-surface-variant font-bold rounded-xl hover:bg-surface-container-high transition-colors">Preview Changes</button>
+<button class="px-8 py-3 text-on-surface-variant font-bold rounded-xl hover:bg-surface-container-high transition-colors" onclick="this.textContent="Previewing..."; setTimeout(()=>{this.textContent="Preview Changes"},1000)">Preview Changes</button>
 <button class="px-10 py-3 bg-primary text-on-primary font-black rounded-xl shadow-xl shadow-primary/30 hover:-translate-y-1 active:translate-y-0 transition-all">Save Changes &amp; Deploy</button>
 </div>
 </footer>

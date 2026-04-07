@@ -117,33 +117,31 @@
 <span class="material-symbols-outlined mr-3 text-xl" data-icon="api">api</span>
 <span class="font-inter text-sm">API Health</span>
 </a>
-<a class="text-[#414753] dark:text-slate-400 mx-4 flex items-center px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<a class="text-[#414753] dark:text-slate-400 mx-4 flex items-center px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="/admin/system">
 <span class="material-symbols-outlined mr-3 text-xl" data-icon="database">database</span>
 <span class="font-inter text-sm">Databases</span>
 </a>
-<a class="text-[#414753] dark:text-slate-400 mx-4 flex items-center px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<a class="text-[#414753] dark:text-slate-400 mx-4 flex items-center px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="/admin/system">
 <span class="material-symbols-outlined mr-3 text-xl" data-icon="engineering">engineering</span>
 <span class="font-inter text-sm">Workers</span>
 </a>
-<a class="text-[#414753] dark:text-slate-400 mx-4 flex items-center px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<a class="text-[#414753] dark:text-slate-400 mx-4 flex items-center px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="/activity">
 <span class="material-symbols-outlined mr-3 text-xl" data-icon="history">history</span>
 <span class="font-inter text-sm">Alert History</span>
 </a>
 </nav>
 <div class="pt-4 border-t border-outline-variant/10 px-4 space-y-1">
-<a class="text-[#414753] dark:text-slate-400 flex items-center px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<a class="text-[#414753] dark:text-slate-400 flex items-center px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="/admin/system">
 <span class="material-symbols-outlined mr-3 text-lg" data-icon="terminal">terminal</span>
 <span class="font-inter text-sm">Logs</span>
 </a>
-<a class="text-[#414753] dark:text-slate-400 flex items-center px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<a class="text-[#414753] dark:text-slate-400 flex items-center px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="/settings">
 <span class="material-symbols-outlined mr-3 text-lg" data-icon="menu_book">menu_book</span>
 <span class="font-inter text-sm">Docs</span>
 </a>
 </div>
 <div class="px-4 mt-auto">
-<button class="w-full py-3 bg-secondary-container text-on-secondary-container rounded-xl font-bold text-sm transition-transform active:scale-95">
-                    Report Issue
-                </button>
+<button class="w-full py-3 bg-secondary-container text-on-secondary-container rounded-xl font-bold text-sm transition-transform active:scale-95" onclick="window.location.href="/settings"">Report Issue</button>
 </div>
 </aside>
 <!-- Main Canvas -->
@@ -358,7 +356,7 @@
 </td>
 <td class="px-6 py-4 text-sm text-on-surface-variant">Active</td>
 <td class="px-6 py-4 text-right">
-<button class="material-symbols-outlined text-outline hover:text-primary" data-icon="more_vert">more_vert</button>
+<button class="material-symbols-outlined text-outline hover:text-primary" data-icon="more_vert" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">more_vert</button>
 </td>
 </tr>
 <tr class="hover:bg-surface-container-low/50 transition-colors">
@@ -369,7 +367,7 @@
 </td>
 <td class="px-6 py-4 text-sm text-on-surface-variant">Resolved</td>
 <td class="px-6 py-4 text-right">
-<button class="material-symbols-outlined text-outline hover:text-primary" data-icon="more_vert">more_vert</button>
+<button class="material-symbols-outlined text-outline hover:text-primary" data-icon="more_vert" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">more_vert</button>
 </td>
 </tr>
 <tr class="hover:bg-surface-container-low/50 transition-colors">
@@ -380,7 +378,7 @@
 </td>
 <td class="px-6 py-4 text-sm text-on-surface-variant">Closed</td>
 <td class="px-6 py-4 text-right">
-<button class="material-symbols-outlined text-outline hover:text-primary" data-icon="more_vert">more_vert</button>
+<button class="material-symbols-outlined text-outline hover:text-primary" data-icon="more_vert" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">more_vert</button>
 </td>
 </tr>
 </tbody>
@@ -409,7 +407,7 @@
 </div>
 <div class="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
 <span class="text-[9px] uppercase tracking-widest text-slate-500">Streaming console output</span>
-<button class="text-white bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-[9px] font-bold">DOWNLOAD RAW</button>
+<button class="text-white bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-[9px] font-bold" onclick="this.textContent="Downloading..."; setTimeout(()=>{this.textContent="DOWNLOAD RAW"},2000)">DOWNLOAD RAW</button>
 </div>
 </div>
 </div>

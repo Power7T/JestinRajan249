@@ -102,8 +102,8 @@
 <p class="text-on-surface-variant font-medium">Manage your financial landscape and service tiers.</p>
 </div>
 <div class="bg-surface-container-low p-1 rounded-full flex gap-1">
-<button class="px-6 py-2 rounded-full bg-surface-container-lowest shadow-sm text-sm font-bold text-primary">Monthly</button>
-<button class="px-6 py-2 rounded-full text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Yearly (Save 15%)</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-lowest shadow-sm text-sm font-bold text-primary" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Monthly</button>
+<button class="px-6 py-2 rounded-full text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Yearly (Save 15%)</button>
 </div>
 </div>
 
@@ -144,7 +144,7 @@
 </div>
 <div class="mt-auto flex gap-4">
 <a href="/billing" class="px-6 py-3 bg-primary text-white rounded-full font-bold shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all active:scale-95">Manage Plan</a>
-<button class="px-6 py-3 text-primary font-bold hover:bg-primary/5 rounded-full transition-all">View Details</button>
+<button class="px-6 py-3 text-primary font-bold hover:bg-primary/5 rounded-full transition-all" onclick="window.location.href="/billing"">View Details</button>
 </div>
 </div>
 </div>
@@ -177,7 +177,7 @@
 </div>
 </div>
 </div>
-<button class="mt-auto w-full py-3 rounded-full outline outline-1 outline-primary text-primary font-bold hover:bg-primary/5 transition-all text-sm">Update Preferences</button>
+<button class="mt-auto w-full py-3 rounded-full outline outline-1 outline-primary text-primary font-bold hover:bg-primary/5 transition-all text-sm" onclick="this.closest('form') ? this.closest('form').submit() : null">Update Preferences</button>
 </div>
 </div>
 

@@ -332,8 +332,8 @@
 <p class="text-xs text-on-surface-variant">Detailed view of asset unit yields</p>
 </div>
 <div class="flex gap-2">
-<button class="px-4 py-2 text-xs font-bold hover:bg-surface-container rounded-full transition-colors">Filters</button>
-<button class="px-4 py-2 text-xs font-bold bg-secondary-container text-on-secondary-container rounded-full">Columns</button>
+<button class="px-4 py-2 text-xs font-bold hover:bg-surface-container rounded-full transition-colors" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">Filters</button>
+<button class="px-4 py-2 text-xs font-bold bg-secondary-container text-on-secondary-container rounded-full" onclick="this.nextElementSibling && this.nextElementSibling.classList.toggle("hidden")">Columns</button>
 </div>
 </div>
 <table class="w-full text-left">
@@ -441,9 +441,9 @@
 <button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high transition-colors">
 <span class="material-symbols-outlined text-sm" data-icon="chevron_left">chevron_left</span>
 </button>
-<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white text-xs font-bold">1</button>
-<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-xs font-bold">2</button>
-<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-xs font-bold">3</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white text-xs font-bold" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white')); this.classList.add('bg-blue-600','text-white')">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-xs font-bold" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white')); this.classList.add('bg-blue-600','text-white')">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-xs font-bold" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white')); this.classList.add('bg-blue-600','text-white')">3</button>
 <button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high transition-colors">
 <span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
 </button>

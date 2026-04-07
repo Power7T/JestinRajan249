@@ -110,7 +110,7 @@
 </button>
 </div>
 <div class="h-8 w-[1px] bg-slate-200/20"></div>
-<button class="bg-primary-container text-on-primary-container px-4 py-2 rounded-xl text-sm font-semibold transition-colors active:scale-95 duration-200">Generate Report</button>
+<button class="bg-primary-container text-on-primary-container px-4 py-2 rounded-xl text-sm font-semibold transition-colors active:scale-95 duration-200" onclick="this.textContent="Generating..."; setTimeout(()=>{this.textContent="Generate Report"},2000)">Generate Report</button>
 <a href="/settings" class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm active:scale-95 duration-200">Add Property</a>
 </div>
 </nav>
@@ -136,19 +136,19 @@
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
 <span>Dashboard</span>
 </a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="/conversations">
 <span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
 <span>Inquiries</span>
 </a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="/reservations">
 <span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
 <span>Bookings</span>
 </a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="/dashboard">
 <span class="material-symbols-outlined" data-icon="domain">domain</span>
 <span>Properties</span>
 </a>
-<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200/50 transition-all duration-300 rounded-full font-inter text-sm" href="/conversations">
 <span class="material-symbols-outlined" data-icon="forum">forum</span>
 <span>Messages</span>
 </a>
@@ -241,8 +241,8 @@
 <p class="text-on-surface-variant">Visualizing daily inquiry volume and engagement.</p>
 </div>
 <div class="flex gap-2">
-<button class="px-4 py-2 text-xs font-semibold bg-primary-fixed text-primary rounded-full">Daily</button>
-<button class="px-4 py-2 text-xs font-semibold hover:bg-surface-container rounded-full transition-colors">Weekly</button>
+<button class="px-4 py-2 text-xs font-semibold bg-primary-fixed text-primary rounded-full" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Daily</button>
+<button class="px-4 py-2 text-xs font-semibold hover:bg-surface-container rounded-full transition-colors" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-blue-600','text-white','bg-white','text-blue-600','font-bold')); this.classList.add('bg-blue-600','text-white')">Weekly</button>
 </div>
 </div>
 <!-- Mock Line Chart Area -->

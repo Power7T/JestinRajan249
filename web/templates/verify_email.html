@@ -98,7 +98,7 @@
 </div>
 <div class="flex items-center gap-4">
 <a href="/login" class="text-slate-600 dark:text-slate-400 font-medium hover:text-blue-600 px-4 py-2 font-headline tracking-tight transition-all active:scale-[0.99]">Sign In</a>
-<button class="bg-primary text-on-primary px-6 py-2 rounded-xl font-headline font-semibold tracking-tight shadow-sm hover:bg-primary-container transition-all active:scale-[0.99]">Support</button>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-xl font-headline font-semibold tracking-tight shadow-sm hover:bg-primary-container transition-all active:scale-[0.99]" onclick="window.location.href="/settings"">Support</button>
 </div>
 </nav>
 </header>
@@ -144,9 +144,7 @@
                         <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
 </button>
 <div class="flex flex-col items-center gap-4 pt-4">
-<button class="text-primary font-bold font-body text-sm hover:underline transition-all">
-                            Resend code
-                        </button>
+<button class="text-primary font-bold font-body text-sm hover:underline transition-all" onclick="this.textContent="Sending..."; setTimeout(()=>{this.textContent="Resend code"},2000)">Resend code</button>
 <div class="w-full h-px bg-outline-variant/10 my-2"></div>
 <a class="flex items-center gap-2 text-on-surface-variant font-medium text-sm hover:text-primary transition-colors" href="/terms">
 <span class="material-symbols-outlined text-sm" data-icon="arrow_back">arrow_back</span>

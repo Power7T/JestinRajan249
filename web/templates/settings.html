@@ -128,7 +128,7 @@
 <span class="material-symbols-outlined mr-3" data-icon="contact_support">contact_support</span>
                 Support
             </a>
-<a class="flex items-center text-slate-600 dark:text-slate-400 px-4 py-3 mx-2 font-inter text-sm font-medium hover:text-blue-600 dark:hover:text-blue-300 transition-all hover:translate-x-1 duration-300" href="#">
+<a class="flex items-center text-slate-600 dark:text-slate-400 px-4 py-3 mx-2 font-inter text-sm font-medium hover:text-blue-600 dark:hover:text-blue-300 transition-all hover:translate-x-1 duration-300" href="/logout">
 <span class="material-symbols-outlined mr-3" data-icon="logout">logout</span>
                 Logout
             </a>
@@ -182,8 +182,8 @@
 <h4 class="font-bold text-lg text-on-surface">Profile Picture</h4>
 <p class="text-sm text-on-surface-variant">Recommended size: 800x800px. JPG, PNG or WebP.</p>
 <div class="flex gap-4 mt-2">
-<button class="text-sm font-semibold text-primary hover:underline">Upload new</button>
-<button class="text-sm font-semibold text-error/80 hover:underline">Remove</button>
+<button class="text-sm font-semibold text-primary hover:underline" onclick="document.getElementById('avatar-upload') && document.getElementById('avatar-upload').click() || this.closest('form') && this.closest('form').querySelector('input[type=file]') && this.closest('form').querySelector('input[type=file]').click()">Upload new</button>
+<button class="text-sm font-semibold text-error/80 hover:underline" onclick="if(confirm('Remove this item?')){ this.closest('form') ? this.closest('form').submit() : null }">Remove</button>
 </div>
 </div>
 </div>
@@ -303,8 +303,8 @@
 </section>
 <!-- Footer Actions -->
 <div class="flex items-center justify-end gap-6 pt-12 border-t border-outline-variant/15">
-<button class="text-on-surface-variant font-bold hover:text-on-surface transition-colors">Discard Changes</button>
-<button class="bg-primary-container text-on-primary-container px-10 py-4 rounded-xl font-extrabold shadow-lg shadow-primary/20 hover:-translate-y-1 transition-transform">Save Configuration</button>
+<button class="text-on-surface-variant font-bold hover:text-on-surface transition-colors" onclick="if(confirm("Discard all changes?")){ window.location.reload() }">Discard Changes</button>
+<button class="bg-primary-container text-on-primary-container px-10 py-4 rounded-xl font-extrabold shadow-lg shadow-primary/20 hover:-translate-y-1 transition-transform" onclick="this.closest('form') ? this.closest('form').submit() : null">Save Configuration</button>
 </div>
 </div>
 </main>
