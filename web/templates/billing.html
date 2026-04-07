@@ -1,395 +1,318 @@
-{%- extends "base.html" %}
-{%- block title %}Billing — HostAI{%- endblock %}
+{% extends "base.html" %}
+{% block title %}Billing — HostAI{% endblock %}
 
-{%- block head %}
+{% block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
         tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "secondary-container": "#00e3fd",
-                        "surface-container-low": "#1a1b22",
-                        "surface-container": "#1e1f26",
-                        "outline-variant": "#424752",
-                        "on-primary-fixed": "#001a43",
-                        "error-container": "#93000a",
-                        "on-primary-container": "#00275e",
-                        "tertiary-fixed": "#ffddb8",
-                        "tertiary-container": "#ca8103",
-                        "on-secondary-fixed": "#001f24",
-                        "surface-container-highest": "#34343b",
-                        "surface": "#121319",
-                        "on-error": "#690005",
-                        "surface-container-lowest": "#0d0e14",
-                        "primary-fixed": "#d8e2ff",
-                        "on-secondary-fixed-variant": "#004f58",
-                        "on-error-container": "#ffdad6",
-                        "secondary-fixed": "#9cf0ff",
-                        "primary-container": "#5d8ef1",
-                        "inverse-primary": "#1e5bba",
-                        "inverse-on-surface": "#2f3037",
-                        "background": "#121319",
-                        "surface-container-high": "#292930",
-                        "secondary": "#bdf4ff",
-                        "tertiary-fixed-dim": "#ffb960",
-                        "surface-tint": "#aec6ff",
-                        "secondary-fixed-dim": "#00daf3",
-                        "primary": "#aec6ff",
-                        "surface-variant": "#34343b",
-                        "tertiary": "#ffb960",
-                        "primary-fixed-dim": "#aec6ff",
-                        "surface-dim": "#121319",
-                        "on-surface-variant": "#c3c6d4",
-                        "error": "#ffb4ab",
-                        "on-tertiary-fixed-variant": "#653e00",
-                        "on-secondary": "#00363d",
-                        "outline": "#8d909e",
-                        "on-tertiary-fixed": "#2a1700",
-                        "on-secondary-container": "#00616d",
-                        "on-primary-fixed-variant": "#004397",
-                        "on-tertiary-container": "#3e2400",
-                        "on-primary": "#002e6b",
-                        "on-background": "#e3e1eb",
-                        "surface-bright": "#383940",
-                        "on-tertiary": "#472a00",
-                        "on-surface": "#e3e1eb",
-                        "inverse-surface": "#e3e1eb"
-                    },
-                    fontFamily: {
-                        "headline": ["Plus Jakarta Sans"],
-                        "body": ["Plus Jakarta Sans"],
-                        "label": ["Plus Jakarta Sans"]
-                    },
-                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
-                },
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-fixed": "#001b3e",
+                      "on-tertiary-fixed-variant": "#793000",
+                      "surface": "#f7f9fb",
+                      "error-container": "#ffdad6",
+                      "on-primary-fixed-variant": "#00458e",
+                      "surface-bright": "#f7f9fb",
+                      "surface-tint": "#005cba",
+                      "inverse-primary": "#aac7ff",
+                      "on-secondary": "#ffffff",
+                      "secondary": "#515f74",
+                      "surface-dim": "#d8dadc",
+                      "tertiary-fixed-dim": "#ffb692",
+                      "primary-fixed": "#d7e3ff",
+                      "surface-container": "#eceef0",
+                      "on-secondary-fixed-variant": "#3a485b",
+                      "surface-container-lowest": "#ffffff",
+                      "primary": "#004e9f",
+                      "tertiary-fixed": "#ffdbcb",
+                      "on-primary": "#ffffff",
+                      "tertiary": "#883700",
+                      "on-error": "#ffffff",
+                      "surface-variant": "#e0e3e5",
+                      "on-surface": "#191c1e",
+                      "surface-container-highest": "#e0e3e5",
+                      "on-secondary-fixed": "#0d1c2e",
+                      "on-background": "#191c1e",
+                      "background": "#f7f9fb",
+                      "surface-container-low": "#f2f4f6",
+                      "on-primary-container": "#dfe8ff",
+                      "primary-fixed-dim": "#aac7ff",
+                      "on-surface-variant": "#414753",
+                      "primary-container": "#0066cc",
+                      "secondary-container": "#d5e3fc",
+                      "on-tertiary-container": "#ffe3d6",
+                      "on-secondary-container": "#57657a",
+                      "on-tertiary-fixed": "#341100",
+                      "secondary-fixed": "#d5e3fc",
+                      "tertiary-container": "#af4900",
+                      "surface-container-high": "#e6e8ea",
+                      "on-error-container": "#93000a",
+                      "inverse-surface": "#2d3133",
+                      "error": "#ba1a1a",
+                      "inverse-on-surface": "#eff1f3",
+                      "outline-variant": "#c1c6d5",
+                      "outline": "#727784",
+                      "secondary-fixed-dim": "#b9c7df",
+                      "on-tertiary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "fontFamily": {
+                      "headline": ["Inter"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
             },
+          },
         }
     </script>
 <style>
-        body {
-            background-color: #08090F;
-            color: #e3e1eb;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
+        body { font-family: 'Inter', sans-serif; }
         .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
         .glass-card {
-            background: rgba(26, 27, 34, 0.7);
+            background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(24px);
-            border-top: 1px solid rgba(174, 198, 255, 0.1);
-            border-left: 1px solid rgba(174, 198, 255, 0.1);
         }
     </style>
-<style>
-/* Compat layer — maps old CSS variables to Obsidian tokens */
-:root{
-  --surface:#1a1b22;--bg:#08090F;--bg-2:#121319;--bg-3:#1e1f26;--bg-4:#292930;
-  --border:rgba(66,71,82,0.5);--border-2:rgba(174,198,255,0.2);
-  --text-1:#e3e1eb;--text-2:#c3c6d4;--text-3:#8d909e;
-  --accent:#5B8DEF;--accent-2:#aec6ff;--accent-glow:rgba(91,141,239,0.3);
-  --success:#27c93f;--success-bg:rgba(39,201,63,0.1);--success-border:rgba(39,201,63,0.3);
-  --danger:#ffb4ab;--danger-bg:rgba(255,180,171,0.1);--danger-border:rgba(255,180,171,0.3);
-  --warn:#ffbd2e;--warn-bg:rgba(255,189,46,0.1);--warn-border:rgba(255,189,46,0.3);
-  --radius:0.75rem;--radius-sm:0.5rem;--radius-lg:1rem;--t:0.15s ease;--nav-h:64px;
-  --rose:#ff6b8a;--kpi-yellow:#ffbd2e;
-}
-.compat-layer h1{font-size:1.8rem;font-weight:800;margin-bottom:0.25rem;color:#e3e1eb}
-.compat-layer h2{font-size:1.1rem;font-weight:700;margin-bottom:0.75rem;color:#e3e1eb}
-.compat-layer h3{font-size:0.92rem;font-weight:700;color:#c3c6d4;margin-bottom:0.4rem}
-.compat-layer .card,.compat-layer .form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
-.compat-layer label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em}
-.compat-layer input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.compat-layer select,.compat-layer textarea{width:100%;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s}
-.compat-layer input:focus,.compat-layer select:focus,.compat-layer textarea:focus{border-color:#5B8DEF}
-.compat-layer .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none}
-.compat-layer .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
-.compat-layer .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
-.compat-layer .btn-outline:hover{background:rgba(174,198,255,0.08)}
-.compat-layer .btn-success{background:rgba(39,201,63,0.12);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
-.compat-layer .btn-danger{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab}
-.compat-layer .btn-sm{padding:0.28rem 0.7rem;font-size:0.76rem}
-.compat-layer .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
-.compat-layer .page-subtitle{font-size:0.85rem;color:#8d909e;margin-top:0.25rem}
-.compat-layer .page-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
-.compat-layer table{width:100%;border-collapse:collapse;font-size:0.84rem}
-.compat-layer th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
-.compat-layer td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.12);color:#c3c6d4;vertical-align:middle}
-.compat-layer tr:hover td{background:rgba(174,198,255,0.02)}
-.compat-layer .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.2rem}
-.compat-layer .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
-.compat-layer .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
-.compat-layer .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
-.compat-layer .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;margin-bottom:0.3rem}
-.compat-layer .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.4rem;margin-bottom:0.75rem}
-.compat-layer .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem}
-.compat-layer .csv-banner{background:rgba(255,189,46,0.07);border:1px solid rgba(255,189,46,0.2);color:#ffbd2e;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap}
-.compat-layer .csv-banner a{color:#aec6ff}
-.compat-layer .analytics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
-.compat-layer .analytics-widget{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.25rem;text-align:center}
-.compat-layer .widget-value{font-size:2rem;font-weight:800;color:#aec6ff;font-family:'Plus Jakarta Sans',sans-serif}
-.compat-layer .widget-label{font-size:0.72rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.06em;margin-top:0.25rem}
-.compat-layer .widget-sub{font-size:0.7rem;color:#424752;margin-top:0.15rem}
-.compat-layer .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.85rem;margin-bottom:1.5rem}
-.compat-layer .kpi-card{background:rgba(26,27,34,0.7);border:1px solid rgba(174,198,255,0.08);border-radius:0.75rem;padding:1rem;text-align:center}
-.compat-layer .kpi-value{font-size:1.5rem;font-weight:800;color:#aec6ff}
-.compat-layer .kpi-label{font-size:0.7rem;color:#8d909e;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.2rem}
-.compat-layer .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;margin-left:0.2rem;background:rgba(174,198,255,0.08);color:#aec6ff}
-.compat-layer .badge-escalation{background:rgba(255,180,171,0.1);color:#ffb4ab}
-.compat-layer .badge-whatsapp{background:rgba(39,201,63,0.1);color:#27c93f}
-.compat-layer .badge-email{background:rgba(91,141,239,0.1);color:#5B8DEF}
-.compat-layer .badge-sms{background:rgba(255,189,46,0.1);color:#ffbd2e}
-.compat-layer .draft-text{font-size:0.85rem;line-height:1.6;color:#c3c6d4;white-space:pre-wrap;background:#0d0e14;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.75rem;border:1px solid rgba(66,71,82,0.2)}
-.compat-layer .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;text-align:center;color:#8d909e}
-.compat-layer .empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7}
-.compat-layer .timeline{display:flex;flex-direction:column;gap:0}
-.compat-layer .timeline-item{padding:0.85rem 0;border-bottom:1px solid rgba(66,71,82,0.15)}
-.compat-layer .timeline-meta{font-size:0.72rem;color:#8d909e;margin-bottom:0.2rem}
-.compat-layer .timeline-title{font-size:0.88rem;font-weight:700;color:#e3e1eb;margin-bottom:0.15rem}
-.compat-layer .timeline-text{font-size:0.8rem;color:#8d909e}
-.compat-layer input[type=checkbox]{width:auto;display:inline;margin-bottom:0;margin-right:0.35rem}
-.compat-layer .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.85rem;flex-wrap:wrap}
-.compat-layer .card-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
-.compat-layer .card-meta{font-size:0.75rem;color:#8d909e}
-.compat-layer .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-.compat-layer .billing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1rem;margin-bottom:1rem}
-.compat-layer .plan-price-lg{font-size:2rem;font-weight:800;line-height:1.1;color:#aec6ff}
-.compat-layer .plan-badge-lg{display:inline-flex;align-items:center;padding:0.25rem 0.7rem;border-radius:999px;font-size:0.72rem;font-weight:700;background:rgba(39,201,63,0.12);color:#27c93f;border:1px solid rgba(39,201,63,0.25)}
-.compat-layer .plan-badge-lg.past_due{background:rgba(255,189,46,0.12);color:#ffbd2e;border-color:rgba(255,189,46,0.25)}
-.compat-layer .plan-badge-lg.inactive{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
-.compat-layer .channel-pill{display:inline-flex;align-items:center;padding:0.28rem 0.68rem;border-radius:999px;font-size:0.7rem;font-weight:700;border:1px solid rgba(174,198,255,0.14);background:rgba(174,198,255,0.06);color:#aec6ff;margin-right:0.3rem;margin-bottom:0.3rem}
-.compat-layer .pill-meta{background:rgba(91,141,239,0.12);color:#5B8DEF;border-color:rgba(91,141,239,0.22)}
-.compat-layer .pill-sms{background:rgba(255,189,46,0.12);color:#ffbd2e;border-color:rgba(255,189,46,0.22)}
-.compat-layer .pill-baileys{background:rgba(39,201,63,0.12);color:#27c93f;border-color:rgba(39,201,63,0.22)}
-.compat-layer .pill-none{background:rgba(66,71,82,0.28);color:#c3c6d4;border-color:rgba(66,71,82,0.35)}
-.compat-layer details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
-.compat-layer code{font-family:monospace;font-size:0.82rem;background:#0d0e14;padding:1px 5px;border-radius:3px;color:#aec6ff}
-</style>
-{%- endblock %}
+{% endblock %}
 
-{%- block nav %}{%- endblock %}
+{% block nav %}{% endblock %}
 
-{%- block main_wrapper %}
-{%- block content %}
-<!-- SideNavBar -->
-<!-- Mobile hamburger -->
-<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
-  <span class="material-symbols-outlined">menu</span>
-</button>
-<!-- Sidebar overlay for mobile -->
-<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
-<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
-<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
-<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
-</div>
-<span>HostAI</span>
-</a>
-<nav class="flex-1 px-4 space-y-1">
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-                Dashboard
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
-<span class="material-symbols-outlined" data-icon="forum">forum</span>
-                Conversations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
-<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
-                Reservations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
-<span class="material-symbols-outlined" data-icon="history">history</span>
-                Activity
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
-<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
-                Analytics
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
-<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
-                Revenue & ROI
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
-                Voice AI
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
-<span class="material-symbols-outlined" data-icon="hub">hub</span>
-                Operations
-            </a>
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
-                Settings
-            </a>
-{% if tenant is defined and tenant and is_admin(tenant.email) %}
-<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
-<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
-                Admin
-            </a>
-{% endif %}
-</nav>
-<div class="mt-auto p-6 space-y-4">
-<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
-<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
-  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
-</div>
-<div class="flex-1 min-w-0">
-<p class="text-white font-bold truncate">{{ tenant.first_name or "Your Account" }}</p>
-<p class="text-slate-500 text-xs truncate">Host Administrator</p>
-</div>
-</div>
-<form method="post" action="/logout">
-  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
-    <span class="material-symbols-outlined text-sm">logout</span>
-    Sign Out
-  </button>
-</form>
-</div>
-</aside>
-<!-- TopNavBar -->
-<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
-<div class="flex items-center flex-1 max-w-md">
-<div class="relative w-full">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
-<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts, or analytics..." type="text"/>
-</div>
-</div>
-<div class="flex items-center gap-6">
-<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
-<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
-<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
-</button>
-<div class="h-8 w-px bg-white/10"></div>
-<div class="flex items-center gap-3 cursor-pointer group">
-<span class="text-slate-200 group-hover:text-white transition-colors">Account</span>
-<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-  {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
-</div>
-</div>
-</div>
-</header>
+{% block main_wrapper %}
+{% block content %}
+<div class="flex min-h-screen">
 <!-- Main Content Canvas -->
-<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen">
-<div class="mb-8">
-  <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Billing & Plans</h1>
-  <p class="text-slate-400 text-sm">Manage your subscription and usage</p>
+<main class="flex-1 bg-surface min-h-screen">
+<!-- Dashboard Content -->
+<div class="p-8 max-w-7xl mx-auto space-y-10">
+<!-- Page Title -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Billing &amp; Subscription</h1>
+<p class="text-on-surface-variant font-medium">Manage your financial landscape and service tiers.</p>
 </div>
-<div class="compat-layer">
-
-
-{% if success_msg is defined and success_msg %}
-<div class="alert alert-success">{{ success_msg }}</div>
-{% endif %}
-
-<!-- Current plan summary -->
-<div class="billing-grid">
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Current plan</span>
-      {% if is_active %}
-        <span class="plan-badge-lg">Active</span>
-      {% elif cfg.subscription_status == 'past_due' %}
-        <span class="plan-badge-lg past_due">Past due</span>
-      {% else %}
-        <span class="plan-badge-lg inactive">Inactive</span>
-      {% endif %}
-    </div>
-    <div class="plan-price-lg">{{ current_plan.price }}</div>
-    <div style="font-size:1.1rem;font-weight:700;margin:0.4rem 0 0.75rem">{{ current_plan.name }}</div>
-
-    <div style="margin-bottom:0.75rem">
-      {% if current_plan.channels %}
-        {% for ch in current_plan.channels %}
-          {% if ch == 'baileys' %}<span class="channel-pill pill-baileys">Baileys / WhatsApp</span>{% endif %}
-          {% if ch == 'meta_cloud' %}<span class="channel-pill pill-meta">Meta Cloud API</span>{% endif %}
-          {% if ch == 'sms' %}<span class="channel-pill pill-sms">SMS / Twilio</span>{% endif %}
-        {% endfor %}
-      {% else %}
-        <span class="channel-pill pill-none">Email &amp; iCal only</span>
-      {% endif %}
-    </div>
-
-    {% if cfg.subscription_expires_at %}
-    <p style="font-size:0.8rem;color:var(--text-2)">
-      Renews: {{ cfg.subscription_expires_at.strftime('%b %d, %Y') }}
-    </p>
-    {% endif %}
-
-    {% if cfg.stripe_customer_id and is_active %}
-    <form method="post" action="/billing/portal" style="margin-top:1rem">
-      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-      <button type="submit" class="btn btn-outline btn-sm">Manage / Cancel subscription</button>
-    </form>
-    {% endif %}
-  </div>
-
-  <div class="card">
-    <div class="card-header"><span class="card-title">Change plan</span></div>
-    <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1rem">Choose the messaging channel stack that matches your property workflow.</p>
-
-    <div style="display:flex;flex-direction:column;gap:0.5rem">
-      {% if cfg.subscription_plan != 'baileys' %}
-      <form method="post" action="/billing/subscribe/baileys">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
-          🟢 Baileys (Local Bot) — $19/mo
-        </button>
-      </form>
-      {% endif %}
-
-      {% if cfg.subscription_plan != 'meta_cloud' %}
-      <form method="post" action="/billing/subscribe/meta_cloud">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
-          💬 Meta Cloud API — $29/mo
-        </button>
-      </form>
-      {% endif %}
-
-      {% if cfg.subscription_plan != 'sms' %}
-      <form method="post" action="/billing/subscribe/sms">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
-          📟 SMS / Twilio — $19/mo
-        </button>
-      </form>
-      {% endif %}
-
-      {% if cfg.subscription_plan != 'pro' %}
-      <form method="post" action="/billing/subscribe/pro">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="btn btn-primary" style="width:100%;text-align:left">
-          ⭐ Pro (All Channels) — $49/mo
-        </button>
-      </form>
-      {% endif %}
-    </div>
-
-    <p style="margin-top:1rem;font-size:0.78rem;color:var(--text-2)">
-      <a href="/pricing">See full plan comparison →</a>
-    </p>
-  </div>
+<div class="bg-surface-container-low p-1 rounded-full flex gap-1">
+<button class="px-6 py-2 rounded-full bg-surface-container-lowest shadow-sm text-sm font-bold text-primary">Monthly</button>
+<button class="px-6 py-2 rounded-full text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Yearly (Save 15%)</button>
+</div>
 </div>
 
-
-<!-- Past due warning -->
-{% if cfg.subscription_status == 'past_due' %}
-<div class="alert alert-error" style="margin-top:1rem">
-  Your last payment failed. Please update your payment method to restore messaging channels.
-  {% if cfg.stripe_customer_id %}
-  <form method="post" action="/billing/portal" style="display:inline;margin-left:0.5rem">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <button type="submit" class="btn btn-primary btn-sm">Update payment</button>
-  </form>
-  {% endif %}
+<!-- Current Plan -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="lg:col-span-2 bg-surface-container-lowest rounded-xl p-8 shadow-[0_32px_64px_-12px_rgba(0,78,159,0.06)] relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 transition-transform group-hover:scale-110 duration-700"></div>
+<div class="relative z-10 flex flex-col h-full">
+<div class="flex justify-between items-start mb-8">
+<div>
+<span class="text-xs font-bold uppercase tracking-widest text-primary mb-2 block">Active Plan</span>
+<h2 class="text-3xl font-bold text-on-surface">Pro Management Plan</h2>
 </div>
-{% endif %}
+<div class="text-right">
+<div class="text-3xl font-black text-on-surface">$249.00</div>
+<div class="text-sm text-on-surface-variant">per month</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-8 mb-8">
+<div class="space-y-3">
+<div class="flex justify-between text-sm">
+<span class="text-on-surface-variant">Property Capacity</span>
+<span class="font-bold">12 / 20</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 60%"></div>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-sm">
+<span class="text-on-surface-variant">User Seats</span>
+<span class="font-bold">4 / 5</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 80%"></div>
+</div>
+</div>
+</div>
+<div class="mt-auto flex gap-4">
+<button class="px-6 py-3 bg-primary text-white rounded-full font-bold shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all active:scale-95">Manage Plan</button>
+<button class="px-6 py-3 text-primary font-bold hover:bg-primary/5 rounded-full transition-all">View Details</button>
+</div>
+</div>
+</div>
+
+<!-- Billing Preferences -->
+<div class="bg-surface-container-low rounded-xl p-8 flex flex-col">
+<h3 class="text-lg font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="credit_card">credit_card</span>
+                            Payment Method
+                        </h3>
+<div class="bg-surface-container-lowest rounded-xl p-4 mb-6 flex items-center gap-4 outline outline-1 outline-outline-variant/15">
+<div class="w-12 h-8 bg-on-surface rounded flex items-center justify-center text-white text-[10px] font-bold">VISA</div>
+<div class="flex-1">
+<div class="text-sm font-bold">•••• •••• •••• 4242</div>
+<div class="text-xs text-on-surface-variant">Expires 12/26</div>
+</div>
+<button class="text-primary material-symbols-outlined" data-icon="edit">edit</button>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-1">
+<span class="text-sm font-medium text-on-surface-variant">Auto-renew</span>
+<div class="w-10 h-5 bg-primary rounded-full relative">
+<div class="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center justify-between p-1">
+<span class="text-sm font-medium text-on-surface-variant">Email Invoices</span>
+<div class="w-10 h-5 bg-primary rounded-full relative">
+<div class="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+<button class="mt-auto w-full py-3 rounded-full outline outline-1 outline-primary text-primary font-bold hover:bg-primary/5 transition-all text-sm">Update Preferences</button>
+</div>
+</div>
+
+<!-- Pricing Tiers -->
+<div class="space-y-6">
+<h2 class="text-2xl font-bold tracking-tight">Available Tiers</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Starter -->
+<div class="bg-surface-container-lowest rounded-xl p-8 border border-transparent hover:border-outline-variant/30 transition-all flex flex-col">
+<div class="mb-6">
+<h3 class="text-xl font-bold mb-1">Starter</h3>
+<div class="text-3xl font-black mb-4">$99<span class="text-sm font-normal text-on-surface-variant">/mo</span></div>
+<p class="text-sm text-on-surface-variant leading-relaxed">Perfect for independent managers with a small portfolio.</p>
+</div>
+<ul class="space-y-4 mb-8 flex-1">
+<li class="flex items-center gap-3 text-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle">check_circle</span>
+                                    Up to 5 properties
+                                </li>
+<li class="flex items-center gap-3 text-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle">check_circle</span>
+                                    1 Admin user
+                                </li>
+<li class="flex items-center gap-3 text-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle">check_circle</span>
+                                    Standard reporting
+                                </li>
+</ul>
+<button class="w-full py-3 rounded-full bg-secondary-container text-on-secondary-container font-bold hover:opacity-80 transition-all">Downgrade</button>
+</div>
+<!-- Pro (Highlighted) -->
+<div class="bg-surface-container-lowest rounded-xl p-8 ring-2 ring-primary relative flex flex-col">
+<div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">Current Plan</div>
+<div class="mb-6">
+<h3 class="text-xl font-bold mb-1">Professional</h3>
+<div class="text-3xl font-black mb-4 text-primary">$249<span class="text-sm font-normal text-on-surface-variant">/mo</span></div>
+<p class="text-sm text-on-surface-variant leading-relaxed">The ideal choice for growing teams and agencies.</p>
+</div>
+<ul class="space-y-4 mb-8 flex-1">
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                    Up to 20 properties
+                                </li>
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                    5 Team members
+                                </li>
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                    Custom analytics
+                                </li>
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                    Tenant portal
+                                </li>
+</ul>
+<button class="w-full py-3 rounded-full bg-primary-fixed text-primary font-bold cursor-default opacity-50">Active</button>
+</div>
+<!-- Enterprise -->
+<div class="bg-surface-container-lowest rounded-xl p-8 border border-transparent hover:border-outline-variant/30 transition-all flex flex-col">
+<div class="mb-6">
+<h3 class="text-xl font-bold mb-1">Enterprise</h3>
+<div class="text-3xl font-black mb-4">$599<span class="text-sm font-normal text-on-surface-variant">/mo</span></div>
+<p class="text-sm text-on-surface-variant leading-relaxed">Bespoke solutions for large-scale property portfolios.</p>
+</div>
+<ul class="space-y-4 mb-8 flex-1">
+<li class="flex items-center gap-3 text-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle">check_circle</span>
+                                    Unlimited properties
+                                </li>
+<li class="flex items-center gap-3 text-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle">check_circle</span>
+                                    Unlimited users
+                                </li>
+<li class="flex items-center gap-3 text-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle">check_circle</span>
+                                    24/7 Priority support
+                                </li>
+<li class="flex items-center gap-3 text-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle">check_circle</span>
+                                    API Access
+                                </li>
+</ul>
+<button class="w-full py-3 rounded-full bg-primary text-white font-bold hover:shadow-lg transition-all">Upgrade Now</button>
+</div>
+</div>
+</div>
+
+<!-- Invoice History -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.03)] overflow-hidden">
+<div class="p-8 flex justify-between items-center border-b border-surface-container-low">
+<h2 class="text-xl font-bold">Invoice History</h2>
+<button class="text-sm font-bold text-primary flex items-center gap-2">
+                            Export All <span class="material-symbols-outlined text-sm" data-icon="download">download</span>
+</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low/50 text-on-surface-variant text-xs font-black uppercase tracking-wider">
+<th class="px-8 py-4">Date</th>
+<th class="px-8 py-4">Invoice ID</th>
+<th class="px-8 py-4">Description</th>
+<th class="px-8 py-4">Amount</th>
+<th class="px-8 py-4">Status</th>
+<th class="px-8 py-4 text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low">
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="px-8 py-5 text-sm font-medium">Oct 1, 2023</td>
+<td class="px-8 py-5 text-sm text-on-surface-variant font-mono">INV-2023-1001</td>
+<td class="px-8 py-5 text-sm">Monthly Subscription - Pro Plan</td>
+<td class="px-8 py-5 text-sm font-bold">$249.00</td>
+<td class="px-8 py-5">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wide">
+<span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                                            Paid
+                                        </span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="p-2 hover:bg-surface-container rounded-full text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="download">download</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<!-- Footer Spacing -->
+<div class="h-20"></div>
 </div>
 </main>
-{%- endblock %}
-{%- endblock %}
+</div>
+{% endblock %}
+{% endblock %}
