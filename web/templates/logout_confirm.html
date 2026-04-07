@@ -1,69 +1,168 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign Out — HostAI</title>
-  <meta name="description" content="Sign out of your HostAI account.">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com?plugins=forms" nonce="{{ request.state.csp_nonce }}"></script>
-  <script nonce="{{ request.state.csp_nonce }}">
-    tailwind.config = {
-      darkMode: "class",
-      theme: { extend: { colors: {
-        "primary": "#aec6ff", "primary-container": "#5d8ef1", "on-primary": "#002e6b",
-        "surface": "#121319", "surface-container": "#1e1f26", "surface-container-lowest": "#0d0e14",
-        "on-surface": "#e3e1eb", "on-surface-variant": "#c3c6d4", "outline": "#424752",
-        "error": "#ffb4ab", "tertiary": "#ffb960",
-      }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
-    }
-  </script>
-  <style>
-    body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; }
-    .glass { background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border: 1px solid rgba(174,198,255,0.1); }
-    .glow-ring { box-shadow: 0 0 80px rgba(91,141,239,0.12); }
-    .btn-primary { background: linear-gradient(135deg,#5B8DEF,#aec6ff); color: #002e6b; }
-    .input-obsidian { background: #0d0e14; border: 1px solid rgba(66,71,82,0.5); color: #e3e1eb; }
-    .input-obsidian:focus { outline: none; border-color: #5B8DEF; box-shadow: 0 0 0 2px rgba(91,141,239,0.15); }
-    .alert-error { background: rgba(255,180,171,0.1); border: 1px solid rgba(255,180,171,0.3); color: #ffb4ab; border-radius:0.5rem; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.84rem; }
-    .alert-success { background: rgba(39,201,63,0.1); border: 1px solid rgba(39,201,63,0.3); color: #27c93f; border-radius:0.5rem; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.84rem; }
-    
-  </style>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline": "#737c7f",
+                    "on-primary-fixed": "#0b3d82",
+                    "on-surface": "#2b3437",
+                    "error-container": "#fe8983",
+                    "on-secondary-fixed": "#3e3f45",
+                    "outline-variant": "#abb3b7",
+                    "on-tertiary-container": "#4b4863",
+                    "on-primary": "#f7f7ff",
+                    "on-secondary-container": "#505157",
+                    "error": "#9f403d",
+                    "on-tertiary-fixed-variant": "#54516d",
+                    "secondary-dim": "#515359",
+                    "on-surface-variant": "#586064",
+                    "on-secondary-fixed-variant": "#5a5b61",
+                    "inverse-on-surface": "#9b9d9e",
+                    "surface": "#f8f9fa",
+                    "tertiary-dim": "#53506b",
+                    "on-secondary": "#f9f8ff",
+                    "secondary-container": "#e2e2e9",
+                    "on-tertiary": "#fcf7ff",
+                    "surface-container-low": "#f1f4f6",
+                    "on-tertiary-fixed": "#38354f",
+                    "surface-variant": "#dbe4e7",
+                    "inverse-surface": "#0c0f10",
+                    "surface-container": "#eaeff1",
+                    "secondary-fixed-dim": "#d4d4db",
+                    "surface-tint": "#365da3",
+                    "surface-bright": "#f8f9fa",
+                    "on-background": "#2b3437",
+                    "tertiary": "#5f5c78",
+                    "tertiary-fixed-dim": "#cac6e6",
+                    "on-primary-fixed-variant": "#335aa0",
+                    "on-error-container": "#752121",
+                    "background": "#f8f9fa",
+                    "surface-container-highest": "#dbe4e7",
+                    "surface-dim": "#d1dce0",
+                    "surface-container-high": "#e3e9ec",
+                    "tertiary-container": "#d8d3f4",
+                    "error-dim": "#4e0309",
+                    "on-primary-container": "#275095",
+                    "primary-fixed-dim": "#c3d4ff",
+                    "primary-fixed": "#d8e2ff",
+                    "tertiary-fixed": "#d8d3f4",
+                    "inverse-primary": "#81a5f1",
+                    "primary-container": "#d8e2ff",
+                    "on-error": "#fff7f6",
+                    "secondary-fixed": "#e2e2e9",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-dim": "#285196",
+                    "primary": "#365da3",
+                    "secondary": "#5e5f65"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .signature-texture {
+            background: linear-gradient(135deg, #365da3 0%, #285196 100%);
+        }
+    </style>
 </head>
-<body class="min-h-screen flex flex-col">
-  <!-- Nav -->
-  <nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#08090F]/80 backdrop-blur-xl">
-    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-      <a href="/" class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#aec6ff] to-[#5B8DEF] tracking-tight">HostAI</a>
-      <a href="/login" class="text-sm text-slate-400 hover:text-white transition-colors">Sign in &rarr;</a>
-    </div>
-  </nav>
-  <!-- Ambient glow -->
-  <div class="fixed inset-0 pointer-events-none overflow-hidden">
-    <div class="absolute top-[-20%] left-[30%] w-[600px] h-[600px] bg-[#5B8DEF]/8 rounded-full blur-[120px]"></div>
-  </div>
-  <!-- Content -->
-  <div class="flex-1 flex items-center justify-center px-4 pt-24 pb-12">
-    <div class="w-full max-w-md">
-      <div class="glass glow-ring rounded-3xl p-10 text-center">
-  <div class="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-6">
-    <svg class="w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-  </div>
-  <h1 class="text-2xl font-extrabold text-white mb-2">Sign out?</h1>
-  <p class="text-slate-400 text-sm mb-8">Confirm you want to end your current session.</p>
-  <div class="flex gap-3 justify-center">
-    <form method="post" action="/logout">
-      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-      <button type="submit" class="btn-primary font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-all active:scale-[0.98]">
-        Yes, sign out
-      </button>
-    </form>
-    <a href="/dashboard" class="px-8 py-3 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 font-bold transition-all">
-      Cancel
-    </a>
-  </div>
+<body class="bg-surface text-on-surface font-body overflow-hidden">
+<!-- Background Context (Blurred) -->
+<div class="fixed inset-0 z-0 blur-md pointer-events-none opacity-40">
+<!-- TopNavBar Mockup -->
+<nav class="fixed top-0 w-full z-50 bg-slate-50/80 backdrop-blur-xl flex justify-between items-center px-8 py-3 w-full font-['Manrope'] tracking-tight">
+<div class="text-xl font-bold tracking-tighter text-blue-900">Orchestra Portal</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-slate-600">notifications</span>
+<span class="material-symbols-outlined text-slate-600">help</span>
 </div>
-    </div>
-  </div>
-</body>
-</html>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest"></div>
+</div>
+</nav>
+<!-- SideNavBar Mockup -->
+<aside id="sidebar" class="h-full w-64 fixed left-0 top-0 bg-slate-100 flex flex-col pt-20 pb-8 font-['Inter'] text-sm font-medium">
+<div class="px-6 mb-8">
+<div class="text-on-surface font-headline font-bold">Admin Workspace</div>
+<div class="text-on-surface-variant text-xs uppercase tracking-widest">Enterprise Tier</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="text-slate-500 px-4 py-3 flex items-center gap-3"><span class="material-symbols-outlined">dashboard</span> Dashboard</div>
+<div class="text-slate-500 px-4 py-3 flex items-center gap-3"><span class="material-symbols-outlined">analytics</span> Analytics</div>
+<div class="text-slate-500 px-4 py-3 flex items-center gap-3"><span class="material-symbols-outlined">inventory_2</span> Assets</div>
+<div class="text-slate-500 px-4 py-3 flex items-center gap-3"><span class="material-symbols-outlined">verified_user</span> Security</div>
+<div class="text-blue-700 bg-white rounded-lg mx-2 my-1 px-4 py-3 flex items-center gap-3"><span class="material-symbols-outlined">settings</span> Settings</div>
+</div>
+</aside>
+<!-- Main Content Area Background -->
+<main class="pl-64 pt-16 h-full p-8">
+<div class="grid grid-cols-3 gap-6">
+<div class="col-span-2 h-64 bg-surface-container-lowest rounded-xl"></div>
+<div class="h-64 bg-surface-container-lowest rounded-xl"></div>
+<div class="col-span-3 h-96 bg-surface-container-lowest rounded-xl"></div>
+</div>
+</main>
+</div>
+<!-- Scrim Overlay -->
+<div class="fixed inset-0 bg-on-surface/10 backdrop-blur-sm z-[60] flex items-center justify-center">
+<!-- Modal Container -->
+<div class="bg-surface-container-lowest w-full max-w-md rounded-xl p-8 relative overflow-hidden shadow-[0_32px_64px_rgba(43,52,55,0.08)]">
+<!-- Modal Header / Icon -->
+<div class="flex flex-col items-center text-center mb-8">
+<div class="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-primary text-3xl">logout</span>
+</div>
+<h1 class="font-headline text-2xl font-bold text-on-surface tracking-tight mb-2">
+                    Are you sure you want to log out?
+                </h1>
+<p class="text-on-surface-variant text-body-md max-w-[280px]">
+                    You will need to re-authenticate to access the Orchestra Portal dashboard.
+                </p>
+</div>
+<!-- Modal Actions -->
+<div class="flex flex-col gap-3">
+<!-- Log Out Primary Button -->
+<button class="signature-texture text-on-primary font-headline font-semibold py-4 rounded-lg flex items-center justify-center gap-2 transition-all active:opacity-80">
+                    Log Out
+                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+<!-- Cancel Secondary Button -->
+<button class="bg-secondary-container hover:bg-surface-variant text-on-secondary-container font-headline font-semibold py-4 rounded-lg transition-colors">
+                    Cancel
+                </button>
+</div>
+<!-- Subtle Decorative Branding Anchor -->
+<div class="mt-8 pt-6 border-t border-outline-variant/15 flex items-center justify-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
+<span class="text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant font-medium">Orchestra Security Protocol</span>
+<div class="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
+</div>
+</div>
+</div>
+<!-- Background Decorative Visual -->
+<div class="fixed bottom-0 right-0 p-12 opacity-5 -z-10 pointer-events-none">
+<img class="w-[600px] grayscale" data-alt="abstract geometric blueprint architectural lines in soft blue and gray tones against a clean white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAES8GUtcv8-j3OoMcug4Y2RDOxbQKH8oWA5k6w9sivbwc9O4WLnRz4yUDpKrCHXGz0VUs_pccLBp7c-VD47HJJJBti5Oe6CImL3kwRav9mjrbzePiX5WNBq9KdT_MmGSiq41P8jQQzk08Q-XqbaDxGpjUVl8U1cZLBhq4EQ7rt_Gnq30jlfubkeI2oR7lA6eyHPqEmnTfsrRlYnF5sp6VseGsleiB0tAxB9jnE1lPJ_4SJPfl_6SKdcXezPRXDdj0Ig9sXHxmvWPTQ"/>
+</div>
+</body></html>

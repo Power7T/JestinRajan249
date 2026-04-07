@@ -1,279 +1,422 @@
-{% extends "base.html" %}
-{% set tenant = admin %}
-{% block title %}Admin System Health — HostAI{% endblock %}
+<!DOCTYPE html>
 
-{% block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
-tailwind.config = {
-  darkMode: "class",
-  theme: { extend: { colors: {
-    "primary": "#aec6ff","primary-container":"#5d8ef1","on-primary":"#002e6b",
-    "surface":"#121319","surface-container":"#1e1f26","surface-container-lowest":"#0d0e14",
-    "surface-container-high":"#292930","on-surface":"#e3e1eb","on-surface-variant":"#c3c6d4",
-    "outline":"#424752","outline-variant":"#34343b","error":"#ffb4ab","tertiary":"#ffb960",
-    "secondary":"#bdf4ff","secondary-fixed-dim":"#00daf3",
-  }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
-}
-</script>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SystemGuard Monitoring Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#0d1c2e",
+                        "surface-tint": "#005cba",
+                        "outline-variant": "#c1c6d5",
+                        "on-background": "#191c1e",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "on-surface-variant": "#414753",
+                        "surface-bright": "#f7f9fb",
+                        "primary-fixed": "#d7e3ff",
+                        "tertiary-container": "#af4900",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "surface-container": "#eceef0",
+                        "on-tertiary-fixed-variant": "#793000",
+                        "surface": "#f7f9fb",
+                        "error-container": "#ffdad6",
+                        "primary": "#004e9f",
+                        "tertiary-fixed": "#ffdbcb",
+                        "outline": "#727784",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "on-primary-fixed-variant": "#00458e",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#ffe3d6",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#341100",
+                        "on-primary-fixed": "#001b3e",
+                        "background": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#515f74",
+                        "on-surface": "#191c1e",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-fixed-dim": "#aac7ff",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary-container": "#57657a",
+                        "tertiary": "#883700",
+                        "inverse-on-surface": "#eff1f3",
+                        "secondary-container": "#d5e3fc",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#aac7ff",
+                        "primary-container": "#0066cc",
+                        "on-primary-container": "#dfe8ff",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "surface-dim": "#d8dadc",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-container-low": "#f2f4f6",
+                        "secondary-fixed": "#d5e3fc"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
 <style>
-body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
-.glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
-.material-symbols-outlined { font-variation-settings:'FILL' 1,'wght' 300,'GRAD' 0,'opsz' 24; }
-.admin-tab { padding-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; transition: color 0.2s, border-bottom-color 0.2s; border-bottom: 2px solid transparent; color: #8d909e; }
-.admin-tab:hover { color: #e3e1eb; }
-.admin-tab.active { color: #5B8DEF; border-bottom-color: #5B8DEF; }
-</style>
-{%- endblock %}
-
-{%- block nav %}{%- endblock %}
-
-{%- block main_wrapper %}
-{%- block content %}
-<!-- Sidebar -->
-<!-- Mobile hamburger -->
-<button onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full');document.getElementById('admin-sidebar-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
-  <span class="material-symbols-outlined">menu</span>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(242, 244, 246, 0.8);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-white/80 backdrop-blur-xl border border-gray-200 text-gray-600 hover:text-gray-900 transition-all">
+<span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('admin-sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="admin-sidebar-overlay"></div>
-<aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain translate-x-0 md:translate-x-0 lg:translate-x-0 transition-transform duration-300">
-  <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
-<span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
+<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/40 hidden" id="sidebar-overlay"></div>
+
+<div class="flex min-h-screen">
+<!-- SideNavBar Component -->
+<aside id="sidebar" class="hidden md:flex h-screen w-64 border-r-0 bg-[#f7f9fb] dark:bg-slate-950 flex-col py-6 space-y-4 shrink-0 -translate-x-full md:translate-x-0 transition-transform duration-300">
+<div class="px-6 mb-6">
+<div class="flex items-center space-x-3 mb-1">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-sm" data-icon="security">security</span>
 </div>
-<span>HostAI</span>
+<div>
+<h2 class="text-sm font-bold tracking-tight text-on-surface">Health Dashboard</h2>
+<p class="text-[10px] text-on-surface-variant font-medium">V2.4.1 Online</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Overview is Active -->
+<a class="bg-[#0066CC] text-white rounded-full mx-4 flex items-center px-4 py-2.5 group transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined mr-3 text-xl" data-icon="dashboard">dashboard</span>
+<span class="font-inter text-sm font-semibold">Overview</span>
 </a>
-  <nav class="flex-1 px-4 space-y-1">
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/dashboard">
-      <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
-      <span class="material-symbols-outlined" data-icon="forum">forum</span> Conversations
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
-      <span class="material-symbols-outlined" data-icon="event_available">event_available</span> Reservations
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
-      <span class="material-symbols-outlined" data-icon="history">history</span> Activity
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
-      <span class="material-symbols-outlined" data-icon="analytics">analytics</span> Analytics
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
-                Voice AI
-            </a>
-      <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
-      <span class="material-symbols-outlined" data-icon="hub">hub</span> Workflow Center
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
-      <span class="material-symbols-outlined" data-icon="settings">settings</span> Settings
-    </a>
-    {% if is_admin(admin.email) %}
-    <a class="flex items-center gap-3 px-6 py-3 text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold transition-all duration-200" href="/admin">
-      <span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span> Admin Panel
-    </a>
-    {% endif %}
-  </nav>
-
-  <div class="p-6 border-t border-white/5">
-    <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
-      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-        {{ (admin.name or admin.email or 'H')[0]|upper }}
-      </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-white text-sm font-bold truncate">{{ admin.name or admin.email.split('@')[0]|title }}</p>
-        <p class="text-slate-500 text-xs truncate">Admin Account</p>
-      </div>
-    </div>
-    <form method="post" action="/logout">
-      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-      <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-red-400 transition-colors text-xs font-bold uppercase tracking-widest py-2">
-        <span class="material-symbols-outlined text-sm">logout</span>Sign Out
-      </button>
-    </form>
-  </div>
+<a class="text-[#414753] dark:text-slate-400 mx-4 flex items-center px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined mr-3 text-xl" data-icon="api">api</span>
+<span class="font-inter text-sm">API Health</span>
+</a>
+<a class="text-[#414753] dark:text-slate-400 mx-4 flex items-center px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined mr-3 text-xl" data-icon="database">database</span>
+<span class="font-inter text-sm">Databases</span>
+</a>
+<a class="text-[#414753] dark:text-slate-400 mx-4 flex items-center px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined mr-3 text-xl" data-icon="engineering">engineering</span>
+<span class="font-inter text-sm">Workers</span>
+</a>
+<a class="text-[#414753] dark:text-slate-400 mx-4 flex items-center px-4 py-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined mr-3 text-xl" data-icon="history">history</span>
+<span class="font-inter text-sm">Alert History</span>
+</a>
+</nav>
+<div class="pt-4 border-t border-outline-variant/10 px-4 space-y-1">
+<a class="text-[#414753] dark:text-slate-400 flex items-center px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="terminal">terminal</span>
+<span class="font-inter text-sm">Logs</span>
+</a>
+<a class="text-[#414753] dark:text-slate-400 flex items-center px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="menu_book">menu_book</span>
+<span class="font-inter text-sm">Docs</span>
+</a>
+</div>
+<div class="px-4 mt-auto">
+<button class="w-full py-3 bg-secondary-container text-on-secondary-container rounded-xl font-bold text-sm transition-transform active:scale-95">
+                    Report Issue
+                </button>
+</div>
 </aside>
-
-<!-- Main -->
-<main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen relative">
-<!-- Mobile hamburger menu -->
-<button id="sidebar-toggle" class="md:hidden fixed top-4 left-4 z-40 p-2 text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all" onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full')">
-  <span class="material-symbols-outlined">menu</span>
+<!-- Main Canvas -->
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-surface-container-low">
+<!-- TopNavBar Component -->
+<header class="w-full h-16 flex justify-between items-center px-8 bg-[#f2f4f6] dark:bg-slate-900 shrink-0">
+<div class="flex items-center space-x-8">
+<span class="text-xl font-bold tracking-tighter text-[#191c1e] dark:text-white font-inter">SystemGuard</span>
+<div class="hidden lg:flex items-center bg-surface-container-highest rounded-full px-4 py-1.5 w-64">
+<span class="material-symbols-outlined text-outline text-sm mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm p-0 w-full placeholder:text-outline" placeholder="Search metrics..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex items-center space-x-2">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+<span class="text-[11px] font-bold text-emerald-600 tracking-wide">SYSTEMS OPERATIONAL</span>
+</div>
+<div class="flex items-center space-x-4">
+<button class="text-[#414753] hover:text-[#004e9f] transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border-2 border-[#f2f4f6]"></span>
 </button>
-  <div class="absolute -top-48 -right-48 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
-  
-  <div class="mb-10 pt-4">
-    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">System Health</h1>
-    <div class="flex items-center justify-between">
-      <p class="text-slate-400 text-sm">Real-time infrastructure and process monitoring</p>
-      <div class="text-[0.65rem] text-slate-500 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
-        Last refreshed: {{ now.strftime("%Y-%m-%d %H:%M:%S") }} UTC 
-        <a href="/admin/system" class="font-bold text-[#aec6ff] hover:underline">Refresh</a>
-      </div>
-    </div>
-    
-    <!-- Admin Subnav -->
-    <div class="flex items-center gap-6 mt-6 border-b border-white/10 overflow-x-auto pb-1 whitespace-nowrap">
-      <a href="/admin" class="admin-tab">Overview</a>
-      <a href="/admin/system" class="admin-tab active">System Health</a>
-      <a href="/admin/ai" class="admin-tab">AI Engine</a>
-      <a href="/admin/costs" class="admin-tab">Profitability</a>
-      <a href="/admin/health_api" class="admin-tab">API Health</a>
-    </div>
-  </div>
-
-  <!-- Key Metrics -->
-  <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
-    <div class="glass-card p-5 rounded-2xl {% if db_ok %}border-b-4 border-[#27c93f]{% else %}border-b-4 border-rose-500 bg-rose-500/5{% endif %}">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Database</p>
-      <p class="text-3xl font-extrabold {% if db_ok %}text-[#27c93f]{% else %}text-rose-500{% endif %}">{% if db_ok %}OK{% else %}ERR{% endif %}</p>
-    </div>
-    <div class="glass-card p-5 rounded-2xl {% if redis_ok %}border-b-4 border-[#27c93f]{% else %}border-b-4 border-amber-500 bg-amber-500/5{% endif %}">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Redis</p>
-      <p class="text-3xl font-extrabold {% if redis_ok %}text-[#27c93f]{% else %}text-amber-500{% endif %}">{% if redis_ok %}OK{% else %}OFF{% endif %}</p>
-    </div>
-    <div class="glass-card p-5 rounded-2xl {% if watchdog_ok %}border-b-4 border-[#27c93f]{% else %}border-b-4 border-rose-500 bg-rose-500/5{% endif %}">
-      <div class="flex items-center gap-1">
-        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Watchdog</p>
-        <div class="tooltip-container">
-          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
-            <span style="font-size:0.7rem">ⓘ</span>
-          </button>
-          <div class="tooltip-content">Automatic background process that monitors tenant email/calendar workers and restarts them if they fail</div>
-        </div>
-      </div>
-      <p class="text-3xl font-extrabold {% if watchdog_ok %}text-[#27c93f]{% else %}text-rose-500{% endif %}">{% if watchdog_ok %}OK{% else %}DEAD{% endif %}</p>
-    </div>
-    <div class="glass-card p-5 rounded-2xl border-b-4 border-white/10">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">OS Threads</p>
-      <p class="text-3xl font-extrabold text-white">{{ thread_count }}</p>
-    </div>
-    <div class="glass-card p-5 rounded-2xl border-b-4 border-[#27c93f]">
-      <div class="flex items-center gap-1">
-        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Email Worker</p>
-        <div class="tooltip-container">
-          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
-            <span style="font-size:0.7rem">ⓘ</span>
-          </button>
-          <div class="tooltip-content">Background process that processes incoming/outgoing guest messages (email, SMS, WhatsApp)</div>
-        </div>
-      </div>
-      <p class="text-3xl font-extrabold text-[#27c93f]">{{ active_workers }}</p>
-    </div>
-    <div class="glass-card p-5 rounded-2xl {% if dead_workers > 0 %}border-b-4 border-rose-500 bg-rose-500/5{% else %}border-b-4 border-white/10{% endif %}">
-      <div class="flex items-center gap-1">
-        <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Cal Worker</p>
-        <div class="tooltip-container">
-          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
-            <span style="font-size:0.7rem">ⓘ</span>
-          </button>
-          <div class="tooltip-content">Background process that syncs calendar availability and reservation data</div>
-        </div>
-      </div>
-      <p class="text-3xl font-extrabold {% if dead_workers > 0 %}text-rose-500{% else %}text-white{% endif %}">{{ dead_workers }}</p>
-    </div>
-    <div class="glass-card p-5 rounded-2xl border-b-4 border-[#5B8DEF]">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Tenants</p>
-      <p class="text-3xl font-extrabold text-[#5B8DEF]">{{ total_tenants }}</p>
-    </div>
-  </div>
-
-  <!-- Tenant Table -->
-  <div class="glass-card rounded-3xl overflow-hidden mt-8">
-    <div class="p-6 border-b border-white/5">
-      <h2 class="text-lg font-bold text-white">Per-Tenant Workers & Background Services</h2>
-    </div>
-    <div class="overflow-x-auto">
-      <table class="w-full text-left whitespace-nowrap min-w-[600px]">
-        <thead class="text-[0.65rem] tracking-wider uppercase text-slate-500 bg-black/20 border-b border-white/5">
-          <tr>
-            <th class="px-6 py-3 font-bold">Email</th>
-            <th class="px-6 py-3 font-bold">Email Worker</th>
-            <th class="px-6 py-3 font-bold">Cal Worker</th>
-            <th class="px-6 py-3 font-bold">Scheduler</th>
-            <th class="px-6 py-3 font-bold">Plan</th>
-            <th class="px-6 py-3 font-bold">Status</th>
-            <th class="px-6 py-3 font-bold">Bot Status</th>
-            <th class="px-6 py-3 font-bold text-center">Queue</th>
-            <th class="px-6 py-3 font-bold"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-white/5 text-sm">
-          {% for row in system_rows %}
-          <tr class="hover:bg-white/5 transition-colors {% if row.any_dead %}bg-rose-500/5{% endif %} {% if not row.tenant.is_active %}opacity-50{% endif %}">
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-2">
-                <a href="/admin/tenants/{{ row.tenant.id }}" class="font-bold text-white hover:text-[#5B8DEF] transition-colors text-[0.85rem]">{{ row.tenant.email }}</a>
-                {% if not row.tenant.is_active %}
-                  <span class="px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-400 text-[10px] font-bold tracking-wider uppercase">Inactive</span>
-                {% endif %}
-              </div>
-            </td>
-            
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-2 text-[0.7rem] uppercase tracking-wider font-bold">
-                {% if row.email_conf %}
-                  <span class="w-1.5 h-1.5 rounded-full {% if row.ws.email_running %}bg-[#27c93f]{% else %}bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]{% endif %}"></span>
-                  <span class="{% if row.ws.email_running %}text-slate-300{% else %}text-rose-400{% endif %}">{{ "Running" if row.ws.email_running else "DEAD" }}</span>
-                {% else %}
-                  <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
-                  <span class="text-slate-500">Not configured</span>
-                {% endif %}
-              </div>
-            </td>
-
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-2 text-[0.7rem] uppercase tracking-wider font-bold">
-                {% if row.cal_conf %}
-                  <span class="w-1.5 h-1.5 rounded-full {% if row.ws.cal_running %}bg-[#27c93f]{% else %}bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]{% endif %}"></span>
-                  <span class="{% if row.ws.cal_running %}text-slate-300{% else %}text-rose-400{% endif %}">{{ "Running" if row.ws.cal_running else "DEAD" }}</span>
-                {% else %}
-                  <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
-                  <span class="text-slate-500">Not configured</span>
-                {% endif %}
-              </div>
-            </td>
-
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-2 text-[0.7rem] uppercase tracking-wider font-bold">
-                  <span class="w-1.5 h-1.5 rounded-full {% if row.ws.sched_running %}bg-[#27c93f]{% else %}bg-slate-600{% endif %}"></span>
-                  <span class="{% if row.ws.sched_running %}text-slate-300{% else %}text-slate-500{% endif %}">{{ "Running" if row.ws.sched_running else "Not running" }}</span>
-              </div>
-            </td>
-
-            <td class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
-              {{ row.cfg.subscription_plan if row.cfg else "—" }}
-            </td>
-
-            <td class="px-6 py-4 text-xs font-bold text-slate-400">
-              {{ row.cfg.subscription_status if row.cfg else "—" }}
-            </td>
-
-            <td class="px-6 py-4">
-              <span class="text-slate-600">—</span>
-            </td>
-
-            <td class="px-6 py-4 text-center">
-              <span class="text-slate-600">—</span>
-            </td>
-
-            <td class="px-6 py-4 text-right">
-              <a href="/admin/tenants/{{ row.tenant.id }}" class="inline-flex items-center justify-center px-4 py-1.5 rounded-xl text-xs font-bold text-[#aec6ff] border border-[rgba(174,198,255,0.2)] hover:bg-[rgba(174,198,255,0.1)] transition-colors">
-                View
-              </a>
-            </td>
-          </tr>
-          {% endfor %}
-          {% if not system_rows %}
-          <tr><td colspan="9" class="px-6 py-12 text-center text-slate-500 text-sm">No tenants configured for services yet.</td></tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+<button class="text-[#414753] hover:text-[#004e9f] transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-outline-variant/30">
+<img class="w-full h-full object-cover" data-alt="professional male administrator in corporate office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFcJBAxn8DzMxU0yTrIig29k6ZXCAIk_JzoRkOIcUeW-Okzpn3kHAtcPsu54XrIAJamn5VpX8OUjWOOTT5VTvb_Dft_0qXnbygWKgiHSeVHEbIMitAYhBkH3uawajwm8unXOc7qEl89fu1j6hGSeDjIWThsVFmbzr6xCm8an_voQmt2PVov-hcXFqNpB74fryk2B7DirQmh6GdL6UUNtNSFV1zXGfXXiycr-mz44FQ-uWPZVRoC4BdPsOp-D1ir1dZSUDS5-Z2fTlq"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="flex-1 overflow-y-auto p-8">
+<!-- Hero Metrics Bento Grid -->
+<div class="grid grid-cols-12 gap-6 mb-8">
+<!-- Global Uptime Card -->
+<div class="col-span-12 lg:col-span-4 bg-surface-container-lowest p-8 rounded-xl flex flex-col justify-between">
+<div>
+<span class="text-label-md text-on-surface-variant font-semibold tracking-wide">30-DAY UPTIME</span>
+<h1 class="text-5xl font-extrabold text-on-surface tracking-tighter mt-2">99.982<span class="text-2xl text-primary">%</span></h1>
+</div>
+<div class="mt-8 flex items-end space-x-1 h-8">
+<div class="flex-1 bg-emerald-500/20 rounded-t h-4"></div>
+<div class="flex-1 bg-emerald-500 rounded-t h-8"></div>
+<div class="flex-1 bg-emerald-500 rounded-t h-8"></div>
+<div class="flex-1 bg-emerald-500 rounded-t h-8"></div>
+<div class="flex-1 bg-amber-500 rounded-t h-5"></div>
+<div class="flex-1 bg-emerald-500 rounded-t h-8"></div>
+<div class="flex-1 bg-emerald-500 rounded-t h-8"></div>
+<div class="flex-1 bg-emerald-500 rounded-t h-8"></div>
+<div class="flex-1 bg-emerald-500 rounded-t h-8"></div>
+<div class="flex-1 bg-emerald-500 rounded-t h-8"></div>
+<div class="flex-1 bg-emerald-500 rounded-t h-8"></div>
+</div>
+</div>
+<!-- Response Time Card -->
+<div class="col-span-12 md:col-span-6 lg:col-span-4 bg-primary-container p-8 rounded-xl text-white">
+<div class="flex justify-between items-start">
+<div>
+<span class="text-xs font-bold text-on-primary-container/80 tracking-widest">AVG RESPONSE TIME</span>
+<h3 class="text-4xl font-extrabold mt-1">124<span class="text-lg font-medium opacity-70 ml-1">ms</span></h3>
+</div>
+<div class="p-2 bg-white/10 rounded-lg">
+<span class="material-symbols-outlined" data-icon="speed">speed</span>
+</div>
+</div>
+<div class="mt-8">
+<div class="w-full h-12 flex items-center">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
+<path d="M0 35 Q 25 30 50 15 T 100 5" fill="none" stroke="white" stroke-width="2"></path>
+<path d="M0 35 Q 25 30 50 15 T 100 5 L 100 40 L 0 40 Z" fill="url(#grad1)" opacity="0.3"></path>
+<defs>
+<lineargradient id="grad1" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:white;stop-opacity:0.5"></stop>
+<stop offset="100%" style="stop-color:white;stop-opacity:0"></stop>
+</lineargradient>
+</defs>
+</svg>
+</div>
+<div class="flex justify-between mt-2 text-[10px] font-bold opacity-60">
+<span>24H AGO</span>
+<span>CURRENT</span>
+</div>
+</div>
+</div>
+<!-- Throughput Card -->
+<div class="col-span-12 md:col-span-6 lg:col-span-4 bg-surface-container-lowest p-8 rounded-xl">
+<div class="flex justify-between items-start">
+<div>
+<span class="text-xs font-bold text-on-surface-variant tracking-widest">THROUGHPUT</span>
+<h3 class="text-4xl font-extrabold mt-1 text-on-surface">12.4<span class="text-lg font-medium text-on-surface-variant ml-1">k/s</span></h3>
+</div>
+<div class="p-2 bg-surface-container rounded-lg">
+<span class="material-symbols-outlined text-primary" data-icon="trending_up">trending_up</span>
+</div>
+</div>
+<div class="mt-6 flex items-center space-x-2">
+<span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded">+8.2%</span>
+<span class="text-xs text-on-surface-variant">vs yesterday</span>
+</div>
+</div>
+</div>
+<!-- Real-time Infrastructure Grid -->
+<h3 class="text-label-md font-bold text-on-surface-variant tracking-[0.2em] mb-6">INFRASTRUCTURE HEALTH</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+<!-- API Gateway -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border-l-4 border-emerald-500">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-on-surface-variant mr-3" data-icon="hub">hub</span>
+<span class="font-bold text-sm">API Gateway</span>
+</div>
+<span class="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded">HEALTHY</span>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">CPU Load</span>
+<span class="font-semibold">12%</span>
+</div>
+<div class="w-full bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-emerald-500 h-full w-[12%]"></div>
+</div>
+</div>
+</div>
+<!-- Main Database -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border-l-4 border-emerald-500">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-on-surface-variant mr-3" data-icon="database">database</span>
+<span class="font-bold text-sm">Postgres DB</span>
+</div>
+<span class="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded">HEALTHY</span>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Active Conn</span>
+<span class="font-semibold">842</span>
+</div>
+<div class="w-full bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-emerald-500 h-full w-[45%]"></div>
+</div>
+</div>
+</div>
+<!-- Redis Cache -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border-l-4 border-amber-500">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-on-surface-variant mr-3" data-icon="memory">memory</span>
+<span class="font-bold text-sm">Redis Cache</span>
+</div>
+<span class="text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-600 rounded">WARNING</span>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Memory Usage</span>
+<span class="font-semibold">89%</span>
+</div>
+<div class="w-full bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-amber-500 h-full w-[89%]"></div>
+</div>
+</div>
+</div>
+<!-- Workers -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border-l-4 border-emerald-500">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-on-surface-variant mr-3" data-icon="robot_2">robot_2</span>
+<span class="font-bold text-sm">BG Workers</span>
+</div>
+<span class="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded">HEALTHY</span>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Job Queue</span>
+<span class="font-semibold">Low</span>
+</div>
+<div class="w-full bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-emerald-500 h-full w-[8%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Lower Section: Alerts and Logs -->
+<div class="grid grid-cols-12 gap-8">
+<!-- Recent Alert History -->
+<div class="col-span-12 xl:col-span-8">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-label-md font-bold text-on-surface-variant tracking-[0.2em]">RECENT ALERT HISTORY</h3>
+<button class="text-primary text-xs font-bold hover:underline">View All History</button>
+</div>
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Timestamp</th>
+<th class="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Component</th>
+<th class="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Severity</th>
+<th class="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Status</th>
+<th class="px-6 py-4"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-4 text-sm text-on-surface-variant font-medium">14:22:05</td>
+<td class="px-6 py-4 text-sm font-bold">Redis Cache</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded">Warning</span>
+</td>
+<td class="px-6 py-4 text-sm text-on-surface-variant">Active</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary" data-icon="more_vert">more_vert</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-4 text-sm text-on-surface-variant font-medium">13:45:12</td>
+<td class="px-6 py-4 text-sm font-bold">Auth Service</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-error-container text-on-error-container text-[10px] font-bold rounded">Critical</span>
+</td>
+<td class="px-6 py-4 text-sm text-on-surface-variant">Resolved</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary" data-icon="more_vert">more_vert</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-4 text-sm text-on-surface-variant font-medium">11:02:44</td>
+<td class="px-6 py-4 text-sm font-bold">Billing API</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded">Info</span>
+</td>
+<td class="px-6 py-4 text-sm text-on-surface-variant">Closed</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary" data-icon="more_vert">more_vert</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- System Logs Preview -->
+<div class="col-span-12 xl:col-span-4">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-label-md font-bold text-on-surface-variant tracking-[0.2em]">LIVE LOGS</h3>
+<div class="flex items-center space-x-1">
+<span class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
+<span class="text-[10px] font-bold text-primary">LIVE</span>
+</div>
+</div>
+<div class="bg-[#1e1e1e] rounded-xl p-6 font-mono text-[11px] leading-relaxed text-slate-300 overflow-hidden h-[300px] flex flex-col">
+<div class="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
+<p><span class="text-emerald-400">[2023-11-20 14:25:01]</span> <span class="text-blue-400">INFO</span> GET /api/v1/health 200 12ms</p>
+<p><span class="text-emerald-400">[2023-11-20 14:25:04]</span> <span class="text-blue-400">INFO</span> Job executed: 'cleanup_sessions'</p>
+<p><span class="text-emerald-400">[2023-11-20 14:25:10]</span> <span class="text-amber-400">WARN</span> Redis latency above 100ms</p>
+<p><span class="text-emerald-400">[2023-11-20 14:25:12]</span> <span class="text-blue-400">INFO</span> POST /auth/login 201 45ms</p>
+<p><span class="text-emerald-400">[2023-11-20 14:25:15]</span> <span class="text-blue-400">INFO</span> DB Connection Pool: 45/100 active</p>
+<p><span class="text-emerald-400">[2023-11-20 14:25:18]</span> <span class="text-rose-400">ERROR</span> Unhandled rejection: connection timeout</p>
+<p><span class="text-emerald-400">[2023-11-20 14:25:20]</span> <span class="text-blue-400">INFO</span> Worker #4 restarted successfully</p>
+<p><span class="text-emerald-400">[2023-11-20 14:25:22]</span> <span class="text-blue-400">INFO</span> System metrics pushed to Prometheus</p>
+</div>
+<div class="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
+<span class="text-[9px] uppercase tracking-widest text-slate-500">Streaming console output</span>
+<button class="text-white bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-[9px] font-bold">DOWNLOAD RAW</button>
+</div>
+</div>
+</div>
+</div>
+</div>
 </main>
-{%- endblock %}
-{%- endblock %}
+</div>
+<!-- Floating Action Button - Supressed based on context: It's an admin dashboard, but keeping a subtle "Add Monitor" for utility if needed, though strictly suppressing for specific page rules -->
+<!-- SUPPRESSED per instruction "Suppress FAB on Settings, Profile, Details, and Transactional screens" - Dashboard is detail-heavy -->
+</body></html>

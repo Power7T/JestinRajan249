@@ -1,469 +1,429 @@
-{%- extends "base.html" %}
-{%- block title %}Knowledge Gaps — HostAI{%- endblock %}
+<!DOCTYPE html>
 
-{%- block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
-tailwind.config = {
-  darkMode:"class",
-  theme:{ extend:{ colors:{ primary:"#aec6ff", surface:"#121319" } } }
-}
-</script>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Incident Command | Voice Logs</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#793000",
+                        "surface-tint": "#005cba",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "tertiary": "#883700",
+                        "on-tertiary-fixed": "#341100",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "secondary": "#515f74",
+                        "tertiary-container": "#af4900",
+                        "background": "#f7f9fb",
+                        "secondary-fixed": "#d5e3fc",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#dfe8ff",
+                        "on-primary-fixed": "#001b3e",
+                        "primary-container": "#0066cc",
+                        "on-surface": "#191c1e",
+                        "on-background": "#191c1e",
+                        "tertiary-fixed": "#ffdbcb",
+                        "primary-fixed-dim": "#aac7ff",
+                        "on-surface-variant": "#414753",
+                        "outline": "#727784",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container-low": "#f2f4f6",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-dim": "#d8dadc",
+                        "surface-container": "#eceef0",
+                        "primary-fixed": "#d7e3ff",
+                        "primary": "#004e9f",
+                        "on-error": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "secondary-container": "#d5e3fc",
+                        "outline-variant": "#c1c6d5",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "on-tertiary-container": "#ffe3d6",
+                        "inverse-on-surface": "#eff1f3",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#57657a",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "inverse-primary": "#aac7ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e0e3e5",
+                        "on-primary-fixed-variant": "#00458e",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
 <style>
-  *{box-sizing:border-box}
-  body{background:#08090F;font-family:'Plus Jakarta Sans',sans-serif;color:#e3e1eb;margin:0}
-  .glass{background:rgba(26,27,34,0.75);backdrop-filter:blur(24px);border-top:1px solid rgba(174,198,255,0.08);border-left:1px solid rgba(174,198,255,0.08)}
-  .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 200,'GRAD' 0,'opsz' 24;vertical-align:middle}
-  input[type=text],input[type=tel],textarea,select{
-    display:block;width:100%;background:rgba(255,255,255,0.04);
-    border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;
-    color:#e3e1eb;padding:0.625rem 0.875rem;font-family:inherit;font-size:0.875rem;
-    transition:border-color .15s,box-shadow .15s
-  }
-  input[type=text]:focus,input[type=tel]:focus,textarea:focus,select:focus{
-    outline:none;border-color:#5B8DEF;box-shadow:0 0 0 3px rgba(91,141,239,.15)
-  }
-  textarea{resize:vertical;min-height:80px}
-  select option{background:#1e1f26}
-  .channel-pill input[type=radio]{position:absolute;opacity:0;width:0;height:0}
-  .channel-pill{cursor:pointer;transition:all .15s}
-  .channel-pill:has(input:checked){border-color:#5B8DEF!important;background:rgba(91,141,239,.12)!important;color:#aec6ff!important}
-  .save-pill input[type=radio]{position:absolute;opacity:0;width:0;height:0}
-  .save-pill{cursor:pointer;transition:all .15s}
-  .save-pill:has(input:checked){border-color:#5B8DEF!important;background:rgba(91,141,239,.12)!important;color:#aec6ff!important}
-  .preview-box{background:rgba(91,141,239,.06);border:1px solid rgba(91,141,239,.2);border-radius:1rem;padding:1rem 1.25rem;font-size:0.8125rem;color:#94a3b8;white-space:pre-line;line-height:1.6}
-  .badge-sms{background:rgba(96,165,250,.12);color:#60a5fa}
-  .badge-wa{background:rgba(74,222,128,.12);color:#4ade80}
-</style>
-{%- endblock %}
-
-{%- block nav %}{%- endblock %}
-{%- block main_wrapper %}
-{%- block content %}
-
-<!-- ── Sidebar ───────────────────────────────────────────────────────────── -->
-<!-- Mobile hamburger -->
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
-  <span class="material-symbols-outlined">menu</span>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .editorial-shadow {
+            box-shadow: 0 10px 32px -4px rgba(0, 78, 159, 0.06);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen">
+<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-white/80 backdrop-blur-xl border border-gray-200 text-gray-600 hover:text-gray-900 transition-all">
+<span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
-<aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
-  <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80">
-    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
-      <span class="material-symbols-outlined text-[#002e6b] text-xl" style="font-variation-settings:'FILL' 1">hub</span>
-    </div>HostAI</a>
-  <nav class="flex-1 px-4 space-y-0.5">
-    {% set nav = [
-      ('/dashboard','dashboard','Dashboard'),
-      ('/conversations','forum','Conversations'),
-      ('/reservations','event_available','Reservations'),
-      ('/activity','history','Activity'),
-      ('/analytics','analytics','Analytics'),
-      ('/analytics/roi','trending_up','Revenue & ROI'),
-      ('/voice-calls','phone_in_talk','Voice AI'),
-      ('/workflow','hub','Operations'),
-      ('/settings','settings','Settings'),
-    ] %}
-    {% for href,icon,label in nav %}
-    <a class="flex items-center gap-3 px-6 py-3 rounded-r-xl {% if request.url.path.startswith(href) and (href != '/dashboard' or request.url.path == '/dashboard') %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="{{ href }}">
-      <span class="material-symbols-outlined text-[1.1rem]">{{ icon }}</span>{{ label }}
-    </a>
-    {% endfor %}
-    {% if tenant is defined and tenant and is_admin(tenant.email) %}
-    <a class="flex items-center gap-3 px-6 py-3 text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold transition-all" href="/admin">
-      <span class="material-symbols-outlined text-[1.1rem]">admin_panel_settings</span>Admin
-    </a>
-    {% endif %}
-  </nav>
-  <div class="p-6 space-y-3">
-    <div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
-      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold flex-shrink-0">
-        {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
-      </div>
-      <div class="min-w-0">
-        <p class="text-white font-bold text-sm truncate">{{ tenant.first_name or tenant.email if tenant else 'Host' }}</p>
-        <p class="text-slate-500 text-xs">Host</p>
-      </div>
-    </div>
-    <form method="post" action="/logout">
-      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-      <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-red-400 text-xs font-bold uppercase tracking-widest transition-colors">
-        <span class="material-symbols-outlined text-sm">logout</span>Sign Out
-      </button>
-    </form>
-  </div>
+<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/40 hidden" id="sidebar-overlay"></div>
+
+<!-- TopNavBar -->
+<header class="bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl fixed top-0 w-full z-50 border-b border-slate-200/15 dark:border-slate-800/15 shadow-sm shadow-blue-900/5 flex justify-between items-center px-6 h-16 w-full">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-slate-900 dark:text-white">IncidentManager</span>
+<div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-1.5 gap-2">
+<span class="material-symbols-outlined text-slate-400 text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-64 p-0 placeholder:text-slate-500" placeholder="Search logs..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden ml-2 bg-primary-fixed ring-2 ring-white dark:ring-slate-900">
+<img alt="Manager Profile" class="h-full w-full object-cover" data-alt="professional male property manager headshot with a clean background, soft lighting, wearing a navy polo shirt" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwZZ-ERMccCoLXjkprkXLmDdywHpP_UJnKK39WpV7Ot1DavlLXGH4EJjd5jCfqZE6BS8jN4UDE3BOo0ajVIHLx5NphMxghXHplqetHc_VDFZOwvPjS8USWYYtjhxUeuHRzaC_SRuNiFwyQA8r3TM-jTgcO762jWZ6zdW8piujWruztVgy8VR4lV93RPfZkenbfNJWn4JBxXbLFpsZke_NBmQsYxl_SfbTo8c52cW52HBJj3mFpaVv5wDx07w8UziEKPBayd_fK_78c"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside id="sidebar" class="bg-slate-50 dark:bg-slate-950 h-screen w-64 fixed left-0 top-0 pt-16 flex flex-col gap-y-4 py-8 -translate-x-full md:translate-x-0 transition-transform duration-300">
+<div class="px-6 py-4 mb-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-lg">domain</span>
+</div>
+<div>
+<h2 class="text-lg font-black text-blue-800 dark:text-blue-300 leading-none">Precision Curator</h2>
+<p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Incident Command</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">error_med</span>
+<span class="font-medium text-sm">Incidents</span>
+</a>
+<a class="flex items-center px-6 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full mx-2" href="#">
+<span class="material-symbols-outlined mr-3">settings_voice</span>
+<span class="font-medium text-sm">Voice Logs</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">domain</span>
+<span class="font-medium text-sm">Properties</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-medium text-sm">Analytics</span>
+</a>
+</nav>
+<div class="px-4 py-4">
+<button class="w-full bg-primary hover:bg-primary-container text-white py-3 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                New Report
+            </button>
+</div>
+<div class="mt-auto pb-6 space-y-1">
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">settings</span>
+<span class="font-medium text-sm">Settings</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mx-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">contact_support</span>
+<span class="font-medium text-sm">Support</span>
+</a>
+</div>
 </aside>
-
-<!-- ── Main ──────────────────────────────────────────────────────────────── -->
-<main class="md:ml-[260px] min-h-screen pt-[80px] pb-20 px-4 md:px-8">
-
-  <!-- Header -->
-  <div class="flex items-start justify-between mb-2">
-    <div>
-      <div class="flex items-center gap-2 mb-3">
-        <a href="/voice-calls" class="text-slate-500 hover:text-slate-300 text-xs transition-colors flex items-center gap-1">
-          <span class="material-symbols-outlined text-sm">arrow_back</span>Voice AI
-        </a>
-      </div>
-      <h1 class="text-4xl font-extrabold text-white tracking-tight mb-1">Knowledge Gaps</h1>
-      <p class="text-slate-400 text-sm">Questions guests asked that the AI couldn't answer. Answer once — AI learns forever.</p>
-    </div>
-    {% if open_gaps %}
-    <div class="flex items-center gap-2 mt-1 px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
-      <span class="material-symbols-outlined text-amber-400">warning</span>
-      <span class="text-amber-300 font-bold text-sm">{{ open_gaps|length }} need{{ 's' if open_gaps|length == 1 else '' }} your answer</span>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- How it works banner -->
-  <div class="glass rounded-2xl p-5 mb-8 flex items-start gap-4 mt-6">
-    <div class="w-10 h-10 rounded-xl bg-[#5B8DEF]/15 flex items-center justify-center flex-shrink-0">
-      <span class="material-symbols-outlined text-[#5B8DEF] text-xl">auto_fix_high</span>
-    </div>
-    <div>
-      <p class="text-white font-semibold text-sm mb-1">Self-improving AI</p>
-      <p class="text-slate-400 text-sm leading-relaxed">
-        When the AI doesn't know an answer, it logs the guest's question here and alerts you.
-        You type the answer once. It's saved to your property info so the AI handles it automatically in every future call.
-        You can also send the answer directly back to the guest who asked.
-      </p>
-    </div>
-  </div>
-
-  <!-- ── Open gaps ──────────────────────────────────────────────────────── -->
-  {% if open_gaps %}
-  <section class="mb-12">
-    <h2 class="text-base font-bold text-white mb-4 flex items-center gap-2">
-      <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block"></span>
-      Open — needs your answer
-    </h2>
-
-    <div class="space-y-5">
-    {% for gap in open_gaps %}
-    <div class="glass rounded-3xl overflow-hidden" id="card-{{ gap.id }}">
-
-      <!-- ── Gap card header ── -->
-      <div class="p-6 flex items-start gap-4">
-
-        <!-- Guest avatar -->
-        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#aec6ff]/20 to-[#5B8DEF]/20 flex items-center justify-center flex-shrink-0 text-lg font-extrabold text-[#aec6ff]">
-          {{ (gap.guest_name or '?')[0]|upper }}
-        </div>
-
-        <div class="flex-1 min-w-0">
-          <!-- Guest identity row -->
-          <div class="flex flex-wrap items-center gap-2 mb-2">
-            {% if gap.guest_name %}
-            <span class="text-white font-bold text-sm">{{ gap.guest_name }}</span>
-            {% else %}
-            <span class="text-slate-400 text-sm italic">Unknown guest</span>
-            {% endif %}
-            {% if gap.guest_phone %}
-            <span class="text-slate-500 text-xs font-mono">{{ gap.guest_phone[:-4] | replace(gap.guest_phone[:-4], '••••••') }}{{ gap.guest_phone[-4:] }}</span>
-            {% endif %}
-            {% if gap.guest_room %}
-            <span class="px-2 py-0.5 rounded-lg bg-white/5 text-slate-400 text-xs flex items-center gap-1">
-              <span class="material-symbols-outlined text-xs">bed</span>{{ gap.guest_room }}
-            </span>
-            {% endif %}
-            <span class="text-slate-600 text-xs ml-auto">{{ gap.created_at.strftime('%b %d · %H:%M') if gap.created_at else '' }}</span>
-          </div>
-
-          <!-- The question -->
-          <div class="flex items-start gap-2">
-            <span class="material-symbols-outlined text-amber-400 text-lg mt-0.5">help</span>
-            <p class="text-white text-sm font-medium leading-relaxed">"{{ gap.question }}"</p>
-          </div>
-        </div>
-
-        <!-- Answer button -->
-        <button onclick="openGap('{{ gap.id }}')" id="btn-{{ gap.id }}"
-          class="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
-          <span class="material-symbols-outlined text-base">edit_note</span>Answer
-        </button>
-      </div>
-
-      <!-- ── Answer form (hidden until "Answer" clicked) ── -->
-      <div id="form-{{ gap.id }}" class="hidden border-t border-white/5">
-        <form method="post" action="/voice-calls/gaps/{{ gap.id }}/resolve"
-              class="p-6 space-y-6" id="fobj-{{ gap.id }}">
-          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-
-          <!-- Step 1: Answer -->
-          <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-              Step 1 — Your Answer
-            </label>
-            <textarea name="answer" id="ans-{{ gap.id }}" rows="3"
-              placeholder="Type the correct information here…"
-              oninput="updatePreview('{{ gap.id }}')"
-              required></textarea>
-          </div>
-
-          <!-- Step 2: Save to field -->
-          <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-              Step 2 — Save to Property Info
-            </label>
-            <div class="flex flex-wrap gap-2">
-              {% for val, lbl, icon in [
-                ('faq','FAQ','quiz'),
-                ('custom_instructions','Instructions','tune'),
-                ('house_rules','House Rules','gavel'),
-                ('amenities','Amenities / WiFi','wifi'),
-                ('parking_policy','Parking','local_parking'),
-                ('nearby_restaurants','Area / Food','restaurant'),
-              ] %}
-              <label class="save-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 text-slate-400 text-xs relative">
-                <input type="radio" name="save_to" value="{{ val }}" {% if loop.first %}checked{% endif %}>
-                <span class="material-symbols-outlined text-sm">{{ icon }}</span>{{ lbl }}
-              </label>
-              {% endfor %}
-            </div>
-            <p class="text-slate-600 text-xs mt-1.5">The Q&A will be appended to this field so the AI can answer it next time.</p>
-          </div>
-
-          <!-- Step 3: Send reply to guest -->
-          <div class="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <p class="text-white text-sm font-semibold">Step 3 — Send answer back to guest</p>
-                <p class="text-slate-500 text-xs mt-0.5">Optional. Closes the loop — the guest who asked gets your answer immediately.</p>
-              </div>
-              <!-- Toggle -->
-              <label class="relative inline-flex items-center cursor-pointer ml-4 flex-shrink-0">
-                <input type="checkbox" id="tog-{{ gap.id }}" onchange="toggleSend('{{ gap.id }}')"
-                  {% if gap.guest_phone %}checked{% endif %} class="sr-only peer">
-                <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer
-                  peer-checked:after:translate-x-full peer-checked:bg-[#5B8DEF]
-                  after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                  after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-              </label>
-            </div>
-
-            <div id="send-section-{{ gap.id }}" class="{% if not gap.guest_phone %}hidden{% endif %} space-y-4">
-
-              <!-- Guest phone + name (editable) -->
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs text-slate-500 mb-1.5 font-medium">Guest Phone Number</label>
-                  <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-500 text-base">call</span>
-                    <input type="tel" name="guest_phone" id="gphone-{{ gap.id }}"
-                      value="{{ gap.guest_phone or '' }}"
-                      placeholder="+1 555 000 0000"
-                      oninput="updatePreview('{{ gap.id }}')"
-                      style="padding-left:2.25rem">
-                  </div>
-                </div>
-                <div>
-                  <label class="block text-xs text-slate-500 mb-1.5 font-medium">Guest Name <span class="text-slate-600">(optional)</span></label>
-                  <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-500 text-base">person</span>
-                    <input type="text" name="guest_name" id="gname-{{ gap.id }}"
-                      value="{{ gap.guest_name or '' }}"
-                      placeholder="Sarah"
-                      oninput="updatePreview('{{ gap.id }}')"
-                      style="padding-left:2.25rem">
-                  </div>
-                </div>
-              </div>
-
-              <!-- Channel selector -->
-              <div>
-                <label class="block text-xs text-slate-500 mb-2 font-medium">Send via</label>
-                <div class="flex gap-2">
-                  <label class="channel-pill flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-slate-400 text-sm relative">
-                    <input type="radio" name="reply_channel" value="sms" checked>
-                    <span class="material-symbols-outlined text-base">sms</span>SMS
-                  </label>
-                  <label class="channel-pill flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-slate-400 text-sm relative">
-                    <input type="radio" name="reply_channel" value="whatsapp">
-                    <span class="material-symbols-outlined text-base">chat</span>WhatsApp
-                  </label>
-                </div>
-              </div>
-
-              <!-- Message preview -->
-              <div>
-                <label class="block text-xs text-slate-500 mb-1.5 font-medium flex items-center gap-1">
-                  <span class="material-symbols-outlined text-sm">preview</span>Message preview
-                </label>
-                <div class="preview-box" id="preview-{{ gap.id }}">
-                  {%- set pname = gap.guest_name.split()[0] ~ '!' if gap.guest_name else 'Hi!' -%}
-                  {%- set pprop = cfg.property_names or 'your host' -%}
-                  {%- set proom = ' (Room/Unit: ' ~ gap.guest_room ~ ')' if gap.guest_room else '' -%}
-Hi {{ pname }} Following up on your call to {{ pprop }}{{ proom }}.
-
-❓ You asked:
-"{{ gap.question }}"
-
-✅ Answer from your host:
-<em class="text-slate-600">[your answer will appear here]</em>
-
-Feel free to call us back anytime if you need more help!</div>
-              </div>
-            </div>
-
-            <!-- Hidden field toggled by JS -->
-            <input type="hidden" name="send_to_guest" id="stg-{{ gap.id }}"
-              value="{% if gap.guest_phone %}yes{% else %}no{% endif %}">
-          </div>
-
-          <!-- Action buttons -->
-          <div class="flex items-center gap-3">
-            <button type="submit"
-              class="flex items-center gap-2 px-6 py-3 bg-[#5B8DEF] text-white rounded-xl text-sm font-bold hover:bg-[#4a7de0] transition-colors shadow-lg shadow-[#5B8DEF]/20">
-              <span class="material-symbols-outlined text-base">save</span>
-              <span id="btnlabel-{{ gap.id }}">
-                {% if gap.guest_phone %}Save &amp; Send to Guest{% else %}Save &amp; Train AI{% endif %}
-              </span>
-            </button>
-            <button type="button" onclick="closeGap('{{ gap.id }}')"
-              class="px-4 py-3 text-slate-400 hover:text-white text-sm transition-colors">
-              Cancel
-            </button>
-          </div>
-
-        </form>
-      </div><!-- /form -->
-    </div><!-- /card -->
-    {% endfor %}
-    </div>
-  </section>
-
-  {% else %}
-  <!-- All clear -->
-  <div class="glass rounded-3xl py-20 flex flex-col items-center justify-center text-center mb-12">
-    <div class="w-16 h-16 rounded-3xl bg-green-500/10 flex items-center justify-center mb-5">
-      <span class="material-symbols-outlined text-green-400 text-3xl">check_circle</span>
-    </div>
-    <h3 class="text-xl font-bold text-white mb-2">All caught up!</h3>
-    <p class="text-slate-400 text-sm max-w-xs">No open knowledge gaps. Your AI is fully trained on everything guests have asked.</p>
-  </div>
-  {% endif %}
-
-  <!-- ── Resolved history ───────────────────────────────────────────────── -->
-  {% if resolved_gaps %}
-  <section>
-    <h2 class="text-base font-bold text-white mb-4 flex items-center gap-2">
-      <span class="material-symbols-outlined text-green-400 text-lg">check_circle</span>
-      Resolved — AI already knows
-    </h2>
-    <div class="glass rounded-2xl overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-white/5">
-            <th class="text-left px-5 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Guest & Question</th>
-            <th class="text-left px-5 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Answer</th>
-            <th class="text-left px-5 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Saved to</th>
-            <th class="text-left px-5 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Replied</th>
-            <th class="text-left px-5 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Resolved</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-white/5">
-          {% for gap in resolved_gaps %}
-          <tr class="hover:bg-white/[0.02] transition-colors">
-            <td class="px-5 py-4 max-w-[220px]">
-              {% if gap.guest_name %}
-              <p class="text-white text-xs font-semibold truncate">{{ gap.guest_name }}</p>
-              {% endif %}
-              <p class="text-slate-400 text-xs truncate mt-0.5">"{{ gap.question }}"</p>
-            </td>
-            <td class="px-5 py-4 max-w-[200px]">
-              <p class="text-slate-400 text-xs truncate">{{ (gap.host_answer or '—')[:70] }}{% if gap.host_answer and gap.host_answer|length > 70 %}…{% endif %}</p>
-            </td>
-            <td class="px-5 py-4">
-              <span class="px-2 py-0.5 rounded-lg bg-white/5 text-slate-500 text-xs">{{ gap.saved_to or '—' }}</span>
-            </td>
-            <td class="px-5 py-4">
-              {% if gap.reply_sent %}
-              <span class="flex items-center gap-1 text-xs {% if gap.reply_channel == 'whatsapp' %}badge-wa{% else %}badge-sms{% endif %} px-2 py-0.5 rounded-lg w-fit">
-                <span class="material-symbols-outlined text-xs">{% if gap.reply_channel == 'whatsapp' %}chat{% else %}sms{% endif %}</span>
-                {{ gap.reply_channel|title }}
-              </span>
-              {% else %}
-              <span class="text-slate-600 text-xs">Not sent</span>
-              {% endif %}
-            </td>
-            <td class="px-5 py-4 text-slate-500 text-xs">
-              {{ gap.resolved_at.strftime('%b %d') if gap.resolved_at else '—' }}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-  {% endif %}
-
+<!-- Main Content -->
+<main class="ml-64 pt-16 p-8 min-h-screen">
+<div class="max-w-7xl mx-auto">
+<!-- Header Section -->
+<div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h1 class="text-4xl font-extrabold text-on-surface tracking-tight mb-2">Voice &amp; Call Gaps</h1>
+<p class="text-on-surface-variant max-w-lg leading-relaxed">
+                        Identify and resolve communication friction points. Automated analysis of missed connections and system timeouts across your portfolio.
+                    </p>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-5 py-2.5 bg-surface-container text-on-surface-variant font-semibold rounded-xl flex items-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+                        Filter
+                    </button>
+<button class="px-5 py-2.5 bg-primary-container text-on-primary font-semibold rounded-xl flex items-center gap-2 editorial-shadow hover:-translate-y-0.5 transition-all">
+<span class="material-symbols-outlined text-[20px]">send</span>
+                        Send Messages
+                    </button>
+</div>
+</div>
+<!-- Dashboard Analytics Quick-View -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow">
+<p class="text-secondary text-sm font-medium mb-1">Total Call Gaps</p>
+<p class="text-3xl font-extrabold text-on-surface">24</p>
+<div class="mt-4 flex items-center gap-1.5 text-error text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+12% from yesterday</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow border-l-4 border-primary">
+<p class="text-secondary text-sm font-medium mb-1">Action Required</p>
+<p class="text-3xl font-extrabold text-on-surface">18</p>
+<div class="mt-4 flex items-center gap-1.5 text-primary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">timer</span>
+<span>Avg response: 14m</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow">
+<p class="text-secondary text-sm font-medium mb-1">Success Recovery</p>
+<p class="text-3xl font-extrabold text-on-surface">62%</p>
+<div class="mt-4 flex items-center gap-1.5 text-primary-fixed-dim text-xs font-bold">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+<span>12 calls recovered</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow">
+<p class="text-secondary text-sm font-medium mb-1">Dropped Ratio</p>
+<p class="text-3xl font-extrabold text-on-surface">4.2%</p>
+<div class="mt-4 flex items-center gap-1.5 text-tertiary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">info</span>
+<span>Target: &lt; 2.0%</span>
+</div>
+</div>
+</div>
+<!-- Incident Table Area -->
+<div class="bg-surface-container-low rounded-2xl overflow-hidden">
+<div class="p-6 flex items-center justify-between bg-surface-container-lowest/50 backdrop-blur-md">
+<h3 class="text-lg font-bold text-on-surface">Pending Voice Gaps</h3>
+<div class="flex items-center gap-2">
+<span class="text-xs text-on-surface-variant font-medium">Select All</span>
+<input class="rounded border-outline-variant text-primary focus:ring-primary h-4 w-4" type="checkbox"/>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full border-collapse">
+<thead>
+<tr class="text-left border-b border-outline-variant/10">
+<th class="px-8 py-4 text-xs uppercase tracking-widest text-on-surface-variant font-bold">Guest &amp; Identity</th>
+<th class="px-8 py-4 text-xs uppercase tracking-widest text-on-surface-variant font-bold">Property Location</th>
+<th class="px-8 py-4 text-xs uppercase tracking-widest text-on-surface-variant font-bold">Time Attempted</th>
+<th class="px-8 py-4 text-xs uppercase tracking-widest text-on-surface-variant font-bold">Gap Reason</th>
+<th class="px-8 py-4 text-xs uppercase tracking-widest text-on-surface-variant font-bold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Entry 1 -->
+<tr class="group hover:bg-white transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-sm">LP</div>
+<div>
+<p class="font-bold text-on-surface">Liam Peterson</p>
+<p class="text-xs text-on-surface-variant">Confirmed Guest • VIP</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="font-medium text-on-surface">The Glass Loft</p>
+<p class="text-xs text-on-surface-variant">Unit 402 • Manhattan</p>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm font-semibold text-on-surface">14:22 PM</p>
+<p class="text-xs text-on-surface-variant">Today, Oct 24</p>
+</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-error-container text-on-error-container text-[10px] font-bold rounded-full uppercase tracking-wider">Connection Dropped</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 hover:bg-primary-fixed text-primary rounded-lg transition-colors" title="Call Back">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="px-4 py-1.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:bg-secondary-fixed transition-colors">
+                                            Send Message
+                                        </button>
+</div>
+</td>
+</tr>
+<!-- Entry 2 -->
+<tr class="group hover:bg-white transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary font-bold text-sm">SC</div>
+<div>
+<p class="font-bold text-on-surface">Sarah Chen</p>
+<p class="text-xs text-on-surface-variant">Inquiry • New User</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="font-medium text-on-surface">Azure Bay Villa</p>
+<p class="text-xs text-on-surface-variant">Main House • Malibu</p>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm font-semibold text-on-surface">13:05 PM</p>
+<p class="text-xs text-on-surface-variant">Today, Oct 24</p>
+</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed-variant text-[10px] font-bold rounded-full uppercase tracking-wider">No Answer</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 hover:bg-primary-fixed text-primary rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="px-4 py-1.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:bg-secondary-fixed transition-colors">
+                                            Send Message
+                                        </button>
+</div>
+</td>
+</tr>
+<!-- Entry 3 -->
+<tr class="group hover:bg-white transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-on-primary-fixed-variant font-bold text-sm">MK</div>
+<div>
+<p class="font-bold text-on-surface">Marcus Knight</p>
+<p class="text-xs text-on-surface-variant">In-Stay • Urgent</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="font-medium text-on-surface">The Glass Loft</p>
+<p class="text-xs text-on-surface-variant">Penthouse • Manhattan</p>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm font-semibold text-on-surface">11:45 AM</p>
+<p class="text-xs text-on-surface-variant">Today, Oct 24</p>
+</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-full uppercase tracking-wider">System Timeout</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 hover:bg-primary-fixed text-primary rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="px-4 py-1.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:bg-secondary-fixed transition-colors">
+                                            Send Message
+                                        </button>
+</div>
+</td>
+</tr>
+<!-- Entry 4 -->
+<tr class="group hover:bg-white transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed-dim flex items-center justify-center text-on-tertiary-fixed font-bold text-sm">EB</div>
+<div>
+<p class="font-bold text-on-surface">Elena Belova</p>
+<p class="text-xs text-on-surface-variant">Upcoming • Request</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="font-medium text-on-surface">Azure Bay Villa</p>
+<p class="text-xs text-on-surface-variant">Guest Suite • Malibu</p>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm font-semibold text-on-surface">10:12 AM</p>
+<p class="text-xs text-on-surface-variant">Today, Oct 24</p>
+</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-error-container text-on-error-container text-[10px] font-bold rounded-full uppercase tracking-wider">Connection Dropped</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 hover:bg-primary-fixed text-primary rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="px-4 py-1.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:bg-secondary-fixed transition-colors">
+                                            Send Message
+                                        </button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination/Load More -->
+<div class="p-8 flex items-center justify-center border-t border-outline-variant/10">
+<button class="text-sm font-bold text-primary flex items-center gap-2 hover:underline">
+                        View Historical Logs
+                        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Contextual Insights Section (Asymmetric Bento) -->
+<div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="md:col-span-2 bg-gradient-to-br from-primary to-primary-container p-8 rounded-3xl text-on-primary editorial-shadow relative overflow-hidden group">
+<div class="relative z-10">
+<h4 class="text-2xl font-bold mb-4">Precision Intelligence</h4>
+<p class="text-on-primary-container/90 max-w-md leading-relaxed mb-6">
+                            Our AI detected a recurring pattern: **Connection Dropped** incidents are up 15% at **The Glass Loft** between 2 PM and 4 PM. This suggests potential network saturation in the Manhattan node.
+                        </p>
+<button class="px-6 py-3 bg-white text-primary font-bold rounded-xl text-sm hover:bg-primary-fixed transition-all">
+                            Investigate Network Node
+                        </button>
+</div>
+<span class="material-symbols-outlined absolute -right-8 -bottom-8 text-[200px] opacity-10 group-hover:scale-110 transition-transform duration-700">settings_voice</span>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-3xl editorial-shadow flex flex-col justify-between">
+<div>
+<div class="w-12 h-12 rounded-2xl bg-tertiary-fixed flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-tertiary">warning</span>
+</div>
+<h4 class="text-lg font-bold text-on-surface mb-2">Portfolio Health</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">
+                            Malibu properties are currently maintaining a 98.4% voice stability rating. No action required for Azure Bay.
+                        </p>
+</div>
+<div class="mt-6 pt-6 border-t border-outline-variant/10">
+<div class="flex items-center justify-between text-xs font-bold text-on-surface uppercase tracking-widest">
+<span>Status: Stable</span>
+<span class="text-tertiary-fixed-variant">Last checked 5m ago</span>
+</div>
+</div>
+</div>
+</div>
+</div>
 </main>
-{%- endblock %}
-{%- endblock %}
-
-<script nonce="{{ request.state.csp_nonce }}">
-// ── Data baked in from Jinja for preview generation ────────────────────────
-const gapData = {
-  {% for gap in open_gaps %}
-  "{{ gap.id }}": {
-    question: {{ gap.question | tojson }},
-    propName: {{ (cfg.property_names or 'your host') | tojson }},
-    guestRoom: {{ (gap.guest_room or '') | tojson }},
-  },
-  {% endfor %}
-};
-
-function openGap(id) {
-  document.getElementById('form-' + id).classList.remove('hidden');
-  document.getElementById('btn-' + id).classList.add('hidden');
-  document.getElementById('ans-' + id).focus();
-}
-function closeGap(id) {
-  document.getElementById('form-' + id).classList.add('hidden');
-  document.getElementById('btn-' + id).classList.remove('hidden');
-}
-
-function toggleSend(id) {
-  const checked = document.getElementById('tog-' + id).checked;
-  document.getElementById('send-section-' + id).classList.toggle('hidden', !checked);
-  document.getElementById('stg-' + id).value = checked ? 'yes' : 'no';
-  updateButtonLabel(id, checked);
-}
-
-function updateButtonLabel(id, sendEnabled) {
-  const phone = document.getElementById('gphone-' + id)?.value?.trim();
-  const lbl   = document.getElementById('btnlabel-' + id);
-  if (lbl) lbl.textContent = (sendEnabled && phone) ? 'Save & Send to Guest' : 'Save & Train AI';
-}
-
-function updatePreview(id) {
-  const data    = gapData[id];
-  if (!data) return;
-  const answer  = document.getElementById('ans-' + id)?.value?.trim() || '';
-  const nameVal = document.getElementById('gname-' + id)?.value?.trim() || '';
-  const phoneVal= document.getElementById('gphone-' + id)?.value?.trim() || '';
-
-  const greeting  = nameVal ? `Hi ${nameVal.split(' ')[0]}!` : 'Hi!';
-  const roomPart  = data.guestRoom ? ` (Room/Unit: ${data.guestRoom})` : '';
-  const answerPart= answer || '<em style="color:#475569">[your answer will appear here]</em>';
-
-  document.getElementById('preview-' + id).innerHTML =
-    `${greeting} Following up on your call to ${data.propName}${roomPart}.\n\n` +
-    `❓ You asked:\n"${data.question}"\n\n` +
-    `✅ Answer from your host:\n${answerPart}\n\n` +
-    `Feel free to call us back anytime if you need more help!`;
-
-  updateButtonLabel(id, document.getElementById('tog-' + id)?.checked);
-}
-
-// Auto-open if only one gap
-document.addEventListener('DOMContentLoaded', () => {
-  const cards = document.querySelectorAll('[id^="card-"]');
-  if (cards.length === 1) {
-    openGap(cards[0].id.replace('card-', ''));
-  }
-});
-</script>
+<!-- FAB Suppression Rule: Not rendered as this is a focused log view -->
+</body></html>
