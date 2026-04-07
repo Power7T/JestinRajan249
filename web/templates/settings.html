@@ -314,10 +314,10 @@
   }
 </style>
 <div style="display:flex; gap:24px; margin-bottom:32px; border-bottom:1px solid rgba(255,255,255,0.08); position:sticky; top:0; background:rgba(8,9,15,0.95); backdrop-filter:blur(8px); padding:16px 0; z-index:10">
-  <button type="button" class="settings-tab active" data-tab="general" onclick="switchTab('general')" style="color:#aec6ff; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid #5B8DEF; transition:all 0.2s">General</button>
-  <button type="button" class="settings-tab" data-tab="channels" onclick="switchTab('channels')" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Channels</button>
-  <button type="button" class="settings-tab" data-tab="email" onclick="switchTab('email')" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Email</button>
-  <button type="button" class="settings-tab" data-tab="automation" onclick="switchTab('automation')" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Automation</button>
+  <button type="button" class="settings-tab active" data-tab="general" style="color:#aec6ff; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid #5B8DEF; transition:all 0.2s">General</button>
+  <button type="button" class="settings-tab" data-tab="channels" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Channels</button>
+  <button type="button" class="settings-tab" data-tab="email" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Email</button>
+  <button type="button" class="settings-tab" data-tab="automation" style="color:#9ca3af; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid transparent; transition:all 0.2s">Automation</button>
 </div>
 
 <form method="post" action="/settings">
@@ -1559,6 +1559,15 @@ function switchTab(tabName) {
         }
     });
 }
+
+// Attach tab click listeners (CSP-compliant, no inline onclick)
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.settings-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            switchTab(btn.dataset.tab);
+        });
+    });
+});
 
 // WhatsApp Bot Simulator
 async function simulateWABot() {
