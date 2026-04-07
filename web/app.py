@@ -3713,20 +3713,28 @@ async def test_whatsapp(
         )
 
     try:
+        from web.meta_sender import send_whatsapp
         token = decrypt(cfg.whatsapp_token_enc)
         to_phone_normalized = to_phone.replace("+", "").strip()
+        wa_error: dict = {}
         ok = send_whatsapp(
             cfg.whatsapp_phone_id,
             token,
             to_phone_normalized,
-            "👋 This is a test message from your HostAI account. If you see this, WhatsApp is working!"
+            "👋 This is a test message from your HostAI account. If you see this, WhatsApp is working!",
+            error_detail=wa_error,
         )
         if ok:
             return JSONResponse({"ok": True, "message": f"✅ Test message sent to {to_phone}"})
-        return JSONResponse(
-            {"ok": False, "error": f"❌ Failed to send. Check your credentials and try again."},
-            status_code=400
-        )
+        detail = wa_error.get('body', '')
+        try:
+            import json as _j
+            parsed = _j.loads(detail)
+            meta_msg = (parsed.get('error', {}) or {}).get('message') or detail
+        except Exception:
+            meta_msg = detail
+        err = f"WhatsApp API error (HTTP {wa_error.get('code','?')}): {meta_msg}" if meta_msg else "❌ Failed to send. Check your credentials and try again."
+        return JSONResponse({"ok": False, "error": err}, status_code=400)
     except Exception as e:
         logger.error(f"WhatsApp test error: {e}")
         return JSONResponse(
@@ -7263,18 +7271,29 @@ async def simulate_and_send(
 
     # Send the AI response via WhatsApp to the test number
     try:
+        from web.meta_sender import send_whatsapp
         token = decrypt(cfg.whatsapp_token_enc)
         to_normalized = to_phone.replace("+", "").strip()
-        sent = send_whatsapp(cfg.whatsapp_phone_id, token, to_normalized, draft_text)
+        wa_error: dict = {}
+        sent = send_whatsapp(cfg.whatsapp_phone_id, token, to_normalized, draft_text, error_detail=wa_error)
     except Exception as e:
         logger.error(f"WhatsApp send error in simulate/send: {e}")
         return JSONResponse({"ok": False, "error": f"Failed to send via WhatsApp: {str(e)}"}, status_code=500)
 
     if not sent:
-        return JSONResponse(
-            {"ok": False, "error": "WhatsApp send failed. Check your credentials and phone number format (+E.164)."},
-            status_code=400,
-        )
+        # Build a descriptive error using the actual Meta API response body when available
+        detail = wa_error.get('body', '')
+        try:
+            import json as _json
+            parsed = _json.loads(detail)
+            meta_msg = (parsed.get('error', {}) or {}).get('message') or detail
+        except Exception:
+            meta_msg = detail
+        if meta_msg:
+            err_msg = f"WhatsApp API error (HTTP {wa_error.get('code', '?')}): {meta_msg}"
+        else:
+            err_msg = "WhatsApp send failed. Check your Phone ID, Access Token, and phone number format (+E.164)."
+        return JSONResponse({"ok": False, "error": err_msg}, status_code=400)
 
     # Save as simulate draft for audit trail
     try:

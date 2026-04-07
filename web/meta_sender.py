@@ -19,12 +19,13 @@ _RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}  # transient errors worth retr
 
 
 def send_whatsapp(phone_id: str, token: str, to_phone: str, text: str,
-                  max_retries: int = 3) -> bool:
+                  max_retries: int = 3, error_detail: dict | None = None) -> bool:
     """
     Send a text message via Meta Cloud API.
     to_phone must be in E.164 format without '+', e.g. '14155550001'.
     Retries up to max_retries times on transient errors with exponential backoff.
     Returns True on success, False on permanent failure.
+    If error_detail dict is provided, it will be populated with 'code' and 'body' on failure.
     """
     to = to_phone.replace("+", "").replace(" ", "").replace("-", "")
     payload = json.dumps({
@@ -49,7 +50,7 @@ def send_whatsapp(phone_id: str, token: str, to_phone: str, text: str,
                 log.info("Meta WA sent to %s: %s", to, resp.status)
                 return True
         except urllib.error.HTTPError as e:
-            body = e.read().decode(errors="replace")[:300]
+            body = e.read().decode(errors="replace")[:500]
             if e.code in _RETRYABLE_HTTP_CODES and attempt < max_retries - 1:
                 wait = 2 ** attempt  # 1s, 2s, 4s
                 log.warning("Meta WA HTTP %s (attempt %d/%d), retrying in %ds: %s",
@@ -57,6 +58,9 @@ def send_whatsapp(phone_id: str, token: str, to_phone: str, text: str,
                 time.sleep(wait)
                 continue
             log.error("Meta WA HTTP %s (permanent): %s", e.code, body)
+            if error_detail is not None:
+                error_detail['code'] = e.code
+                error_detail['body'] = body
             return False
         except Exception as exc:
             if attempt < max_retries - 1:
@@ -66,6 +70,8 @@ def send_whatsapp(phone_id: str, token: str, to_phone: str, text: str,
                 time.sleep(wait)
                 continue
             log.error("Meta WA send failed after %d attempts: %s", max_retries, exc)
+            if error_detail is not None:
+                error_detail['body'] = str(exc)
             return False
     return False
 

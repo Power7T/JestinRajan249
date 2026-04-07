@@ -571,6 +571,23 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
     el.style.background = isError ? 'rgba(239,68,68,0.15)' : 'rgba(74,222,128,0.15)';
     el.style.color = isError ? '#fca5a5' : '#86efac';
     el.style.border = isError ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(74,222,128,0.3)';
+    if (isError) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function simErrorPopup(msg) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#1e2130;border:1px solid rgba(239,68,68,0.4);border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5)';
+    box.innerHTML = '<div style="display:flex;align-items:flex-start;gap:12px">'
+      + '<span style="font-size:1.5rem;flex-shrink:0">❌</span>'
+      + '<div style="flex:1"><p style="font-weight:700;color:#fca5a5;margin:0 0 8px">WhatsApp Error</p>'
+      + '<p style="color:#e5e7eb;font-size:0.875rem;line-height:1.5;margin:0;word-break:break-word">' + msg.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p></div></div>'
+      + '<button onclick="this.closest(\'[data-sim-popup]\').remove()" style="margin-top:16px;width:100%;padding:8px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#fca5a5;font-weight:600;cursor:pointer;font-size:0.875rem">Dismiss</button>';
+    overlay.setAttribute('data-sim-popup', '1');
+    overlay.appendChild(box);
+    overlay.addEventListener('click', function(ev){ if(ev.target===overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
   }
 
   async function _doSim(endpoint, extra) {
@@ -595,7 +612,9 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
       var data = await resp.json();
 
       if (!data.ok) {
-        simStatus('❌ ' + (data.error || data.detail || 'Unknown error'), true);
+        var errMsg = data.error || data.detail || 'Unknown error';
+        simStatus('❌ ' + errMsg, true);
+        if (endpoint.indexOf('send') > -1) simErrorPopup(errMsg);
         return;
       }
 
@@ -609,7 +628,9 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
       if (chatEl) chatEl.style.display = 'block';
       simStatus(data.message || '✅ Response generated', false);
     } catch(e) {
-      simStatus('❌ Request failed: ' + e.message, true);
+      var netErr = '❌ Request failed: ' + e.message;
+      simStatus(netErr, true);
+      if (endpoint.indexOf('send') > -1) simErrorPopup('Network error: ' + e.message);
     }
   }
 
