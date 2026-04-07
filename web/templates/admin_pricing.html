@@ -99,9 +99,9 @@
 <div class="flex items-center gap-8">
 <h1 class="text-xl font-bold tracking-tighter text-slate-900 dark:text-slate-100">Precision Curator</h1>
 <nav class="hidden md:flex gap-6 font-sans antialiased text-sm tracking-tight">
-<a class="text-slate-500 dark:text-slate-400 font-medium hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200" href="#">Dashboard</a>
-<a class="text-slate-500 dark:text-slate-400 font-medium hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200" href="#">Properties</a>
-<a class="text-blue-700 dark:text-blue-400 font-semibold border-b-2 border-blue-700 dark:border-blue-400 pb-2" href="#">Settings</a>
+<a class="text-slate-500 dark:text-slate-400 font-medium hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200" href="/dashboard">Dashboard</a>
+<a class="text-slate-500 dark:text-slate-400 font-medium hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200" href="/dashboard">Properties</a>
+<a class="text-blue-700 dark:text-blue-400 font-semibold border-b-2 border-blue-700 dark:border-blue-400 pb-2" href="/analytics">Settings</a>
 </nav>
 </div>
 <div class="flex items-center gap-4">
@@ -128,19 +128,19 @@
 </div>
 </div>
 <nav class="flex-1 space-y-2 font-sans text-sm font-medium tracking-wide">
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2.5 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2.5 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all" href="/settings">
 <span class="material-symbols-outlined">dashboard</span> Overview
             </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2.5 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2.5 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all" href="/billing">
 <span class="material-symbols-outlined">insights</span> Analytics
             </a>
-<a class="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-full px-4 py-2.5 transition-all translate-x-1" href="#">
+<a class="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-full px-4 py-2.5 transition-all translate-x-1" href="/pricing">
 <span class="material-symbols-outlined">payments</span> Pricing Plans
             </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2.5 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2.5 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all" href="/analytics">
 <span class="material-symbols-outlined">group</span> User Access
             </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2.5 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2.5 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all" href="/logout">
 <span class="material-symbols-outlined">history</span> Audit Logs
             </a>
 </nav>
@@ -150,7 +150,7 @@
 <div class="w-full bg-surface-container rounded-full h-1.5 mb-2">
 <div class="bg-primary h-1.5 rounded-full" style="width: 75%"></div>
 </div>
-<button class="w-full py-2 bg-primary text-on-primary text-xs font-bold rounded-lg active:scale-95 transition-transform">Upgrade Plan</button>
+<a href="/billing" class="w-full py-2 bg-primary text-on-primary text-xs font-bold rounded-lg active:scale-95 transition-transform">Upgrade Plan</a>
 </div>
 <div class="space-y-1">
 <a class="flex items-center gap-3 text-slate-600 px-4 py-2 hover:text-primary transition-colors" href="#">

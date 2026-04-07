@@ -104,23 +104,23 @@
 </div>
 </div>
 <nav class="flex-1 space-y-1">
-<a class="flex items-center gap-3 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full px-4 py-2 mx-2 transition-all translate-x-1 duration-200" href="#">
+<a class="flex items-center gap-3 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full px-4 py-2 mx-2 transition-all translate-x-1 duration-200" href="/dashboard">
 <span class="material-symbols-outlined" data-icon="settings_voice">settings_voice</span>
 <span class="text-sm font-medium">Voice Services</span>
 </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="/analytics">
 <span class="material-symbols-outlined" data-icon="router">router</span>
 <span class="text-sm font-medium">SIP Trunking</span>
 </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="/settings">
 <span class="material-symbols-outlined" data-icon="dialpad">dialpad</span>
 <span class="text-sm font-medium">Numbers</span>
 </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="/billing">
 <span class="material-symbols-outlined" data-icon="bar_chart">bar_chart</span>
 <span class="text-sm font-medium">Analytics</span>
 </a>
-<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="#">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 mx-2 hover:text-blue-700 transition-all" href="/pricing">
 <span class="material-symbols-outlined" data-icon="code">code</span>
 <span class="text-sm font-medium">API Keys</span>
 </a>
@@ -130,7 +130,7 @@
 <div class="relative z-10">
 <p class="text-xs font-medium opacity-80">Current Tier</p>
 <p class="text-lg font-bold mb-2">Enterprise Plan</p>
-<button class="w-full py-2 bg-white text-primary text-xs font-bold rounded-lg shadow-sm hover:bg-surface transition-colors">Upgrade Plan</button>
+<a href="/billing" class="w-full py-2 bg-white text-primary text-xs font-bold rounded-lg shadow-sm hover:bg-surface transition-colors">Upgrade Plan</a>
 </div>
 <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-white/10 rounded-full blur-2xl"></div>
 </div>
@@ -151,10 +151,10 @@
 <div class="flex items-center gap-8">
 <h1 class="text-xl font-bold text-slate-900 dark:text-white font-inter tracking-tight">Voice Configuration</h1>
 <nav class="hidden md:flex gap-6">
-<a class="text-blue-700 dark:text-blue-400 font-semibold border-b-2 border-blue-700 dark:border-blue-400 pb-1" href="#">Dashboard</a>
+<a class="text-blue-700 dark:text-blue-400 font-semibold border-b-2 border-blue-700 dark:border-blue-400 pb-1" href="/dashboard">Dashboard</a>
 <a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200" href="#">Inventory</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200" href="#">Billing</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200" href="#">Settings</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200" href="/billing">Billing</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200" href="/settings">Settings</a>
 </nav>
 </div>
 <div class="flex items-center gap-4">

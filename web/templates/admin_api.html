@@ -94,9 +94,9 @@
 <div class="flex items-center gap-8">
 <span class="text-xl font-bold tracking-tight text-slate-900">API Core</span>
 <nav class="hidden md:flex gap-6 items-center">
-<a class="text-slate-500 hover:text-slate-700 font-manrope text-sm font-medium transition-colors" href="#">Status</a>
-<a class="text-slate-500 hover:text-slate-700 font-manrope text-sm font-medium transition-colors" href="#">Docs</a>
-<a class="text-slate-500 hover:text-slate-700 font-manrope text-sm font-medium transition-colors" href="#">Support</a>
+<a class="text-slate-500 hover:text-slate-700 font-manrope text-sm font-medium transition-colors" href="/dashboard">Status</a>
+<a class="text-slate-500 hover:text-slate-700 font-manrope text-sm font-medium transition-colors" href="/analytics">Docs</a>
+<a class="text-slate-500 hover:text-slate-700 font-manrope text-sm font-medium transition-colors" href="/admin/api">Support</a>
 </nav>
 </div>
 <div class="flex items-center gap-4">
@@ -135,11 +135,11 @@
 </div>
 </div>
 <nav class="flex-1 space-y-1">
-<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white/50 hover:text-slate-900 transition-all duration-200 rounded-lg font-inter text-sm font-semibold" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white/50 hover:text-slate-900 transition-all duration-200 rounded-lg font-inter text-sm font-semibold" href="/settings">
 <span class="material-symbols-outlined">dashboard</span>
                     Dashboard
                 </a>
-<a class="flex items-center gap-3 px-4 py-3 bg-white text-slate-900 rounded-lg shadow-sm font-bold font-inter text-sm transition-all duration-200" href="#">
+<a class="flex items-center gap-3 px-4 py-3 bg-white text-slate-900 rounded-lg shadow-sm font-bold font-inter text-sm transition-all duration-200" href="/terms">
 <span class="material-symbols-outlined">vpn_key</span>
                     API Keys
                 </a>
@@ -159,7 +159,7 @@
 <div class="pt-4 mt-4 border-t border-slate-200">
 <div class="p-4 bg-primary-container rounded-xl mb-4">
 <p class="text-on-primary text-xs font-semibold mb-2">Powering 2.4M requests</p>
-<button class="w-full py-2 bg-on-primary-container text-white text-xs font-bold rounded-lg hover:brightness-110 transition-all">Upgrade Plan</button>
+<a href="/billing" class="w-full py-2 bg-on-primary-container text-white text-xs font-bold rounded-lg hover:brightness-110 transition-all">Upgrade Plan</a>
 </div>
 <a class="flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-slate-900 transition-all font-inter text-sm font-semibold" href="#">
 <span class="material-symbols-outlined">help</span>
@@ -443,7 +443,7 @@
 <div class="flex gap-8 text-[10px] font-bold uppercase tracking-widest">
 <a class="hover:text-primary" href="#">System Status</a>
 <a class="hover:text-primary" href="#">Security Policy</a>
-<a class="hover:text-primary" href="#">Terms of Service</a>
+<a class="hover:text-primary" href="/terms">Terms of Service</a>
 <a class="hover:text-primary" href="#">Privacy</a>
 </div>
 <div class="text-[10px] font-medium">
