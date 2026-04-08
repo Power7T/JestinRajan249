@@ -147,6 +147,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <div class="glass-card rounded-3xl p-6">
         <h2 class="text-lg font-bold text-white mb-4">Global Network Config</h2>
         <form method="POST" action="/admin/ai/save" class="space-y-4">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">OpenRouter API Key</label>
             <input type="password" name="openrouter_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.openrouter_api_key_enc else '' }}" placeholder="sk-or-v1-...">

@@ -126,6 +126,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     <div class="glass-card p-6 rounded-3xl h-fit">
       <h2 class="text-lg font-bold text-white mb-4">Global Default Route</h2>
       <form method="POST" action="/api/admin/voice-routing/config" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
         <div>
           <label class="block text-sm font-bold text-slate-300 mb-2">Default Action</label>
           <select name="default_route" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-200 focus:outline-[#5B8DEF] focus:border-transparent transition-all">
