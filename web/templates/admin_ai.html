@@ -235,6 +235,172 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       </div>
     </div>
   </div>
+
+  <!-- ── Model Chat Tester ─────────────────────────────────────── -->
+  <div class="glass-card rounded-3xl p-6 mb-8">
+    <div class="flex items-center gap-3 mb-6">
+      <span class="material-symbols-outlined text-[#5B8DEF]">smart_toy</span>
+      <div>
+        <h2 class="text-lg font-bold text-white">Model Chat Tester</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Send a prompt to any configured model and compare responses live</p>
+      </div>
+    </div>
+
+    <!-- Model Tabs -->
+    <div class="flex gap-2 flex-wrap mb-5" id="model-tabs">
+      <button type="button" class="model-tab active px-4 py-2 rounded-lg text-xs font-bold transition-all bg-[#5B8DEF]/20 border border-[#5B8DEF]/50 text-[#aec6ff]" data-model="{{ sys_conf.primary_model }}">
+        Primary<br><span class="font-mono opacity-60 text-[0.6rem]">{{ sys_conf.primary_model.split('/')[-1] }}</span>
+      </button>
+      <button type="button" class="model-tab px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff]" data-model="{{ sys_conf.routine_model }}">
+        Routine<br><span class="font-mono opacity-60 text-[0.6rem]">{{ sys_conf.routine_model.split('/')[-1] }}</span>
+      </button>
+      <button type="button" class="model-tab px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff]" data-model="{{ sys_conf.fallback_model }}">
+        Fallback<br><span class="font-mono opacity-60 text-[0.6rem]">{{ sys_conf.fallback_model.split('/')[-1] }}</span>
+      </button>
+      <button type="button" class="model-tab px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff]" data-model="{{ sys_conf.sentiment_model }}">
+        Sentiment<br><span class="font-mono opacity-60 text-[0.6rem]">{{ sys_conf.sentiment_model.split('/')[-1] }}</span>
+      </button>
+      <!-- Custom model input -->
+      <div class="flex items-center gap-2 ml-auto">
+        <input type="text" id="custom-model-input" placeholder="custom/model-id" class="compat-input !mb-0 text-xs w-48" style="padding:0.45rem 0.7rem">
+        <button type="button" id="custom-model-btn" class="px-3 py-2 rounded-lg text-xs font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all whitespace-nowrap">Test Custom ▶</button>
+      </div>
+    </div>
+
+    <!-- Active model display -->
+    <div class="flex items-center gap-2 mb-4">
+      <span class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Testing:</span>
+      <span id="active-model-badge" class="text-xs font-mono px-2 py-0.5 bg-[#5B8DEF]/15 text-[#aec6ff] rounded-md border border-[#5B8DEF]/20">{{ sys_conf.primary_model }}</span>
+    </div>
+
+    <!-- System prompt -->
+    <div class="mb-3">
+      <label class="block text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1.5">System Prompt</label>
+      <textarea id="test-system" rows="2" class="compat-input !mb-0 text-xs resize-none" style="font-family:monospace">You are a helpful AI host assistant for an Airbnb property. Be concise and friendly.</textarea>
+    </div>
+
+    <!-- Chat history -->
+    <div id="chat-history" class="space-y-3 mb-4 min-h-[80px] max-h-[400px] overflow-y-auto pr-1"></div>
+
+    <!-- Input row -->
+    <div class="flex gap-3">
+      <textarea id="test-prompt" rows="2" placeholder="Type your test prompt…" class="compat-input !mb-0 flex-1 resize-none text-sm"></textarea>
+      <button type="button" id="send-test-btn" class="px-5 py-2 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-[#002e6b] text-sm font-extrabold rounded-xl hover:shadow-[0_0_20px_rgba(174,198,255,0.3)] transition-all self-end whitespace-nowrap">Send ▶</button>
+    </div>
+    <div id="test-loading" class="hidden mt-3 text-xs text-slate-500 flex items-center gap-2">
+      <svg class="animate-spin w-3 h-3 text-[#5B8DEF]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+      Waiting for model response…
+    </div>
+    <div id="test-error" class="hidden mt-3 px-4 py-3 bg-red-950/30 border border-red-500/20 rounded-xl text-xs text-red-400 font-mono"></div>
+    <button type="button" id="clear-chat-btn" class="mt-3 text-[0.65rem] text-slate-600 hover:text-slate-400 transition-colors">Clear chat</button>
+  </div>
+
 </main>
+
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+  var activeModel = document.querySelector('.model-tab.active')?.dataset.model || '';
+  var csrfToken = '{{ request.state.csrf_token }}';
+
+  // Tab switching
+  document.querySelectorAll('.model-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      setActiveModel(btn.dataset.model);
+      document.querySelectorAll('.model-tab').forEach(function(b) {
+        b.classList.remove('active', 'bg-[#5B8DEF]/20', 'border-[#5B8DEF]/50', 'text-[#aec6ff]');
+        b.classList.add('bg-white/5', 'border-white/10', 'text-slate-400');
+      });
+      btn.classList.add('active', 'bg-[#5B8DEF]/20', 'border-[#5B8DEF]/50', 'text-[#aec6ff]');
+      btn.classList.remove('bg-white/5', 'border-white/10', 'text-slate-400');
+    });
+  });
+
+  document.getElementById('custom-model-btn').addEventListener('click', function() {
+    var val = document.getElementById('custom-model-input').value.trim();
+    if (val) setActiveModel(val);
+  });
+
+  function setActiveModel(model) {
+    activeModel = model;
+    document.getElementById('active-model-badge').textContent = model;
+  }
+
+  // Send message
+  document.getElementById('send-test-btn').addEventListener('click', sendMessage);
+  document.getElementById('test-prompt').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendMessage();
+  });
+
+  async function sendMessage() {
+    var prompt = document.getElementById('test-prompt').value.trim();
+    var systemPrompt = document.getElementById('test-system').value.trim();
+    var history = document.getElementById('chat-history');
+    var loading = document.getElementById('test-loading');
+    var errorDiv = document.getElementById('test-error');
+    if (!prompt || !activeModel) return;
+
+    // Append user bubble
+    history.appendChild(makeBubble('user', prompt));
+    document.getElementById('test-prompt').value = '';
+    errorDiv.classList.add('hidden');
+    loading.classList.remove('hidden');
+    history.scrollTop = history.scrollHeight;
+
+    try {
+      var resp = await fetch('/api/admin/model-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ model: activeModel, prompt: prompt, system_prompt: systemPrompt }),
+      });
+      var data = await resp.json();
+      loading.classList.add('hidden');
+      if (data.ok) {
+        var meta = '';
+        if (data.input_tokens != null) meta = data.input_tokens + ' in / ' + data.output_tokens + ' out — ' + data.elapsed_ms + 'ms';
+        history.appendChild(makeBubble('assistant', data.reply, data.model, meta));
+      } else {
+        errorDiv.textContent = 'Error: ' + (data.error || 'Unknown');
+        errorDiv.classList.remove('hidden');
+      }
+      history.scrollTop = history.scrollHeight;
+    } catch(err) {
+      loading.classList.add('hidden');
+      errorDiv.textContent = 'Request failed: ' + err.message;
+      errorDiv.classList.remove('hidden');
+    }
+  }
+
+  function makeBubble(role, text, model, meta) {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:4px;align-items:' + (role === 'user' ? 'flex-end' : 'flex-start');
+    var bubble = document.createElement('div');
+    bubble.style.cssText = 'max-width:80%;padding:10px 14px;border-radius:14px;font-size:0.85rem;line-height:1.55;white-space:pre-wrap;word-break:break-word;' + (role === 'user'
+      ? 'background:rgba(93,141,239,0.2);color:#e3e1eb;border-bottom-right-radius:4px;'
+      : 'background:rgba(255,255,255,0.06);color:#c3c6d4;border-bottom-left-radius:4px;border:1px solid rgba(255,255,255,0.07);');
+    if (role === 'assistant' && model) {
+      var label = document.createElement('div');
+      label.style.cssText = 'font-size:0.6rem;font-weight:700;color:#5B8DEF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;font-family:monospace;';
+      label.textContent = '🤖 ' + model;
+      bubble.appendChild(label);
+    }
+    var textNode = document.createElement('span');
+    textNode.textContent = text;
+    bubble.appendChild(textNode);
+    wrap.appendChild(bubble);
+    if (meta) {
+      var metaEl = document.createElement('div');
+      metaEl.style.cssText = 'font-size:0.6rem;color:#424752;padding:0 4px;font-family:monospace;';
+      metaEl.textContent = meta;
+      wrap.appendChild(metaEl);
+    }
+    return wrap;
+  }
+
+  document.getElementById('clear-chat-btn').addEventListener('click', function() {
+    document.getElementById('chat-history').innerHTML = '';
+  });
+})();
+</script>
+
 {%- endblock %}
 {%- endblock %}

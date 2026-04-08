@@ -8375,6 +8375,55 @@ def admin_ai_save(
     return RedirectResponse("/admin/ai?msg=saved", status_code=302)
 
 
+@app.post("/api/admin/model-test")
+async def admin_model_test(request: Request, db: Session = Depends(get_db)):
+    """Test any OpenRouter model directly. Admin only."""
+    _require_admin(request, db)
+    validate_csrf_header(request)
+
+    data = await request.json()
+    model_id = (data.get("model") or "").strip()
+    prompt = (data.get("prompt") or "").strip()
+    system_prompt = (data.get("system_prompt") or "You are a helpful AI assistant.").strip()
+
+    if not model_id or not prompt:
+        return JSONResponse({"ok": False, "error": "model and prompt are required"}, status_code=400)
+
+    sys_conf = db.query(SystemConfig).first()
+    if not sys_conf or not sys_conf.openrouter_api_key_enc:
+        return JSONResponse({"ok": False, "error": "OpenRouter API key not configured in AI Engine settings."}, status_code=400)
+
+    try:
+        import openai as _openai
+        client = _openai.OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=decrypt(sys_conf.openrouter_api_key_enc),
+        )
+        t0 = datetime.now(timezone.utc)
+        resp = client.chat.completions.create(
+            model=model_id,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=512,
+            temperature=0.7,
+        )
+        elapsed_ms = int((datetime.now(timezone.utc) - t0).total_seconds() * 1000)
+        content = resp.choices[0].message.content or ""
+        usage = resp.usage
+        return JSONResponse({
+            "ok": True,
+            "reply": content,
+            "model": model_id,
+            "input_tokens": usage.prompt_tokens if usage else None,
+            "output_tokens": usage.completion_tokens if usage else None,
+            "elapsed_ms": elapsed_ms,
+        })
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 # ---------------------------------------------------------------------------
 # Bulk draft actions
 # ---------------------------------------------------------------------------
