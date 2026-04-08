@@ -465,6 +465,34 @@ def _voice_scheduled_calls_job():
         db.close()
 
 
+def _fix_stale_model_ids():
+    """Correct known-bad OpenRouter model IDs stored in existing SystemConfig rows."""
+    _MODEL_RENAMES = {
+        "anthropic/claude-3.5-sonnet": "anthropic/claude-3.5-sonnet-20241022",
+        "google/gemini-2.5-flash": "google/gemini-flash-1.5",
+    }
+    try:
+        with SessionLocal() as db:
+            sys_conf = db.query(SystemConfig).first()
+            if not sys_conf:
+                return
+            changed = False
+            for old, new in _MODEL_RENAMES.items():
+                if sys_conf.primary_model == old:
+                    sys_conf.primary_model = new; changed = True
+                if sys_conf.routine_model == old:
+                    sys_conf.routine_model = new; changed = True
+                if sys_conf.fallback_model == old:
+                    sys_conf.fallback_model = new; changed = True
+                if sys_conf.sentiment_model == old:
+                    sys_conf.sentiment_model = new; changed = True
+            if changed:
+                db.commit()
+                log.info("Auto-corrected stale OpenRouter model IDs in SystemConfig")
+    except Exception as e:
+        log.warning(f"Could not fix stale model IDs: {e}")
+
+
 async def lifespan(app: FastAPI):
     _startup_checks()
     try:
@@ -472,6 +500,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         log.error(f"Failed to initialize database: {e}")
         # We don't crash here; let the app start so we can show a schema error page instead of a process crash
+    _fix_stale_model_ids()
     validate_smtp_config()  # Validate SMTP at startup — fail fast, not on first email send
     worker_manager.start_all_workers()
     scheduler: Optional[BackgroundScheduler] = None
