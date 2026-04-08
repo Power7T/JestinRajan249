@@ -470,8 +470,11 @@ def _voice_scheduled_calls_job():
 def _fix_stale_model_ids():
     """Correct known-bad OpenRouter model IDs stored in existing SystemConfig rows."""
     _MODEL_RENAMES = {
-        "anthropic/claude-3.5-sonnet": "anthropic/claude-3.5-sonnet-20241022",
-        "google/gemini-2.5-flash": "google/gemini-flash-1.5",
+        "anthropic/claude-3.5-sonnet": "anthropic/claude-3.7-sonnet",
+        "anthropic/claude-3.5-sonnet-20241022": "anthropic/claude-3.7-sonnet",
+        "google/gemini-2.5-flash": "google/gemini-2.5-flash",   # already correct
+        "google/gemini-flash-1.5": "google/gemini-2.5-flash",
+        "meta-llama/llama-3.1-70b-instruct": "meta-llama/llama-3.3-70b-instruct",
     }
     try:
         with SessionLocal() as db:
