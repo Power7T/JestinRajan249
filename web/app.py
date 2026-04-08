@@ -7335,91 +7335,81 @@ async def simulate_and_send(
     db: Session = Depends(get_db),
 ):
     """Generate AI response to a simulated guest message and send it via WhatsApp."""
-    tenant_id = get_current_tenant_id(request)
-    validate_csrf(request, csrf_token)
-    rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
-    cfg = _get_or_create_config(tenant_id, db)
-
-    from web.classifier import classify_message_with_confidence, generate_draft
-
-    if not cfg.whatsapp_phone_id or not cfg.whatsapp_token_enc:
-        return JSONResponse(
-            {"ok": False, "error": "WhatsApp not configured. Add your Phone ID and Access Token in Messaging Settings first."},
-            status_code=400,
-        )
-
-    guest_name = (guest_name or "Demo Guest").strip()[:128]
-    message = (message or "Hi, what time is check-in?").strip()[:2000]
-    to_phone = to_phone.strip()
-
     try:
+        tenant_id = get_current_tenant_id(request)
+        validate_csrf(request, csrf_token)
+        rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
+        cfg = _get_or_create_config(tenant_id, db)
+
+        from web.classifier import classify_message_with_confidence, generate_draft, make_draft_id
+
+        if not cfg.whatsapp_phone_id or not cfg.whatsapp_token_enc:
+            return JSONResponse(
+                {"ok": False, "error": "WhatsApp not configured. Add your Phone ID and Access Token in Messaging Settings first."},
+                status_code=400,
+            )
+
+        guest_name = (guest_name or "Demo Guest").strip()[:128]
+        message = (message or "Hi, what time is check-in?").strip()[:2000]
+        to_phone = to_phone.strip()
+
         msg_type, confidence, _ = classify_message_with_confidence(message)
         property_context = _property_context_for_reservation(None, cfg, db)
         draft_text = generate_draft(
-            guest_name,
-            message,
-            msg_type,
-            property_context=property_context,
-            tenant_id=tenant_id,
+            guest_name, message, msg_type,
+            property_context=property_context, tenant_id=tenant_id,
         )
-    except Exception as e:
-        logger.error(f"Draft generation error in simulate/send: {e}")
-        return JSONResponse({"ok": False, "error": f"Failed to generate response: {str(e)}"}, status_code=500)
 
-    # Send the AI response via WhatsApp to the test number
-    try:
+        # Send via WhatsApp
         from web.meta_sender import send_whatsapp
         token = decrypt(cfg.whatsapp_token_enc)
         to_normalized = to_phone.replace("+", "").strip()
         wa_error: dict = {}
         sent = send_whatsapp(cfg.whatsapp_phone_id, token, to_normalized, draft_text, error_detail=wa_error)
-    except Exception as e:
-        logger.error(f"WhatsApp send error in simulate/send: {e}")
-        return JSONResponse({"ok": False, "error": f"Failed to send via WhatsApp: {str(e)}"}, status_code=500)
 
-    if not sent:
-        # Build a descriptive error using the actual Meta API response body when available
-        detail = wa_error.get('body', '')
+        if not sent:
+            detail = wa_error.get('body', '')
+            try:
+                import json as _json
+                parsed = _json.loads(detail)
+                meta_msg = (parsed.get('error', {}) or {}).get('message') or detail
+            except Exception:
+                meta_msg = detail
+            err_msg = (
+                f"WhatsApp API error (HTTP {wa_error.get('code', '?')}): {meta_msg}"
+                if meta_msg else
+                "WhatsApp send failed. Check your Phone ID, Access Token, and phone number format (+E.164)."
+            )
+            return JSONResponse({"ok": False, "error": err_msg}, status_code=400)
+
+        # Save as simulate draft for audit trail (non-critical)
         try:
-            import json as _json
-            parsed = _json.loads(detail)
-            meta_msg = (parsed.get('error', {}) or {}).get('message') or detail
-        except Exception:
-            meta_msg = detail
-        if meta_msg:
-            err_msg = f"WhatsApp API error (HTTP {wa_error.get('code', '?')}): {meta_msg}"
-        else:
-            err_msg = "WhatsApp send failed. Check your Phone ID, Access Token, and phone number format (+E.164)."
-        return JSONResponse({"ok": False, "error": err_msg}, status_code=400)
+            draft_id = make_draft_id("simulate")
+            db.add(Draft(
+                id=draft_id, tenant_id=tenant_id, source="simulate",
+                guest_name=guest_name, message=message,
+                reply_to=to_phone, msg_type=msg_type, vendor_type=None,
+                draft=draft_text, status="auto_sent", confidence=confidence,
+            ))
+            db.commit()
+        except Exception as save_err:
+            log.warning(f"[simulate/send] Draft save failed (non-critical): {save_err}")
+            db.rollback()
+            draft_id = "unsaved"
 
-    # Save as simulate draft for audit trail
-    try:
-        draft_id = make_draft_id("simulate")
-        db.add(Draft(
-            id=draft_id,
-            tenant_id=tenant_id,
-            source="simulate",
-            guest_name=guest_name,
-            message=message,
-            reply_to=to_phone,
-            msg_type=msg_type,
-            vendor_type=None,
-            draft=draft_text,
-            status="auto_sent",
-            confidence=confidence,
-        ))
-        db.commit()
+        return JSONResponse({
+            "ok": True,
+            "draft": draft_text,
+            "msg_type": msg_type,
+            "confidence": int(round(confidence * 100)),
+            "message": f"✅ AI response sent to {to_phone} via WhatsApp",
+        })
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Draft save error in simulate/send: {e}")
-        db.rollback()
-
-    return JSONResponse({
-        "ok": True,
-        "draft": draft_text,
-        "msg_type": msg_type,
-        "confidence": int(round(confidence * 100)),
-        "message": f"✅ AI response sent to {to_phone} via WhatsApp",
-    })
+        log.error(f"[simulate/send] Unhandled error: {e}", exc_info=True)
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
 @app.post("/api/simulate/booking")
