@@ -625,8 +625,8 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
       var resp = await fetch(endpoint, { method: 'POST', body: fd });
       var data = await resp.json();
 
-      if (!data.ok) {
-        var errMsg = data.error || data.detail || 'Unknown error';
+      if (!resp.ok || !data.ok) {
+        var errMsg = data.error || data.detail || ('HTTP ' + resp.status);
         simStatus('❌ ' + errMsg, true);
         if (endpoint.indexOf('send') > -1) simErrorPopup(errMsg);
         return;

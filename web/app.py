@@ -7275,8 +7275,14 @@ async def simulate_guest_json(
     db: Session = Depends(get_db),
 ):
     """Simulate guest message → return AI draft as JSON (for settings widget)."""
-    tenant_id = get_current_tenant_id(request)
-    validate_csrf(request, csrf_token)
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+    try:
+        validate_csrf(request, csrf_token)
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Invalid CSRF token"}, status_code=403)
     rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
     cfg = _get_or_create_config(tenant_id, db)
 
@@ -7296,9 +7302,9 @@ async def simulate_guest_json(
             tenant_id=tenant_id,
         )
     except Exception as e:
-        logger.error(f"Draft generation error: {e}")
+        log.error(f"[simulate/json] Draft generation error: {e}", exc_info=True)
         return JSONResponse(
-            {"ok": False, "error": f"Failed to generate response: {str(e)}"},
+            {"ok": False, "error": f"Draft generation failed: {str(e)}"},
             status_code=500,
         )
 
@@ -7321,7 +7327,7 @@ async def simulate_guest_json(
         )
         db.commit()
     except Exception as e:
-        logger.error(f"Draft save error: {e}")
+        log.error(f"[simulate/json] Draft save error: {e}", exc_info=True)
         db.rollback()
         return JSONResponse(
             {"ok": False, "error": f"Failed to save draft: {str(e)}"},
