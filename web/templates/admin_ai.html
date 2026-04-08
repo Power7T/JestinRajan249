@@ -268,33 +268,12 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       </button>
     </div>
 
-    <!-- Quick-pick verified model IDs -->
-    <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Quick-Pick — Paid Models</p>
-    <p class="text-[0.6rem] text-slate-600 mb-2">Verified against your account's available models</p>
-    <div class="flex gap-2 flex-wrap mb-4">
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="anthropic/claude-3.7-sonnet">claude-3.7-sonnet</button>
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="anthropic/claude-3.5-haiku">claude-3.5-haiku</button>
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="google/gemini-2.5-flash">gemini-2.5-flash</button>
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="openai/gpt-4o-mini">gpt-4o-mini</button>
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="openai/gpt-4o">gpt-4o</button>
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="meta-llama/llama-3.3-70b-instruct">llama-3.3-70b</button>
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="deepseek/deepseek-chat">deepseek-chat</button>
-    </div>
-    <p class="text-[0.65rem] font-bold text-emerald-500 uppercase tracking-widest mb-1">Quick-Pick — Free Tier (No Credits Needed)</p>
-    <p class="text-[0.6rem] text-slate-600 mb-2">Confirmed available on your key with :free suffix</p>
-    <div class="flex gap-2 flex-wrap mb-5">
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:border-emerald-400/50 transition-all" data-model="meta-llama/llama-3.3-70b-instruct:free">llama-3.3-70b:free</button>
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:border-emerald-400/50 transition-all" data-model="google/gemma-3-27b-it:free">gemma-3-27b:free</button>
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:border-emerald-400/50 transition-all" data-model="google/gemma-3-12b-it:free">gemma-3-12b:free</button>
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:border-emerald-400/50 transition-all" data-model="google/gemma-4-31b-it:free">gemma-4-31b:free</button>
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:border-emerald-400/50 transition-all" data-model="qwen/qwen3-coder:free">qwen3-coder:free</button>
-    </div>
 
     <!-- Fetch available models -->
-    <div class="flex items-center gap-3 mb-5 p-3 rounded-xl bg-amber-950/20 border border-amber-500/15">
-      <span class="text-amber-400 text-sm">⚠️</span>
-      <p class="text-xs text-amber-400/80 flex-1">If models are returning 404, your account may have different available models. Fetch what's actually accessible on your API key:</p>
-      <button type="button" id="fetch-models-btn" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:bg-amber-500/30 transition-all whitespace-nowrap">Fetch My Models</button>
+    <div class="flex items-center gap-3 mb-5 p-3 rounded-xl bg-[#5B8DEF]/8 border border-[#5B8DEF]/20">
+      <span class="material-symbols-outlined text-[#5B8DEF] text-lg">cloud_download</span>
+      <p class="text-xs text-slate-300 flex-1">Load all <strong class="text-white">352 models</strong> available on your API key — click any to test it instantly.</p>
+      <button type="button" id="fetch-models-btn" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-[#5B8DEF]/20 border border-[#5B8DEF]/40 text-[#aec6ff] hover:bg-[#5B8DEF]/30 transition-all whitespace-nowrap">Load Models ▶</button>
     </div>
     <div id="fetch-models-result" class="hidden mb-5">
       <div class="flex items-center justify-between mb-2">
@@ -359,18 +338,6 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     });
   });
 
-  // Quick-pick buttons
-  document.querySelectorAll('.quickpick-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      setActiveModel(btn.dataset.model);
-      document.querySelectorAll('.quickpick-btn').forEach(function(b) {
-        b.classList.remove('border-[#5B8DEF]/50', 'text-[#aec6ff]', 'bg-[#5B8DEF]/10');
-        b.classList.add('border-white/10', 'text-slate-400');
-      });
-      btn.classList.add('border-[#5B8DEF]/50', 'text-[#aec6ff]', 'bg-[#5B8DEF]/10');
-      btn.classList.remove('border-white/10', 'text-slate-400');
-    });
-  });
 
   document.getElementById('custom-model-btn').addEventListener('click', function() {
     var val = document.getElementById('custom-model-input').value.trim();
