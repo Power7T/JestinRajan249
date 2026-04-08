@@ -7277,21 +7277,15 @@ async def simulate_guest_json(
     """Simulate guest message → return AI draft as JSON (for settings widget)."""
     try:
         tenant_id = get_current_tenant_id(request)
-    except Exception:
-        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
-    try:
         validate_csrf(request, csrf_token)
-    except Exception:
-        return JSONResponse({"ok": False, "error": "Invalid CSRF token"}, status_code=403)
-    rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
-    cfg = _get_or_create_config(tenant_id, db)
+        rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
+        cfg = _get_or_create_config(tenant_id, db)
 
-    from web.classifier import classify_message_with_confidence, generate_draft, make_draft_id
+        from web.classifier import classify_message_with_confidence, generate_draft, make_draft_id
 
-    guest_name = (guest_name or "Demo Guest").strip()[:128]
-    message = (message or "Hi, what time is check-in?").strip()[:2000]
+        guest_name = (guest_name or "Demo Guest").strip()[:128]
+        message = (message or "Hi, what time is check-in?").strip()[:2000]
 
-    try:
         msg_type, confidence, _ = classify_message_with_confidence(message)
         property_context = _property_context_for_reservation(None, cfg, db)
         draft_text = generate_draft(
@@ -7301,48 +7295,34 @@ async def simulate_guest_json(
             property_context=property_context,
             tenant_id=tenant_id,
         )
-    except Exception as e:
-        log.error(f"[simulate/json] Draft generation error: {e}", exc_info=True)
-        return JSONResponse(
-            {"ok": False, "error": f"Draft generation failed: {str(e)}"},
-            status_code=500,
-        )
 
-    try:
-        draft_id = make_draft_id("simulate")
-        db.add(
-            Draft(
-                id=draft_id,
-                tenant_id=tenant_id,
-                source="simulate",
-                guest_name=guest_name,
-                message=message,
-                reply_to=None,
-                msg_type=msg_type,
-                vendor_type=None,
-                draft=draft_text,
-                status="pending",
-                confidence=confidence,
-            )
-        )
-        db.commit()
-    except Exception as e:
-        log.error(f"[simulate/json] Draft save error: {e}", exc_info=True)
-        db.rollback()
-        return JSONResponse(
-            {"ok": False, "error": f"Failed to save draft: {str(e)}"},
-            status_code=500,
-        )
+        try:
+            draft_id = make_draft_id("simulate")
+            db.add(Draft(
+                id=draft_id, tenant_id=tenant_id, source="simulate",
+                guest_name=guest_name, message=message,
+                reply_to=None, msg_type=msg_type, vendor_type=None,
+                draft=draft_text, status="pending", confidence=confidence,
+            ))
+            db.commit()
+        except Exception as save_err:
+            log.warning(f"[simulate/json] Draft save failed (non-critical): {save_err}")
+            db.rollback()
+            draft_id = "unsaved"
 
-    return JSONResponse(
-        {
+        return JSONResponse({
             "ok": True,
             "draft": draft_text,
             "msg_type": msg_type,
             "confidence": int(round(confidence * 100)),
             "draft_id": draft_id,
-        }
-    )
+        })
+
+    except HTTPException:
+        raise  # let FastAPI handle 401/403/429 normally
+    except Exception as e:
+        log.error(f"[simulate/json] Unhandled error: {e}", exc_info=True)
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
 @app.post("/api/simulate/send")
