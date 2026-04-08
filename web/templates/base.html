@@ -12,6 +12,17 @@
   <script src="https://unpkg.com/htmx.org@1.9.12" nonce="{{ request.state.csp_nonce }}"></script>
   <link rel="stylesheet" href="/static/css/design-tokens.css">
   <link rel="stylesheet" href="/static/css/main.css">
+  <!-- Flatpickr date picker -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr" nonce="{{ request.state.csp_nonce }}"></script>
+  <style>
+    .flatpickr-calendar { border-radius: 14px !important; border: 1px solid rgba(174,198,255,0.15) !important; box-shadow: 0 16px 40px rgba(0,0,0,0.7) !important; font-family: inherit !important; }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover { background: #5B8DEF !important; border-color: #5B8DEF !important; }
+    .flatpickr-day:hover { background: rgba(91,141,239,0.2) !important; border-color: transparent !important; }
+    .flatpickr-day.today { border-color: #5B8DEF !important; }
+    .flatpickr-months .flatpickr-month { border-radius: 14px 14px 0 0 !important; }
+    .flatpickr-current-month .flatpickr-monthDropdown-months { font-weight: 600; }
+  </style>
   <style>
     /* Tooltip styling */
     .tooltip-trigger {
@@ -793,5 +804,26 @@ function clearSelection() {
 }
 </script>
 {% block scripts %}{% endblock %}
+<!-- Flatpickr: initialize all date inputs as popup calendars -->
+<script nonce="{{ request.state.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof flatpickr === 'undefined') return;
+  document.querySelectorAll('input[type="date"]').forEach(function(el) {
+    // Read existing value before flatpickr takes over
+    var existing = el.value;
+    flatpickr(el, {
+      allowInput: true,
+      dateFormat: 'Y-m-d',
+      defaultDate: existing || null,
+      disableMobile: false,
+      theme: 'dark',
+      onReady: function(selectedDates, dateStr, instance) {
+        // Ensure the input stays type="text" visually but keeps name/id intact
+        instance.input.setAttribute('autocomplete', 'off');
+      }
+    });
+  });
+});
+</script>
 </body>
 </html>
