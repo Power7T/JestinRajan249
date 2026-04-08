@@ -4534,7 +4534,7 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
         log.info(f"[{tenant_id}] Message from {guest_contact.guest_name} outside check-in window")
 
     try:
-        from web.classifier import classify_message_with_confidence, detect_vendor_type, generate_draft, build_property_context
+        from web.classifier import classify_message_with_confidence, detect_vendor_type, generate_draft
         reservation = _find_reservation_for_guest_context(
             tenant_id, db, guest_phone=reply_to, guest_name=f"{source.title()} guest"
         )
@@ -4545,7 +4545,7 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
         sentiment = classifier_mod.analyze_sentiment_and_intent_llm(tenant_id, text)
 
         vendor_type = detect_vendor_type(text) if msg_type == "complex" else None
-        property_context = build_property_context(cfg)
+        property_context = _property_context_for_reservation(reservation, cfg, db)
         if reservation:
             property_context = (
                 property_context
@@ -4787,6 +4787,66 @@ def _reservation_context_lines(res: Reservation, cfg: TenantConfig | None = None
 
 def _reservation_context_text(res: Reservation, cfg: TenantConfig | None = None) -> str:
     return "\n".join(_reservation_context_lines(res, cfg))
+
+
+def _property_context_for_reservation(
+    reservation: Optional["Reservation"],
+    cfg: "TenantConfig",
+    db: Session,
+) -> str:
+    """
+    Return build_property_context() using per-property config when available,
+    falling back to tenant-level config if no matching property is found.
+    """
+    from web.classifier import build_property_context
+    if reservation:
+        unit = (reservation.unit_identifier or reservation.listing_name or "").strip()
+        if unit:
+            from web.models import Property, PropertyConfig
+            prop = (
+                db.query(Property)
+                .filter(
+                    Property.tenant_id == cfg.tenant_id,
+                    Property.name == unit,
+                    Property.status == "active",
+                )
+                .first()
+            )
+            if prop and prop.config:
+                # Merge: per-property config takes precedence for fields it has,
+                # tenant-level cfg fills in any gaps
+                pc = prop.config
+
+                class _MergedCtx:
+                    """Duck-type object merging PropertyConfig over TenantConfig."""
+                    property_names = prop.name
+                    property_type  = pc.voice_enabled and getattr(cfg, "property_type", None) or getattr(cfg, "property_type", None)
+                    property_city  = prop.city or getattr(cfg, "property_city", None)
+                    check_in_time  = pc.check_in_time  or getattr(cfg, "check_in_time", None)
+                    check_out_time = pc.check_out_time or getattr(cfg, "check_out_time", None)
+                    max_guests     = pc.max_guests     or getattr(cfg, "max_guests", None)
+                    amenities      = pc.amenities      or getattr(cfg, "amenities", None)
+                    house_rules    = pc.house_rules    or getattr(cfg, "house_rules", None)
+                    pet_policy     = pc.pet_policy     or getattr(cfg, "pet_policy", None)
+                    parking_policy = pc.parking_policy or getattr(cfg, "parking_policy", None)
+                    faq            = pc.faq            or getattr(cfg, "faq", None)
+                    food_menu      = pc.food_menu      or getattr(cfg, "food_menu", None)
+                    nearby_restaurants = pc.nearby_restaurants or getattr(cfg, "nearby_restaurants", None)
+                    wifi_password  = pc.wifi_password  or getattr(cfg, "wifi_password", None)
+                    wifi_network_name = pc.wifi_network_name or getattr(cfg, "wifi_network_name", None)
+                    # Policy fields from tenant config (not on PropertyConfig)
+                    refund_policy       = getattr(cfg, "refund_policy", None)
+                    early_checkin_policy= getattr(cfg, "early_checkin_policy", None)
+                    early_checkin_fee   = getattr(cfg, "early_checkin_fee", None)
+                    late_checkout_policy= getattr(cfg, "late_checkout_policy", None)
+                    late_checkout_fee   = getattr(cfg, "late_checkout_fee", None)
+                    smoking_policy      = getattr(cfg, "smoking_policy", None)
+                    quiet_hours         = getattr(cfg, "quiet_hours", None)
+                    extra_services      = getattr(cfg, "extra_services", None)
+                    custom_instructions = getattr(cfg, "custom_instructions", None)
+
+                return build_property_context(_MergedCtx())
+    return build_property_context(cfg)
 
 
 def _find_reservation_for_guest_context(
