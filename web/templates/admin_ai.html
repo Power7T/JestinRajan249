@@ -269,15 +269,24 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     </div>
 
     <!-- Quick-pick verified model IDs -->
-    <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-2">Quick-Pick (Verified OpenRouter IDs)</p>
-    <div class="flex gap-2 flex-wrap mb-5">
+    <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Quick-Pick — Paid Models</p>
+    <p class="text-[0.6rem] text-slate-600 mb-2">Requires OpenRouter credit balance</p>
+    <div class="flex gap-2 flex-wrap mb-4">
       <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="anthropic/claude-3.5-sonnet-20241022">claude-3.5-sonnet-20241022</button>
       <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="anthropic/claude-3-haiku">claude-3-haiku</button>
       <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="google/gemini-flash-1.5">gemini-flash-1.5</button>
       <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="openai/gpt-4o-mini">gpt-4o-mini</button>
       <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="openai/gpt-4o">gpt-4o</button>
       <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="meta-llama/llama-3.1-70b-instruct">llama-3.1-70b-instruct</button>
-      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff] transition-all" data-model="mistralai/mistral-7b-instruct">mistral-7b-instruct</button>
+    </div>
+    <p class="text-[0.65rem] font-bold text-emerald-500 uppercase tracking-widest mb-1">Quick-Pick — Free Tier (No Credits Needed)</p>
+    <p class="text-[0.6rem] text-slate-600 mb-2">Works with any OpenRouter API key, zero balance required</p>
+    <div class="flex gap-2 flex-wrap mb-5">
+      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:border-emerald-400/50 transition-all" data-model="meta-llama/llama-3.1-8b-instruct:free">llama-3.1-8b:free</button>
+      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:border-emerald-400/50 transition-all" data-model="mistralai/mistral-7b-instruct:free">mistral-7b:free</button>
+      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:border-emerald-400/50 transition-all" data-model="google/gemma-2-9b-it:free">gemma-2-9b:free</button>
+      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:border-emerald-400/50 transition-all" data-model="microsoft/phi-3-mini-128k-instruct:free">phi-3-mini:free</button>
+      <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:border-emerald-400/50 transition-all" data-model="qwen/qwen-2-7b-instruct:free">qwen-2-7b:free</button>
     </div>
 
     <!-- Custom model input -->
@@ -397,7 +406,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       } else {
         var errMsg = data.error || 'Unknown error';
         if (errMsg.includes('No endpoints found') || errMsg.includes('404')) {
-          errMsg += '\n\n💡 The model ID "' + activeModel + '" is not available on OpenRouter. Try a Quick-Pick ID above, or browse openrouter.ai/models for valid IDs.';
+          errMsg += '\n\n💡 "' + activeModel + '" needs an OpenRouter credit balance. Try the green Free Tier buttons above (llama-3.1-8b:free, mistral-7b:free, etc.) — they work with zero balance.';
         }
         errorDiv.textContent = errMsg;
         errorDiv.style.whiteSpace = 'pre-wrap';
