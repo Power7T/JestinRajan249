@@ -93,10 +93,10 @@ body {
 {%- block content %}
 <!-- SideNavBar Shell -->
 <!-- Mobile hamburger -->
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="dashboard-mobile-menu-btn" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
+<div id="sidebar-overlay-mobile" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden"></div>
 <aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
 <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
@@ -295,13 +295,13 @@ body {
     <span id="selected-count">0</span> draft<span id="plural">s</span> selected
   </div>
   <div class="flex gap-3">
-    <button id="bulk-approve-btn" onclick="bulkApprove()" class="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold rounded-lg text-sm hover:scale-105 transition-all">
+    <button id="bulk-approve-btn" class="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold rounded-lg text-sm hover:scale-105 transition-all">
       ✓ Approve All
     </button>
-    <button id="bulk-skip-btn" onclick="bulkSkip()" class="px-4 py-2 bg-slate-700 text-white font-bold rounded-lg text-sm hover:bg-slate-600 transition-all">
+    <button id="bulk-skip-btn" class="px-4 py-2 bg-slate-700 text-white font-bold rounded-lg text-sm hover:bg-slate-600 transition-all">
       ⊘ Skip All
     </button>
-    <button onclick="clearSelection()" class="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-lg text-sm hover:bg-slate-700 transition-all">
+    <button id="bulk-clear-btn" class="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-lg text-sm hover:bg-slate-700 transition-all">
       Clear
     </button>
   </div>
@@ -471,3 +471,30 @@ body {
 </button>
 {%- endblock %}
 {%- endblock %}
+{% block scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  // Mobile sidebar toggle
+  var menuBtn = document.getElementById('dashboard-mobile-menu-btn');
+  var overlay = document.getElementById('sidebar-overlay-mobile');
+  var sidebar = document.getElementById('sidebar');
+  if (menuBtn && sidebar && overlay) {
+    menuBtn.addEventListener('click', function() {
+      sidebar.classList.toggle('-translate-x-full');
+      overlay.classList.toggle('hidden');
+    });
+    overlay.addEventListener('click', function() {
+      sidebar.classList.add('-translate-x-full');
+      overlay.classList.add('hidden');
+    });
+  }
+  // Bulk action buttons
+  var approveBtn = document.getElementById('bulk-approve-btn');
+  var skipBtn    = document.getElementById('bulk-skip-btn');
+  var clearBtn   = document.getElementById('bulk-clear-btn');
+  if (approveBtn) approveBtn.addEventListener('click', bulkApprove);
+  if (skipBtn)    skipBtn.addEventListener('click', bulkSkip);
+  if (clearBtn)   clearBtn.addEventListener('click', clearSelection);
+});
+</script>
+{% endblock %}

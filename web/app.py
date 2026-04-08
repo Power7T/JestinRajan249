@@ -3672,13 +3672,17 @@ async def settings_save(
         cfg.max_guests = int(max_g)
 
     # WhatsApp Meta Cloud
-    cfg.wa_mode           = wa_mode.strip() or "none"
     cfg.whatsapp_number   = whatsapp_number.strip() or None
     cfg.whatsapp_phone_id = whatsapp_phone_id.strip() or None
     if whatsapp_verify_token.strip():
         cfg.whatsapp_verify_token = whatsapp_verify_token.strip()
     if whatsapp_token.strip():
         cfg.whatsapp_token_enc = encrypt(whatsapp_token.strip())
+    # Auto-detect wa_mode from credentials — form field is unreliable
+    if cfg.whatsapp_phone_id and cfg.whatsapp_token_enc:
+        cfg.wa_mode = "meta_cloud"
+    else:
+        cfg.wa_mode = "none"
 
     # SMS / Twilio
     cfg.sms_mode           = sms_mode.strip() or "none"
@@ -4383,6 +4387,11 @@ async def whatsapp_webhook_inbound_global(request: Request, db: Session = Depend
         cfg = db.query(TenantConfig).filter(TenantConfig.whatsapp_phone_id == phone_number_id).first()
         if not cfg:
             log.warning("[META GLOBAL] No tenant found for phone_number_id=%s", phone_number_id)
+            continue
+
+        # Guard: only process if WhatsApp is actually enabled for this tenant
+        if cfg.wa_mode != "meta_cloud":
+            log.warning("[META GLOBAL] Ignoring message for tenant %s — wa_mode is %s", cfg.tenant_id, cfg.wa_mode)
             continue
 
         # Hand off to handler with the identified tenant_id
@@ -8974,13 +8983,17 @@ async def conversations_settings_save(
     cfg = _get_or_create_config(tenant_id, db)
     
     # WhatsApp Meta Cloud
-    cfg.wa_mode           = wa_mode.strip() or "none"
     cfg.whatsapp_number   = whatsapp_number.strip() or None
     cfg.whatsapp_phone_id = whatsapp_phone_id.strip() or None
     if whatsapp_verify_token.strip():
         cfg.whatsapp_verify_token = whatsapp_verify_token.strip()
     if whatsapp_token.strip():
         cfg.whatsapp_token_enc = encrypt(whatsapp_token.strip())
+    # Auto-detect wa_mode from credentials — form field is unreliable
+    if cfg.whatsapp_phone_id and cfg.whatsapp_token_enc:
+        cfg.wa_mode = "meta_cloud"
+    else:
+        cfg.wa_mode = "none"
 
     # SMS / Twilio
     cfg.sms_mode           = sms_mode.strip() or "none"

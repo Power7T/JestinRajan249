@@ -46,10 +46,10 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
 {%- block content %}
 
 <!-- Mobile hamburger -->
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="conv-mobile-menu-btn" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
+<div id="sidebar-overlay-mobile" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden"></div>
 
 <!-- Sidebar -->
 <aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col font-['Plus_Jakarta_Sans'] text-sm font-medium">
@@ -197,7 +197,6 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
         <div class="overflow-y-auto flex-1">
           {% for conv in conversations %}
           <div class="conv-item px-4 py-4 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors {% if loop.first %}active{% endif %}"
-               onclick="selectConversation(this, '{{ conv.thread_key }}', '{{ conv.guest_name }}', '{{ conv.guest_phone }}')"
                data-thread="{{ conv.thread_key }}" data-name="{{ conv.guest_name }}" data-phone="{{ conv.guest_phone }}">
             <div class="flex items-center gap-3">
               <div class="w-9 h-9 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm flex-shrink-0">
@@ -370,7 +369,7 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
         <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-2">WhatsApp Webhook URL</p>
         <div class="flex flex-col md:flex-row gap-3">
           <input type="text" readonly value="{{ app_base_url }}/whatsapp/webhook" id="wa-webhook-url" class="flex-1 px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm font-mono">
-          <button type="button" onclick="copyToClipboard('wa-webhook-url', this)" class="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-slate-200 hover:bg-white/15 transition-colors text-sm font-semibold">
+          <button type="button" id="copy-wa-webhook-btn" class="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-slate-200 hover:bg-white/15 transition-colors text-sm font-semibold">
             <span class="material-symbols-outlined text-sm">content_copy</span>Copy
           </button>
         </div>
@@ -465,7 +464,7 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
         <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-2">Twilio Webhook URL</p>
         <div class="flex flex-col md:flex-row gap-3">
           <input type="text" readonly value="{{ app_base_url }}/sms/webhook/{{ cfg.tenant_id if cfg else '' }}" id="sms-webhook-url" class="flex-1 px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm font-mono">
-          <button type="button" onclick="copyToClipboard('sms-webhook-url', this)" class="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-slate-200 hover:bg-white/15 transition-colors text-sm font-semibold">
+          <button type="button" id="copy-sms-webhook-btn" class="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-slate-200 hover:bg-white/15 transition-colors text-sm font-semibold">
             <span class="material-symbols-outlined text-sm">content_copy</span>Copy
           </button>
         </div>
@@ -525,11 +524,11 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
     </div>
 
     <div class="flex gap-3 mb-5 flex-wrap">
-      <button type="button" onclick="botPreview()"
+      <button type="button" id="sim-preview-btn"
               class="flex items-center gap-2 px-4 py-2.5 bg-white/10 border border-white/20 text-slate-200 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors">
         <span class="material-symbols-outlined text-base">preview</span>Preview Only
       </button>
-      <button type="button" onclick="botSend()"
+      <button type="button" id="sim-send-btn"
               class="flex items-center gap-2 px-4 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors">
         <span class="material-symbols-outlined text-base">send</span>Send via WhatsApp
       </button>
@@ -583,10 +582,11 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
       + '<span style="font-size:1.5rem;flex-shrink:0">❌</span>'
       + '<div style="flex:1"><p style="font-weight:700;color:#fca5a5;margin:0 0 8px">WhatsApp Error</p>'
       + '<p style="color:#e5e7eb;font-size:0.875rem;line-height:1.5;margin:0;word-break:break-word">' + msg.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p></div></div>'
-      + '<button onclick="this.closest(\'[data-sim-popup]\').remove()" style="margin-top:16px;width:100%;padding:8px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#fca5a5;font-weight:600;cursor:pointer;font-size:0.875rem">Dismiss</button>';
+      + '<button id="sim-popup-dismiss" style="margin-top:16px;width:100%;padding:8px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#fca5a5;font-weight:600;cursor:pointer;font-size:0.875rem">Dismiss</button>';
     overlay.setAttribute('data-sim-popup', '1');
     overlay.appendChild(box);
     overlay.addEventListener('click', function(ev){ if(ev.target===overlay) overlay.remove(); });
+    box.querySelector('#sim-popup-dismiss').addEventListener('click', function(){ overlay.remove(); });
     document.body.appendChild(overlay);
   }
 
@@ -737,6 +737,41 @@ function copyToClipboard(inputId, btn) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Mobile sidebar toggle
+  const menuBtn = document.getElementById('conv-mobile-menu-btn');
+  const overlay = document.getElementById('sidebar-overlay-mobile');
+  const sidebar = document.getElementById('sidebar');
+  if (menuBtn && sidebar && overlay) {
+    menuBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('-translate-x-full');
+      overlay.classList.toggle('hidden');
+    });
+    overlay.addEventListener('click', () => {
+      sidebar.classList.add('-translate-x-full');
+      overlay.classList.add('hidden');
+    });
+  }
+
+  // Conversation list — event delegation for selectConversation
+  document.querySelectorAll('.conv-item').forEach(el => {
+    el.addEventListener('click', () => {
+      selectConversation(el, el.dataset.thread, el.dataset.name, el.dataset.phone);
+    });
+  });
+
+  // Copy webhook URL buttons
+  const copyWaBtn = document.getElementById('copy-wa-webhook-btn');
+  const copySmsBtn = document.getElementById('copy-sms-webhook-btn');
+  if (copyWaBtn) copyWaBtn.addEventListener('click', () => copyToClipboard('wa-webhook-url', copyWaBtn));
+  if (copySmsBtn) copySmsBtn.addEventListener('click', () => copyToClipboard('sms-webhook-url', copySmsBtn));
+
+  // Bot simulator buttons
+  const previewBtn = document.getElementById('sim-preview-btn');
+  const sendBtn    = document.getElementById('sim-send-btn');
+  if (previewBtn) previewBtn.addEventListener('click', botPreview);
+  if (sendBtn)    sendBtn.addEventListener('click', botSend);
+
+  // Auto-select first conversation
   const first = document.querySelector('.conv-item');
   if (first) first.click();
 });

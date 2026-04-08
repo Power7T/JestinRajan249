@@ -187,10 +187,10 @@
 <!-- SideNavBar Shell -->
 <!-- SideNavBar Shell -->
 <!-- Mobile hamburger -->
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="settings-mobile-menu-btn" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
+<div id="sidebar-overlay-mobile" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden"></div>
 <aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
 <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
@@ -530,7 +530,7 @@
 
     <!-- Setup Guide (Collapsible) -->
     <div style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.08)">
-      <button type="button" onclick="toggleWAGuide()" style="background: none; border: none; color: #aec6ff; cursor: pointer; font-size: 0.875rem; font-weight: 600; padding: 0; display: flex; gap: 8px; align-items: center;">
+      <button type="button" id="toggle-wa-guide-btn" style="background: none; border: none; color: #aec6ff; cursor: pointer; font-size: 0.875rem; font-weight: 600; padding: 0; display: flex; gap: 8px; align-items: center;">
         <span id="wa-guide-arrow">▸</span>
         <span>How to get your WhatsApp credentials</span>
       </button>
@@ -597,7 +597,7 @@
           <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Message</label>
           <input type="text" id="sim-msg" value="Hi, what time is check-in?" placeholder="Guest message" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
         </div>
-        <button type="button" onclick="simulateWABot()" style="align-self:flex-end; padding:8px 16px;background:rgba(93,141,241,0.3);border:1px solid rgba(93,141,241,0.5);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Simulate ▶</button>
+        <button type="button" id="simulate-wa-bot-btn" style="align-self:flex-end; padding:8px 16px;background:rgba(93,141,241,0.3);border:1px solid rgba(93,141,241,0.5);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Simulate ▶</button>
       </div>
 
       <!-- Chat Bubbles -->
@@ -695,7 +695,7 @@
 
     <!-- Setup Guide (Collapsible) -->
     <div style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.08)">
-      <button type="button" onclick="toggleSMSGuide()" style="background: none; border: none; color: #aec6ff; cursor: pointer; font-size: 0.875rem; font-weight: 600; padding: 0; display: flex; gap: 8px; align-items: center;">
+      <button type="button" id="toggle-sms-guide-btn" style="background: none; border: none; color: #aec6ff; cursor: pointer; font-size: 0.875rem; font-weight: 600; padding: 0; display: flex; gap: 8px; align-items: center;">
         <span id="sms-guide-arrow">▸</span>
         <span>How to get your Twilio credentials</span>
       </button>
@@ -765,7 +765,7 @@
       <p style="font-size:0.875rem;color:#b4c9ff;margin-bottom:12px">Verify SMS is working by sending a test message to any number:</p>
       <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px">
         <input type="text" id="sms-test-phone" placeholder="+1 415 555 0100" style="padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        <button type="button" onclick="sendTestSMS()" style="padding:8px 16px;background:rgba(93,141,241,0.3);border:1px solid rgba(93,141,241,0.5);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Send Test</button>
+        <button type="button" id="send-test-sms-btn" style="padding:8px 16px;background:rgba(93,141,241,0.3);border:1px solid rgba(93,141,241,0.5);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Send Test</button>
       </div>
       <div id="sms-test-result" style="display:none;margin-top:12px;padding:12px;border-radius:8px;font-size:0.875rem;font-weight:600"></div>
     </div>
@@ -818,7 +818,7 @@
     <!-- STEP 4: Select Phone Number -->
     <div style="background:rgba(26,27,34,0.8);border:1px solid rgba(174,198,255,0.08);padding:1rem;border-radius:8px;margin-top:1rem">
       <label style="font-weight:600">📱 Step 3: Twilio Phone Number</label>
-      <button type="button" class="btn btn-outline" onclick="fetchTwilioPhoneNumbers()"
+      <button type="button" id="fetch-twilio-phones-btn" class="btn btn-outline"
               style="width:100%;margin-top:0.5rem;margin-bottom:0.5rem">
         🔄 Fetch My Phone Numbers
       </button>
@@ -1609,6 +1609,41 @@ document.addEventListener('DOMContentLoaded', function() {
             switchTab(btn.dataset.tab);
         });
     });
+
+    // Mobile sidebar toggle
+    var menuBtn = document.getElementById('settings-mobile-menu-btn');
+    var overlay = document.getElementById('sidebar-overlay-mobile');
+    var sidebar = document.getElementById('sidebar');
+    if (menuBtn && sidebar && overlay) {
+        menuBtn.addEventListener('click', function() {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        });
+        overlay.addEventListener('click', function() {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        });
+    }
+
+    // WA guide toggle
+    var waGuideBtn = document.getElementById('toggle-wa-guide-btn');
+    if (waGuideBtn) waGuideBtn.addEventListener('click', toggleWAGuide);
+
+    // WA bot simulator
+    var simWaBtn = document.getElementById('simulate-wa-bot-btn');
+    if (simWaBtn) simWaBtn.addEventListener('click', simulateWABot);
+
+    // SMS guide toggle
+    var smsGuideBtn = document.getElementById('toggle-sms-guide-btn');
+    if (smsGuideBtn) smsGuideBtn.addEventListener('click', toggleSMSGuide);
+
+    // Send test SMS
+    var testSmsBtn = document.getElementById('send-test-sms-btn');
+    if (testSmsBtn) testSmsBtn.addEventListener('click', sendTestSMS);
+
+    // Fetch Twilio phone numbers
+    var fetchPhonesBtn = document.getElementById('fetch-twilio-phones-btn');
+    if (fetchPhonesBtn) fetchPhonesBtn.addEventListener('click', fetchTwilioPhoneNumbers);
 
     // Booking welcome simulator
     var bkBtn = document.getElementById('bk-send-btn');
