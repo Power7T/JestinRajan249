@@ -8421,7 +8421,7 @@ async def admin_openrouter_models(request: Request, db: Session = Depends(get_db
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://hostai.app",
-                "X-Title": "HostAI",
+                "X-OpenRouter-Title": "HostAI",
             },
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -8476,7 +8476,7 @@ async def admin_model_test(request: Request, db: Session = Depends(get_db)):
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://hostai.app",
-                "X-Title": "HostAI",
+                "X-OpenRouter-Title": "HostAI",
             },
             method="POST",
         )
