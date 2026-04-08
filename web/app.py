@@ -4621,13 +4621,10 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                            message=f"{source.upper()} from {reply_to}: {text[:80]}"))
         db.commit()
 
-        # Check if message should be auto-sent (routine + high confidence + no issues)
+        # Auto-send all routine messages directly — no confidence threshold
         should_auto_send = (
             draft.msg_type == "routine"
-            and draft.confidence >= 0.7
             and draft.guest_sentiment != "negative"
-            and not policy_conflicts
-            and guest_history_score >= 0.0  # no history requirement for now
         )
 
         if should_auto_send:
