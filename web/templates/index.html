@@ -172,22 +172,16 @@ tailwind.config = {
         </a>
     </div>
     
-    <!-- Links (Center) -->
+    <!-- Links (Center) — hidden on mobile -->
     <div class="hidden md:flex flex-1 justify-center items-center gap-10 font-['Plus_Jakarta_Sans'] font-semibold text-sm">
         <a class="text-white hover:text-[#5B8DEF] transition-colors" href="/#features">Features</a>
         <a class="text-slate-400 hover:text-white transition-colors" href="/pricing">Pricing</a>
     </div>
 
-    <!-- Actions (Right) -->
-    <div class="hidden sm:flex flex-1 justify-end items-center gap-5">
-        <a href="/login" class="text-slate-300 hover:text-white text-sm font-semibold transition-colors">Sign In</a>
-        <a href="/signup" class="bg-[#5B8DEF] text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(91,141,239,0.4)] hover:bg-[#3B6DDF] transition-all outline-none whitespace-nowrap">Get Started</a>
-    </div>
-
-    <!-- Mobile Menu Button -->
-    <div class="flex sm:hidden flex-1 justify-end items-center">
-        <a href="/login" class="text-slate-300 text-sm font-semibold mr-4">Log in</a>
-        <a href="/signup" class="text-[#5B8DEF] font-bold text-sm">Sign Up</a>
+    <!-- Actions (Right) — always visible -->
+    <div class="flex flex-1 justify-end items-center gap-3">
+        <a href="/login" class="text-slate-300 hover:text-white text-sm font-semibold transition-colors px-3 py-2">Sign In</a>
+        <a href="/signup" class="bg-[#5B8DEF] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(91,141,239,0.4)] hover:bg-[#3B6DDF] transition-all whitespace-nowrap">Get Started</a>
     </div>
 </div>
 </nav>
