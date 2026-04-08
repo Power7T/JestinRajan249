@@ -150,11 +150,11 @@
 {%- block content %}
 <!-- SideNavBar Component -->
 <!-- Mobile hamburger -->
-<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="sidebar-open-btn" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
 <!-- Sidebar overlay for mobile -->
-<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+<div id="sidebar-overlay" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
 <aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
 <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
@@ -260,7 +260,7 @@
       <h1>Guest Check-ins</h1>
       <p style="margin:0.25rem 0 0;font-size:0.85rem;color:var(--text-3)">Today's arrivals — send welcome messages</p>
     </div>
-    <button class="btn btn-primary" onclick="openAddContactModal()">+ Add Guest Contact</button>
+    <button class="btn btn-primary" id="add-contact-btn">+ Add Guest Contact</button>
   </div>
 
   {% if guest_contacts %}
@@ -303,9 +303,9 @@
       <!-- Actions -->
       <div class="checkin-actions">
         {% if gc.welcome_status != 'sent' %}
-        <button class="btn btn-outline btn-sm" onclick="resendWelcome('{{ gc.id }}', '{{ gc.guest_name }}')">Resend</button>
+        <button class="btn btn-outline btn-sm resend-btn" data-gc-id="{{ gc.id }}" data-gc-name="{{ gc.guest_name }}">Resend</button>
         {% endif %}
-        <button class="btn btn-outline btn-sm" onclick="editGuestContact('{{ gc.id }}')">Edit</button>
+        <button class="btn btn-outline btn-sm edit-gc-btn" data-gc-id="{{ gc.id }}">Edit</button>
       </div>
     </div>
     {% endfor %}
@@ -324,7 +324,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h3>Add Guest Contact</h3>
-      <button class="modal-close" onclick="closeAddContactModal()">×</button>
+      <button class="modal-close" id="close-add-modal-btn">×</button>
     </div>
 
     <form id="addContactForm" onsubmit="submitAddContact(event)">
@@ -367,7 +367,7 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn btn-outline" onclick="closeAddContactModal()">Cancel</button>
+        <button type="button" class="btn btn-outline" id="cancel-add-modal-btn">Cancel</button>
         <button type="submit" class="btn btn-primary" id="submitBtn">Send Welcome</button>
       </div>
     </form>
@@ -379,7 +379,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h3>Edit Guest Contact</h3>
-      <button class="modal-close" onclick="closeEditContactModal()">×</button>
+      <button class="modal-close" id="close-edit-modal-btn">×</button>
     </div>
 
     <form id="editContactForm" onsubmit="submitEditContact(event)">
@@ -419,7 +419,7 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn btn-outline" onclick="closeEditContactModal()">Cancel</button>
+        <button type="button" class="btn btn-outline" id="cancel-edit-modal-btn">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Changes</button>
       </div>
     </form>
@@ -427,6 +427,53 @@
 </div>
 
 <script nonce="{{ request.state.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  // Sidebar toggle
+  var sidebarBtn = document.getElementById('sidebar-open-btn');
+  var overlay = document.getElementById('sidebar-overlay');
+  var sidebar = document.getElementById('sidebar');
+  if (sidebarBtn && sidebar) {
+    sidebarBtn.addEventListener('click', function() { sidebar.classList.toggle('-translate-x-full'); });
+  }
+  if (overlay && sidebar) {
+    overlay.addEventListener('click', function() {
+      sidebar.classList.add('-translate-x-full');
+      overlay.classList.add('hidden');
+    });
+  }
+
+  // Add contact modal
+  var addBtn = document.getElementById('add-contact-btn');
+  if (addBtn) addBtn.addEventListener('click', openAddContactModal);
+
+  var closeAddBtn = document.getElementById('close-add-modal-btn');
+  if (closeAddBtn) closeAddBtn.addEventListener('click', closeAddContactModal);
+
+  var cancelAddBtn = document.getElementById('cancel-add-modal-btn');
+  if (cancelAddBtn) cancelAddBtn.addEventListener('click', closeAddContactModal);
+
+  // Edit contact modal
+  var closeEditBtn = document.getElementById('close-edit-modal-btn');
+  if (closeEditBtn) closeEditBtn.addEventListener('click', closeEditContactModal);
+
+  var cancelEditBtn = document.getElementById('cancel-edit-modal-btn');
+  if (cancelEditBtn) cancelEditBtn.addEventListener('click', closeEditContactModal);
+
+  // Resend buttons
+  document.querySelectorAll('.resend-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      resendWelcome(btn.dataset.gcId, btn.dataset.gcName);
+    });
+  });
+
+  // Edit contact buttons
+  document.querySelectorAll('.edit-gc-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      editGuestContact(btn.dataset.gcId);
+    });
+  });
+});
+
 function openAddContactModal() {
   document.getElementById('addContactModal').classList.add('active');
   // Auto-fill check-in to now

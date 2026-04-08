@@ -314,10 +314,10 @@ tr.checkout-today td{background:rgba(255,189,46,0.04)}
 {%- block content %}
 <!-- SideNavBar Shell -->
 <!-- Mobile hamburger -->
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="mobile-menu-btn" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
+<div class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
 <aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
 <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
@@ -726,9 +726,12 @@ tr.checkout-today td{background:rgba(255,189,46,0.04)}
         {% if r.guest_phone and r.status == 'confirmed' %}
         <button
           type="button"
-          class="btn btn-success btn-sm"
+          class="btn btn-success btn-sm checkin-now-btn"
           style="margin-top:0.35rem;display:flex;align-items:center;gap:4px"
-          onclick="openCheckinModal({{ r.id }}, '{{ r.guest_name|replace("'", "\\'") }}', '{{ r.guest_phone }}', '{{ request.state.csrf_token }}')"
+          data-reservation-id="{{ r.id }}"
+          data-guest-name="{{ r.guest_name|replace('"', '&quot;') }}"
+          data-guest-phone="{{ r.guest_phone }}"
+          data-csrf="{{ request.state.csrf_token }}"
           title="Send welcome WhatsApp/SMS to guest now">
           <span style="font-size:1rem">🏠</span> Check-in Now
         </button>
@@ -785,7 +788,7 @@ tr.checkout-today td{background:rgba(255,189,46,0.04)}
     </div>
     <p style="font-size:0.76rem;color:#8d909e;margin-bottom:1.25rem">The message includes property details, check-out date, and an invitation to chat with the AI host.</p>
     <div style="display:flex;gap:0.75rem;justify-content:flex-end">
-      <button onclick="closeCheckinModal()" class="btn btn-outline btn-sm">Cancel</button>
+      <button id="close-checkin-modal-btn" class="btn btn-outline btn-sm">Cancel</button>
       <form id="checkin-now-form" method="post" style="display:inline">
         <input type="hidden" id="checkin-now-csrf" name="csrf_token" value="">
         <button type="submit" class="btn btn-success btn-sm" style="font-weight:700">✓ Yes, send welcome message</button>
@@ -794,6 +797,37 @@ tr.checkout-today td{background:rgba(255,189,46,0.04)}
   </div>
 </div>
 <script nonce="{{ request.state.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  // Sidebar toggle
+  var mobileBtn = document.getElementById('mobile-menu-btn');
+  var overlay = document.getElementById('sidebar-overlay-mobile');
+  var sidebar = document.getElementById('sidebar');
+  if (mobileBtn) mobileBtn.addEventListener('click', function() {
+    if (sidebar) sidebar.classList.toggle('-translate-x-full');
+    if (overlay) overlay.classList.toggle('hidden');
+  });
+  if (overlay) overlay.addEventListener('click', function() {
+    if (sidebar) sidebar.classList.add('-translate-x-full');
+    overlay.classList.add('hidden');
+  });
+
+  // Checkin-now buttons
+  document.querySelectorAll('.checkin-now-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      openCheckinModal(
+        btn.dataset.reservationId,
+        btn.dataset.guestName,
+        btn.dataset.guestPhone,
+        btn.dataset.csrf
+      );
+    });
+  });
+
+  // Close checkin modal
+  var closeCheckinBtn = document.getElementById('close-checkin-modal-btn');
+  if (closeCheckinBtn) closeCheckinBtn.addEventListener('click', closeCheckinModal);
+});
+
 document.addEventListener('click', (e) => {
     if (e.target.classList.contains('copy-link-btn')) {
         const link = e.target.getAttribute('data-link');

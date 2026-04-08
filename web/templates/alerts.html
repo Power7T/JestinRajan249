@@ -1,5 +1,30 @@
 {%- extends "base.html" %}
-{%- block title %}Alert Center — HostAI{%- endblock %}
+{%- block title %}Alert Center — HostAI{% block scripts %}<script nonce="{{ request.state.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  var sidebarBtn = document.getElementById('sidebar-open-btn');
+  var mobileBtn = document.getElementById('mobile-menu-btn');
+  var overlay = document.getElementById('sidebar-overlay');
+  var overlayMobile = document.getElementById('sidebar-overlay-mobile');
+  var sidebar = document.getElementById('sidebar');
+  function showSidebar() {
+    if (sidebar) sidebar.classList.toggle('-translate-x-full');
+  }
+  if (sidebarBtn) sidebarBtn.addEventListener('click', showSidebar);
+  if (mobileBtn) mobileBtn.addEventListener('click', function() {
+    if (sidebar) sidebar.classList.toggle('-translate-x-full');
+    if (overlayMobile) overlayMobile.classList.toggle('hidden');
+  });
+  if (overlay) overlay.addEventListener('click', function() {
+    if (sidebar) sidebar.classList.add('-translate-x-full');
+    overlay.classList.add('hidden');
+  });
+  if (overlayMobile) overlayMobile.addEventListener('click', function() {
+    if (sidebar) sidebar.classList.add('-translate-x-full');
+    overlayMobile.classList.add('hidden');
+  });
+});
+</script>{% endblock %}
+{%- endblock %}
 
 {%- block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
@@ -92,16 +117,16 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; 
 {%- block content %}
 <!-- SideNavBar Shell -->
 <!-- Mobile hamburger -->
-<button id="sidebar-open-btn" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="sidebar-open-btn" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
 <!-- Sidebar overlay for mobile -->
-<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+<div id="sidebar-overlay" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
 <!-- Mobile hamburger -->
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebar-overlay-mobile').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+<button id="mobile-menu-btn" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
+<div class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="sidebar-overlay-mobile"></div>
 <aside id="sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
 <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
