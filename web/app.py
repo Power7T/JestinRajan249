@@ -7280,12 +7280,14 @@ async def simulate_guest_json(
     rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
     cfg = _get_or_create_config(tenant_id, db)
 
+    from web.classifier import classify_message_with_confidence, generate_draft, make_draft_id
+
     guest_name = (guest_name or "Demo Guest").strip()[:128]
     message = (message or "Hi, what time is check-in?").strip()[:2000]
 
     try:
         msg_type, confidence, _ = classify_message_with_confidence(message)
-        property_context = build_property_context(cfg)
+        property_context = _property_context_for_reservation(None, cfg, db)
         draft_text = generate_draft(
             guest_name,
             message,
@@ -7352,6 +7354,8 @@ async def simulate_and_send(
     rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
     cfg = _get_or_create_config(tenant_id, db)
 
+    from web.classifier import classify_message_with_confidence, generate_draft
+
     if not cfg.whatsapp_phone_id or not cfg.whatsapp_token_enc:
         return JSONResponse(
             {"ok": False, "error": "WhatsApp not configured. Add your Phone ID and Access Token in Messaging Settings first."},
@@ -7364,7 +7368,7 @@ async def simulate_and_send(
 
     try:
         msg_type, confidence, _ = classify_message_with_confidence(message)
-        property_context = build_property_context(cfg)
+        property_context = _property_context_for_reservation(None, cfg, db)
         draft_text = generate_draft(
             guest_name,
             message,
