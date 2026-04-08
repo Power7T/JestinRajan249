@@ -306,9 +306,8 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
                         cost = (usage.prompt_tokens / 1000000 * 0.15) + (usage.completion_tokens / 1000000 * 0.60)
                     log_entry = APIUsageLog(
                         tenant_id=tenant_id,
-                        feature="sentiment_analysis",
-                        model=model,
-                        provider="openrouter",
+                        service="openrouter",
+                        operation=f"sentiment_analysis:{model}",
                         input_tokens=usage.prompt_tokens,
                         output_tokens=usage.completion_tokens,
                         cost_usd=cost
@@ -438,11 +437,10 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
                     # Log usage
                     log_entry = APIUsageLog(
                         tenant_id=tenant_id,
-                        model=model_to_use,
-                        provider="openrouter",
+                        service="openrouter",
+                        operation=f"generate_draft:{model_to_use}",
                         input_tokens=resp.usage.prompt_tokens if hasattr(resp, 'usage') else 0,
                         output_tokens=resp.usage.completion_tokens if hasattr(resp, 'usage') else 0,
-                        feature="generate_draft"
                     )
                     db.add(log_entry)
 
