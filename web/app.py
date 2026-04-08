@@ -8415,7 +8415,12 @@ async def admin_openrouter_models(request: Request, db: Session = Depends(get_db
     try:
         req = urllib.request.Request(
             "https://openrouter.ai/api/v1/models",
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://hostai.app",
+                "X-Title": "HostAI",
+            },
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             body = json.loads(resp.read().decode())
@@ -8451,33 +8456,50 @@ async def admin_model_test(request: Request, db: Session = Depends(get_db)):
     if not sys_conf or not sys_conf.openrouter_api_key_enc:
         return JSONResponse({"ok": False, "error": "OpenRouter API key not configured in AI Engine settings."}, status_code=400)
 
+    api_key = decrypt(sys_conf.openrouter_api_key_enc) or sys_conf.openrouter_api_key_enc
+    payload = json.dumps({
+        "model": model_id,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ],
+        "max_tokens": 512,
+        "temperature": 0.7,
+    }).encode()
     try:
-        import openai as _openai
-        client = _openai.OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=(decrypt(sys_conf.openrouter_api_key_enc) or sys_conf.openrouter_api_key_enc),
+        req = urllib.request.Request(
+            "https://openrouter.ai/api/v1/chat/completions",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://hostai.app",
+                "X-Title": "HostAI",
+            },
+            method="POST",
         )
         t0 = datetime.now(timezone.utc)
-        resp = client.chat.completions.create(
-            model=model_id,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=512,
-            temperature=0.7,
-        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            resp_body = json.loads(resp.read().decode())
         elapsed_ms = int((datetime.now(timezone.utc) - t0).total_seconds() * 1000)
-        content = resp.choices[0].message.content or ""
-        usage = resp.usage
+        content = resp_body["choices"][0]["message"]["content"] or ""
+        usage = resp_body.get("usage", {})
         return JSONResponse({
             "ok": True,
             "reply": content,
             "model": model_id,
-            "input_tokens": usage.prompt_tokens if usage else None,
-            "output_tokens": usage.completion_tokens if usage else None,
+            "input_tokens": usage.get("prompt_tokens"),
+            "output_tokens": usage.get("completion_tokens"),
             "elapsed_ms": elapsed_ms,
         })
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        try:
+            err_json = json.loads(body)
+            err_msg = err_json.get("error", {}).get("message") or body
+        except Exception:
+            err_msg = body
+        return JSONResponse({"ok": False, "error": f"HTTP {e.code}: {err_msg}"}, status_code=400)
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
