@@ -411,16 +411,19 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ model: activeModel, prompt: prompt, system_prompt: systemPrompt }),
       });
-      var data = await resp.json();
       loading.classList.add('hidden');
-      if (data.ok) {
+      var rawText = await resp.text();
+      var data = null;
+      try { data = JSON.parse(rawText); } catch(e) { /* non-JSON response */ }
+
+      if (data && data.ok) {
         var meta = '';
         if (data.input_tokens != null) meta = data.input_tokens + ' in / ' + data.output_tokens + ' out — ' + data.elapsed_ms + 'ms';
         history.appendChild(makeBubble('assistant', data.reply, data.model, meta));
       } else {
-        var errMsg = data.error || 'Unknown error';
+        var errMsg = (data && data.error) ? String(data.error) : ('HTTP ' + resp.status + ': ' + rawText.slice(0, 300));
         if (errMsg.includes('No endpoints found') || errMsg.includes('404')) {
-          errMsg += '\n\n💡 "' + activeModel + '" needs an OpenRouter credit balance. Try the green Free Tier buttons above (llama-3.1-8b:free, mistral-7b:free, etc.) — they work with zero balance.';
+          errMsg += '\n\n💡 "' + activeModel + '" is not available on your OpenRouter account. Click "Fetch My Models" to see what models you actually have access to.';
         }
         errorDiv.textContent = errMsg;
         errorDiv.style.whiteSpace = 'pre-wrap';
@@ -429,7 +432,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       history.scrollTop = history.scrollHeight;
     } catch(err) {
       loading.classList.add('hidden');
-      errorDiv.textContent = 'Request failed: ' + err.message;
+      errorDiv.textContent = 'Network error: ' + (err.message || String(err));
       errorDiv.classList.remove('hidden');
     }
   }
@@ -472,10 +475,12 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     btn.disabled = true;
     try {
       var resp = await fetch('/api/admin/openrouter-models');
-      var data = await resp.json();
+      var rawText = await resp.text();
+      var data = null;
+      try { data = JSON.parse(rawText); } catch(e) {}
       btn.textContent = 'Fetch My Models';
       btn.disabled = false;
-      if (!data.ok) { alert('Error: ' + data.error); return; }
+      if (!data || !data.ok) { alert('Error: ' + ((data && data.error) || rawText.slice(0, 300))); return; }
       allFetchedModels = data.models;
       document.getElementById('fetch-models-count').textContent = data.count;
       document.getElementById('fetch-models-result').classList.remove('hidden');
