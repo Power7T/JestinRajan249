@@ -263,7 +263,7 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
         # Decrypt the API key (was previously using raw encrypted value!)
         client = openai.OpenAI(
             base_url="https://openrouter.ai/api/v1",
-            api_key=decrypt(sys_conf.openrouter_api_key_enc),
+            api_key=(decrypt(sys_conf.openrouter_api_key_enc) or sys_conf.openrouter_api_key_enc),
         )
 
         # Strip basic PII shapes (phone numbers and emails)
@@ -392,7 +392,7 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
         if sys_conf and sys_conf.openrouter_api_key_enc:
             client = openai.OpenAI(
                 base_url="https://openrouter.ai/api/v1",
-                api_key=decrypt(sys_conf.openrouter_api_key_enc)
+                api_key=(decrypt(sys_conf.openrouter_api_key_enc) or sys_conf.openrouter_api_key_enc)
             )
 
             last_exc = None

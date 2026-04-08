@@ -3368,7 +3368,7 @@ async def test_anthropic(
 
     try:
         import openai
-        api_key = decrypt(sys_conf.openrouter_api_key_enc)
+        api_key = decrypt(sys_conf.openrouter_api_key_enc) or sys_conf.openrouter_api_key_enc
         client = openai.OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
         client.chat.completions.create(
             model="openai/gpt-4o-mini",
@@ -8358,7 +8358,7 @@ def admin_ai_save(
         db.add(sys_conf)
 
     if openrouter_api_key_enc.strip() and openrouter_api_key_enc != "********":
-        sys_conf.openrouter_api_key_enc = openrouter_api_key_enc.strip()
+        sys_conf.openrouter_api_key_enc = encrypt(openrouter_api_key_enc.strip())
     sys_conf.primary_model = primary_model.strip()
     sys_conf.routine_model = routine_model.strip()
     sys_conf.fallback_model = fallback_model.strip()
@@ -8397,7 +8397,7 @@ async def admin_model_test(request: Request, db: Session = Depends(get_db)):
         import openai as _openai
         client = _openai.OpenAI(
             base_url="https://openrouter.ai/api/v1",
-            api_key=decrypt(sys_conf.openrouter_api_key_enc),
+            api_key=(decrypt(sys_conf.openrouter_api_key_enc) or sys_conf.openrouter_api_key_enc),
         )
         t0 = datetime.now(timezone.utc)
         resp = client.chat.completions.create(
