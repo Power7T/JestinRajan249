@@ -4624,20 +4624,33 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
         # Check if message should be auto-sent (routine + high confidence + no issues)
         should_auto_send = (
             draft.msg_type == "routine"
-            and draft.confidence >= 0.9
+            and draft.confidence >= 0.7
             and draft.guest_sentiment != "negative"
             and not policy_conflicts
-            and guest_history_score >= 0.4
+            and guest_history_score >= 0.0  # no history requirement for now
         )
 
         if should_auto_send:
-            # Auto-send the message directly to guest
+            # Auto-send the message directly to guest via WhatsApp
             draft.status = "auto_sent"
             draft.final_text = draft.draft
             draft.updated_at = datetime.now(timezone.utc)
 
-            # Queue message to guest
-            # _queue_baileys_outbound(tenant_id, reply_to, draft.final_text, db)
+            # Actually send via WhatsApp if configured
+            _cfg = _get_or_create_config(tenant_id, db)
+            if _cfg.wa_mode == "meta_cloud" and _cfg.whatsapp_phone_id and _cfg.whatsapp_token_enc:
+                try:
+                    from web.meta_sender import send_whatsapp
+                    from web.crypto import decrypt as _decrypt
+                    _token = _decrypt(_cfg.whatsapp_token_enc)
+                    _to = reply_to.replace("+", "").strip()
+                    wa_sent = send_whatsapp(_cfg.whatsapp_phone_id, _token, _to, draft.final_text)
+                    if wa_sent:
+                        log.info("[%s] Auto-sent WhatsApp reply to %s", tenant_id, reply_to[-4:])
+                    else:
+                        log.warning("[%s] Auto-send WhatsApp failed for %s", tenant_id, reply_to[-4:])
+                except Exception as _wa_err:
+                    log.error("[%s] Auto-send WhatsApp error: %s", tenant_id, _wa_err)
 
             # Log auto-send
             db.add(ActivityLog(
