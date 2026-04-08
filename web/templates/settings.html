@@ -427,6 +427,7 @@
       </div>
     </div>
 
+    <a id="knowledge-base" style="display:block;position:relative;top:-80px;visibility:hidden;"></a>
     <label>House rules</label>
     <textarea name="house_rules" placeholder="List the rules guests need to follow during the stay.">{{ cfg.house_rules or '' }}</textarea>
     <label>Amenities</label>
@@ -1728,6 +1729,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 errorDiv.style.display = 'block';
             }
         });
+    }
+
+    // Handle #knowledge-base hash — scroll to KB section (stays on General tab)
+    if (window.location.hash === '#knowledge-base') {
+        var el = document.getElementById('knowledge-base');
+        if (el) {
+            setTimeout(function() { el.scrollIntoView({ behavior: 'smooth' }); }, 100);
+        }
     }
 });
 

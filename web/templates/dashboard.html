@@ -472,7 +472,7 @@ body {
 </div>
 </div>
 </div>
-<button class="w-full mt-8 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm transition-all border border-white/5">
+<button id="expand-kb-btn" class="w-full mt-8 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm transition-all border border-white/5">
                         Expand Knowledge Base
                     </button>
 </div>
@@ -527,6 +527,12 @@ document.addEventListener('DOMContentLoaded', function() {
   if (approveBtn) approveBtn.addEventListener('click', bulkApprove);
   if (skipBtn)    skipBtn.addEventListener('click', bulkSkip);
   if (clearBtn)   clearBtn.addEventListener('click', clearSelection);
+
+  // Expand Knowledge Base button → settings page, knowledge base section
+  var kbBtn = document.getElementById('expand-kb-btn');
+  if (kbBtn) kbBtn.addEventListener('click', function() {
+    window.location.href = '/settings#knowledge-base';
+  });
 });
 </script>
 {% endblock %}
