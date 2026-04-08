@@ -100,8 +100,8 @@ def db_migrate():
     new_columns = [
         # (table, column, sql_type, default_sql)
         ("system_config", "openrouter_api_key_enc",    "VARCHAR(255)", "NULL"),
-        ("system_config", "primary_model",             "VARCHAR(100)", "'anthropic/claude-3.5-sonnet'"),
-        ("system_config", "fallback_model",            "VARCHAR(100)", "'meta-llama/llama-3.1-70b-instruct'"),
+        ("system_config", "primary_model",             "VARCHAR(100)", "'anthropic/claude-3.7-sonnet'"),
+        ("system_config", "fallback_model",            "VARCHAR(100)", "'meta-llama/llama-3.3-70b-instruct'"),
         ("system_config", "routine_model",             "VARCHAR(100)", "'google/gemini-2.5-flash'"),
         ("system_config", "sentiment_model",           "VARCHAR(100)", "'openai/gpt-4o-mini'"),
         ("system_config", "updated_at",                datetime_type,  "NULL"),

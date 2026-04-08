@@ -286,7 +286,7 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
         # Try sentiment_model first, then fallback_model, before falling back to regex
         models_to_try = [
             sys_conf.sentiment_model or "openai/gpt-4o-mini",
-            sys_conf.fallback_model or "meta-llama/llama-3.1-70b-instruct",
+            sys_conf.fallback_model or "meta-llama/llama-3.3-70b-instruct",
         ]
 
         last_exc = None
@@ -413,10 +413,10 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
                     elif msg_type == "escalation":
                         model_to_use = "anthropic/claude-3-opus"  # Max intelligence for critical
                     else:
-                        model_to_use = sys_conf.primary_model or "anthropic/claude-3.5-sonnet"
+                        model_to_use = sys_conf.primary_model or "anthropic/claude-3.7-sonnet"
                 else:
                     # On failure, fallback to Llama (reliable fallback)
-                    model_to_use = sys_conf.fallback_model or "meta-llama/llama-3.1-70b-instruct"
+                    model_to_use = sys_conf.fallback_model or "meta-llama/llama-3.3-70b-instruct"
 
                 try:
                     resp = client.chat.completions.create(
