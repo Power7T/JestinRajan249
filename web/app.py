@@ -59,6 +59,8 @@ from uuid import uuid4
 from datetime import datetime, timezone, timedelta, date as date_type
 from typing import Optional
 from urllib.parse import urlsplit, urlunsplit
+import urllib.request
+import urllib.error
 
 import uvicorn
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, Header, UploadFile, File
