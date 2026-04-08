@@ -289,6 +289,20 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <button type="button" class="quickpick-btn px-3 py-1.5 rounded-md text-[0.65rem] font-mono font-bold bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:border-emerald-400/50 transition-all" data-model="qwen/qwen-2-7b-instruct:free">qwen-2-7b:free</button>
     </div>
 
+    <!-- Fetch available models -->
+    <div class="flex items-center gap-3 mb-5 p-3 rounded-xl bg-amber-950/20 border border-amber-500/15">
+      <span class="text-amber-400 text-sm">⚠️</span>
+      <p class="text-xs text-amber-400/80 flex-1">If models are returning 404, your account may have different available models. Fetch what's actually accessible on your API key:</p>
+      <button type="button" id="fetch-models-btn" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:bg-amber-500/30 transition-all whitespace-nowrap">Fetch My Models</button>
+    </div>
+    <div id="fetch-models-result" class="hidden mb-5">
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-[0.65rem] font-bold text-emerald-400 uppercase tracking-widest">Available Models on Your Key (<span id="fetch-models-count">0</span>)</p>
+        <input type="text" id="fetch-models-search" placeholder="Search…" class="compat-input !mb-0 text-xs w-36" style="padding:0.3rem 0.6rem">
+      </div>
+      <div id="fetch-models-list" class="flex gap-1.5 flex-wrap max-h-48 overflow-y-auto"></div>
+    </div>
+
     <!-- Custom model input -->
     <div class="flex gap-2 items-center mb-5">
       <span class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">Custom ID:</span>
@@ -449,6 +463,48 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   document.getElementById('clear-chat-btn').addEventListener('click', function() {
     document.getElementById('chat-history').innerHTML = '';
   });
+
+  // Fetch available models
+  var allFetchedModels = [];
+  document.getElementById('fetch-models-btn').addEventListener('click', async function() {
+    var btn = this;
+    btn.textContent = 'Fetching…';
+    btn.disabled = true;
+    try {
+      var resp = await fetch('/api/admin/openrouter-models');
+      var data = await resp.json();
+      btn.textContent = 'Fetch My Models';
+      btn.disabled = false;
+      if (!data.ok) { alert('Error: ' + data.error); return; }
+      allFetchedModels = data.models;
+      document.getElementById('fetch-models-count').textContent = data.count;
+      document.getElementById('fetch-models-result').classList.remove('hidden');
+      renderFetchedModels(allFetchedModels);
+    } catch(e) {
+      btn.textContent = 'Fetch My Models';
+      btn.disabled = false;
+      alert('Request failed: ' + e.message);
+    }
+  });
+
+  document.getElementById('fetch-models-search').addEventListener('input', function() {
+    var q = this.value.toLowerCase();
+    renderFetchedModels(allFetchedModels.filter(function(m) { return m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q); }));
+  });
+
+  function renderFetchedModels(models) {
+    var container = document.getElementById('fetch-models-list');
+    container.innerHTML = '';
+    models.forEach(function(m) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.title = m.name;
+      btn.textContent = m.id.split('/').slice(-1)[0];
+      btn.style.cssText = 'padding:3px 8px;border-radius:6px;font-size:0.6rem;font-family:monospace;font-weight:700;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);color:#4ade80;cursor:pointer;transition:all 0.15s;white-space:nowrap;';
+      btn.addEventListener('click', function() { setActiveModel(m.id); });
+      container.appendChild(btn);
+    });
+  }
 })();
 </script>
 

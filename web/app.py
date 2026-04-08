@@ -8404,6 +8404,35 @@ def admin_ai_save(
     return RedirectResponse("/admin/ai?msg=saved", status_code=302)
 
 
+@app.get("/api/admin/openrouter-models")
+async def admin_openrouter_models(request: Request, db: Session = Depends(get_db)):
+    """Fetch all models available on this OpenRouter API key. Admin only."""
+    _require_admin(request, db)
+    sys_conf = db.query(SystemConfig).first()
+    if not sys_conf or not sys_conf.openrouter_api_key_enc:
+        return JSONResponse({"ok": False, "error": "OpenRouter API key not configured."}, status_code=400)
+    api_key = decrypt(sys_conf.openrouter_api_key_enc) or sys_conf.openrouter_api_key_enc
+    try:
+        req = urllib.request.Request(
+            "https://openrouter.ai/api/v1/models",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = json.loads(resp.read().decode())
+        models = body.get("data", [])
+        # Return id + name, sorted alphabetically
+        result = sorted(
+            [{"id": m["id"], "name": m.get("name", m["id"])} for m in models],
+            key=lambda x: x["id"],
+        )
+        return JSONResponse({"ok": True, "models": result, "count": len(result)})
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")[:500]
+        return JSONResponse({"ok": False, "error": f"HTTP {e.code}: {body}"}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.post("/api/admin/model-test")
 async def admin_model_test(request: Request, db: Session = Depends(get_db)):
     """Test any OpenRouter model directly. Admin only."""
