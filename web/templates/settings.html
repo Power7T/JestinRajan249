@@ -797,7 +797,7 @@
     <div class="form-row">
       <div>
         <label>Enable Voice AI</label>
-        <select name="voice_enabled" onchange="updateVoiceAIFields()">
+        <select name="voice_enabled" id="voice-enabled-select">
           <option value="false" {% if not tenant.voice_enabled %}selected{% endif %}>Disabled</option>
           <option value="true" {% if tenant.voice_enabled %}selected{% endif %}>Enabled</option>
         </select>
@@ -861,7 +861,7 @@
         <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:normal">
           <input type="checkbox" name="voice_forward_enabled" value="true"
                  {% if cfg.voice_forward_enabled %}checked{% endif %}
-                 onchange="updateForwardingField()">
+                 id="voice-forward-enabled-cb">
           Enable call forwarding to my phone when AI can't answer
         </label>
       </div>
@@ -1671,6 +1671,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fetch Twilio phone numbers
     var fetchPhonesBtn = document.getElementById('fetch-twilio-phones-btn');
     if (fetchPhonesBtn) fetchPhonesBtn.addEventListener('click', fetchTwilioPhoneNumbers);
+
+    // Voice AI enabled toggle
+    var voiceEnabledSel = document.getElementById('voice-enabled-select');
+    if (voiceEnabledSel) voiceEnabledSel.addEventListener('change', updateVoiceAIFields);
+
+    // Call forwarding toggle
+    var forwardCb = document.getElementById('voice-forward-enabled-cb');
+    if (forwardCb) forwardCb.addEventListener('change', updateForwardingField);
 
     // Booking welcome simulator
     var bkBtn = document.getElementById('bk-send-btn');

@@ -328,7 +328,7 @@ body {
 <div class="glass-card rounded-3xl p-8 group hover:bg-white/[0.03] transition-colors border-l-4 {% if draft.msg_type == 'escalation' %}border-l-error{% elif draft.msg_type == 'calendar' %}border-l-secondary-fixed-dim{% else %}border-l-primary{% endif %} mb-4" id="draft-{{ draft.id }}" data-draft-id="{{ draft.id }}">
 <div class="flex items-start justify-between mb-6">
   <div class="flex items-center gap-4">
-    <input type="checkbox" class="draft-checkbox w-5 h-5 rounded accent-primary" value="{{ draft.id }}" onchange="updateBulkToolbar()">
+    <input type="checkbox" class="draft-checkbox w-5 h-5 rounded accent-primary" value="{{ draft.id }}">
     <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary text-xl font-extrabold shadow-lg">
       {{ (draft.guest_name or '?')[0] | upper }}
     </div>
@@ -514,6 +514,11 @@ document.addEventListener('DOMContentLoaded', function() {
       accountDropdown.classList.add('hidden');
     });
   }
+
+  // Draft checkboxes — use event delegation
+  document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('draft-checkbox')) updateBulkToolbar();
+  });
 
   // Bulk action buttons
   var approveBtn = document.getElementById('bulk-approve-btn');
