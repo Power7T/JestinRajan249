@@ -5558,7 +5558,7 @@ def update_reservation_context(
 
 
 @app.post("/reservations/manual", response_class=HTMLResponse)
-def reservations_manual_create(
+async def reservations_manual_create(
     request: Request,
     guest_name: str = Form(...),
     confirmation_code: str = Form(""),
@@ -5591,13 +5591,14 @@ def reservations_manual_create(
     db.add(batch)
     db.flush()
 
-    checkin_date = _parse_date(checkin) if checkin.strip() else None
+    checkin_date  = _parse_date(checkin)  if checkin.strip()  else None
     checkout_date = _parse_date(checkout) if checkout.strip() else None
+    phone_clean   = guest_phone.strip()
     reservation = Reservation(
         tenant_id=tenant_id,
         confirmation_code=confirmation_code.strip() or f"MANUAL-{secrets.token_hex(4).upper()}",
         guest_name=guest_name.strip(),
-        guest_phone=guest_phone.strip() or None,
+        guest_phone=phone_clean or None,
         listing_name=listing_name.strip() or None,
         unit_identifier=unit_identifier.strip() or None,
         checkin=checkin_date,
@@ -5623,6 +5624,101 @@ def reservations_manual_create(
         message=f"Manual reservation created for {reservation.guest_name}",
     ))
     db.commit()
+
+    # ── Auto-activate bot + send welcome message ──────────────────────────
+    # Create a GuestContact so the bot can auto-reply to this guest until checkout.
+    # Also send an immediate welcome WhatsApp/SMS message.
+    if phone_clean and checkin_date and checkout_date:
+        from datetime import date as date_type
+        from web.models import GuestContact as _GC
+        from web.phone_utils import normalize_phone as _norm
+
+        _norm_phone = _norm(phone_clean) or phone_clean
+        # Convert date → timezone-aware datetime (start of day for check-in, end of day for checkout)
+        _checkin_dt  = datetime.combine(checkin_date,  datetime.min.time(), tzinfo=timezone.utc)
+        _checkout_dt = datetime.combine(checkout_date, datetime.max.time().replace(microsecond=0), tzinfo=timezone.utc)
+
+        # Only create if not already exists (avoid duplicates on re-import)
+        existing_gc = db.query(_GC).filter_by(
+            tenant_id=tenant_id, guest_phone=_norm_phone, check_in=_checkin_dt
+        ).first()
+        if not existing_gc:
+            gc = _GC(
+                tenant_id=tenant_id,
+                reservation_id=reservation.id,
+                guest_name=reservation.guest_name,
+                guest_phone=_norm_phone,
+                property_name=reservation.listing_name,
+                room_identifier=reservation.unit_identifier,
+                check_in=_checkin_dt,
+                check_out=_checkout_dt,
+                status="active",
+                welcome_status="pending",
+            )
+            db.add(gc)
+            db.commit()
+            db.refresh(gc)
+
+            # Send welcome message via WhatsApp or SMS
+            from web.crypto import decrypt as _decrypt_manual
+            cfg = _get_or_create_config(tenant_id, db)
+            sent_via = None
+            if cfg and cfg.wa_mode == "meta_cloud" and cfg.whatsapp_phone_id and cfg.whatsapp_token_enc:
+                from web.meta_sender import send_whatsapp
+                _token = _decrypt_manual(cfg.whatsapp_token_enc or "")
+                if _token:
+                    _listing  = reservation.listing_name or "the property"
+                    _unit     = f" (Room/Unit: {reservation.unit_identifier})" if reservation.unit_identifier else ""
+                    _checkout = checkout_date.strftime("%b %d, %Y")
+                    if cfg.guest_welcome_template:
+                        try:
+                            _welcome = cfg.guest_welcome_template.format(
+                                guest_name=reservation.guest_name,
+                                property_name=_listing,
+                                room=reservation.unit_identifier or "your room",
+                            )
+                        except KeyError:
+                            _welcome = None
+                    else:
+                        _welcome = None
+                    if not _welcome:
+                        _welcome = (
+                            f"Hi {reservation.guest_name}! 👋 Welcome to {_listing}{_unit}. "
+                            f"Your checkout is on {_checkout}. "
+                            f"I'm your AI host assistant — message me anytime during your stay. Enjoy! 🏠"
+                        )
+                    ok = send_whatsapp(cfg.whatsapp_phone_id, _token, phone_clean, _welcome)
+                    if ok:
+                        sent_via = "whatsapp"
+                        gc.welcome_sent_at = datetime.now(timezone.utc)
+                        gc.welcome_status  = "sent"
+                        reservation.pre_arrival_sent = True
+
+            if not sent_via and cfg and cfg.twilio_account_sid and cfg.twilio_auth_token_enc and cfg.twilio_from_number:
+                from web.sms_sender import send_sms
+                _auth = _decrypt_manual(cfg.twilio_auth_token_enc or "")
+                if _auth:
+                    _listing  = reservation.listing_name or "the property"
+                    _welcome  = (
+                        f"Hi {reservation.guest_name}! Welcome to {_listing}. "
+                        f"I'm your AI host assistant — text me anytime. Checkout: {checkout_date.strftime('%b %d')}."
+                    )
+                    ok = send_sms(cfg.twilio_account_sid, _auth, cfg.twilio_from_number, phone_clean, _welcome)
+                    if ok:
+                        sent_via = "sms"
+                        gc.welcome_sent_at = datetime.now(timezone.utc)
+                        gc.welcome_status  = "sent"
+                        reservation.pre_arrival_sent = True
+
+            _record_timeline_event(
+                db, tenant_id, reservation,
+                event_type="manual_checkin",
+                title=f"Bot activated & welcome sent to {reservation.guest_name}",
+                body=f"Welcome message sent via {sent_via.upper()}" if sent_via else "Bot activated (welcome not sent — no messaging channel configured)",
+                payload_json={"channel": sent_via, "phone": phone_clean},
+            )
+            db.commit()
+
     return RedirectResponse("/reservations?imported=1", status_code=302)
 
 
