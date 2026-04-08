@@ -7222,7 +7222,7 @@ def simulate_guest(request: Request,
     except HTTPException:
         raise HTTPException(status_code=401)
     validate_csrf(request, csrf_token)
-    rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
+    rate_limit(f"simulate:{tenant_id}", max_requests=100, window_seconds=3600)
 
     cfg = _get_or_create_config(tenant_id, db)
 
@@ -7278,7 +7278,7 @@ async def simulate_guest_json(
     try:
         tenant_id = get_current_tenant_id(request)
         validate_csrf(request, csrf_token)
-        rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
+        rate_limit(f"simulate:{tenant_id}", max_requests=100, window_seconds=3600)
         cfg = _get_or_create_config(tenant_id, db)
 
         from web.classifier import classify_message_with_confidence, generate_draft, make_draft_id
@@ -7338,7 +7338,7 @@ async def simulate_and_send(
     try:
         tenant_id = get_current_tenant_id(request)
         validate_csrf(request, csrf_token)
-        rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
+        rate_limit(f"simulate:{tenant_id}", max_requests=100, window_seconds=3600)
         cfg = _get_or_create_config(tenant_id, db)
 
         from web.classifier import classify_message_with_confidence, generate_draft, make_draft_id
@@ -7425,7 +7425,7 @@ async def simulate_booking_welcome(
     """Simulate a new booking and send the bot's welcome message via WhatsApp."""
     tenant_id = get_current_tenant_id(request)
     validate_csrf(request, csrf_token)
-    rate_limit(f"simulate:{tenant_id}", max_requests=10, window_seconds=3600)
+    rate_limit(f"simulate:{tenant_id}", max_requests=100, window_seconds=3600)
     cfg = _get_or_create_config(tenant_id, db)
 
     if not cfg.whatsapp_phone_id or not cfg.whatsapp_token_enc:
