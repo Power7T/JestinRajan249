@@ -68,14 +68,31 @@ def send_sms(account_sid: str, auth_token: str, from_number: str, to_number: str
     return False
 
 
+def send_whatsapp_twilio(account_sid: str, auth_token: str, from_number: str,
+                         to_number: str, text: str, max_retries: int = 3) -> bool:
+    """
+    Send a WhatsApp message via Twilio (same API as SMS, prefixed with 'whatsapp:').
+    from_number: your Twilio WhatsApp sender (e.g. '+14155238886' for sandbox).
+    to_number: guest phone in E.164 format ('+' prefix expected).
+    """
+    # Ensure whatsapp: prefix
+    wa_from = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
+    to_clean = to_number.replace(" ", "").replace("-", "")
+    wa_to = to_clean if to_clean.startswith("whatsapp:") else f"whatsapp:{to_clean}"
+    return send_sms(account_sid, auth_token, wa_from, wa_to, text, max_retries)
+
+
 def parse_twilio_inbound(form_data: dict) -> dict | None:
     """
-    Parse a Twilio inbound SMS webhook (application/x-www-form-urlencoded).
+    Parse a Twilio inbound SMS or WhatsApp webhook (application/x-www-form-urlencoded).
     form_data is the already-parsed dict from FastAPI Form fields.
-    Returns {'from': str, 'text': str} or None if invalid.
+    Returns {'from': str, 'text': str, 'is_whatsapp': bool} or None if invalid.
     """
     from_number = form_data.get("From", "").strip()
     body        = form_data.get("Body", "").strip()
     if not from_number or not body:
         return None
-    return {"from": from_number, "text": body}
+    is_whatsapp = from_number.startswith("whatsapp:")
+    # Strip whatsapp: prefix so phone is in plain E.164 format
+    clean_from = from_number.replace("whatsapp:", "")
+    return {"from": clean_from, "text": body, "is_whatsapp": is_whatsapp}

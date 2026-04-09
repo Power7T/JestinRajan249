@@ -2565,7 +2565,21 @@ def _execute_draft(
 
     elif draft.source == "whatsapp" and draft.reply_to and cfg:
         guest_phone = draft.reply_to
-        if tenant_has_channel(cfg, PLAN_META_CLOUD):
+        if cfg.wa_mode == "twilio":
+            from web.sms_sender import send_whatsapp_twilio
+            auth_token = decrypt(cfg.twilio_auth_token_enc or "")
+            wa_num = cfg.twilio_whatsapp_number or ""
+            if cfg.twilio_account_sid and auth_token and wa_num:
+                ok = send_whatsapp_twilio(cfg.twilio_account_sid, auth_token,
+                                          wa_num, guest_phone, final_text)
+                if not ok:
+                    log.warning("[%s] Twilio WA send failed for ***%s", tenant_id, guest_phone[-4:] if guest_phone else "")
+                    failure_reason = "Twilio WhatsApp delivery failed"
+                else:
+                    send_ok = True
+            else:
+                failure_reason = "Twilio WhatsApp is not fully configured"
+        elif tenant_has_channel(cfg, PLAN_META_CLOUD):
             from web.meta_sender import send_whatsapp
             token = decrypt(cfg.whatsapp_token_enc or "")
             if token and cfg.whatsapp_phone_id:
@@ -2579,9 +2593,6 @@ def _execute_draft(
                 failure_reason = "Meta WhatsApp is not fully configured"
         else:
             failure_reason = "Tenant plan does not include WhatsApp delivery"
-        # Note: Baileys channel check removed (Baileys integration discontinued)
-        # elif tenant_has_channel(cfg, PLAN_BAILEYS):
-        #     _queue_baileys_outbound(tenant_id, guest_phone, final_text, db)
 
     elif draft.source == "sms" and draft.reply_to and cfg:
         guest_phone = draft.reply_to
@@ -3801,6 +3812,8 @@ async def settings_save(
     whatsapp_token:        str = Form(""),
     whatsapp_phone_id:     str = Form(""),
     whatsapp_verify_token: str = Form(""),
+    # Twilio WhatsApp
+    twilio_whatsapp_number: str = Form(""),
     # SMS / Twilio
     sms_mode:              str = Form("none"),
     twilio_account_sid:    str = Form(""),
@@ -3890,11 +3903,6 @@ async def settings_save(
         cfg.whatsapp_verify_token = whatsapp_verify_token.strip()
     if whatsapp_token.strip():
         cfg.whatsapp_token_enc = encrypt(whatsapp_token.strip())
-    # Auto-detect wa_mode from credentials — form field is unreliable
-    if cfg.whatsapp_phone_id and cfg.whatsapp_token_enc:
-        cfg.wa_mode = "meta_cloud"
-    else:
-        cfg.wa_mode = "none"
 
     # SMS / Twilio
     cfg.sms_mode           = sms_mode.strip() or "none"
@@ -3902,6 +3910,18 @@ async def settings_save(
     cfg.twilio_from_number = twilio_from_number.strip() or None
     if twilio_auth_token.strip():
         cfg.twilio_auth_token_enc = encrypt(twilio_auth_token.strip())
+
+    # Twilio WhatsApp number
+    if twilio_whatsapp_number.strip():
+        cfg.twilio_whatsapp_number = twilio_whatsapp_number.strip()
+
+    # Auto-detect wa_mode — Twilio WA if configured, else Meta Cloud, else none
+    if cfg.twilio_whatsapp_number and cfg.twilio_account_sid and cfg.twilio_auth_token_enc:
+        cfg.wa_mode = "twilio"
+    elif cfg.whatsapp_phone_id and cfg.whatsapp_token_enc:
+        cfg.wa_mode = "meta_cloud"
+    else:
+        cfg.wa_mode = "none"
 
     db.add(ActivityLog(tenant_id=tenant_id, event_type="settings_saved",
                        message="Settings updated"))
@@ -4655,6 +4675,32 @@ async def sms_webhook_inbound(tenant_id: str, request: Request, db: Session = De
         _handle_inbound_sms(tenant_id, msg["from"], msg["text"], db)
 
     return HTMLResponse("<Response/>")   # TwiML empty response
+
+
+@app.post("/whatsapp/twilio/inbound/{tenant_id}")
+async def twilio_whatsapp_inbound(tenant_id: str, request: Request, db: Session = Depends(get_db)):
+    """Receive inbound WhatsApp messages from Twilio (same format as SMS webhook)."""
+    rate_limit(f"wa-twilio-inbound:{tenant_id}:{client_ip(request)}", max_requests=200, window_seconds=60)
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    if not cfg or cfg.wa_mode != "twilio":
+        return HTMLResponse("<Response/>")
+
+    try:
+        form = await request.form()
+        form_data = dict(form)
+    except Exception as e:
+        log.warning("[%s] Twilio WA form parsing error: %s", tenant_id, e)
+        return HTMLResponse("<Response/>")
+
+    if not _validate_twilio_signature(request, form_data, cfg, channel="sms"):
+        return HTMLResponse("<Response/>", status_code=403)
+
+    from web.sms_sender import parse_twilio_inbound
+    msg = parse_twilio_inbound(form_data)
+    if msg and msg.get("is_whatsapp"):
+        _handle_inbound_wa(tenant_id, msg["from"], msg["text"], db)
+
+    return HTMLResponse("<Response/>")
 
 
 @app.post("/email/inbound")

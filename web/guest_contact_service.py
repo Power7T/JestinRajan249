@@ -98,8 +98,9 @@ async def send_welcome_messages(
     host_sent = False
 
     # Send to guest via available channel
-    if cfg.wa_mode == "meta_cloud":
-        # Send via Meta API
+    if cfg.wa_mode == "twilio":
+        guest_sent = _send_via_twilio_wa(guest_contact.guest_phone, guest_msg, tenant_id, cfg)
+    elif cfg.wa_mode == "meta_cloud":
         guest_sent = await _send_via_meta(guest_contact.guest_phone, guest_msg, tenant_id, cfg)
 
     if guest_sent:
@@ -111,7 +112,10 @@ async def send_welcome_messages(
         log.warning(f"[{tenant_id}] Failed to send welcome to {guest_contact.guest_name}")
 
     # Send to host via available channel
-    if cfg.whatsapp_number and cfg.wa_mode == "meta_cloud":
+    if cfg.whatsapp_number and cfg.wa_mode == "twilio":
+        _send_via_twilio_wa(cfg.whatsapp_number, host_msg, tenant_id, cfg)
+        host_sent = True
+    elif cfg.whatsapp_number and cfg.wa_mode == "meta_cloud":
         host_sent = await _send_via_meta(cfg.whatsapp_number, host_msg, tenant_id, cfg)
 
     if host_sent:
@@ -223,6 +227,27 @@ async def _send_via_meta(phone_number: str, message: str, tenant_id: str, cfg: T
 
     except Exception as e:
         log.error(f"[{tenant_id}] Error sending via Meta: {e}")
+        return False
+
+
+def _send_via_twilio_wa(phone_number: str, message: str, tenant_id: str, cfg: TenantConfig) -> bool:
+    """Send message via Twilio WhatsApp."""
+    try:
+        from web.sms_sender import send_whatsapp_twilio
+        from web.crypto import decrypt
+        auth_token = decrypt(cfg.twilio_auth_token_enc) if cfg.twilio_auth_token_enc else None
+        wa_num = cfg.twilio_whatsapp_number or ""
+        if not cfg.twilio_account_sid or not auth_token or not wa_num:
+            log.warning(f"[{tenant_id}] Twilio WA not fully configured")
+            return False
+        success = send_whatsapp_twilio(cfg.twilio_account_sid, auth_token, wa_num, phone_number, message)
+        if success:
+            log.info(f"[{tenant_id}] Twilio WA message sent to {phone_number}")
+        else:
+            log.warning(f"[{tenant_id}] Twilio WA message failed for {phone_number}")
+        return success
+    except Exception as e:
+        log.error(f"[{tenant_id}] Error sending via Twilio WA: {e}")
         return False
 
 

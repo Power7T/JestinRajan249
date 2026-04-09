@@ -185,6 +185,7 @@ class TenantConfig(Base):
     quiet_hours:         Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     amenities:           Mapped[Optional[str]] = mapped_column(Text, nullable=True)         # comma-separated
     food_menu:           Mapped[Optional[str]] = mapped_column(Text, nullable=True)         # plain text (extracted from PDF or pasted)
+    twilio_whatsapp_number: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)   # Twilio WA sender e.g. +14155238886
     nearby_restaurants:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     google_maps_url:     Mapped[Optional[str]] = mapped_column(String(512), nullable=True)  # Google Maps link for location context
     faq:                 Mapped[Optional[str]] = mapped_column(Text, nullable=True)         # free-form Q&A text
