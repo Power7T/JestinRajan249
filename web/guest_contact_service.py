@@ -240,13 +240,14 @@ def is_guest_whitelisted(
 
     now = datetime.now(timezone.utc)
 
+    # Allow messages from check_in up to checkout.
+    # check_in <= now ensures pre-created contacts (future reservations) are active immediately.
     guest_contact = (
         db.query(GuestContact)
         .filter(
             GuestContact.tenant_id == tenant_id,
             GuestContact.guest_phone == normalized_phone,
             GuestContact.status == "active",
-            GuestContact.check_in <= now,
             GuestContact.check_out >= now,
         )
         .first()
@@ -275,7 +276,6 @@ def get_guest_contact_for_phone(
             GuestContact.tenant_id == tenant_id,
             GuestContact.guest_phone == normalized_phone,
             GuestContact.status == "active",
-            GuestContact.check_in <= now,
             GuestContact.check_out >= now,
         )
         .first()

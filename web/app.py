@@ -5634,13 +5634,17 @@ async def reservations_manual_create(
         from web.phone_utils import normalize_phone as _norm
 
         _norm_phone = _norm(phone_clean) or phone_clean
-        # Convert date → timezone-aware datetime (start of day for check-in, end of day for checkout)
-        _checkin_dt  = datetime.combine(checkin_date,  datetime.min.time(), tzinfo=timezone.utc)
+        _now = datetime.now(timezone.utc)
+        # Use NOW as check_in so the bot is immediately active regardless of the reservation date.
+        # checkout is end-of-day on the actual checkout date.
+        _checkin_dt  = _now
         _checkout_dt = datetime.combine(checkout_date, datetime.max.time().replace(microsecond=0), tzinfo=timezone.utc)
 
         # Only create if not already exists (avoid duplicates on re-import)
-        existing_gc = db.query(_GC).filter_by(
-            tenant_id=tenant_id, guest_phone=_norm_phone, check_in=_checkin_dt
+        existing_gc = db.query(_GC).filter(
+            _GC.tenant_id == tenant_id,
+            _GC.guest_phone == _norm_phone,
+            _GC.check_out == _checkout_dt,
         ).first()
         if not existing_gc:
             gc = _GC(
