@@ -339,6 +339,7 @@
 
   <!-- ── Property ─────────────────────────────────────────────────── -->
   <div class="form-section" data-section="general">
+    <a id="property-name" style="display:block;position:relative;top:-80px;visibility:hidden;"></a>
     <h2>Property</h2>
     <label>Property name(s)</label>
     <input type="text" name="property_names" value="{{ cfg.property_names or '' }}" placeholder="Beach House, City Flat">
@@ -354,6 +355,7 @@
         <input type="text" name="property_type" value="{{ cfg.property_type or '' }}" placeholder="Villa / Apartment / Hotel">
       </div>
     </div>
+    <a id="checkin-times" style="display:block;position:relative;top:-80px;visibility:hidden;"></a>
     <div class="form-row">
       <div>
         <label>Check-in time</label>
@@ -440,10 +442,15 @@
 
   <!-- ── Guest Messaging ────────────────────────────────────────────────────── -->
   <div class="form-section" data-section="general">
+    <a id="welcome-msg" style="display:block;position:relative;top:-80px;visibility:hidden;"></a>
     <h2>Guest messaging</h2>
     <label>Custom welcome message for guest check-ins</label>
     <textarea name="guest_welcome_template" placeholder="Hi {guest_name}! Welcome to {property_name}. Your room is {room}. Check-in is now available. Let me know if you need anything!">{{ cfg.guest_welcome_template or '' }}</textarea>
     <p class="help-text">Leave blank for default message. Use variables: {guest_name}, {property_name}, {room}</p>
+    <a id="escalation" style="display:block;position:relative;top:-80px;visibility:hidden;"></a>
+    <label style="margin-top:1rem">Escalation email</label>
+    <input type="email" name="escalation_email" value="{{ cfg.escalation_email or '' }}" placeholder="you@yourdomain.com">
+    <p class="help-text">Urgent guest issues (complaints, maintenance, emergencies) are forwarded here.</p>
   </div>
 
   <!-- ── Calendar ────────────────────────────────────────────────────── -->
@@ -510,6 +517,7 @@
   <input type="hidden" name="sms_mode" value="twilio">
 
   <!-- WhatsApp: Meta Cloud API -->
+  <a id="wa-setup" style="display:block;position:relative;top:-80px;visibility:hidden;" data-section="channels"></a>
   <div data-section="channels" style="background: rgba(26,27,34,0.7); backdrop-filter: blur(24px); border-top: 1px solid rgba(174,198,255,0.1); border-left: 1px solid rgba(174,198,255,0.1); border-radius: 24px; padding: 24px; margin-bottom: 32px; border: 1px solid rgba(93,141,241,0.15)">
     <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; line-height: 1.5">
       <div>
@@ -1731,11 +1739,29 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle #knowledge-base hash — scroll to KB section (stays on General tab)
-    if (window.location.hash === '#knowledge-base') {
-        var el = document.getElementById('knowledge-base');
-        if (el) {
-            setTimeout(function() { el.scrollIntoView({ behavior: 'smooth' }); }, 100);
+    // Handle ?_tab= query param from setup alert CTAs (switches tab before hash scroll)
+    var _urlTab = new URLSearchParams(window.location.search).get('_tab');
+    if (_urlTab) switchTab(_urlTab);
+
+    // Handle URL hash deep-links from setup alerts (e.g. /settings#wa-setup → channels tab)
+    var _hashAnchors = {
+        'wa-setup': 'channels',
+        'sms-setup': 'channels',
+        'knowledge-base': 'general',
+        'property-name': 'general',
+        'checkin-times': 'general',
+        'welcome-msg': 'general',
+        'escalation': 'general',
+        'workflow-automation': 'automation',
+    };
+    var _hash = (window.location.hash || '').replace('#', '');
+    if (_hash && _hashAnchors[_hash]) {
+        switchTab(_hashAnchors[_hash]);
+    }
+    if (_hash) {
+        var _target = document.getElementById(_hash);
+        if (_target) {
+            setTimeout(function() { _target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
         }
     }
 });

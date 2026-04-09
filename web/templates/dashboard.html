@@ -214,6 +214,37 @@ body {
 <p class="text-slate-400 font-medium">Welcome back{% if tenant %}, {{ tenant.first_name or tenant.email.split('@')[0] | title }}{% endif %}. {% if drafts %}Your AI agents have drafted {{ drafts|length }} response{{ 's' if drafts|length != 1 else '' }} awaiting review.{% else %}All caught up — no pending drafts.{% endif %}</p>
 </div>
 
+{% if setup_alerts %}
+<!-- Setup Alerts -->
+<div class="mb-8 flex flex-col gap-3" id="setup-alerts-container">
+  {% for alert in setup_alerts %}
+  {% set colors = {
+    'error':   {'border': '#ef4444', 'bg': 'rgba(239,68,68,0.08)',   'icon': 'text-red-400',    'cta': 'bg-red-500/20 text-red-300 hover:bg-red-500/30'},
+    'warning': {'border': '#f59e0b', 'bg': 'rgba(245,158,11,0.08)', 'icon': 'text-amber-400',  'cta': 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'},
+    'info':    {'border': '#5B8DEF', 'bg': 'rgba(91,141,239,0.08)', 'icon': 'text-blue-400',   'cta': 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30'},
+  } %}
+  {% set c = colors[alert.level] %}
+  <div class="flex items-center justify-between gap-4 rounded-xl px-5 py-3.5 border-l-4"
+       style="background:{{ c.bg }};border-left-color:{{ c.border }};border:1px solid {{ c.border }}33;border-left-width:4px"
+       data-alert-id="{{ loop.index }}">
+    <div class="flex items-center gap-3 min-w-0">
+      <span class="material-symbols-outlined text-xl flex-shrink-0 {{ c.icon }}">{{ alert.icon }}</span>
+      <p class="text-sm text-slate-200 leading-snug">{{ alert.message }}</p>
+    </div>
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <a href="{{ alert.link }}{% if alert.tab %}?_tab={{ alert.tab }}{% endif %}"
+         class="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap {{ c.cta }}">
+        {{ alert.cta }} →
+      </a>
+      <button type="button" class="dismiss-alert text-slate-500 hover:text-slate-300 transition-colors" data-idx="{{ loop.index }}">
+        <span class="material-symbols-outlined text-base">close</span>
+      </button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if cfg and not cfg.onboarding_complete %}
 <!-- Setup Progress Soft Gate Widget -->
 <div class="glass-card mb-12 p-6 rounded-2xl border-l-[6px] border-[#5B8DEF] bg-[#1a1b22]/80 flex items-center justify-between">
@@ -532,6 +563,20 @@ document.addEventListener('DOMContentLoaded', function() {
   var kbBtn = document.getElementById('expand-kb-btn');
   if (kbBtn) kbBtn.addEventListener('click', function() {
     window.location.href = '/settings#knowledge-base';
+  });
+
+  // Dismiss setup alert buttons
+  document.querySelectorAll('.dismiss-alert').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var row = btn.closest('[data-alert-id]');
+      if (row) {
+        row.style.transition = 'opacity 0.2s, max-height 0.3s';
+        row.style.opacity = '0';
+        row.style.overflow = 'hidden';
+        setTimeout(function() { row.style.maxHeight = '0'; row.style.marginBottom = '0'; row.style.paddingTop = '0'; row.style.paddingBottom = '0'; }, 200);
+        setTimeout(function() { row.remove(); }, 500);
+      }
+    });
   });
 });
 </script>

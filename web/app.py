@@ -2190,10 +2190,104 @@ def dashboard(request: Request,
             ArrivalActivation.status.in_(["active", "pending"]),
         ).count(),
         "today":         today,
+        "setup_alerts":  _get_setup_alerts(cfg, tenant, all_reservations),
     })
     if show_tour:
         response.delete_cookie("show_tour")
     return response
+
+
+# ---------------------------------------------------------------------------
+# Setup alerts — missing configuration notifications
+# ---------------------------------------------------------------------------
+
+def _get_setup_alerts(cfg, tenant, reservations: list) -> list[dict]:
+    """
+    Return a list of setup alert dicts for the dashboard notification bar.
+    Each dict has: level ('error'|'warning'|'info'), message, link, tab, icon.
+    """
+    alerts = []
+
+    # 1. No property name
+    if not (cfg.property_names or "").strip():
+        alerts.append({
+            "level": "error",
+            "icon": "home",
+            "message": "No property name set — the AI can't personalise any messages.",
+            "cta": "Add property name",
+            "link": "/settings#property-name",
+            "tab": "general",
+        })
+
+    # 2. WhatsApp not configured
+    wa_ok = cfg.wa_mode == "meta_cloud" and cfg.whatsapp_phone_id and cfg.whatsapp_token_enc
+    if not wa_ok:
+        alerts.append({
+            "level": "error",
+            "icon": "chat",
+            "message": "WhatsApp is not connected — guests can't receive any automated replies.",
+            "cta": "Connect WhatsApp",
+            "link": "/settings#wa-setup",
+            "tab": "channels",
+        })
+
+    # 3. Knowledge base empty (house rules + FAQ both blank)
+    kb_empty = not (cfg.house_rules or "").strip() and not (cfg.faq or "").strip()
+    if kb_empty:
+        alerts.append({
+            "level": "warning",
+            "icon": "menu_book",
+            "message": "House rules and FAQ are empty — the AI will give generic answers without your property info.",
+            "cta": "Fill Knowledge Base",
+            "link": "/settings#knowledge-base",
+            "tab": "general",
+        })
+
+    # 4. No check-in / check-out times
+    if not (cfg.check_in_time or "").strip() or not (cfg.check_out_time or "").strip():
+        alerts.append({
+            "level": "warning",
+            "icon": "schedule",
+            "message": "Check-in / check-out times are not set — guests asking about arrival or departure will get vague answers.",
+            "cta": "Set times",
+            "link": "/settings#checkin-times",
+            "tab": "general",
+        })
+
+    # 5. No escalation email
+    if not (cfg.escalation_email or "").strip():
+        alerts.append({
+            "level": "warning",
+            "icon": "mail",
+            "message": "No escalation email set — urgent guest issues won't be forwarded anywhere.",
+            "cta": "Set escalation email",
+            "link": "/settings#escalation",
+            "tab": "general",
+        })
+
+    # 6. No reservations imported
+    if not reservations:
+        alerts.append({
+            "level": "info",
+            "icon": "event_available",
+            "message": "No reservations yet — import from Airbnb CSV or add one manually so the AI has guest context.",
+            "cta": "Import reservations",
+            "link": "/reservations",
+            "tab": None,
+        })
+
+    # 7. No welcome message template
+    if not (cfg.guest_welcome_template or "").strip():
+        alerts.append({
+            "level": "info",
+            "icon": "waving_hand",
+            "message": "No custom welcome message — a default greeting will be sent when guests check in.",
+            "cta": "Set welcome message",
+            "link": "/settings#welcome-msg",
+            "tab": "general",
+        })
+
+    return alerts
 
 
 # ---------------------------------------------------------------------------
