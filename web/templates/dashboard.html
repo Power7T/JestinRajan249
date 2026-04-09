@@ -390,7 +390,7 @@ body {
   <p class="text-primary-fixed-dim text-sm leading-relaxed whitespace-pre-wrap">{{ draft.draft }}</p>
 </div>
 <div class="flex items-center gap-4 flex-wrap">
-  <button onclick="approveDraft('{{ draft.id }}', this)" style="flex:1;min-width:120px" class="bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-extrabold py-3 rounded-xl shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+  <button data-action="approve" data-draft-id="{{ draft.id }}" style="flex:1;min-width:120px" class="draft-action-btn bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-extrabold py-3 rounded-xl shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
     ✓ Approve &amp; Send
   </button>
   <button class="px-6 py-3 text-white border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all htmx-request:opacity-50 htmx-request:cursor-wait"
@@ -401,7 +401,7 @@ body {
     ✎ Edit
   </button>
   <div id="edit-loading-{{ draft.id }}" class="spinner hidden" style="width:1rem;height:1rem;border-width:2px"></div>
-  <button onclick="skipDraft('{{ draft.id }}', this)" class="px-4 py-3 text-slate-400 hover:text-error border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all text-sm">
+  <button data-action="skip" data-draft-id="{{ draft.id }}" class="draft-action-btn px-4 py-3 text-slate-400 hover:text-error border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all text-sm">
     Skip
   </button>
 </div>
@@ -722,6 +722,17 @@ document.addEventListener('DOMContentLoaded', function() {
       accountDropdown.classList.add('hidden');
     });
   }
+
+  // Draft action buttons (approve / skip) — event delegation avoids CSP inline handler block
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn || !btn.classList.contains('draft-action-btn')) return;
+    var action = btn.dataset.action;
+    var id = btn.dataset.draftId;
+    if (!id) return;
+    if (action === 'approve') approveDraft(id, btn);
+    else if (action === 'skip') skipDraft(id, btn);
+  });
 
   // Draft checkboxes — event delegation
   document.addEventListener('change', function(e) {
