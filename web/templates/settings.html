@@ -326,6 +326,11 @@
   [data-section]:not([data-section="general"]) {
     display: none;
   }
+  /* Replace onfocus/onblur inline handlers (CSP blocks them) */
+  .ch-input:focus {
+    border-color: rgba(93,141,241,0.5) !important;
+    outline: none;
+  }
 </style>
 <div style="display:flex; gap:24px; margin-bottom:32px; border-bottom:1px solid rgba(255,255,255,0.08); position:sticky; top:0; background:rgba(8,9,15,0.95); backdrop-filter:blur(8px); padding:16px 0; z-index:10">
   <button type="button" class="settings-tab active" data-tab="general" style="color:#aec6ff; border:none; background:none; cursor:pointer; font-size:0.95rem; font-weight:600; padding-bottom:16px; border-bottom:2px solid #5B8DEF; transition:all 0.2s">General</button>
@@ -575,22 +580,22 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
       <div>
         <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">WhatsApp Number</label>
-        <input type="text" name="whatsapp_number" value="{{ cfg.whatsapp_number or '' }}" placeholder="+15550001234" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input type="text" name="whatsapp_number" value="{{ cfg.whatsapp_number or '' }}" placeholder="+15550001234" class="ch-input" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none">
         <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">E.164 format: +1 415 555 0100</p>
       </div>
       <div>
         <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Access Token</label>
-        <input type="password" name="whatsapp_token" placeholder="••••••••" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input type="password" name="whatsapp_token" placeholder="••••••••" class="ch-input" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none">
         <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Meta Developer Console → WhatsApp → API Setup</p>
       </div>
       <div>
         <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Phone ID</label>
-        <input type="text" name="whatsapp_phone_id" value="{{ cfg.whatsapp_phone_id or '' }}" placeholder="123456789" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input type="text" name="whatsapp_phone_id" value="{{ cfg.whatsapp_phone_id or '' }}" placeholder="123456789" class="ch-input" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none">
         <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Numeric ID from Meta Console → API Setup</p>
       </div>
       <div style="grid-column: span 2">
         <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Webhook Verify Token</label>
-        <input type="text" name="whatsapp_verify_token" value="{{ cfg.whatsapp_verify_token or '' }}" placeholder="your_verify_token" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input type="text" name="whatsapp_verify_token" value="{{ cfg.whatsapp_verify_token or '' }}" placeholder="your_verify_token" class="ch-input" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none">
         <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Any random string — use it in Meta webhook config too</p>
       </div>
     </div>
@@ -619,11 +624,11 @@
       <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; margin-bottom:20px">
         <div>
           <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Guest Name</label>
-          <input type="text" id="sim-name" value="Alex" placeholder="Guest name" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <input type="text" id="sim-name" value="Alex" placeholder="Guest name" class="ch-input" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none">
         </div>
         <div>
           <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Message</label>
-          <input type="text" id="sim-msg" value="Hi, what time is check-in?" placeholder="Guest message" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <input type="text" id="sim-msg" value="Hi, what time is check-in?" placeholder="Guest message" class="ch-input" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none">
         </div>
         <button type="button" id="simulate-wa-bot-btn" style="align-self:flex-end; padding:8px 16px;background:rgba(93,141,241,0.3);border:1px solid rgba(93,141,241,0.5);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Simulate ▶</button>
       </div>
@@ -757,22 +762,22 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
       <div>
         <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Twilio Account SID</label>
-        <input type="text" name="twilio_account_sid" value="{{ cfg.twilio_account_sid or '' }}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input type="text" name="twilio_account_sid" value="{{ cfg.twilio_account_sid or '' }}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" class="ch-input" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none">
         <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Twilio Console → Account Info (starts with AC)</p>
       </div>
       <div>
         <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Auth Token</label>
-        <input type="password" name="twilio_auth_token" placeholder="••••••••" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input type="password" name="twilio_auth_token" placeholder="••••••••" class="ch-input" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none">
         <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Twilio Console → Account Info → eye icon to reveal</p>
       </div>
       <div>
         <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">From Number</label>
-        <input type="text" name="twilio_from_number" value="{{ cfg.twilio_from_number or '' }}" placeholder="+15550001234" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input type="text" name="twilio_from_number" value="{{ cfg.twilio_from_number or '' }}" placeholder="+15550001234" class="ch-input" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none">
         <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Your purchased Twilio number in E.164 format</p>
       </div>
       <div>
         <label style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px">Notify Number</label>
-        <input type="text" name="sms_notify_number" value="{{ cfg.sms_notify_number or '' }}" placeholder="+15550001234" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input type="text" name="sms_notify_number" value="{{ cfg.sms_notify_number or '' }}" placeholder="+15550001234" class="ch-input" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none">
         <p style="margin-top:8px;font-size:0.75rem;color:#9ca3af">Where to send incoming SMS alerts</p>
       </div>
     </div>
@@ -792,7 +797,7 @@
       <p style="font-size:0.75rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:12px">Send Test Message</p>
       <p style="font-size:0.875rem;color:#b4c9ff;margin-bottom:12px">Verify SMS is working by sending a test message to any number:</p>
       <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px">
-        <input type="text" id="sms-test-phone" placeholder="+1 415 555 0100" style="padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none" onfocus="this.style.borderColor='rgba(93,141,241,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input type="text" id="sms-test-phone" placeholder="+1 415 555 0100" class="ch-input" style="padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.875rem;outline:none">
         <button type="button" id="send-test-sms-btn" style="padding:8px 16px;background:rgba(93,141,241,0.3);border:1px solid rgba(93,141,241,0.5);border-radius:8px;color:#aec6ff;font-size:0.875rem;font-weight:700;cursor:pointer;transition:all 0.2s">Send Test</button>
       </div>
       <div id="sms-test-result" style="display:none;margin-top:12px;padding:12px;border-radius:8px;font-size:0.875rem;font-weight:600"></div>

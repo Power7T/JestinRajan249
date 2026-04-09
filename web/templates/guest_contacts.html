@@ -327,7 +327,7 @@
       <button class="modal-close" id="close-add-modal-btn">×</button>
     </div>
 
-    <form id="addContactForm" onsubmit="submitAddContact(event)">
+    <form id="addContactForm">
       <div class="modal-body">
         <div class="form-group">
           <label for="guestName">Guest Name *</label>
@@ -382,7 +382,7 @@
       <button class="modal-close" id="close-edit-modal-btn">×</button>
     </div>
 
-    <form id="editContactForm" onsubmit="submitEditContact(event)">
+    <form id="editContactForm">
       <div class="modal-body">
         <input type="hidden" id="editGcId" name="gc_id">
 
@@ -452,12 +452,18 @@ document.addEventListener('DOMContentLoaded', function() {
   var cancelAddBtn = document.getElementById('cancel-add-modal-btn');
   if (cancelAddBtn) cancelAddBtn.addEventListener('click', closeAddContactModal);
 
+  var addForm = document.getElementById('addContactForm');
+  if (addForm) addForm.addEventListener('submit', submitAddContact);
+
   // Edit contact modal
   var closeEditBtn = document.getElementById('close-edit-modal-btn');
   if (closeEditBtn) closeEditBtn.addEventListener('click', closeEditContactModal);
 
   var cancelEditBtn = document.getElementById('cancel-edit-modal-btn');
   if (cancelEditBtn) cancelEditBtn.addEventListener('click', closeEditContactModal);
+
+  var editForm = document.getElementById('editContactForm');
+  if (editForm) editForm.addEventListener('submit', submitEditContact);
 
   // Resend buttons
   document.querySelectorAll('.resend-btn').forEach(function(btn) {
