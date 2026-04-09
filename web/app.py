@@ -2198,6 +2198,103 @@ def dashboard(request: Request,
 
 
 # ---------------------------------------------------------------------------
+# Google Maps Places — auto-fetch nearby places for bot context
+# ---------------------------------------------------------------------------
+
+def _fetch_nearby_places(maps_url: str, api_key: str) -> str | None:
+    """
+    Given a Google Maps URL and a Places API key, fetch nearby places
+    (restaurants, shops, attractions, transit) and return a formatted string
+    suitable for storing in cfg.nearby_restaurants.
+    Returns None on failure or if no results found.
+    """
+    import re as _re
+    import urllib.parse as _urlparse
+
+    # --- Extract lat/lng from Maps URL ---
+    lat, lng = None, None
+    # Format: /@lat,lng,zoom or /@lat,lng  (most common share format)
+    m = _re.search(r'/@(-?\d+\.\d+),(-?\d+\.\d+)', maps_url)
+    if m:
+        lat, lng = m.group(1), m.group(2)
+    else:
+        # Format: ?q=lat,lng or &q=lat,lng
+        m = _re.search(r'[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)', maps_url)
+        if m:
+            lat, lng = m.group(1), m.group(2)
+        else:
+            # Format: /maps/place/Name/@lat,lng or ll=lat,lng
+            m = _re.search(r'[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)', maps_url)
+            if m:
+                lat, lng = m.group(1), m.group(2)
+
+    if not lat or not lng:
+        log.warning("_fetch_nearby_places: could not extract lat/lng from %s", maps_url)
+        return None
+
+    location = f"{lat},{lng}"
+    base = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+
+    # Categories to fetch: (label, type, radius_m)
+    categories = [
+        ("Restaurants & Cafes",  "restaurant",          500),
+        ("Shopping & Groceries", "supermarket",         1000),
+        ("Cafes",                "cafe",                500),
+        ("Attractions",          "tourist_attraction",  2000),
+        ("Transport",            "transit_station",     1000),
+        ("Pharmacy / Hospital",  "pharmacy",            1000),
+    ]
+
+    sections = []
+    seen_names: set[str] = set()
+
+    for label, place_type, radius in categories:
+        params = _urlparse.urlencode({
+            "location": location,
+            "radius": radius,
+            "type": place_type,
+            "key": api_key,
+        })
+        url = f"{base}?{params}"
+        try:
+            req = urllib.request.Request(url, headers={"Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode(errors="replace"))
+        except Exception as exc:
+            log.warning("_fetch_nearby_places: %s request failed: %s", label, exc)
+            continue
+
+        if data.get("status") not in ("OK", "ZERO_RESULTS"):
+            log.warning("_fetch_nearby_places: %s API status %s", label, data.get("status"))
+            continue
+
+        results = data.get("results", [])[:5]
+        if not results:
+            continue
+
+        lines = []
+        for place in results:
+            name = place.get("name", "")
+            if name in seen_names:
+                continue
+            seen_names.add(name)
+            rating = place.get("rating")
+            vicinity = place.get("vicinity", "")
+            # rough distance label from vicinity (just use "nearby")
+            rating_str = f" ★{rating}" if rating else ""
+            lines.append(f"- {name}{rating_str} ({vicinity})")
+
+        if lines:
+            sections.append(f"**{label}:**\n" + "\n".join(lines))
+
+    if not sections:
+        return None
+
+    header = f"[Auto-fetched nearby places — {lat},{lng}]\n"
+    return header + "\n\n".join(sections)
+
+
+# ---------------------------------------------------------------------------
 # Setup alerts — missing configuration notifications
 # ---------------------------------------------------------------------------
 
@@ -3767,6 +3864,24 @@ async def settings_save(
     max_g = str(form_data.get("max_guests","")).strip()
     if max_g.isdigit():
         cfg.max_guests = int(max_g)
+
+    # Auto-fetch nearby places when Google Maps URL is saved
+    new_maps_url = str(form_data.get("google_maps_url", "")).strip()
+    if new_maps_url and new_maps_url != (cfg.google_maps_url or ""):
+        try:
+            sys_conf = db.query(SystemConfig).first()
+            gmaps_key = None
+            if sys_conf and sys_conf.google_maps_api_key_enc:
+                gmaps_key = decrypt(sys_conf.google_maps_api_key_enc) or sys_conf.google_maps_api_key_enc
+            if gmaps_key:
+                fetched = _fetch_nearby_places(new_maps_url, gmaps_key)
+                if fetched:
+                    cfg.nearby_restaurants = fetched
+                    log.info("[%s] Auto-fetched nearby places from Maps URL", tenant_id)
+            else:
+                log.info("[%s] Google Maps API key not configured — skipping nearby fetch", tenant_id)
+        except Exception as _exc:
+            log.warning("[%s] Failed to fetch nearby places: %s", tenant_id, _exc)
 
     # WhatsApp Meta Cloud
     cfg.whatsapp_number   = whatsapp_number.strip() or None
@@ -8719,6 +8834,7 @@ def admin_api_health(request: Request, db: Session = Depends(get_db)):
 def admin_ai_save(
     request: Request,
     openrouter_api_key_enc: str = Form(""),
+    google_maps_api_key_enc: str = Form(""),
     primary_model: str = Form(...),
     routine_model: str = Form("google/gemini-2.5-flash"),
     fallback_model: str = Form(...),
@@ -8735,6 +8851,8 @@ def admin_ai_save(
 
     if openrouter_api_key_enc.strip() and openrouter_api_key_enc != "********":
         sys_conf.openrouter_api_key_enc = encrypt(openrouter_api_key_enc.strip())
+    if google_maps_api_key_enc.strip() and google_maps_api_key_enc != "********":
+        sys_conf.google_maps_api_key_enc = encrypt(google_maps_api_key_enc.strip())
     sys_conf.primary_model = primary_model.strip()
     sys_conf.routine_model = routine_model.strip()
     sys_conf.fallback_model = fallback_model.strip()

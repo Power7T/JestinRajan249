@@ -155,6 +155,14 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              Google Maps API Key
+              <span class="ml-1 text-[#5B8DEF] font-normal normal-case text-[10px]">Places API</span>
+            </label>
+            <input type="password" name="google_maps_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.google_maps_api_key_enc else '' }}" placeholder="AIzaSy...">
+            <p class="text-[10px] text-slate-500 font-medium">Used to auto-fetch nearby restaurants, shops & attractions when a host saves their Google Maps link. Requires <span class="text-slate-400">Places API</span> enabled in Google Cloud.</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
               <span style="display:inline-flex;align-items:center;gap:0.3rem">
                 Primary Model
                 <div class="tooltip-container">
