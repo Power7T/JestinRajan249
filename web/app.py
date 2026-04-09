@@ -4394,6 +4394,17 @@ async def whatsapp_webhook_inbound_global(request: Request, db: Session = Depend
             log.warning("[META GLOBAL] Ignoring message for tenant %s — wa_mode is %s", cfg.tenant_id, cfg.wa_mode)
             continue
 
+        # Deduplicate: Meta retries webhooks — skip if we already processed this message_id
+        wa_msg_id = (msg.get("message_id") or "").strip()
+        if wa_msg_id:
+            dedup_key = f"wa:{wa_msg_id}"
+            already = db.query(ProcessedEmail).filter_by(tenant_id=cfg.tenant_id, email_uid=dedup_key).first()
+            if already:
+                log.info("[META GLOBAL] Duplicate WA message %s for tenant %s — skipping", wa_msg_id, cfg.tenant_id)
+                continue
+            db.add(ProcessedEmail(tenant_id=cfg.tenant_id, email_uid=dedup_key))
+            db.commit()
+
         # Hand off to handler with the identified tenant_id
         _handle_inbound_wa(cfg.tenant_id, msg["from"], msg["text"], db)
 
@@ -4512,6 +4523,31 @@ async def inbound_email_webhook(request: Request, db: Session = Depends(get_db))
 # Shared inbound handler — creates a Draft for host review
 # ---------------------------------------------------------------------------
 
+def _notify_host_pending(cfg, tenant_id: str, guest_name: str, text: str, source: str,
+                         is_negative: bool, send_failed: bool, db):
+    """Send host notification for a pending message. Always fires for negative/complex/failed; respects setting otherwise."""
+    notify_phone = (cfg.host_notify_phone or cfg.whatsapp_number) if cfg else None
+
+    # Fix #5: urgent prefix for negative sentiment
+    # Fix #6: always notify for negative or failed auto-send regardless of setting
+    force_notify = is_negative or send_failed
+    if not force_notify and not getattr(cfg, "notify_host_on_guest_msg", False):
+        return
+    if not notify_phone:
+        return
+
+    if send_failed:
+        prefix = "⚠️ Auto-reply FAILED — guest needs a manual response"
+        notify_text = f"{prefix}\n\nGuest: {guest_name}\nMessage: \"{text}\"\n\n— Reply in your HostAI dashboard"
+    elif is_negative:
+        prefix = "🚨 UNHAPPY GUEST — needs immediate attention"
+        notify_text = f"{prefix}\n\nGuest: {guest_name}\nMessage: \"{text}\"\n\n— Reply urgently in your HostAI dashboard"
+    else:
+        notify_text = f"📩 New guest message from {guest_name}:\n\n\"{text}\"\n\n— Reply in your HostAI dashboard"
+
+    _send_host_notification(tenant_id, notify_phone, notify_text, guest_name, text, source, db)
+
+
 def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, text: str, db: Session):
     """Classify an inbound guest message and create a draft with thread + policy context."""
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
@@ -4621,64 +4657,71 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                            message=f"{source.upper()} from {reply_to}: {text[:80]}"))
         db.commit()
 
-        # Auto-send all routine messages directly — no confidence threshold
-        should_auto_send = (
-            draft.msg_type == "routine"
-            and draft.guest_sentiment != "negative"
-        )
+        # Fix #8: sync auto_send_eligible with actual auto-send conditions
+        is_negative   = draft.guest_sentiment == "negative"
+        is_routine    = draft.msg_type == "routine"
+        should_auto_send = is_routine and not is_negative
+
+        # Keep auto_send_eligible consistent with what we actually do
+        draft.auto_send_eligible = should_auto_send
 
         if should_auto_send:
-            # Auto-send the message directly to guest via WhatsApp
-            draft.status = "auto_sent"
-            draft.final_text = draft.draft
-            draft.updated_at = datetime.now(timezone.utc)
+            draft.final_text  = draft.draft
+            draft.updated_at  = datetime.now(timezone.utc)
 
-            # Actually send via WhatsApp if configured
+            # Fix #1: only mark auto_sent AFTER confirmed delivery
             _cfg = _get_or_create_config(tenant_id, db)
+            wa_delivered = False
             if _cfg.wa_mode == "meta_cloud" and _cfg.whatsapp_phone_id and _cfg.whatsapp_token_enc:
                 try:
                     from web.meta_sender import send_whatsapp
                     from web.crypto import decrypt as _decrypt
                     _token = _decrypt(_cfg.whatsapp_token_enc)
                     _to = reply_to.replace("+", "").strip()
-                    wa_sent = send_whatsapp(_cfg.whatsapp_phone_id, _token, _to, draft.final_text)
-                    if wa_sent:
+                    wa_delivered = send_whatsapp(_cfg.whatsapp_phone_id, _token, _to, draft.final_text)
+                    if wa_delivered:
                         log.info("[%s] Auto-sent WhatsApp reply to %s", tenant_id, reply_to[-4:])
                     else:
-                        log.warning("[%s] Auto-send WhatsApp failed for %s", tenant_id, reply_to[-4:])
+                        log.warning("[%s] Auto-send WhatsApp failed for %s — falling back to pending", tenant_id, reply_to[-4:])
                 except Exception as _wa_err:
                     log.error("[%s] Auto-send WhatsApp error: %s", tenant_id, _wa_err)
 
-            # Log auto-send
-            db.add(ActivityLog(
-                tenant_id=tenant_id,
-                event_type="draft_auto_sent",
-                message=f"Auto-sent to {guest_name}: {draft.draft[:80]}"
-            ))
-            db.commit()
-
-            log.info(f"[{tenant_id}] Auto-sent routine message to {guest_name} (confidence: {draft.confidence:.0%})")
-
-            # Record outbound event
-            _record_timeline_event(
-                db,
-                tenant_id,
-                reservation,
-                "guest_message_sent",
-                f"Auto-response to {guest_name}",
-                channel=source,
-                direction="outbound",
-                body=draft.final_text,
-                draft=draft,
-                payload_json={"auto_sent": True, "confidence": draft.confidence},
-            )
-            db.commit()
+            if wa_delivered:
+                draft.status = "auto_sent"
+                db.add(ActivityLog(
+                    tenant_id=tenant_id,
+                    event_type="draft_auto_sent",
+                    message=f"Auto-sent to {guest_name}: {draft.draft[:80]}"
+                ))
+                db.commit()
+                log.info("[%s] Auto-sent routine reply to %s", tenant_id, guest_name)
+                _record_timeline_event(
+                    db, tenant_id, reservation,
+                    "guest_message_sent",
+                    f"Auto-response to {guest_name}",
+                    channel=source, direction="outbound",
+                    body=draft.final_text, draft=draft,
+                    payload_json={"auto_sent": True, "confidence": draft.confidence},
+                )
+                db.commit()
+            else:
+                # Delivery failed — keep as pending so host sees it
+                draft.status = "pending"
+                db.add(ActivityLog(
+                    tenant_id=tenant_id,
+                    event_type="draft_auto_send_failed",
+                    message=f"Auto-send failed for {guest_name} — moved to pending review",
+                ))
+                db.commit()
+                # Notify host that delivery failed and they need to reply manually
+                _notify_host_pending(cfg, tenant_id, guest_name, text, source,
+                                     is_negative=False, send_failed=True, db=db)
         else:
             # Keep as pending for host review
             draft.status = "pending"
             db.commit()
 
-            # Publish real-time notification for SSE subscribers (only for pending)
+            # Publish real-time notification for SSE subscribers
             try:
                 from web.redis_client import get_redis as _get_redis
                 r = _get_redis()
@@ -4688,23 +4731,43 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                         "source": draft.source,
                         "msg_type": draft.msg_type,
                         "draft_id": draft.id,
+                        "sentiment": draft.guest_sentiment,
                     }))
             except Exception:
                 pass  # non-critical
 
-            # Send host notification if enabled (only for pending)
-            if cfg.notify_host_on_guest_msg:
-                notify_phone = cfg.host_notify_phone or cfg.whatsapp_number
-                if notify_phone:
-                    notify_text = f"📩 New guest message from {guest_name}:\n\n\"{text}\"\n\n— Reply in your HostAI dashboard"
-                    _send_host_notification(tenant_id, notify_phone, notify_text, guest_name, text, source, db)
+            # Fix #5+#6: always notify for negative/complex, respect setting for routine
+            _notify_host_pending(cfg, tenant_id, guest_name, text, source,
+                                 is_negative=is_negative, send_failed=False, db=db)
 
-            log.info(f"[{tenant_id}] Pending review: {guest_name} ({draft.msg_type}, confidence: {draft.confidence:.0%})")
+            log.info("[%s] Pending review: %s (%s, sentiment=%s)", tenant_id, guest_name, draft.msg_type, draft.guest_sentiment)
 
         _apply_automation_if_matched(db, tenant_id, draft, reservation)
 
     except Exception as exc:
-        log.error("[%s] %s inbound handler error: %s", tenant_id, source.upper(), exc)
+        log.error("[%s] %s inbound handler error: %s", tenant_id, source.upper(), exc, exc_info=True)
+        # Fix #3: record failed message so host and admin can see it
+        try:
+            import traceback as _tb
+            db.add(ActivityLog(
+                tenant_id=tenant_id,
+                event_type="inbound_processing_failed",
+                message=f"Failed to process {source.upper()} from {reply_to}: {exc}",
+            ))
+            db.add(FailedDraftLog(
+                tenant_id=tenant_id,
+                draft_id=f"inbound:{source}:{reply_to}:{datetime.now(timezone.utc).isoformat()}",
+                error_reason=f"Inbound message from {reply_to} could not be processed.\nMessage: {text[:200]}\nError: {_tb.format_exc()[-800:]}",
+            ))
+            db.commit()
+            # Alert admin so they know the AI pipeline is broken for this tenant
+            from web.mailer import send_admin_alert as _admin_alert
+            _admin_alert(
+                f"Inbound message processing failed — tenant {tenant_id}",
+                f"Source: {source}\nFrom: {reply_to}\nMessage: {text[:300]}\n\nError:\n{_tb.format_exc()[-1000:]}",
+            )
+        except Exception:
+            pass  # never let error-recording crash the webhook
 
 
 def _handle_inbound_wa(tenant_id: str, from_phone: str, text: str, db: Session):
@@ -4871,8 +4934,10 @@ def _find_reservation_for_guest_context(
     window_end = today + timedelta(days=120)
     phone_digits = _normalize_phone(guest_phone)
     if phone_digits:
-        phone_matches = [
-            res for res in (
+        # Fix #4: also normalize with phone_utils (E.164) for consistency with GuestContact storage
+        from web.phone_utils import normalize_phone as _pu_norm
+        phone_e164 = _pu_norm(guest_phone) or ""  # e.g. +918669024169
+        candidate_reservations = (
             db.query(Reservation)
             .filter(
                 Reservation.tenant_id == tenant_id,
@@ -4882,10 +4947,30 @@ def _find_reservation_for_guest_context(
                 Reservation.checkin <= window_end,
             )
             .all()
-            )
+        )
+        phone_matches = [
+            res for res in candidate_reservations
             if _normalize_phone(res.guest_phone) == phone_digits
+            or (phone_e164 and (_pu_norm(res.guest_phone) or "") == phone_e164)
         ]
         if phone_matches:
+            # Fix #7: for overlapping reservations, prefer the one with an active GuestContact
+            # (i.e. the one the host explicitly activated for this stay) to avoid wrong context
+            if len(phone_matches) > 1:
+                from web.models import GuestContact as _GC2
+                now_utc = datetime.now(timezone.utc)
+                active_gc_res_ids = {
+                    gc.reservation_id for gc in
+                    db.query(_GC2).filter(
+                        _GC2.tenant_id == tenant_id,
+                        _GC2.status == "active",
+                        _GC2.check_out >= now_utc,
+                    ).all()
+                    if gc.reservation_id
+                }
+                gc_matches = [r for r in phone_matches if r.id in active_gc_res_ids]
+                if gc_matches:
+                    phone_matches = gc_matches
             phone_matches.sort(key=lambda res: _reservation_sort_key(res, today))
             return phone_matches[0]
 
