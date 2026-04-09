@@ -74,6 +74,16 @@ _ROUTINE = [
     r"\bhow\s+far\b", r"\bhow\s+long\b", r"\bwhat\s+is\b", r"\bcan\s+we\b",
     r"\bearly\s+check.?in\b", r"\blate\s+check.?out\b", r"\bextend\b",
     r"\bextra\b", r"\bmore\b", r"\bneed\b", r"\brequest\b",
+    # Location & surroundings
+    r"\bhow\s+to\s+get\s+(there|to)\b", r"\bget\s+to\s+your\b", r"\bget\s+there\b",
+    r"\bgoogle\s+maps?\b", r"\blocation\b", r"\bmap\b", r"\bcoordinates?\b",
+    r"\bwhats?\s+around\b", r"\bwhat'?s\s+nearby\b", r"\bsurrounding\b",
+    r"\bdistance\s+(to|from)\b", r"\bwalk(ing)?\s+(distance|to|from)\b",
+    r"\bnear\s+(the\s+)?property\b", r"\bclose\s+(by|to)\b", r"\bneighbourhood\b", r"\bneighborhood\b",
+    r"\bsights?\b", r"\battraction\b", r"\btourist\b", r"\bexplore\b",
+    r"\bsupermarket\b", r"\bgrocery\b", r"\bpharmacy\b", r"\bhospital\b.*\bnear\b",
+    r"\bgas\s+station\b", r"\bpetrol\b", r"\bbus\s+stop\b", r"\bmetro\b", r"\bsubway\b",
+    r"\btaxi\b", r"\buber\b", r"\blyft\b", r"\bairport\b", r"\btrain\s+station\b",
 ]
 _COMPLEX = [
     r"\brefund\b", r"\bcomplaint\b", r"\bbroken\b", r"\bdirty\b", r"\bdisappoint\b",
@@ -126,7 +136,10 @@ def build_property_context(cfg) -> str:
     if getattr(cfg, "property_type", None):
         parts.append(f"Property type: {cfg.property_type}")
     if getattr(cfg, "property_city", None):
-        parts.append(f"Location: {cfg.property_city}")
+        loc = cfg.property_city
+        if getattr(cfg, "google_maps_url", None):
+            loc += f" — Google Maps: {cfg.google_maps_url}"
+        parts.append(f"Location: {loc}")
     if getattr(cfg, "check_in_time", None) or getattr(cfg, "check_out_time", None):
         ci = getattr(cfg, "check_in_time", None) or "flexible"
         co = getattr(cfg, "check_out_time", None) or "flexible"

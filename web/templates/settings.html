@@ -355,6 +355,11 @@
         <input type="text" name="property_type" value="{{ cfg.property_type or '' }}" placeholder="Villa / Apartment / Hotel">
       </div>
     </div>
+
+    <label>Google Maps link</label>
+    <input type="url" name="google_maps_url" value="{{ cfg.google_maps_url or '' }}" placeholder="https://maps.google.com/?q=...">
+    <p class="help-text">Paste the Google Maps link to your property so the bot can answer location, directions, and nearby questions accurately.</p>
+
     <a id="checkin-times" style="display:block;position:relative;top:-80px;visibility:hidden;"></a>
     <div class="form-row">
       <div>

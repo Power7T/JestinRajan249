@@ -3754,6 +3754,7 @@ async def settings_save(
         "amenities",
         "food_menu",
         "nearby_restaurants",
+        "google_maps_url",
         "faq",
         "custom_instructions",
         "escalation_email",
@@ -3761,6 +3762,8 @@ async def settings_save(
         val = form_data.get(field, "")
         if val is not None and str(val).strip():
             setattr(cfg, field, str(val).strip())
+        elif field == "google_maps_url" and val is not None and str(val).strip() == "":
+            setattr(cfg, field, None)  # allow clearing the URL
     max_g = str(form_data.get("max_guests","")).strip()
     if max_g.isdigit():
         cfg.max_guests = int(max_g)
@@ -4999,6 +5002,7 @@ def _property_context_for_reservation(
                     faq            = pc.faq            or getattr(cfg, "faq", None)
                     food_menu      = pc.food_menu      or getattr(cfg, "food_menu", None)
                     nearby_restaurants = pc.nearby_restaurants or getattr(cfg, "nearby_restaurants", None)
+                    google_maps_url    = getattr(cfg, "google_maps_url", None)
                     wifi_password  = pc.wifi_password  or getattr(cfg, "wifi_password", None)
                     wifi_network_name = pc.wifi_network_name or getattr(cfg, "wifi_network_name", None)
                     # Policy fields from tenant config (not on PropertyConfig)

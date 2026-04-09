@@ -185,6 +185,7 @@ class TenantConfig(Base):
     amenities:           Mapped[Optional[str]] = mapped_column(Text, nullable=True)         # comma-separated
     food_menu:           Mapped[Optional[str]] = mapped_column(Text, nullable=True)         # plain text (extracted from PDF or pasted)
     nearby_restaurants:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    google_maps_url:     Mapped[Optional[str]] = mapped_column(String(512), nullable=True)  # Google Maps link for location context
     faq:                 Mapped[Optional[str]] = mapped_column(Text, nullable=True)         # free-form Q&A text
     custom_instructions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)         # host's special instructions to the AI
     escalation_email:    Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # where to send human-handoff alerts
