@@ -5713,7 +5713,7 @@ async def reservations_manual_create(
             _record_timeline_event(
                 db, tenant_id, reservation,
                 event_type="manual_checkin",
-                title=f"Bot activated & welcome sent to {reservation.guest_name}",
+                summary=f"Bot activated & welcome sent to {reservation.guest_name}",
                 body=f"Welcome message sent via {sent_via.upper()}" if sent_via else "Bot activated (welcome not sent — no messaging channel configured)",
                 payload_json={"channel": sent_via, "phone": phone_clean},
             )
