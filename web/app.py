@@ -9023,6 +9023,92 @@ def bulk_skip_drafts(
 
 
 # ---------------------------------------------------------------------------
+# JSON API endpoints for draft actions (no page reload)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/drafts/{draft_id}/approve")
+def api_approve_draft(draft_id: str, request: Request, db: Session = Depends(get_db)):
+    """Approve a single draft — returns JSON, no redirect."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    csrf = request.headers.get("X-CSRF-Token", "")
+    validate_csrf(request, csrf)
+    rate_limit(f"draft:{tenant_id}", max_requests=120, window_seconds=3600)
+
+    draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
+    if not draft:
+        return JSONResponse({"ok": False, "error": "not_found"}, status_code=404)
+    try:
+        _execute_draft(draft, draft.draft, tenant_id, db)
+        return JSONResponse({"ok": True})
+    except Exception as exc:
+        log.error("[%s] api_approve_draft %s failed: %s", tenant_id, draft_id, exc)
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+@app.post("/api/drafts/{draft_id}/skip")
+def api_skip_draft(draft_id: str, request: Request, db: Session = Depends(get_db)):
+    """Skip a single draft — returns JSON, no redirect."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    csrf = request.headers.get("X-CSRF-Token", "")
+    validate_csrf(request, csrf)
+
+    draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
+    if not draft:
+        return JSONResponse({"ok": False, "error": "not_found"}, status_code=404)
+    draft.status = "skipped"
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/drafts/bulk-approve")
+def api_bulk_approve(request: Request, db: Session = Depends(get_db)):
+    """Approve all pending drafts — returns JSON {ok, count}."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    csrf = request.headers.get("X-CSRF-Token", "")
+    validate_csrf(request, csrf)
+    rate_limit(f"draft:{tenant_id}", max_requests=120, window_seconds=3600)
+
+    pending = db.query(Draft).filter_by(tenant_id=tenant_id, status="pending").all()
+    count = 0
+    for draft in pending:
+        try:
+            _execute_draft(draft, draft.draft, tenant_id, db)
+            count += 1
+        except Exception as exc:
+            log.error("[%s] bulk approve draft %s: %s", tenant_id, draft.id, exc)
+    return JSONResponse({"ok": True, "count": count})
+
+
+@app.post("/api/drafts/bulk-skip")
+def api_bulk_skip(request: Request, db: Session = Depends(get_db)):
+    """Skip all pending drafts — returns JSON {ok, count}."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    csrf = request.headers.get("X-CSRF-Token", "")
+    validate_csrf(request, csrf)
+
+    pending = db.query(Draft).filter_by(tenant_id=tenant_id, status="pending").all()
+    for draft in pending:
+        draft.status = "skipped"
+    if pending:
+        db.add(ActivityLog(tenant_id=tenant_id, event_type="bulk_skipped",
+                           message=f"Bulk-skipped {len(pending)} pending draft(s)"))
+        db.commit()
+    return JSONResponse({"ok": True, "count": len(pending)})
+
+
+# ---------------------------------------------------------------------------
 # Draft scheduling
 # ---------------------------------------------------------------------------
 

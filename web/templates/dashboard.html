@@ -390,12 +390,9 @@ body {
   <p class="text-primary-fixed-dim text-sm leading-relaxed whitespace-pre-wrap">{{ draft.draft }}</p>
 </div>
 <div class="flex items-center gap-4 flex-wrap">
-  <form method="post" action="/drafts/{{ draft.id }}/approve" style="flex:1;min-width:120px">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <button type="submit" class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-extrabold py-3 rounded-xl shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
-      ✓ Approve &amp; Send
-    </button>
-  </form>
+  <button onclick="approveDraft('{{ draft.id }}', this)" style="flex:1;min-width:120px" class="bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-extrabold py-3 rounded-xl shadow-[0_0_12px_rgba(174,198,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+    ✓ Approve &amp; Send
+  </button>
   <button class="px-6 py-3 text-white border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all htmx-request:opacity-50 htmx-request:cursor-wait"
     hx-get="/drafts/{{ draft.id }}/edit-form"
     hx-target="#edit-area-{{ draft.id }}"
@@ -404,12 +401,9 @@ body {
     ✎ Edit
   </button>
   <div id="edit-loading-{{ draft.id }}" class="spinner hidden" style="width:1rem;height:1rem;border-width:2px"></div>
-  <form method="post" action="/drafts/{{ draft.id }}/skip">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <button type="submit" class="px-4 py-3 text-slate-400 hover:text-error border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all text-sm">
-      Skip
-    </button>
-  </form>
+  <button onclick="skipDraft('{{ draft.id }}', this)" class="px-4 py-3 text-slate-400 hover:text-error border border-white/10 rounded-xl hover:bg-white/5 font-bold transition-all text-sm">
+    Skip
+  </button>
 </div>
 <div id="edit-area-{{ draft.id }}" class="mt-4"></div>
 </div>
@@ -518,6 +512,188 @@ body {
 {%- endblock %}
 {% block scripts %}
 <script nonce="{{ request.state.csp_nonce }}">
+var CSRF = {{ request.state.csrf_token | tojson }};
+
+// --- Draft card helpers ---
+function removeDraftCard(draftId) {
+  var card = document.getElementById('draft-' + draftId);
+  if (!card) return;
+  card.style.transition = 'opacity 0.25s ease, transform 0.25s ease, max-height 0.35s ease, margin 0.35s ease, padding 0.35s ease';
+  card.style.opacity = '0';
+  card.style.transform = 'translateX(40px)';
+  card.style.overflow = 'hidden';
+  var h = card.offsetHeight;
+  card.style.maxHeight = h + 'px';
+  setTimeout(function() {
+    card.style.maxHeight = '0';
+    card.style.marginBottom = '0';
+    card.style.paddingTop = '0';
+    card.style.paddingBottom = '0';
+  }, 250);
+  setTimeout(function() {
+    card.remove();
+    updatePendingCount();
+    checkInboxZero();
+  }, 600);
+}
+
+function updatePendingCount() {
+  var remaining = document.querySelectorAll('[id^="draft-"]').length;
+  var badge = document.querySelector('.text-xs.font-bold.bg-primary\\/10');
+  if (badge) badge.textContent = remaining + ' PENDING';
+}
+
+function checkInboxZero() {
+  var remaining = document.querySelectorAll('[id^="draft-"]').length;
+  if (remaining === 0) {
+    var container = document.querySelector('.lg\\:col-span-2 .space-y-8 > div:last-child');
+    // show toast instead of swapping DOM — page reload on next visit will show inbox zero
+  }
+}
+
+function showToast(msg, isError) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:2rem;right:2rem;z-index:9999;padding:0.85rem 1.4rem;border-radius:0.75rem;font-weight:700;font-size:0.875rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);transition:opacity 0.3s;';
+  t.style.background = isError ? '#ff453a' : '#1a1b22';
+  t.style.color = isError ? '#fff' : '#aec6ff';
+  t.style.border = isError ? '1px solid rgba(255,69,58,0.4)' : '1px solid rgba(174,198,255,0.2)';
+  document.body.appendChild(t);
+  setTimeout(function() { t.style.opacity = '0'; }, 2200);
+  setTimeout(function() { t.remove(); }, 2600);
+}
+
+function setButtonLoading(btn, loading) {
+  if (loading) {
+    btn.dataset.origText = btn.innerHTML;
+    btn.innerHTML = '<span style="display:inline-block;width:1rem;height:1rem;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle"></span>';
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+  } else {
+    btn.innerHTML = btn.dataset.origText || btn.innerHTML;
+    btn.disabled = false;
+    btn.style.opacity = '';
+  }
+}
+
+// --- Individual draft actions ---
+function approveDraft(draftId, btn) {
+  setButtonLoading(btn, true);
+  fetch('/api/drafts/' + draftId + '/approve', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': CSRF, 'Content-Type': 'application/json' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      showToast('✓ Message sent');
+      removeDraftCard(draftId);
+    } else {
+      setButtonLoading(btn, false);
+      showToast('Failed: ' + (data.error || 'unknown error'), true);
+    }
+  })
+  .catch(function(err) {
+    setButtonLoading(btn, false);
+    showToast('Network error', true);
+  });
+}
+
+function skipDraft(draftId, btn) {
+  setButtonLoading(btn, true);
+  fetch('/api/drafts/' + draftId + '/skip', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': CSRF, 'Content-Type': 'application/json' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      removeDraftCard(draftId);
+    } else {
+      setButtonLoading(btn, false);
+      showToast('Failed: ' + (data.error || 'unknown error'), true);
+    }
+  })
+  .catch(function() { setButtonLoading(btn, false); showToast('Network error', true); });
+}
+
+// --- Bulk actions ---
+function getCheckedIds() {
+  return Array.from(document.querySelectorAll('.draft-checkbox:checked')).map(function(cb) { return cb.value; });
+}
+
+function updateBulkToolbar() {
+  var ids = getCheckedIds();
+  var toolbar = document.getElementById('bulk-toolbar');
+  if (!toolbar) return;
+  if (ids.length > 0) {
+    toolbar.classList.remove('hidden');
+    var countEl = document.getElementById('selected-count');
+    var pluralEl = document.getElementById('plural');
+    if (countEl) countEl.textContent = ids.length;
+    if (pluralEl) pluralEl.textContent = ids.length === 1 ? '' : 's';
+  } else {
+    toolbar.classList.add('hidden');
+  }
+}
+
+function clearSelection() {
+  document.querySelectorAll('.draft-checkbox:checked').forEach(function(cb) { cb.checked = false; });
+  updateBulkToolbar();
+}
+
+function bulkApprove() {
+  var btn = document.getElementById('bulk-approve-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  fetch('/api/drafts/bulk-approve', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': CSRF, 'Content-Type': 'application/json' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      showToast('✓ ' + data.count + ' message' + (data.count !== 1 ? 's' : '') + ' sent');
+      document.querySelectorAll('[id^="draft-"]').forEach(function(card) {
+        var id = card.id.replace('draft-', '');
+        removeDraftCard(id);
+      });
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Approve All'; }
+      showToast('Bulk approve failed', true);
+    }
+  })
+  .catch(function() {
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Approve All'; }
+    showToast('Network error', true);
+  });
+}
+
+function bulkSkip() {
+  var btn = document.getElementById('bulk-skip-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Skipping…'; }
+  fetch('/api/drafts/bulk-skip', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': CSRF, 'Content-Type': 'application/json' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      document.querySelectorAll('[id^="draft-"]').forEach(function(card) {
+        var id = card.id.replace('draft-', '');
+        removeDraftCard(id);
+      });
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = '⊘ Skip All'; }
+    }
+  })
+  .catch(function() { if (btn) { btn.disabled = false; btn.textContent = '⊘ Skip All'; } });
+}
+
+// spinner keyframe
+var _style = document.createElement('style');
+_style.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+document.head.appendChild(_style);
+
 document.addEventListener('DOMContentLoaded', function() {
   // Mobile sidebar toggle
   var menuBtn = document.getElementById('dashboard-mobile-menu-btn');
@@ -533,6 +709,7 @@ document.addEventListener('DOMContentLoaded', function() {
       overlay.classList.add('hidden');
     });
   }
+
   // Account dropdown toggle
   var accountBtn = document.getElementById('account-menu-btn');
   var accountDropdown = document.getElementById('account-dropdown');
@@ -546,7 +723,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Draft checkboxes — use event delegation
+  // Draft checkboxes — event delegation
   document.addEventListener('change', function(e) {
     if (e.target.classList.contains('draft-checkbox')) updateBulkToolbar();
   });
@@ -559,7 +736,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (skipBtn)    skipBtn.addEventListener('click', bulkSkip);
   if (clearBtn)   clearBtn.addEventListener('click', clearSelection);
 
-  // Expand Knowledge Base button → settings page, knowledge base section
+  // Expand Knowledge Base
   var kbBtn = document.getElementById('expand-kb-btn');
   if (kbBtn) kbBtn.addEventListener('click', function() {
     window.location.href = '/settings#knowledge-base';
