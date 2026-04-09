@@ -52,11 +52,28 @@ SYSTEM_PROMPT = _load_system_prompt()
 # Classification patterns (same as response_router.py)
 # ---------------------------------------------------------------------------
 _ROUTINE = [
+    # Property info
     r"\bwifi\b", r"\bwi-?fi\b", r"\bpassword\b", r"\bcheck.?in\b", r"\bcheck.?out\b",
     r"\barrive\b", r"\barrival\b", r"\beta\b", r"\bparking\b", r"\bdirections?\b",
     r"\baddress\b", r"\bcode\b", r"\baccess\b", r"\bkeypad\b", r"\bamenities?\b",
     r"\bpool\b", r"\bgym\b", r"\bquiet hours\b", r"\beach\b", r"\bhow do i\b",
     r"\bwhat time\b", r"\bwhere is\b", r"\bwhere do\b",
+    # Greetings & acknowledgements
+    r"^\s*hi+\b", r"^\s*hey+\b", r"^\s*hello+\b", r"\bgood\s+(morning|afternoon|evening|night)\b",
+    r"^\s*ok(ay)?\s*$", r"^\s*ok(ay)?\b", r"^\s*sure\b", r"^\s*sounds\s+good\b",
+    r"^\s*got\s+it\b", r"^\s*noted\b", r"^\s*understood\b", r"^\s*perfect\b",
+    r"^\s*great\b", r"^\s*awesome\b", r"^\s*thanks?\b", r"\bthank\s+you\b",
+    r"\bmany\s+thanks\b", r"\bthanks\s+a\s+lot\b", r"\bmuch\s+appreciated\b",
+    r"^\s*no\s+problem\b", r"^\s*np\b", r"^\s*alright\b", r"^\s*cool\b",
+    # Common guest requests
+    r"\bcan\s+(you|i|we)\b", r"\bis\s+there\b", r"\bdo\s+you\s+have\b",
+    r"\bhair\s*dryer\b", r"\btowel\b", r"\bpillow\b", r"\bblanket\b", r"\bsoap\b",
+    r"\bshampoo\b", r"\btoilet\s+paper\b", r"\bdishes\b", r"\bcoffee\b", r"\bkitchen\b",
+    r"\blaundry\b", r"\bwasher\b", r"\bdryer\b", r"\biron\b", r"\btelevision\b", r"\btv\b",
+    r"\bremote\b", r"\bnetflix\b", r"\brestaurant\b", r"\brecommend\b", r"\bnearby\b",
+    r"\bhow\s+far\b", r"\bhow\s+long\b", r"\bwhat\s+is\b", r"\bcan\s+we\b",
+    r"\bearly\s+check.?in\b", r"\blate\s+check.?out\b", r"\bextend\b",
+    r"\bextra\b", r"\bmore\b", r"\bneed\b", r"\brequest\b",
 ]
 _COMPLEX = [
     r"\brefund\b", r"\bcomplaint\b", r"\bbroken\b", r"\bdirty\b", r"\bdisappoint\b",
@@ -190,8 +207,9 @@ def classify_message_with_confidence(text: str) -> tuple[str, float, list[str]]:
         return "routine", round(conf, 2), sources
 
     if not total:
-        # No signal at all — treat as complex but low confidence
-        return "complex", 0.30, ["no matching patterns"]
+        # No keyword signal — default to routine so the bot replies.
+        # Only _COMPLEX keywords escalate to host review; general chat should get a response.
+        return "routine", 0.55, ["no complaint keywords — general chat"]
 
     # Mixed signals — whichever dominates
     if len(routine_hits) > len(complex_hits):
