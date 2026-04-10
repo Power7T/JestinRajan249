@@ -954,6 +954,45 @@
     {% endif %}
   </div>
 
+  <!-- ── Guest Engagement (Satisfaction, Reviews, Upsells) ─────────── -->
+  <div class="form-section" data-section="general" style="margin-top:2rem">
+    <h2>Guest Engagement</h2>
+    <p class="help-text">Automate post-stay satisfaction collection, review requests, and upsell opportunities.</p>
+
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem">
+      <input type="checkbox" id="satisfaction-toggle" name="satisfaction_pulse_enabled" value="true"
+             {% if cfg.satisfaction_pulse_enabled %}checked{% endif %}>
+      <label for="satisfaction-toggle" style="cursor:pointer;font-weight:600;margin:0">
+        Satisfaction Pulse
+        <span style="background:rgba(174,198,255,0.1);color:#aec6ff;font-size:0.7rem;padding:2px 8px;border-radius:20px;font-weight:700;margin-left:6px">AUTOMATED</span>
+      </label>
+    </div>
+    <p class="help-text" style="margin-bottom:1.5rem">On checkout day, automatically send guests a 1-5 star rating request via WhatsApp. Scores are saved to your guest profiles.</p>
+
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem">
+      <input type="checkbox" id="review-toggle" name="review_request_enabled" value="true"
+             {% if cfg.review_request_enabled %}checked{% endif %}>
+      <label for="review-toggle" style="cursor:pointer;font-weight:600;margin:0">
+        Auto Review Request
+        <span style="background:rgba(174,198,255,0.1);color:#aec6ff;font-size:0.7rem;padding:2px 8px;border-radius:20px;font-weight:700;margin-left:6px">NEW</span>
+      </label>
+    </div>
+    <label>Review Link (Airbnb / Google)</label>
+    <input type="url" name="review_request_url" value="{{ cfg.review_request_url or '' }}"
+           placeholder="https://www.airbnb.com/write-a-review/...">
+    <p class="help-text" style="margin-bottom:1.5rem">Guests who rate 4-5 stars receive this link automatically. Boost your review count on autopilot.</p>
+
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem">
+      <input type="checkbox" id="upsell-toggle" name="upsell_enabled" value="true"
+             {% if cfg.upsell_enabled %}checked{% endif %}>
+      <label for="upsell-toggle" style="cursor:pointer;font-weight:600;margin:0">
+        Upsell Engine
+        <span style="background:rgba(255,185,96,0.15);color:#ffb960;font-size:0.7rem;padding:2px 8px;border-radius:20px;font-weight:700;margin-left:6px">REVENUE</span>
+      </label>
+    </div>
+    <p class="help-text">When guests ask about early check-in, late checkout, etc., the bot automatically sends your configured upsell offer. Configure offers in the Upsells tab.</p>
+  </div>
+
   <button type="submit" class="btn btn-primary">Save settings</button>
 </form>
 
@@ -1360,6 +1399,65 @@
       <span id="pmsTestResult" style="font-size:0.875rem"></span>
     </div>
   </form>
+</div>
+
+<!-- ── Quick Replies ─────────────────────────────────────────────── -->
+<div class="form-section" data-section="automation" style="margin-top:2rem">
+  <h2>Quick Replies</h2>
+  <p class="help-text">One-tap canned messages for common guest requests. Appear as buttons in the Conversations panel.</p>
+  <div id="quick-reply-list" style="margin-bottom:1rem">
+    <p class="help-text" id="qr-loading">Loading…</p>
+  </div>
+  <div style="display:flex;gap:0.75rem;align-items:flex-end;margin-top:0.75rem">
+    <div style="flex:1">
+      <label>Label (button name)</label>
+      <input type="text" id="qr-label" placeholder="WiFi Password" maxlength="128">
+    </div>
+    <div style="flex:2">
+      <label>Message</label>
+      <input type="text" id="qr-message" placeholder="Network: MyWifi | Password: abc123">
+    </div>
+    <button type="button" class="btn btn-primary" id="qr-add-btn" style="margin-bottom:0">Add</button>
+  </div>
+</div>
+
+<!-- ── Upsell Offers ─────────────────────────────────────────────── -->
+<div class="form-section" data-section="automation" style="margin-top:2rem">
+  <h2>Upsell Offers <span style="font-size:0.75rem;background:rgba(255,185,96,0.15);color:#ffb960;padding:2px 10px;border-radius:20px;font-weight:700">REVENUE</span></h2>
+  <p class="help-text">When guests ask about early check-in, late checkout, etc., the bot automatically sends these offers. Enable "Upsell Engine" in General settings to activate.</p>
+  <div id="upsell-offer-list" style="margin-bottom:1rem">
+    <p class="help-text" id="uo-loading">Loading…</p>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;align-items:flex-end;margin-top:0.75rem">
+    <div>
+      <label>Type</label>
+      <select id="uo-type">
+        <option value="early_checkin">Early Check-in</option>
+        <option value="late_checkout">Late Checkout</option>
+        <option value="airport_transfer">Airport Transfer</option>
+        <option value="tour">Local Tour</option>
+        <option value="upgrade">Room Upgrade</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+    <div>
+      <label>Title</label>
+      <input type="text" id="uo-title" placeholder="Early Check-in Available">
+    </div>
+    <div>
+      <label>Price</label>
+      <input type="text" id="uo-price" placeholder="$20">
+    </div>
+  </div>
+  <div style="margin-top:0.5rem">
+    <label>Trigger Keywords (comma-separated)</label>
+    <input type="text" id="uo-keywords" placeholder="early check in, arrive early, check in before">
+  </div>
+  <div style="margin-top:0.5rem">
+    <label>Message sent to guest</label>
+    <textarea id="uo-message" rows="3" placeholder="Great news! Early check-in is available for $20. Just confirm and we'll have your room ready!"></textarea>
+  </div>
+  <button type="button" class="btn btn-primary" id="uo-add-btn" style="margin-top:0.75rem">Add Offer</button>
 </div>
 
 <script nonce="{{ request.state.csp_nonce }}">
@@ -1880,6 +1978,106 @@ async function simulateWABot() {
         errorDiv.style.display = 'block';
         errorDiv.textContent = '❌ ' + error.message;
     }
+}
+</script>
+
+<script nonce="{{ request.state.csp_nonce }}">
+// ── Quick Replies Manager ─────────────────────────────────────────────
+var CSRF = {{ request.state.csrf_token | tojson }};
+
+function loadQuickReplies() {
+  fetch('/api/quick-replies').then(r => r.json()).then(data => {
+    var container = document.getElementById('quick-reply-list');
+    if (!container) return;
+    if (!data.items || data.items.length === 0) {
+      container.innerHTML = '<p class="help-text">No quick replies yet. Add one below.</p>';
+      return;
+    }
+    var html = '<table style="margin:0"><thead><tr><th>Label</th><th>Message</th><th></th></tr></thead><tbody>';
+    data.items.forEach(function(qr) {
+      html += '<tr><td><strong>' + qr.label + '</strong></td>' +
+              '<td style="max-width:300px;word-break:break-word">' + qr.message_template + '</td>' +
+              '<td><button type="button" class="btn btn-outline btn-sm" data-qr-id="' + qr.id + '" onclick="deleteQR(' + qr.id + ')">Remove</button></td></tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }).catch(function() {
+    document.getElementById('quick-reply-list').innerHTML = '<p class="help-text" style="color:#ff453a">Failed to load quick replies.</p>';
+  });
+}
+
+function deleteQR(id) {
+  fetch('/api/quick-replies/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': CSRF } })
+    .then(r => r.json()).then(function(d) { if (d.ok) loadQuickReplies(); });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadQuickReplies();
+  loadUpsellOffers();
+
+  var addBtn = document.getElementById('qr-add-btn');
+  if (addBtn) addBtn.addEventListener('click', function() {
+    var label = (document.getElementById('qr-label').value || '').trim();
+    var msg = (document.getElementById('qr-message').value || '').trim();
+    if (!label || !msg) { alert('Label and message are required'); return; }
+    fetch('/api/quick-replies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ label: label, message_template: msg })
+    }).then(r => r.json()).then(function(d) {
+      if (d.ok) {
+        document.getElementById('qr-label').value = '';
+        document.getElementById('qr-message').value = '';
+        loadQuickReplies();
+      }
+    });
+  });
+
+  var uoBtn = document.getElementById('uo-add-btn');
+  if (uoBtn) uoBtn.addEventListener('click', function() {
+    var title = (document.getElementById('uo-title').value || '').trim();
+    var price = (document.getElementById('uo-price').value || '').trim();
+    var msg = (document.getElementById('uo-message').value || '').trim();
+    var type = document.getElementById('uo-type').value;
+    var keywords = (document.getElementById('uo-keywords').value || '').trim();
+    if (!title || !price || !msg) { alert('Title, price, and message are required'); return; }
+    fetch('/api/upsell-offers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ offer_type: type, title: title, price_str: price, trigger_keywords: keywords, message_template: msg })
+    }).then(r => r.json()).then(function(d) {
+      if (d.ok) {
+        ['uo-title','uo-price','uo-keywords','uo-message'].forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
+        loadUpsellOffers();
+      }
+    });
+  });
+});
+
+function loadUpsellOffers() {
+  fetch('/api/upsell-offers').then(r => r.json()).then(data => {
+    var container = document.getElementById('upsell-offer-list');
+    if (!container) return;
+    if (!data.items || data.items.length === 0) {
+      container.innerHTML = '<p class="help-text">No upsell offers yet. Add one below.</p>';
+      return;
+    }
+    var html = '<table style="margin:0"><thead><tr><th>Type</th><th>Title</th><th>Price</th><th>Accepted</th><th>Revenue</th><th></th></tr></thead><tbody>';
+    data.items.forEach(function(o) {
+      html += '<tr><td>' + o.offer_type + '</td><td>' + o.title + '</td><td>' + o.price_str + '</td>' +
+              '<td>' + o.accepted_count + '</td><td>$' + (o.total_revenue || 0).toFixed(2) + '</td>' +
+              '<td><button type="button" class="btn btn-outline btn-sm" onclick="deleteOffer(' + o.id + ')">Remove</button></td></tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }).catch(function() {
+    document.getElementById('upsell-offer-list').innerHTML = '<p class="help-text" style="color:#ff453a">Failed to load offers.</p>';
+  });
+}
+
+function deleteOffer(id) {
+  fetch('/api/upsell-offers/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': CSRF } })
+    .then(r => r.json()).then(function(d) { if (d.ok) loadUpsellOffers(); });
 }
 </script>
 </div>

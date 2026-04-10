@@ -57,14 +57,15 @@ def _run_scheduler(tenant_id: str, property_context: str,
 
 def _process_tenant(tenant_id: str, property_context: str):
     from web.db import SessionLocal
-    from web.models import Reservation, Draft, ActivityLog
-    from web.classifier import generate_draft, make_draft_id
+    from web.models import Reservation, Draft, ActivityLog, TenantConfig, GuestContact
 
     db  = SessionLocal()
     now = datetime.now(timezone.utc)
     today = now.date()
 
     try:
+        cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+
         # Only look at confirmed reservations within a relevant window
         window_start = today - timedelta(days=_REVIEW_REMIND_DAYS + 2)
         window_end   = today + timedelta(days=_PRE_ARRIVAL_DAYS + 2)
@@ -96,8 +97,69 @@ def _process_tenant(tenant_id: str, property_context: str):
         for r in review_rows:
             _maybe_review_reminder(r, today, property_context, db, tenant_id)
 
+        # Satisfaction pulse — send 1-5 rating request on checkout day
+        if cfg and getattr(cfg, "satisfaction_pulse_enabled", False):
+            _maybe_satisfaction_pulse(tenant_id, today, now, cfg, db)
+
     finally:
         db.close()
+
+
+def _maybe_satisfaction_pulse(tenant_id: str, today, now, cfg, db):
+    """
+    On checkout day, send a 1-5 satisfaction rating request to guests who
+    haven't received one yet. Operates on GuestContact records (not Reservation).
+    """
+    from web.models import GuestContact
+
+    # Find guests checking out today who haven't been sent a satisfaction pulse
+    guests = db.query(GuestContact).filter(
+        GuestContact.tenant_id == tenant_id,
+        GuestContact.status == "active",
+        GuestContact.satisfaction_sent_at == None,  # noqa: E711
+    ).all()
+
+    property_name = cfg.property_names or "our property"
+
+    for gc in guests:
+        # Check if checkout is today
+        if not gc.check_out:
+            continue
+        checkout_date = gc.check_out.date() if hasattr(gc.check_out, "date") else gc.check_out
+        if checkout_date != today:
+            continue
+
+        pulse_msg = (
+            f"Hi {gc.guest_name}! 👋 We hope you had a wonderful stay at {property_name}.\n\n"
+            f"We'd love your feedback! How would you rate your stay?\n\n"
+            f"Reply with a number:\n"
+            f"5 ⭐⭐⭐⭐⭐ Excellent\n"
+            f"4 ⭐⭐⭐⭐ Great\n"
+            f"3 ⭐⭐⭐ Good\n"
+            f"2 ⭐⭐ Fair\n"
+            f"1 ⭐ Needs Improvement\n\n"
+            f"Your feedback helps us improve for future guests. Thank you! 🙏"
+        )
+
+        sent = False
+        try:
+            if cfg.wa_mode == "twilio" and cfg.twilio_whatsapp_number and cfg.twilio_account_sid and cfg.twilio_auth_token_enc:
+                from web.sms_sender import send_whatsapp_twilio
+                from web.crypto import decrypt
+                auth_token = decrypt(cfg.twilio_auth_token_enc)
+                sent = send_whatsapp_twilio(cfg.twilio_account_sid, auth_token, cfg.twilio_whatsapp_number, gc.guest_phone, pulse_msg)
+            elif cfg.wa_mode == "meta_cloud" and cfg.whatsapp_phone_id and cfg.whatsapp_token_enc:
+                from web.meta_sender import send_whatsapp
+                from web.crypto import decrypt
+                token = decrypt(cfg.whatsapp_token_enc)
+                sent = send_whatsapp(cfg.whatsapp_phone_id, token, gc.guest_phone, pulse_msg)
+        except Exception as exc:
+            log.error("[%s] Satisfaction pulse send error for %s: %s", tenant_id, gc.guest_name, exc)
+
+        if sent:
+            gc.satisfaction_sent_at = now
+            db.commit()
+            log.info("[%s] Satisfaction pulse sent to %s", tenant_id, gc.guest_name)
 
 
 def _save_draft(db, tenant_id: str, draft_id: str, guest_name: str,

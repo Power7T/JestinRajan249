@@ -216,6 +216,7 @@ if _IS_DEV_ENV:
 templates.env.globals["is_admin"] = lambda email: bool(email) and email.lower() in _ADMIN_EMAILS
 templates.env.globals["max"] = max
 templates.env.globals["min"] = min
+templates.env.filters["from_json"] = lambda s: json.loads(s) if s else []
 
 _APP_BASE_URL_RAW = os.getenv("APP_BASE_URL", "").strip().rstrip("/")
 if not _APP_BASE_URL_RAW or _APP_BASE_URL_RAW == "https://your-domain.com":
@@ -2149,6 +2150,22 @@ def dashboard(request: Request,
         log.error("Failed to build conversations [%s]: %s\n%s", tenant_id, exc, traceback.format_exc())
         conversations = []
 
+    # Calculate real AI Context Map percentages from TenantConfig field completeness
+    def _ctx_pct(fields: list) -> int:
+        filled = sum(1 for f in fields if f)
+        return round((filled / len(fields)) * 100) if fields else 0
+
+    checkin_fields = [cfg.check_in_time, cfg.check_out_time, cfg.early_checkin_policy,
+                      cfg.late_checkout_policy, cfg.house_rules]
+    local_fields = [cfg.property_city, cfg.google_maps_url, cfg.nearby_restaurants]
+    rules_fields = [cfg.house_rules, cfg.pet_policy, cfg.smoking_policy, cfg.quiet_hours,
+                    cfg.refund_policy, cfg.parking_policy]
+    checkin_pct = _ctx_pct(checkin_fields)
+    local_pct   = _ctx_pct(local_fields)
+    rules_pct   = _ctx_pct(rules_fields)
+    overall_pct = _ctx_pct(checkin_fields + local_fields + rules_fields)
+    ctx_map = {"checkin": checkin_pct, "local": local_pct, "rules": rules_pct, "overall": overall_pct}
+
     # Show one-time tour overlay after onboarding completion (cookie-based)
     show_tour = request.cookies.get("show_tour") == "1"
     response  = templates.TemplateResponse("dashboard.html", {
@@ -2191,6 +2208,7 @@ def dashboard(request: Request,
         ).count(),
         "today":         today,
         "setup_alerts":  _get_setup_alerts(cfg, tenant, all_reservations),
+        "ctx_map":       ctx_map,
     })
     if show_tour:
         response.delete_cookie("show_tour")
@@ -3923,6 +3941,13 @@ async def settings_save(
     else:
         cfg.wa_mode = "none"
 
+    # Guest engagement toggles
+    cfg.satisfaction_pulse_enabled = form_data.get("satisfaction_pulse_enabled") == "true"
+    cfg.review_request_enabled = form_data.get("review_request_enabled") == "true"
+    cfg.upsell_enabled = form_data.get("upsell_enabled") == "true"
+    if form_data.get("review_request_url", "").strip():
+        cfg.review_request_url = form_data.get("review_request_url", "").strip()[:512]
+
     db.add(ActivityLog(tenant_id=tenant_id, event_type="settings_saved",
                        message="Settings updated"))
     db.commit()
@@ -4672,6 +4697,15 @@ async def sms_webhook_inbound(tenant_id: str, request: Request, db: Session = De
     from web.sms_sender import parse_twilio_inbound
     msg = parse_twilio_inbound(form_data)
     if msg:
+        sms_sid = form_data.get("SmsSid") or form_data.get("MessageSid", "")
+        if sms_sid:
+            dedup_key = f"sms:{sms_sid}"
+            already = db.query(ProcessedEmail).filter_by(tenant_id=tenant_id, email_uid=dedup_key).first()
+            if already:
+                log.info("[%s] Duplicate SMS %s — skipping", tenant_id, sms_sid)
+                return HTMLResponse("<Response/>")
+            db.add(ProcessedEmail(tenant_id=tenant_id, email_uid=dedup_key))
+            db.commit()
         _handle_inbound_sms(tenant_id, msg["from"], msg["text"], db)
 
     return HTMLResponse("<Response/>")   # TwiML empty response
@@ -4698,6 +4732,15 @@ async def twilio_whatsapp_inbound(tenant_id: str, request: Request, db: Session 
     from web.sms_sender import parse_twilio_inbound
     msg = parse_twilio_inbound(form_data)
     if msg and msg.get("is_whatsapp"):
+        sms_sid = form_data.get("SmsSid") or form_data.get("MessageSid", "")
+        if sms_sid:
+            dedup_key = f"twa:{sms_sid}"
+            already = db.query(ProcessedEmail).filter_by(tenant_id=tenant_id, email_uid=dedup_key).first()
+            if already:
+                log.info("[%s] Duplicate Twilio WA message %s — skipping", tenant_id, sms_sid)
+                return HTMLResponse("<Response/>")
+            db.add(ProcessedEmail(tenant_id=tenant_id, email_uid=dedup_key))
+            db.commit()
         _handle_inbound_wa(tenant_id, msg["from"], msg["text"], db)
 
     return HTMLResponse("<Response/>")
@@ -4781,6 +4824,84 @@ async def inbound_email_webhook(request: Request, db: Session = Depends(get_db))
 # Shared inbound handler — creates a Draft for host review
 # ---------------------------------------------------------------------------
 
+def _detect_language(text: str) -> Optional[str]:
+    """
+    Lightweight language detection using Unicode block analysis + keyword matching.
+    Returns BCP 47 language code (e.g. 'es', 'fr', 'ar') or None for English/unknown.
+    No external libraries required.
+    """
+    if not text or len(text.strip()) < 4:
+        return None
+
+    # Check Unicode blocks for non-Latin scripts first (fast path)
+    for ch in text:
+        cp = ord(ch)
+        if 0x0600 <= cp <= 0x06FF or 0x0750 <= cp <= 0x077F:
+            return "ar"  # Arabic
+        if 0x4E00 <= cp <= 0x9FFF or 0x3400 <= cp <= 0x4DBF:
+            return "zh"  # Chinese
+        if 0x3040 <= cp <= 0x309F or 0x30A0 <= cp <= 0x30FF:
+            return "ja"  # Japanese (Hiragana/Katakana)
+        if 0xAC00 <= cp <= 0xD7AF or 0x1100 <= cp <= 0x11FF:
+            return "ko"  # Korean
+        if 0x0400 <= cp <= 0x04FF:
+            return "ru"  # Cyrillic (Russian)
+
+    low = text.lower()
+    _LANG_KEYWORDS = {
+        "es": ["hola", "gracias", "buenas", "habitación", "cuánto", "dónde", "por favor", "buenos días", "habitacion"],
+        "fr": ["bonjour", "merci", "chambre", "s'il vous plaît", "bonsoir", "où est", "comment", "excusez"],
+        "de": ["hallo", "danke", "zimmer", "bitte", "guten morgen", "guten tag", "wie lange", "wann"],
+        "it": ["ciao", "grazie", "buongiorno", "camera", "quando", "dove", "prego", "buonasera"],
+        "pt": ["olá", "obrigado", "obrigada", "quarto", "quando", "onde fica", "por favor", "bom dia"],
+        "nl": ["hallo", "dank je", "kamer", "alsjeblieft", "goedemorgen", "wanneer"],
+        "ru": ["привет", "спасибо", "комнат", "пожалуйста", "добрый"],
+    }
+    for lang, keywords in _LANG_KEYWORDS.items():
+        if any(kw in low for kw in keywords):
+            return lang
+    return None  # English or unknown — don't store
+
+
+def _check_upsell_opportunity(tenant_id: str, text: str, guest_contact, cfg, db: Session) -> bool:
+    """
+    Check if the guest message triggers an upsell offer.
+    Returns True if an upsell offer was sent, False otherwise.
+    """
+    if not cfg or not getattr(cfg, "upsell_enabled", False):
+        return False
+    try:
+        from web.models import UpsellOffer
+        offers = db.query(UpsellOffer).filter_by(tenant_id=tenant_id, is_active=True).all()
+        if not offers:
+            return False
+        low_text = text.lower()
+        for offer in offers:
+            keywords = [k.strip().lower() for k in (offer.trigger_keywords or "").split(",") if k.strip()]
+            if keywords and any(kw in low_text for kw in keywords):
+                log.info("[%s] Upsell triggered: %s for guest %s", tenant_id, offer.title, getattr(guest_contact, "guest_name", ""))
+                # Send the upsell message via whatsapp/sms
+                if guest_contact and cfg.wa_mode in ("meta_cloud", "twilio"):
+                    phone = guest_contact.guest_phone
+                    msg = offer.message_template
+                    if cfg.wa_mode == "meta_cloud":
+                        from web.meta_sender import send_whatsapp as _send_wa
+                        from web.crypto import decrypt as _decrypt
+                        token = _decrypt(cfg.whatsapp_token_enc) if cfg.whatsapp_token_enc else None
+                        if cfg.whatsapp_phone_id and token:
+                            _send_wa(cfg.whatsapp_phone_id, token, phone, msg)
+                    elif cfg.wa_mode == "twilio":
+                        from web.sms_sender import send_whatsapp_twilio as _send_twa
+                        from web.crypto import decrypt as _decrypt
+                        auth_token = _decrypt(cfg.twilio_auth_token_enc) if cfg.twilio_auth_token_enc else None
+                        if cfg.twilio_whatsapp_number and cfg.twilio_account_sid and auth_token:
+                            _send_twa(cfg.twilio_account_sid, auth_token, cfg.twilio_whatsapp_number, phone, msg)
+                return True
+    except Exception as exc:
+        log.warning("[%s] Upsell check failed: %s", tenant_id, exc)
+    return False
+
+
 def _notify_host_pending(cfg, tenant_id: str, guest_name: str, text: str, source: str,
                          is_negative: bool, send_failed: bool, db):
     """Send host notification for a pending message. Always fires for negative/complex/failed; respects setting otherwise."""
@@ -4826,6 +4947,64 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
             return  # Don't process unregistered guests
         # Guest contact found but outside check-in window — allow but log
         log.info(f"[{tenant_id}] Message from {guest_contact.guest_name} outside check-in window")
+    else:
+        guest_contact = get_guest_contact_for_phone(tenant_id, reply_to, db)
+
+    # Detect and persist guest language from their first message
+    if guest_contact and not guest_contact.language_code:
+        try:
+            detected_lang = _detect_language(text)
+            if detected_lang:
+                guest_contact.language_code = detected_lang
+                db.commit()
+        except Exception:
+            pass
+
+    # Capture satisfaction score if guest replies with a single digit 1-5
+    if guest_contact and guest_contact.satisfaction_sent_at and not guest_contact.satisfaction_score:
+        stripped = text.strip()
+        if stripped in ("1", "2", "3", "4", "5"):
+            guest_contact.satisfaction_score = int(stripped)
+            guest_contact.satisfaction_scored_at = datetime.now(timezone.utc)
+            db.commit()
+            log.info("[%s] Satisfaction score %s captured from %s", tenant_id, stripped, guest_contact.guest_name)
+            # Thank the guest for their feedback
+            score = int(stripped)
+            if score >= 4:
+                thank_msg = f"Thank you so much, {guest_contact.guest_name}! We're thrilled you had a great stay. Hope to see you again soon! 🌟"
+            elif score == 3:
+                thank_msg = f"Thank you for your feedback, {guest_contact.guest_name}! We're always working to improve and hope to exceed your expectations next time."
+            else:
+                thank_msg = f"Thank you for being honest, {guest_contact.guest_name}. We're sorry we didn't fully meet your expectations. We take this seriously and will work on it."
+            # Auto-send review link for happy guests (4-5 stars)
+            review_link_msg = None
+            if score >= 4 and getattr(cfg, "review_request_enabled", False) and getattr(cfg, "review_request_url", None):
+                review_link_msg = (
+                    f"We're so glad you had a great experience! ⭐ Would you mind leaving us a quick review? "
+                    f"It takes just 30 seconds and means the world to us:\n{cfg.review_request_url}\n\nThank you! 🙏"
+                )
+            try:
+                if cfg.wa_mode == "twilio":
+                    from web.sms_sender import send_whatsapp_twilio as _stw
+                    from web.crypto import decrypt as _dcr
+                    _at = _dcr(cfg.twilio_auth_token_enc) if cfg.twilio_auth_token_enc else None
+                    if cfg.twilio_whatsapp_number and cfg.twilio_account_sid and _at:
+                        _stw(cfg.twilio_account_sid, _at, cfg.twilio_whatsapp_number, reply_to, thank_msg)
+                        if review_link_msg:
+                            import time as _time; _time.sleep(1)
+                            _stw(cfg.twilio_account_sid, _at, cfg.twilio_whatsapp_number, reply_to, review_link_msg)
+                elif cfg.wa_mode == "meta_cloud":
+                    from web.meta_sender import send_whatsapp as _swa
+                    from web.crypto import decrypt as _dcr
+                    _tk = _dcr(cfg.whatsapp_token_enc) if cfg.whatsapp_token_enc else None
+                    if cfg.whatsapp_phone_id and _tk:
+                        _swa(cfg.whatsapp_phone_id, _tk, reply_to, thank_msg)
+                        if review_link_msg:
+                            import time as _time; _time.sleep(1)
+                            _swa(cfg.whatsapp_phone_id, _tk, reply_to, review_link_msg)
+            except Exception:
+                pass
+            return  # Don't create a draft for satisfaction replies
 
     try:
         from web.classifier import classify_message_with_confidence, detect_vendor_type, generate_draft
@@ -4999,6 +5178,9 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                                  is_negative=is_negative, send_failed=False, db=db)
 
             log.info("[%s] Pending review: %s (%s, sentiment=%s)", tenant_id, guest_name, draft.msg_type, draft.guest_sentiment)
+
+        # Check for upsell opportunities on every inbound message
+        _check_upsell_opportunity(tenant_id, text, guest_contact, cfg, db)
 
         _apply_automation_if_matched(db, tenant_id, draft, reservation)
 
@@ -6608,6 +6790,31 @@ def roi_dashboard(request: Request,
         for s in snapshots
     ]
 
+    # Satisfaction scores
+    from web.models import GuestContact, UpsellOffer
+    satisfaction_scores = db.query(GuestContact).filter(
+        GuestContact.tenant_id == tenant_id,
+        GuestContact.satisfaction_score != None,  # noqa: E711
+        GuestContact.satisfaction_scored_at >= cutoff,
+    ).all()
+    avg_satisfaction = round(sum(g.satisfaction_score for g in satisfaction_scores) / len(satisfaction_scores), 2) if satisfaction_scores else None
+    satisfaction_dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    for g in satisfaction_scores:
+        satisfaction_dist[g.satisfaction_score] = satisfaction_dist.get(g.satisfaction_score, 0) + 1
+
+    # Upsell revenue
+    upsell_offers = db.query(UpsellOffer).filter_by(tenant_id=tenant_id, is_active=True).all()
+    total_upsell_revenue = sum(o.total_revenue for o in upsell_offers)
+    total_upsell_accepted = sum(o.accepted_count for o in upsell_offers)
+
+    # Language breakdown
+    from collections import Counter
+    lang_counts_raw = db.query(GuestContact.language_code).filter(
+        GuestContact.tenant_id == tenant_id,
+        GuestContact.language_code != None,  # noqa: E711
+    ).all()
+    lang_counts = dict(Counter(r[0] for r in lang_counts_raw if r[0]))
+
     return templates.TemplateResponse("analytics_roi.html", {
         "request": request,
         "tenant": tenant,
@@ -6620,6 +6827,13 @@ def roi_dashboard(request: Request,
         "hourly_rate": hourly_rate,
         "range_days": range_days,
         "snapshots_data": snapshots_data,
+        # New SaaS metrics
+        "avg_satisfaction": avg_satisfaction,
+        "satisfaction_count": len(satisfaction_scores),
+        "satisfaction_dist": satisfaction_dist,
+        "total_upsell_revenue": round(total_upsell_revenue, 2),
+        "total_upsell_accepted": total_upsell_accepted,
+        "lang_counts": lang_counts,
     })
 
 
@@ -9152,6 +9366,210 @@ def api_bulk_skip(request: Request, db: Session = Depends(get_db)):
                            message=f"Bulk-skipped {len(pending)} pending draft(s)"))
         db.commit()
     return JSONResponse({"ok": True, "count": len(pending)})
+
+
+# ---------------------------------------------------------------------------
+# Manual host-to-guest message send
+# ---------------------------------------------------------------------------
+
+@app.post("/api/conversations/send")
+async def manual_send_message(request: Request, db: Session = Depends(get_db)):
+    """Host sends a manual message to a guest via their active WhatsApp/SMS channel."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    csrf = request.headers.get("X-CSRF-Token", "")
+    validate_csrf(request, csrf)
+    data = await request.json()
+    to_phone = (data.get("to_phone") or "").strip()
+    message = (data.get("message") or "").strip()
+    if not to_phone or not message:
+        return JSONResponse({"ok": False, "error": "to_phone and message required"}, status_code=400)
+
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    if not cfg:
+        return JSONResponse({"ok": False, "error": "no config"}, status_code=400)
+
+    sent = False
+    if cfg.wa_mode == "twilio":
+        try:
+            from web.sms_sender import send_whatsapp_twilio
+            from web.crypto import decrypt
+            auth_token = decrypt(cfg.twilio_auth_token_enc) if cfg.twilio_auth_token_enc else None
+            if cfg.twilio_whatsapp_number and cfg.twilio_account_sid and auth_token:
+                sent = send_whatsapp_twilio(cfg.twilio_account_sid, auth_token, cfg.twilio_whatsapp_number, to_phone, message)
+        except Exception as exc:
+            log.error("[%s] Manual send Twilio WA error: %s", tenant_id, exc)
+    elif cfg.wa_mode == "meta_cloud":
+        try:
+            from web.meta_sender import send_whatsapp
+            from web.crypto import decrypt
+            token = decrypt(cfg.whatsapp_token_enc) if cfg.whatsapp_token_enc else None
+            if cfg.whatsapp_phone_id and token:
+                sent = send_whatsapp(cfg.whatsapp_phone_id, token, to_phone, message)
+        except Exception as exc:
+            log.error("[%s] Manual send Meta WA error: %s", tenant_id, exc)
+
+    if sent:
+        db.add(ActivityLog(tenant_id=tenant_id, event_type="manual_message_sent",
+                           message=f"Host manual send to {to_phone}: {message[:80]}"))
+        db.commit()
+        return JSONResponse({"ok": True})
+    return JSONResponse({"ok": False, "error": "Send failed — check WhatsApp configuration"}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# Quick Replies — host-defined canned responses
+# ---------------------------------------------------------------------------
+
+@app.get("/api/quick-replies")
+def list_quick_replies(request: Request, db: Session = Depends(get_db)):
+    """Return all quick replies for the current tenant."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    from web.models import QuickReply
+    items = db.query(QuickReply).filter_by(tenant_id=tenant_id, is_active=True).order_by(QuickReply.sort_order, QuickReply.id).all()
+    return JSONResponse({"ok": True, "items": [{"id": q.id, "label": q.label, "message_template": q.message_template} for q in items]})
+
+
+@app.post("/api/quick-replies")
+async def create_quick_reply(request: Request, db: Session = Depends(get_db)):
+    """Create a new quick reply."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    csrf = request.headers.get("X-CSRF-Token", "")
+    validate_csrf(request, csrf)
+    from web.models import QuickReply
+    data = await request.json()
+    label = (data.get("label") or "").strip()[:128]
+    message = (data.get("message_template") or "").strip()
+    if not label or not message:
+        return JSONResponse({"ok": False, "error": "label and message_template required"}, status_code=400)
+    qr = QuickReply(tenant_id=tenant_id, label=label, message_template=message)
+    db.add(qr)
+    db.commit()
+    db.refresh(qr)
+    return JSONResponse({"ok": True, "id": qr.id, "label": qr.label})
+
+
+@app.delete("/api/quick-replies/{qr_id}")
+def delete_quick_reply(qr_id: int, request: Request, db: Session = Depends(get_db)):
+    """Soft-delete a quick reply."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    csrf = request.headers.get("X-CSRF-Token", "")
+    validate_csrf(request, csrf)
+    from web.models import QuickReply
+    qr = db.query(QuickReply).filter_by(id=qr_id, tenant_id=tenant_id).first()
+    if not qr:
+        return JSONResponse({"ok": False, "error": "not found"}, status_code=404)
+    qr.is_active = False
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# Upsell Offers — host-configured revenue opportunities
+# ---------------------------------------------------------------------------
+
+@app.get("/api/upsell-offers")
+def list_upsell_offers(request: Request, db: Session = Depends(get_db)):
+    """Return all upsell offers for the current tenant."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    from web.models import UpsellOffer
+    items = db.query(UpsellOffer).filter_by(tenant_id=tenant_id, is_active=True).all()
+    return JSONResponse({"ok": True, "items": [
+        {"id": o.id, "offer_type": o.offer_type, "title": o.title, "price_str": o.price_str,
+         "trigger_keywords": o.trigger_keywords, "accepted_count": o.accepted_count,
+         "total_revenue": o.total_revenue}
+        for o in items
+    ]})
+
+
+@app.post("/api/upsell-offers")
+async def create_upsell_offer(request: Request, db: Session = Depends(get_db)):
+    """Create a new upsell offer."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    csrf = request.headers.get("X-CSRF-Token", "")
+    validate_csrf(request, csrf)
+    from web.models import UpsellOffer
+    data = await request.json()
+    offer = UpsellOffer(
+        tenant_id=tenant_id,
+        offer_type=(data.get("offer_type") or "custom")[:32],
+        title=(data.get("title") or "")[:128],
+        price_str=(data.get("price_str") or "")[:32],
+        trigger_keywords=data.get("trigger_keywords") or "",
+        message_template=data.get("message_template") or "",
+    )
+    db.add(offer)
+    db.commit()
+    db.refresh(offer)
+    return JSONResponse({"ok": True, "id": offer.id})
+
+
+@app.delete("/api/upsell-offers/{offer_id}")
+def delete_upsell_offer(offer_id: int, request: Request, db: Session = Depends(get_db)):
+    """Remove a upsell offer."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    csrf = request.headers.get("X-CSRF-Token", "")
+    validate_csrf(request, csrf)
+    from web.models import UpsellOffer
+    offer = db.query(UpsellOffer).filter_by(id=offer_id, tenant_id=tenant_id).first()
+    if not offer:
+        return JSONResponse({"ok": False, "error": "not found"}, status_code=404)
+    offer.is_active = False
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# Guest CRM notes — per guest_contact notes for hosts
+# ---------------------------------------------------------------------------
+
+@app.post("/api/guest-contacts/{contact_id}/crm-note")
+async def add_crm_note(contact_id: str, request: Request, db: Session = Depends(get_db)):
+    """Append a CRM note to a guest contact."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return JSONResponse({"ok": False, "error": "not_authenticated"}, status_code=401)
+    csrf = request.headers.get("X-CSRF-Token", "")
+    validate_csrf(request, csrf)
+    data = await request.json()
+    note = (data.get("note") or "").strip()
+    if not note:
+        return JSONResponse({"ok": False, "error": "note required"}, status_code=400)
+    contact = db.query(GuestContact).filter_by(id=contact_id, tenant_id=tenant_id).first()
+    if not contact:
+        return JSONResponse({"ok": False, "error": "not found"}, status_code=404)
+    import json as _json
+    existing = []
+    if contact.crm_notes:
+        try:
+            existing = _json.loads(contact.crm_notes)
+        except Exception:
+            existing = []
+    existing.append({"note": note, "at": datetime.now(timezone.utc).isoformat()})
+    contact.crm_notes = _json.dumps(existing)
+    db.commit()
+    return JSONResponse({"ok": True, "count": len(existing)})
 
 
 # ---------------------------------------------------------------------------

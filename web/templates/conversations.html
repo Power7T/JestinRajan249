@@ -274,6 +274,23 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
           </div>
           {% endif %}
         </div>
+        {% if conversations %}
+        <!-- Quick Replies Bar -->
+        <div class="border-t border-white/5 bg-[#0d0e14]/80 px-4 py-3" id="quick-replies-bar">
+          <div class="flex items-center gap-2 flex-wrap" id="quick-reply-btns">
+            <span class="text-[10px] text-slate-600 font-bold uppercase tracking-widest flex-shrink-0">Quick:</span>
+            <!-- Populated by JS from /api/quick-replies -->
+          </div>
+        </div>
+        <!-- Host Compose Box -->
+        <div class="border-t border-white/5 bg-[#0d0e14] px-4 py-3 flex items-end gap-3" id="compose-area">
+          <textarea id="compose-text" rows="2" placeholder="Type a message to send to guest…"
+                    class="flex-1 resize-none bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#5B8DEF] transition-colors" style="min-height:44px;max-height:120px"></textarea>
+          <button id="compose-send-btn" class="flex-shrink-0 bg-gradient-to-r from-[#5B8DEF] to-[#aec6ff] text-[#001a43] font-bold px-4 py-2 rounded-xl text-sm hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base" style="vertical-align:middle">send</span>
+          </button>
+        </div>
+        {% endif %}
         {% else %}
         <div class="flex-1 flex flex-col items-center justify-center text-center p-8">
           <span class="material-symbols-outlined text-5xl text-slate-600 mb-4">chat_bubble_outline</span>
@@ -798,6 +815,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Auto-select first conversation
   const first = document.querySelector('.conv-item');
   if (first) first.click();
+
+  // Load quick replies
+  loadQuickReplies();
+
+  // Compose send button
+  const composeSendBtn = document.getElementById('compose-send-btn');
+  const composeText = document.getElementById('compose-text');
+  if (composeSendBtn && composeText) {
+    composeSendBtn.addEventListener('click', sendManualMessage);
+    composeText.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendManualMessage();
+    });
+  }
 });
 
 function filterConversations(query) {
@@ -808,6 +838,80 @@ function filterConversations(query) {
     el.style.display = (!q || name.includes(q) || phone.includes(q)) ? '' : 'none';
   });
 }
+
+// ── Quick Replies ─────────────────────────────────────────────────────
+var _quickReplies = [];
+var _activeGuestPhone = null;
+
+function loadQuickReplies() {
+  fetch('/api/quick-replies').then(function(r) { return r.json(); }).then(function(data) {
+    if (!data.ok) return;
+    _quickReplies = data.items || [];
+    renderQuickReplies();
+  }).catch(function() {});
+}
+
+function renderQuickReplies() {
+  var container = document.getElementById('quick-reply-btns');
+  if (!container) return;
+  // Keep the "Quick:" label (first child), remove old buttons
+  while (container.children.length > 1) container.removeChild(container.lastChild);
+  _quickReplies.forEach(function(qr) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = qr.label;
+    btn.className = 'text-xs px-3 py-1.5 rounded-full bg-[#5B8DEF]/10 text-[#aec6ff] border border-[#5B8DEF]/20 hover:bg-[#5B8DEF]/20 transition-colors font-semibold';
+    btn.addEventListener('click', function() {
+      var area = document.getElementById('compose-text');
+      if (area) { area.value = qr.message_template; area.focus(); }
+    });
+    container.appendChild(btn);
+  });
+}
+
+function sendManualMessage() {
+  var text = (document.getElementById('compose-text') || {}).value;
+  if (!text || !text.trim()) return;
+  if (!_activeGuestPhone) { alert('Select a conversation first.'); return; }
+  var btn = document.getElementById('compose-send-btn');
+  if (btn) { btn.disabled = true; }
+  fetch('/api/conversations/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '{{ request.state.csrf_token }}' },
+    body: JSON.stringify({ to_phone: _activeGuestPhone, message: text.trim() })
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.ok) {
+      var area = document.getElementById('compose-text');
+      if (area) area.value = '';
+      // Append the sent message to thread
+      var thread = document.getElementById('messageThread');
+      if (thread) {
+        var row = document.createElement('div');
+        row.className = 'msg-row outbound';
+        row.innerHTML = '<div class="msg-bubble">' + text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>' +
+                        '<div class="msg-meta"><span>Just now</span><span>MANUAL</span></div>';
+        thread.appendChild(row);
+        thread.scrollTop = thread.scrollHeight;
+      }
+    } else {
+      alert('Send failed: ' + (data.error || 'unknown error'));
+    }
+  }).catch(function() { alert('Network error'); })
+  .finally(function() { if (btn) btn.disabled = false; });
+}
+
+// Update _activeGuestPhone when a conversation is selected
+var _origSelectConversation = typeof selectConversation !== 'undefined' ? selectConversation : null;
+(function() {
+  // Wrap selectConversation to track active phone
+  if (typeof selectConversation !== 'undefined') {
+    var origFn = selectConversation;
+    window.selectConversation = function(el, thread, name, phone) {
+      _activeGuestPhone = phone;
+      origFn(el, thread, name, phone);
+    };
+  }
+})();
 
 </script>
 

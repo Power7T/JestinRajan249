@@ -138,6 +138,69 @@ tailwind.config = {
       </div>
     </div>
 
+    <!-- New SaaS Metrics Row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <!-- Guest Satisfaction -->
+      <div class="glass-card rounded-3xl p-6">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Avg Satisfaction</p>
+          <span class="material-symbols-outlined text-[#ffb960] text-xl" style="font-variation-settings: 'FILL' 1;">star</span>
+        </div>
+        {% if avg_satisfaction %}
+        <p class="text-3xl font-extrabold text-white">{{ avg_satisfaction }}<span class="text-slate-500 text-xl">/5</span></p>
+        <p class="text-slate-400 text-xs mt-1">From {{ satisfaction_count }} guest{{ 's' if satisfaction_count != 1 else '' }}</p>
+        <div class="mt-3 space-y-1">
+          {% for star in [5, 4, 3, 2, 1] %}
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-500 w-4">{{ star }}⭐</span>
+            <div class="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div class="h-full bg-[#ffb960] rounded-full" style="width:{{ ((satisfaction_dist[star] or 0) / satisfaction_count * 100)|int if satisfaction_count else 0 }}%"></div>
+            </div>
+            <span class="text-xs text-slate-500 w-4">{{ satisfaction_dist[star] or 0 }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-slate-400 text-sm">No ratings yet</p>
+        <p class="text-slate-500 text-xs mt-1">Enable Satisfaction Pulse in Settings</p>
+        {% endif %}
+      </div>
+
+      <!-- Upsell Revenue -->
+      <div class="glass-card rounded-3xl p-6 {% if total_upsell_revenue > 0 %}border border-[#ffb960]/30 bg-[#ffb960]/5{% endif %}">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Upsell Revenue</p>
+          <span class="material-symbols-outlined text-[#ffb960] text-xl">payments</span>
+        </div>
+        <p class="text-3xl font-extrabold {% if total_upsell_revenue > 0 %}text-[#ffb960]{% else %}text-white{% endif %}">${{ "%.0f"|format(total_upsell_revenue) }}</p>
+        <p class="text-slate-400 text-xs mt-1">{{ total_upsell_accepted }} offer{{ 's' if total_upsell_accepted != 1 else '' }} accepted</p>
+        {% if total_upsell_revenue == 0 %}
+        <p class="text-slate-500 text-xs mt-2">Enable Upsell Engine in Settings</p>
+        {% endif %}
+      </div>
+
+      <!-- Guest Languages -->
+      <div class="glass-card rounded-3xl p-6">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Guest Languages</p>
+          <span class="material-symbols-outlined text-[#aec6ff] text-xl">language</span>
+        </div>
+        {% if lang_counts %}
+        <div class="space-y-2">
+          {% for lang, count in lang_counts | dictsort(by='value', reverse=true) %}
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-300 uppercase">{{ lang }}</span>
+            <span class="text-xs bg-[#5B8DEF]/10 text-[#aec6ff] px-2 py-0.5 rounded-full font-bold">{{ count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-slate-400 text-sm">No multilingual guests yet</p>
+        <p class="text-slate-500 text-xs mt-1">Language auto-detected from first message</p>
+        {% endif %}
+      </div>
+    </div>
+
     <!-- Weekly Trend Chart -->
     <div class="glass-card rounded-3xl p-8 mb-8">
       <h2 class="text-lg font-bold text-white mb-6">Weekly Trend</h2>
@@ -162,6 +225,12 @@ tailwind.config = {
             <span class="text-slate-400">Total messages</span>
             <span class="font-bold text-white">{{ total_messages_handled }}</span>
           </li>
+          {% if total_upsell_revenue > 0 %}
+          <li class="flex justify-between items-center">
+            <span class="text-slate-400">Upsell revenue</span>
+            <span class="font-bold text-[#ffb960]">${{ "%.2f"|format(total_upsell_revenue) }}</span>
+          </li>
+          {% endif %}
           <li class="pt-2 border-t border-white/10 flex justify-between items-center">
             <span class="text-slate-300">Estimated value</span>
             <span class="font-extrabold text-primary text-lg">${{ estimated_value }}</span>

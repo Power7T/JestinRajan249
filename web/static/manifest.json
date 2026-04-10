@@ -1,0 +1,42 @@
+{
+  "name": "HostAI — AI Host Assistant",
+  "short_name": "HostAI",
+  "description": "AI-powered guest communication & property management for vacation rental hosts",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#08090F",
+  "theme_color": "#5B8DEF",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/static/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dash",
+      "description": "Open dashboard",
+      "url": "/dashboard",
+      "icons": [{"src": "/static/img/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Conversations",
+      "short_name": "Chat",
+      "description": "View guest conversations",
+      "url": "/conversations",
+      "icons": [{"src": "/static/img/icon-192.png", "sizes": "192x192"}]
+    }
+  ],
+  "categories": ["productivity", "travel", "business"]
+}

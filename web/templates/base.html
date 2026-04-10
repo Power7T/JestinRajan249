@@ -12,6 +12,10 @@
   <script src="https://unpkg.com/htmx.org@1.9.12" nonce="{{ request.state.csp_nonce }}"></script>
   <link rel="stylesheet" href="/static/css/design-tokens.css">
   <link rel="stylesheet" href="/static/css/main.css">
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#5B8DEF">
+  <link rel="apple-touch-icon" href="/static/img/icon-192.png">
   <!-- Flatpickr date picker -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr" nonce="{{ request.state.csp_nonce }}"></script>
@@ -717,91 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 })();
 
-// ── Bulk Actions ─────────────────────────────────────────────────────
-function updateBulkToolbar() {
-  const checkboxes = document.querySelectorAll('.draft-checkbox:checked');
-  const toolbar = document.getElementById('bulk-toolbar');
-  const count = checkboxes.length;
-
-  if (count > 0) {
-    toolbar.classList.remove('hidden');
-    document.getElementById('selected-count').textContent = count;
-    document.getElementById('plural').textContent = count === 1 ? '' : 's';
-  } else {
-    toolbar.classList.add('hidden');
-  }
-}
-
-async function bulkApprove() {
-  const checkboxes = document.querySelectorAll('.draft-checkbox:checked');
-  const draftIds = Array.from(checkboxes).map(cb => cb.value);
-
-  if (draftIds.length === 0) return;
-
-  const confirmed = await showConfirm(`Approve ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}?`);
-  if (!confirmed) return;
-
-  showSpinner();
-  try {
-    const response = await fetch('/drafts/bulk-approve', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('[name="csrf_token"]')?.value || ''
-      },
-      body: JSON.stringify({ draft_ids: draftIds })
-    });
-
-    if (response.ok) {
-      showToast(`Approved ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}`, 'success');
-      setTimeout(() => location.reload(), 1500);
-    } else {
-      showToast('Failed to approve drafts', 'error');
-    }
-  } catch (e) {
-    showToast('Error: ' + e.message, 'error');
-  } finally {
-    hideSpinner();
-  }
-}
-
-async function bulkSkip() {
-  const checkboxes = document.querySelectorAll('.draft-checkbox:checked');
-  const draftIds = Array.from(checkboxes).map(cb => cb.value);
-
-  if (draftIds.length === 0) return;
-
-  const confirmed = await showConfirm(`Skip ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}?`);
-  if (!confirmed) return;
-
-  showSpinner();
-  try {
-    const response = await fetch('/drafts/bulk-skip', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('[name="csrf_token"]')?.value || ''
-      },
-      body: JSON.stringify({ draft_ids: draftIds })
-    });
-
-    if (response.ok) {
-      showToast(`Skipped ${draftIds.length} draft${draftIds.length === 1 ? '' : 's'}`, 'success');
-      setTimeout(() => location.reload(), 1500);
-    } else {
-      showToast('Failed to skip drafts', 'error');
-    }
-  } catch (e) {
-    showToast('Error: ' + e.message, 'error');
-  } finally {
-    hideSpinner();
-  }
-}
-
-function clearSelection() {
-  document.querySelectorAll('.draft-checkbox').forEach(cb => cb.checked = false);
-  updateBulkToolbar();
-}
+// ── Bulk Actions — managed per-page in dashboard.html block scripts ──
 </script>
 {% block scripts %}{% endblock %}
 <!-- Flatpickr: initialize all date inputs as popup calendars -->
@@ -824,6 +744,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+</script>
+<script nonce="{{ request.state.csp_nonce }}">
+// Register service worker for PWA support
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').catch(function() {});
+}
 </script>
 </body>
 </html>

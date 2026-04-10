@@ -264,6 +264,17 @@ class TenantConfig(Base):
 
     # Digest / daily summary email
     digest_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
+    digest_email_address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # separate digest email if different from account
+
+    # Guest review request automation
+    review_request_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)    # Airbnb / Google review link
+    review_request_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Guest satisfaction pulse (rate 1-5 after checkout)
+    satisfaction_pulse_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Upsell offers engine
+    upsell_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="config")
 
@@ -653,6 +664,17 @@ class GuestContact(Base):
     # Retry tracking
     welcome_retry_count: Mapped[int]         = mapped_column(Integer, default=0)
     last_retry_at:     Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Guest satisfaction pulse (1-5 rating sent after checkout)
+    satisfaction_sent_at:   Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    satisfaction_score:     Mapped[Optional[int]]      = mapped_column(Integer, nullable=True)
+    satisfaction_scored_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Detected language code (e.g. "es", "fr", "de") from first guest message
+    language_code: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+
+    # CRM notes — host notes about this guest across stays (JSON list)
+    crm_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
     created_at:        Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
@@ -1328,3 +1350,45 @@ class EscalationRule(Base):
     property: Mapped["Property"] = relationship("Property")
     tenant: Mapped["Tenant"] = relationship("Tenant")
     team_member: Mapped[Optional["TeamMember"]] = relationship("TeamMember", foreign_keys=[assign_to_team_member])
+
+
+
+# ---------------------------------------------------------------------------
+# QuickReply — host-defined canned responses for fast one-tap sending
+# ---------------------------------------------------------------------------
+
+class QuickReply(Base):
+    __tablename__ = "quick_replies"
+
+    id:               Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:        Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    label:            Mapped[str]           = mapped_column(String(128))          # e.g. "WiFi Password"
+    message_template: Mapped[str]           = mapped_column(Text)                 # e.g. "Network: MyWifi | Password: abc123"
+    sort_order:       Mapped[int]           = mapped_column(Integer, default=0)
+    is_active:        Mapped[bool]          = mapped_column(Boolean, default=True)
+    created_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant")
+
+
+# ---------------------------------------------------------------------------
+# UpsellOffer — host-configured upsell opportunities (early check-in, etc.)
+# ---------------------------------------------------------------------------
+
+class UpsellOffer(Base):
+    __tablename__ = "upsell_offers"
+
+    id:               Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:        Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    offer_type:       Mapped[str]           = mapped_column(String(32), index=True)  # early_checkin | late_checkout | airport_transfer | upgrade | tour
+    title:            Mapped[str]           = mapped_column(String(128))             # "Early Check-in"
+    price_str:        Mapped[str]           = mapped_column(String(32))              # "$20" / "€15"
+    trigger_keywords: Mapped[Optional[str]] = mapped_column(Text, nullable=True)     # comma-separated: "early,arrive,check in early"
+    message_template: Mapped[str]           = mapped_column(Text)                   # Message to send to guest
+    is_active:        Mapped[bool]          = mapped_column(Boolean, default=True)
+    accepted_count:   Mapped[int]           = mapped_column(Integer, default=0)
+    total_revenue:    Mapped[float]         = mapped_column(Float, default=0.0)
+    created_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant")

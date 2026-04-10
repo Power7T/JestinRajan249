@@ -300,12 +300,43 @@
       </div>
       {% endif %}
 
+      <!-- Satisfaction score badge -->
+      {% if gc.satisfaction_score %}
+      <div style="margin-bottom:0.75rem;display:flex;align-items:center;gap:0.4rem">
+        <span style="font-size:0.75rem;font-weight:700;color:{% if gc.satisfaction_score >= 4 %}#4ade80{% elif gc.satisfaction_score == 3 %}#fbbf24{% else %}#f87171{% endif %}">
+          {% for i in range(gc.satisfaction_score) %}⭐{% endfor %} {{ gc.satisfaction_score }}/5
+        </span>
+      </div>
+      {% elif gc.satisfaction_sent_at %}
+      <div style="font-size:0.75rem;color:var(--text-3);margin-bottom:0.5rem">📊 Rating pending…</div>
+      {% endif %}
+
+      <!-- Language badge -->
+      {% if gc.language_code and gc.language_code != 'en' %}
+      <div style="margin-bottom:0.5rem">
+        <span style="font-size:0.7rem;background:rgba(174,198,255,0.12);color:#aec6ff;padding:2px 8px;border-radius:20px;font-weight:700;text-transform:uppercase">
+          {{ gc.language_code }}
+        </span>
+      </div>
+      {% endif %}
+
+      <!-- CRM notes -->
+      {% if gc.crm_notes %}
+      {% set notes = gc.crm_notes | from_json if gc.crm_notes else [] %}
+      {% if notes %}
+      <div style="font-size:0.75rem;color:var(--text-2);background:rgba(255,255,255,0.03);border-radius:8px;padding:0.5rem;margin-bottom:0.75rem;border:1px solid rgba(255,255,255,0.06)">
+        <span style="font-weight:700">Note:</span> {{ notes[-1].note[:80] }}{% if notes[-1].note|length > 80 %}…{% endif %}
+      </div>
+      {% endif %}
+      {% endif %}
+
       <!-- Actions -->
       <div class="checkin-actions">
         {% if gc.welcome_status != 'sent' %}
         <button class="btn btn-outline btn-sm resend-btn" data-gc-id="{{ gc.id }}" data-gc-name="{{ gc.guest_name }}">Resend</button>
         {% endif %}
         <button class="btn btn-outline btn-sm edit-gc-btn" data-gc-id="{{ gc.id }}">Edit</button>
+        <button class="btn btn-outline btn-sm" onclick="addCRMNote('{{ gc.id }}', '{{ gc.guest_name }}')">+ Note</button>
       </div>
     </div>
     {% endfor %}
@@ -643,6 +674,26 @@ document.getElementById('addContactModal').addEventListener('click', (e) => {
 document.getElementById('editContactModal').addEventListener('click', (e) => {
   if (e.target.id === 'editContactModal') closeEditContactModal();
 });
+
+// ── CRM Notes ──────────────────────────────────────────────────────────
+var CSRF = {{ request.state.csrf_token | tojson }};
+
+function addCRMNote(contactId, guestName) {
+  var note = prompt('Add a note about ' + guestName + ':');
+  if (!note || !note.trim()) return;
+  fetch('/api/guest-contacts/' + contactId + '/crm-note', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+    body: JSON.stringify({ note: note.trim() })
+  }).then(r => r.json()).then(function(d) {
+    if (d.ok) {
+      showToast('Note saved (' + d.count + ' total)');
+      setTimeout(() => location.reload(), 800);
+    } else {
+      alert('Error: ' + (d.error || 'unknown'));
+    }
+  });
+}
 </script>
 </div>
 </main>

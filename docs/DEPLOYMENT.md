@@ -139,24 +139,12 @@ Add to Railway:
 
 ### 5. Deploy Worker Service
 
-Create `Dockerfile.worker`:
+Use the repo's dedicated [`Dockerfile.worker`](../../Dockerfile.worker):
 
 ```dockerfile
 FROM python:3.12-slim
-
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-CMD ["python", "web/worker.py"]
+...
+CMD ["python", "-m", "web.worker_runner"]
 ```
 
 Add to Railway:
@@ -167,6 +155,18 @@ Add to Railway:
 # Configure:
 # - Root Directory: .
 # - Dockerfile: Dockerfile.worker
+# - Start Command: leave blank (the Dockerfile already starts web.worker_runner)
+# - Public Domain: do not generate one for the worker service
+```
+
+Recommended environment split:
+
+```env
+# Web service
+RUN_EMBEDDED_WORKERS=false
+
+# Worker service
+RUN_EMBEDDED_WORKERS=true
 ```
 
 ### 6. Set Up Custom Domain
