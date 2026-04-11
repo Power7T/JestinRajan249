@@ -415,6 +415,7 @@ class MessageLog(Base):
     # Message identification
     guest_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
     guest_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    thread_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)  # conversation thread ID
 
     # Message details
     direction: Mapped[str] = mapped_column(String(16), index=True)  # inbound | outbound

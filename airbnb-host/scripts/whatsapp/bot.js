@@ -222,6 +222,7 @@ const FILES = {
   guests:     path.join(__dirname, "guests.json"),
   services:   path.join(__dirname, "service_requests.json"),
   pendingReg: path.join(__dirname, "pending_reg.json"),
+  history:    path.join(__dirname, "message_history.json"),
 };
 
 function loadJSON(file, fallback = {}) {
@@ -243,6 +244,7 @@ const pending    = new Map(Object.entries(loadJSON(FILES.pending)));
 const guests     = new Map(Object.entries(loadJSON(FILES.guests)));
 const services   = new Map(Object.entries(loadJSON(FILES.services)));
 const pendingReg = new Map(Object.entries(loadJSON(FILES.pendingReg)));
+const history    = new Map(Object.entries(loadJSON(FILES.history)));
 console.log(`📂  Loaded: ${pending.size} pending, ${guests.size} guests, ${services.size} service requests`);
 
 // ---------------------------------------------------------------------------
@@ -466,6 +468,37 @@ async function handleHostMessage(text) {
 }
 
 // ---------------------------------------------------------------------------
+// Conversation History — track guest messages for context
+// ---------------------------------------------------------------------------
+function getThreadKey(booking_uid) {
+  return `guest_${booking_uid}`;
+}
+
+function addMessageToHistory(booking_uid, direction, text, timestamp = new Date().toISOString()) {
+  const threadKey = getThreadKey(booking_uid);
+  if (!history.has(threadKey)) {
+    history.set(threadKey, []);
+  }
+  const thread = history.get(threadKey);
+  thread.push({ direction, text, timestamp });
+  // Keep only last 10 messages per thread
+  if (thread.length > 10) {
+    thread.splice(0, thread.length - 10);
+  }
+  saveJSON(FILES.history, Object.fromEntries(history));
+}
+
+function getConversationContext(booking_uid, limit = 5) {
+  const threadKey = getThreadKey(booking_uid);
+  const thread = history.get(threadKey) || [];
+  // Get last N messages and format them
+  const recent = thread.slice(-limit);
+  return recent.map(msg =>
+    `[${msg.direction.toUpperCase()}] ${msg.text}`
+  ).join("\n");
+}
+
+// ---------------------------------------------------------------------------
 // GUEST message handler
 // ---------------------------------------------------------------------------
 async function handleGuestMessage(msg, { booking_uid, guest }) {
@@ -481,14 +514,22 @@ async function handleGuestMessage(msg, { booking_uid, guest }) {
     return;
   }
 
+  // Record incoming message in conversation history
+  addMessageToHistory(booking_uid, "inbound", text);
+
   console.log(`📨  [GUEST: ${guest.guest_name}] ${text.slice(0, 80)}`);
 
   try {
+    // Get recent conversation context for better AI responses
+    const conversationContext = getConversationContext(booking_uid, 5);
+
     const result = await callRouterWithRetry("/classify", {
       source:     "whatsapp",
       guest_name: guest.guest_name,
       message:    text,
       reply_to:   from,
+      thread_context: conversationContext,
+      booking_uid: booking_uid,
     });
 
     const { draft_id, msg_type, draft, vendor_type } = result;
@@ -496,9 +537,11 @@ async function handleGuestMessage(msg, { booking_uid, guest }) {
     if (msg_type === "routine") {
       await sendMsg(from, draft);
       console.log(`  ✅  Auto-replied to guest ${guest.guest_name} (routine)`);
+      // Record outgoing message in history
+      addMessageToHistory(booking_uid, "outbound", draft);
       callRouterWithRetry("/approve", { draft_id, action: "approve" }).catch(() => {});
     } else {
-      pending.set(draft_id, { guestChatId: from, draft, channel: "whatsapp", vendor_type, guest_name: guest.guest_name });
+      pending.set(draft_id, { guestChatId: from, draft, channel: "whatsapp", vendor_type, guest_name: guest.guest_name, booking_uid });
       saveJSON(FILES.pending, Object.fromEntries(pending));
 
       let notice = buildDraftNotice(draft_id, guest.guest_name, draft, "WhatsApp (guest)");
@@ -601,7 +644,13 @@ async function onVendorUnavailable(req, vendor) {
 async function onApprove(id) {
   const entry = pending.get(id);
   if (!entry) return;
-  if (entry.guestChatId) await sendMsg(entry.guestChatId, entry.draft);
+  if (entry.guestChatId) {
+    await sendMsg(entry.guestChatId, entry.draft);
+    // Record outgoing message in history
+    if (entry.booking_uid) {
+      addMessageToHistory(entry.booking_uid, "outbound", entry.draft);
+    }
+  }
   callRouterWithRetry("/approve", { draft_id: id, action: "approve" }).catch(() => {});
   pending.delete(id);
   saveJSON(FILES.pending, Object.fromEntries(pending));
@@ -621,7 +670,13 @@ async function onApprove(id) {
 async function onEdit(id, newText) {
   const entry = pending.get(id);
   if (!entry) return;
-  if (entry.guestChatId) await sendMsg(entry.guestChatId, newText);
+  if (entry.guestChatId) {
+    await sendMsg(entry.guestChatId, newText);
+    // Record outgoing message in history
+    if (entry.booking_uid) {
+      addMessageToHistory(entry.booking_uid, "outbound", newText);
+    }
+  }
   callRouterWithRetry("/approve", { draft_id: id, action: "edit", edited_text: newText }).catch(() => {});
   pending.delete(id);
   saveJSON(FILES.pending, Object.fromEntries(pending));

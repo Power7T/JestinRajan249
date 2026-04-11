@@ -180,7 +180,7 @@ _SKILL_CMD_MAP = {
 _CALENDAR_SKILLS = {"checkin", "cleaner-brief"}
 
 
-def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = None) -> str:
+def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = None, thread_context: str = None) -> str:
     if skill and skill in _SKILL_CMD_MAP:
         skill_cmd = _SKILL_CMD_MAP[skill]
     elif msg_type == "routine":
@@ -190,11 +190,19 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = No
 
     max_tokens = 1024 if skill in _CALENDAR_SKILLS else 512
 
+    # Build context section with conversation history if available
+    context_section = f"<context>\n{message}\n</context>"
+    if thread_context and thread_context.strip():
+        context_section = (
+            f"<conversation_history>\n{thread_context}\n</conversation_history>\n\n"
+            f"<current_message>\n{message}\n</current_message>"
+        )
+
     # Wrap guest content in XML-style delimiters to prevent prompt injection
     user_content = (
         f"[Automated pipeline — use {skill_cmd} flow]\n\n"
         f"<guest_name>{guest_name}</guest_name>\n\n"
-        f"<context>\n{message}\n</context>\n\n"
+        f"{context_section}\n\n"
         "Return ONLY the output text ready to send or use. No headings, no meta-commentary, "
         "no 'Here is a draft:' preamble. Just the content itself."
     )
@@ -229,6 +237,8 @@ class ClassifyRequest(BaseModel):
     message: str
     reply_to: Optional[str] = None
     skill: Optional[str] = None   # override: "checkin", "cleaner-brief", "reply", "complaint"
+    thread_context: Optional[str] = None   # recent conversation history for context
+    booking_uid: Optional[str] = None   # booking identifier for tracking
 
 
 class ClassifyResponse(BaseModel):
@@ -431,7 +441,7 @@ def classify(req: ClassifyRequest, request: Request):
     msg_type    = "complex" if req.source == "calendar" else classify_message(req.message)
     vendor_type = detect_vendor_type(req.message) if msg_type == "complex" else None
     try:
-        draft = generate_draft(req.guest_name, req.message, msg_type, skill=req.skill)
+        draft = generate_draft(req.guest_name, req.message, msg_type, skill=req.skill, thread_context=req.thread_context)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
@@ -447,6 +457,7 @@ def classify(req: ClassifyRequest, request: Request):
         "draft":       draft,
         "status":      "pending",
         "created_at":  datetime.now(timezone.utc).isoformat(),
+        "booking_uid": req.booking_uid,
     }
     _save_pending(pending)
     log.info("Classified [%s] vendor=%s from %s (%s) → %s",
