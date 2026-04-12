@@ -53,7 +53,23 @@ SYSTEM_PROMPT = _parts[2].strip() if len(_parts) >= 3 else _raw
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+# Support both Anthropic and OpenRouter APIs
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+
+# Use OpenRouter if available, fall back to Anthropic
+if OPENROUTER_API_KEY:
+  _client = anthropic.Anthropic(
+    api_key=OPENROUTER_API_KEY,
+    base_url="https://openrouter.ai/api/v1"
+  )
+  log.info("Using OpenRouter API for Claude models")
+elif ANTHROPIC_API_KEY:
+  _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+  log.info("Using Anthropic API directly")
+else:
+  raise RuntimeError("Neither ANTHROPIC_API_KEY nor OPENROUTER_API_KEY is set. Set one in .env")
+
 ROUTER_PORT       = int(os.getenv("ROUTER_PORT", "7771"))
 INTERNAL_TOKEN    = os.getenv("INTERNAL_TOKEN", "")   # shared secret for service-to-service auth
 DRAFT_TTL_DAYS    = int(os.getenv("DRAFT_TTL_DAYS", "7"))
@@ -68,8 +84,6 @@ HB_EMAIL          = HEARTBEAT_DIR / "heartbeat_email.json"
 HB_CAL            = HEARTBEAT_DIR / "heartbeat_calendar.json"
 HB_STALE_EMAIL    = 90    # seconds — email polls every 30s, 3× tolerance
 HB_STALE_CAL      = 300   # seconds — calendar polls every 30min, generous tolerance
-
-_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 # ---------------------------------------------------------------------------
 # Auth helper
