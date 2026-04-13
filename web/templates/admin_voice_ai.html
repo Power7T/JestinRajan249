@@ -322,17 +322,30 @@ window.toggleVoiceCall = async function() {
       console.log('Starting voice call...');
       statusEl.textContent = 'Requesting microphone...';
 
-      // Try to get microphone with audio constraints
-      console.log('Requesting getUserMedia with constraints...');
-      voiceStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
+      // Try to get microphone - use soft constraints that can fail gracefully
+      console.log('Requesting getUserMedia...');
+      try {
+        // Try with audio enhancements (soft constraints)
+        voiceStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: {ideal: true},
+            noiseSuppression: {ideal: true},
+            autoGainControl: {ideal: true}
+          }
+        });
+        console.log('✅ Microphone with enhancements');
+      } catch (e1) {
+        console.log('Retrying with basic audio only...');
+        // Fallback: just audio, no constraints
+        voiceStream = await navigator.mediaDevices.getUserMedia({audio: true});
+        console.log('✅ Microphone basic mode');
+      }
       console.log('✅ Microphone access granted');
-      console.log('Audio tracks:', voiceStream.getAudioTracks().length);
+      var tracks = voiceStream.getAudioTracks();
+      console.log('Audio tracks:', tracks.length);
+      if (tracks.length > 0) {
+        console.log('Track settings:', tracks[0].getSettings());
+      }
 
       isCallActive = true;
       callStartTime = Date.now();
@@ -422,15 +435,19 @@ window.toggleVoiceCall = async function() {
       // Provide helpful error messages based on error type
       var displayMsg = errorMsg;
       if (errorName === 'NotAllowedError' || errorMsg.includes('Permission denied')) {
-        displayMsg = '🔄 Reload the page - Permission was just granted. Reload and try calling again';
+        // NotAllowedError can happen if:
+        // 1. Permission not granted yet
+        // 2. Already in a call
+        // 3. Window not in focus
+        displayMsg = '⚠️ NotAllowedError - Permission issue. Try: 1) Reload page, 2) Click address bar and ensure permission is set to "Allow", 3) Make sure browser tab is focused';
       } else if (errorName === 'NotFoundError' || errorMsg.includes('Requested device not found')) {
         displayMsg = '🎤 No microphone found on this device';
       } else if (errorName === 'NotReadableError' || errorMsg.includes('Could not start')) {
-        displayMsg = '🎤 Microphone in use - Close other apps/tabs using microphone (Chrome, Zoom, etc) and try again';
+        displayMsg = '🎤 Microphone in use - Close Chrome, Zoom, Discord, or other apps using microphone and try again';
       } else if (errorName === 'SecurityError' || errorMsg.includes('https')) {
-        displayMsg = '🔒 HTTPS required - This feature requires a secure connection. Please use https://';
+        displayMsg = '🔒 HTTPS required - This feature needs a secure connection';
       } else if (errorMsg.includes('Type')) {
-        displayMsg = '⚠️ Browser error - Try a different browser or check browser settings';
+        displayMsg = '⚠️ Browser error - Try refreshing or use Chrome/Firefox';
       }
 
       statusEl.textContent = '❌ ' + displayMsg;
