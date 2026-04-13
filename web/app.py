@@ -10265,6 +10265,7 @@ def guest_contacts_dashboard(
         tenant_id = get_current_tenant_id(request)
     except HTTPException:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    tenant = _get_tenant(tenant_id, db)
 
     # Get today's guest contacts
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
