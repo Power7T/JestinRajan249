@@ -9738,18 +9738,19 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                     results["openrouter"] = "✗ Decryption failed (key corruption?)"
                 else:
                     import urllib.request
+                    # Use /models endpoint which is more reliable for API key validation
                     req = urllib.request.Request(
-                        "https://openrouter.ai/api/v1/auth/check",
+                        "https://openrouter.ai/api/v1/models",
                         headers={
                             "Authorization": f"Bearer {api_key}",
                             "Content-Type": "application/json",
                         }
                     )
                     try:
-                        urllib.request.urlopen(req, timeout=5)
+                        resp = urllib.request.urlopen(req, timeout=5)
                         results["openrouter"] = "✓ OpenRouter API key valid"
                     except urllib.error.HTTPError as e:
-                        if e.code == 401:
+                        if e.code == 401 or e.code == 403:
                             results["openrouter"] = "✗ Invalid API key"
                         else:
                             results["openrouter"] = f"✗ HTTP {e.code}"
