@@ -305,9 +305,17 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 window.toggleVoiceCall = async function() {
+  console.log('toggleVoiceCall() function called');
   var btn = document.getElementById('voiceCallBtn');
   var muteBtn = document.getElementById('voiceMuteBtn');
   var statusEl = document.getElementById('voiceStatus');
+
+  console.log('Elements found - btn:', !!btn, 'muteBtn:', !!muteBtn, 'statusEl:', !!statusEl);
+
+  if (!btn || !statusEl) {
+    console.error('Required elements not found');
+    return;
+  }
 
   if (!isCallActive) {
     try {
@@ -394,11 +402,14 @@ window.toggleVoiceCall = async function() {
       }, 1000);
 
     } catch (err) {
-      console.error('Error:', err);
-      statusEl.textContent = 'Error: ' + err.message;
+      console.error('Error in toggleVoiceCall:', err);
+      var errorMsg = err.message || String(err);
+      statusEl.textContent = '❌ Error: ' + errorMsg;
+      document.getElementById('userTranscript').textContent = errorMsg;
       isCallActive = false;
     }
   } else {
+    console.log('isCallActive is true, ending call');
     endCall();
   }
 };
@@ -546,37 +557,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Attach click handlers
   if (callBtn) {
+    console.log('Attaching click handler to call button');
     callBtn.addEventListener('click', function(e) {
+      console.log('Click event fired on call button');
       e.preventDefault();
-      console.log('Call button clicked');
-      window.toggleVoiceCall().catch(function(err) {
+      console.log('Call button clicked - calling toggleVoiceCall');
+      try {
+        window.toggleVoiceCall();
+      } catch (err) {
         console.error('toggleVoiceCall error:', err);
-      });
+      }
     });
+    console.log('Click handler attached to call button');
   } else {
-    console.error('Call button not found!');
+    console.error('❌ Call button not found!');
   }
 
   if (muteBtn) {
+    console.log('Attaching click handler to mute button');
     muteBtn.addEventListener('click', function(e) {
-      e.preventDefault();
       console.log('Mute button clicked');
-      window.muteAudio();
+      e.preventDefault();
+      try {
+        window.muteAudio();
+      } catch (err) {
+        console.error('muteAudio error:', err);
+      }
     });
   } else {
-    console.error('Mute button not found!');
+    console.error('❌ Mute button not found!');
   }
 
   if (testBtn) {
+    console.log('Attaching click handler to test button');
     testBtn.addEventListener('click', function(e) {
-      e.preventDefault();
       console.log('Test button clicked');
-      testConnections().catch(function(err) {
+      e.preventDefault();
+      try {
+        testConnections();
+      } catch (err) {
         console.error('testConnections error:', err);
-      });
+      }
     });
   } else {
-    console.error('Test button not found!');
+    console.error('❌ Test button not found!');
   }
 
   // Test connections after a short delay
