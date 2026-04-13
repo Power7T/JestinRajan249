@@ -192,6 +192,18 @@ _SKILL_CMD_MAP = {
 _CALENDAR_SKILLS = {"checkin", "cleaner-brief"}
 
 
+def _select_model(msg_type: str) -> str:
+    """
+    Hybrid tier strategy: route messages to different models based on complexity.
+    - Routine (80% of traffic): Gemini 2.5 Flash (fastest, cheapest)
+    - Complex (20% of traffic): Mistral Large (better reasoning, lower cost than Claude)
+    """
+    if msg_type == "routine":
+        return "google/gemini-2.5-flash"
+    else:  # complex or calendar
+        return "mistralai/mistral-large-2512"
+
+
 def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = None, thread_context: str = None) -> str:
     if skill and skill in _SKILL_CMD_MAP:
         skill_cmd = _SKILL_CMD_MAP[skill]
@@ -201,6 +213,7 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = No
         skill_cmd = "/complaint"
 
     max_tokens = 1024 if skill in _CALENDAR_SKILLS else 512
+    model = _select_model(msg_type)
 
     # Build context section with conversation history if available
     context_section = f"<context>\n{message}\n</context>"
@@ -230,7 +243,7 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = No
                         "Content-Type": "application/json"
                     },
                     json={
-                        "model": "anthropic/claude-sonnet-4.6",
+                        "model": model,
                         "messages": [
                             {"role": "system", "content": SYSTEM_PROMPT},
                             {"role": "user", "content": user_content}
@@ -261,9 +274,9 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = No
         except Exception as exc:
             last_exc = exc
             _, wait = delay
-            log.warning("Claude API attempt %d failed: %s — retrying in %ds", attempt, exc, wait)
+            log.warning("API attempt %d failed (%s): %s — retrying in %ds", attempt, model, exc, wait)
             time.sleep(wait)
-    raise RuntimeError(f"Claude API failed after {_MAX_RETRIES} attempts: {last_exc}")
+    raise RuntimeError(f"API failed after {_MAX_RETRIES} attempts ({model}): {last_exc}")
 
 # ---------------------------------------------------------------------------
 # FastAPI app
