@@ -221,7 +221,82 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
             <input type="text" name="sentiment_model" class="compat-input" value="{{ sys_conf.sentiment_model }}" title="Technical ID: openai/gpt-4o-mini">
             <p class="text-[10px] text-slate-500 font-medium">GPT-4o Mini <span class="text-slate-600 font-mono text-xs">(openai/gpt-4o-mini)</span></p>
           </div>
-          <button type="submit" class="w-full mt-2 py-3 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-[#002e6b] text-sm font-extrabold rounded-xl shadow-[0_0_20px_rgba(174,198,255,0.2)] hover:shadow-[0_0_30px_rgba(174,198,255,0.4)] transition-all">
+
+          <!-- Voice AI LLM Models -->
+          <hr class="border-white/10 my-4">
+          <div class="col-span-full mb-3">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">🎤 Voice AI — LLM Models</h3>
+            <p class="text-[10px] text-slate-500 mt-1">Models for in-call conversation responses</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <span style="display:inline-flex;align-items:center;gap:0.3rem">
+                Voice LLM Primary
+                <div class="tooltip-container">
+                  <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+                    <span style="font-size:0.7rem">ⓘ</span>
+                  </button>
+                  <div class="tooltip-content">Primary model for voice conversations. Used for responding to guest calls.</div>
+                </div>
+              </span>
+            </label>
+            <input type="text" name="voice_llm_model" class="compat-input" value="{{ sys_conf.voice_llm_model }}" title="Technical ID: openai/gpt-4o-mini">
+            <p class="text-[10px] text-slate-500 font-medium">GPT-4o Mini <span class="text-slate-600 font-mono text-xs">(openai/gpt-4o-mini)</span></p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Voice LLM Backup</label>
+            <input type="text" name="voice_llm_backup_model" class="compat-input" value="{{ sys_conf.voice_llm_backup_model }}" title="Technical ID: anthropic/claude-3.5-haiku">
+            <p class="text-[10px] text-slate-500 font-medium">Claude 3.5 Haiku <span class="text-slate-600 font-mono text-xs">(anthropic/claude-3.5-haiku)</span></p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Voice LLM Emergency</label>
+            <input type="text" name="voice_llm_emergency_model" class="compat-input" value="{{ sys_conf.voice_llm_emergency_model }}" title="Technical ID: meta-llama/llama-3.3-70b-instruct">
+            <p class="text-[10px] text-slate-500 font-medium">Llama 3.3 70B <span class="text-slate-600 font-mono text-xs">(meta-llama/llama-3.3-70b-instruct)</span></p>
+          </div>
+
+          <!-- Voice AI STT & TTS -->
+          <hr class="border-white/10 my-4">
+          <div class="col-span-full mb-3">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">📻 Voice AI — Speech Recognition & Synthesis</h3>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Deepgram STT Model</label>
+            <input type="text" name="voice_deepgram_model" class="compat-input" value="{{ sys_conf.voice_deepgram_model }}" title="STT model: nova-2 or nova-3">
+            <p class="text-[10px] text-slate-500 font-medium">Nova-2 <span class="text-slate-600 font-mono text-xs">(speech-to-text)</span></p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ElevenLabs TTS Model</label>
+            <input type="text" name="voice_elevenlabs_model" class="compat-input" value="{{ sys_conf.voice_elevenlabs_model }}" title="TTS model: eleven_turbo_v2">
+            <p class="text-[10px] text-slate-500 font-medium">Turbo v2 <span class="text-slate-600 font-mono text-xs">(text-to-speech)</span></p>
+          </div>
+
+          <!-- Voice AI Response Settings -->
+          <hr class="border-white/10 my-4">
+          <div class="col-span-full mb-3">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">⚙️ Voice AI — Response Configuration</h3>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">LLM Max Tokens</label>
+            <input type="number" name="voice_llm_max_tokens" class="compat-input" value="{{ sys_conf.voice_llm_max_tokens }}" min="50" max="2000" title="Max tokens for voice response generation">
+            <p class="text-[10px] text-slate-500 font-medium">Controls response length (300 recommended)</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">LLM Temperature</label>
+            <input type="number" name="voice_llm_temperature" class="compat-input" value="{{ sys_conf.voice_llm_temperature }}" min="0" max="2" step="0.1" title="Creativity: 0=deterministic, 1=balanced, 2=creative">
+            <p class="text-[10px] text-slate-500 font-medium">Creativity level (0.7 recommended)</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">TTS Stability</label>
+            <input type="number" name="voice_elevenlabs_stability" class="compat-input" value="{{ sys_conf.voice_elevenlabs_stability }}" min="0" max="1" step="0.1" title="Voice consistency: 0=variable, 1=consistent">
+            <p class="text-[10px] text-slate-500 font-medium">Voice consistency (0.5 recommended)</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">TTS Similarity</label>
+            <input type="number" name="voice_elevenlabs_similarity" class="compat-input" value="{{ sys_conf.voice_elevenlabs_similarity }}" min="0" max="1" step="0.1" title="Voice similarity: 0=different, 1=exact">
+            <p class="text-[10px] text-slate-500 font-medium">Voice similarity to reference (0.75 recommended)</p>
+          </div>
+
+          <button type="submit" class="w-full mt-4 py-3 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-[#002e6b] text-sm font-extrabold rounded-xl shadow-[0_0_20px_rgba(174,198,255,0.2)] hover:shadow-[0_0_30px_rgba(174,198,255,0.4)] transition-all">
             Save & Hot-Swap
           </button>
         </form>
@@ -309,6 +384,12 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       </button>
       <button type="button" class="model-tab px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff]" data-model="{{ sys_conf.sentiment_model }}">
         Sentiment<br><span class="font-mono opacity-60 text-[0.6rem]">{{ sys_conf.sentiment_model.split('/')[-1] }}</span>
+      </button>
+      <button type="button" class="model-tab px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff]" data-model="{{ sys_conf.voice_llm_model }}">
+        Voice LLM<br><span class="font-mono opacity-60 text-[0.6rem]">{{ sys_conf.voice_llm_model.split('/')[-1] }}</span>
+      </button>
+      <button type="button" class="model-tab px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff]" data-model="{{ sys_conf.voice_llm_backup_model }}">
+        Voice Backup<br><span class="font-mono opacity-60 text-[0.6rem]">{{ sys_conf.voice_llm_backup_model.split('/')[-1] }}</span>
       </button>
     </div>
 

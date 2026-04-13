@@ -243,6 +243,23 @@ class TenantConfig(Base):
     # Voice AI — ElevenLabs voice selection
     voice_elevenlabs_voice_id:    Mapped[Optional[str]] = mapped_column(String(64), nullable=True, default="EXAVITQu4vr4xnSDxMaL")
 
+    # Voice AI — LLM Models (in-call conversation)
+    voice_llm_model:              Mapped[str]           = mapped_column(String(100), default="openai/gpt-4o-mini")
+    voice_llm_backup_model:       Mapped[str]           = mapped_column(String(100), default="anthropic/claude-3.5-haiku")
+    voice_llm_emergency_model:    Mapped[str]           = mapped_column(String(100), default="meta-llama/llama-3.3-70b-instruct")
+
+    # Voice AI — Deepgram STT Model
+    voice_deepgram_model:         Mapped[str]           = mapped_column(String(50), default="nova-2")
+
+    # Voice AI — Response Configuration
+    voice_llm_max_tokens:         Mapped[int]           = mapped_column(Integer, default=300)
+    voice_llm_temperature:        Mapped[float]         = mapped_column(Float, default=0.7)
+
+    # Voice AI — ElevenLabs TTS Settings
+    voice_elevenlabs_stability:   Mapped[float]         = mapped_column(Float, default=0.5)
+    voice_elevenlabs_similarity:  Mapped[float]         = mapped_column(Float, default=0.75)
+    voice_elevenlabs_model:       Mapped[str]           = mapped_column(String(50), default="eleven_turbo_v2")
+
     # Host notifications on guest messages
     notify_host_on_guest_msg: Mapped[bool]           = mapped_column(Boolean, default=False)
     host_notify_phone:        Mapped[Optional[str]]  = mapped_column(String(32), nullable=True)  # optional separate phone for notifications
