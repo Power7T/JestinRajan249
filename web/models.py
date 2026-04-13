@@ -300,6 +300,7 @@ class TenantConfig(Base):
 
     # Digest / daily summary email
     digest_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
+    bot_last_heartbeat: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     digest_email_address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # separate digest email if different from account
 
     # Guest review request automation

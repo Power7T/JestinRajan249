@@ -10120,6 +10120,8 @@ def conversations_page(
     except HTTPException:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    tenant = _get_tenant(tenant_id, db)
+
     try:
         tenant = _get_tenant(tenant_id, db)
     except Exception:
@@ -10281,6 +10283,7 @@ def guest_contacts_dashboard(
 
     return templates.TemplateResponse("guest_contacts.html", {
         "request": request,
+        "tenant": tenant,
         "guest_contacts": guest_contacts,
         "today": today_start.date(),
     })
