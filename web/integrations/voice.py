@@ -36,6 +36,7 @@ class VoiceAIService:
 
     DEEPGRAM_API_KEY      = os.getenv("DEEPGRAM_API_KEY")
     OPENAI_API_KEY        = os.getenv("OPENAI_API_KEY")
+    OPENROUTER_API_KEY    = os.getenv("OPENROUTER_API_KEY")
     ELEVENLABS_API_KEY    = os.getenv("ELEVENLABS_API_KEY")
     ELEVENLABS_VOICE_ID   = os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
 
@@ -226,26 +227,52 @@ or when you don't know:
                 messages.append({"role": role, "content": msg["text"]})
             messages.append({"role": "user", "content": guest_message})
 
-            async def _call_openai():
-                async with httpx.AsyncClient(timeout=20) as client:
-                    resp = await client.post(
-                        "https://api.openai.com/v1/chat/completions",
-                        headers={
-                            "Authorization": f"Bearer {VoiceAIService.OPENAI_API_KEY}",
-                            "Content-Type": "application/json",
-                        },
-                        json={
-                            "model": "gpt-4o-mini",
-                            "messages": [{"role": "system", "content": system_prompt}] + messages,
-                            "temperature": 0.7,
-                            "max_tokens": 300,
-                            "response_format": {"type": "json_object"},
-                        },
-                    )
+            async def _call_llm():
+                # Use OpenRouter if available, otherwise fallback to OpenAI
+                if VoiceAIService.OPENROUTER_API_KEY:
+                    # OpenRouter call
+                    async with httpx.AsyncClient(timeout=20) as client:
+                        resp = await client.post(
+                            "https://openrouter.ai/api/v1/chat/completions",
+                            headers={
+                                "Authorization": f"Bearer {VoiceAIService.OPENROUTER_API_KEY}",
+                                "Content-Type": "application/json",
+                                "X-OpenRouter-Title": "HostAI Voice",
+                            },
+                            json={
+                                "model": "openai/gpt-4o-mini",
+                                "messages": [{"role": "system", "content": system_prompt}] + messages,
+                                "temperature": 0.7,
+                                "max_tokens": 300,
+                                "response_format": {"type": "json_object"},
+                            },
+                        )
 
-                if resp.status_code != 200:
-                    logger.error(f"OpenAI error: {resp.status_code} {resp.text}")
-                    return None
+                    if resp.status_code != 200:
+                        logger.error(f"OpenRouter error: {resp.status_code} {resp.text}")
+                        return None
+
+                else:
+                    # OpenAI fallback
+                    async with httpx.AsyncClient(timeout=20) as client:
+                        resp = await client.post(
+                            "https://api.openai.com/v1/chat/completions",
+                            headers={
+                                "Authorization": f"Bearer {VoiceAIService.OPENAI_API_KEY}",
+                                "Content-Type": "application/json",
+                            },
+                            json={
+                                "model": "gpt-4o-mini",
+                                "messages": [{"role": "system", "content": system_prompt}] + messages,
+                                "temperature": 0.7,
+                                "max_tokens": 300,
+                                "response_format": {"type": "json_object"},
+                            },
+                        )
+
+                    if resp.status_code != 200:
+                        logger.error(f"OpenAI error: {resp.status_code} {resp.text}")
+                        return None
 
                 raw = resp.json()["choices"][0]["message"]["content"]
                 data = json.loads(raw)
@@ -255,13 +282,13 @@ or when you don't know:
                 return (voice_text, send_action, unanswered_question)
 
             try:
-                # Hard timeout: 6 seconds for OpenAI
-                result = await asyncio.wait_for(_call_openai(), timeout=6.0)
+                # Hard timeout: 6 seconds for LLM call
+                result = await asyncio.wait_for(_call_llm(), timeout=6.0)
                 if result:
                     return result
                 return "Sorry, I couldn't understand that. Could you repeat?", None, None
             except asyncio.TimeoutError:
-                logger.error(f"[TIMEOUT] OpenAI generation exceeded 6s timeout")
+                logger.error(f"[TIMEOUT] LLM generation exceeded 6s timeout")
                 return "Sorry, I'm having trouble understanding. Could you repeat that?", None, None
 
         except json.JSONDecodeError:

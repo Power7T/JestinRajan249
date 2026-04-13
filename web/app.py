@@ -9511,6 +9511,26 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
         tenant_config_obj = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
         sys_conf = db.query(SystemConfig).first() or SystemConfig()
 
+        # Set API keys from database for VoiceAIService
+        if sys_conf.deepgram_api_key_enc:
+            decrypted = decrypt(sys_conf.deepgram_api_key_enc)
+            if decrypted:
+                VoiceAIService.DEEPGRAM_API_KEY = decrypted
+            else:
+                log.error("Failed to decrypt Deepgram API key")
+        if sys_conf.openrouter_api_key_enc:
+            decrypted = decrypt(sys_conf.openrouter_api_key_enc)
+            if decrypted:
+                VoiceAIService.OPENROUTER_API_KEY = decrypted
+            else:
+                log.error("Failed to decrypt OpenRouter API key")
+        if sys_conf.elevenlabs_api_key_enc:
+            decrypted = decrypt(sys_conf.elevenlabs_api_key_enc)
+            if decrypted:
+                VoiceAIService.ELEVENLABS_API_KEY = decrypted
+            else:
+                log.error("Failed to decrypt ElevenLabs API key")
+
         tenant_config = {
             "property_type": tenant_config_obj.property_type if tenant_config_obj else "apartment",
             "property_city": tenant_config_obj.property_city if tenant_config_obj else "",
@@ -9649,42 +9669,87 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
             "timestamp": datetime.utcnow().isoformat()
         }
 
-        # Test Deepgram (basic check - just list models)
+        # Test Deepgram
         try:
-            from web.voice_services import VoiceAIService
-            results["deepgram"] = "✓ Deepgram configured"
+            if sys_conf and sys_conf.deepgram_api_key_enc:
+                api_key = decrypt(sys_conf.deepgram_api_key_enc)
+                if not api_key:
+                    results["deepgram"] = "✗ Decryption failed (key corruption?)"
+                else:
+                    import urllib.request
+                    req = urllib.request.Request(
+                        "https://api.deepgram.com/v1/models",
+                        headers={
+                            "Authorization": f"Token {api_key}",
+                            "Content-Type": "application/json",
+                        }
+                    )
+                    try:
+                        urllib.request.urlopen(req, timeout=5)
+                        results["deepgram"] = "✓ Deepgram API key valid"
+                    except urllib.error.HTTPError as e:
+                        if e.code == 401:
+                            results["deepgram"] = "✗ Invalid API key"
+                        else:
+                            results["deepgram"] = f"✗ HTTP {e.code}"
+            else:
+                results["deepgram"] = "✗ No API key configured"
         except Exception as e:
             results["deepgram"] = f"✗ {str(e)[:50]}"
 
         # Test OpenRouter
         try:
-            sys_conf_current = db.query(SystemConfig).first() or SystemConfig()
-            if sys_conf_current and sys_conf_current.openrouter_api_key_enc:
-                api_key = decrypt(sys_conf_current.openrouter_api_key_enc) or sys_conf_current.openrouter_api_key_enc
-                import urllib.request
-                req = urllib.request.Request(
-                    "https://openrouter.ai/api/v1/auth/check",
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json",
-                    }
-                )
-                try:
-                    urllib.request.urlopen(req, timeout=5)
-                    results["openrouter"] = "✓ OpenRouter API key valid"
-                except urllib.error.HTTPError as e:
-                    if e.code == 401:
-                        results["openrouter"] = "✗ Invalid API key"
-                    else:
-                        results["openrouter"] = f"✗ HTTP {e.code}"
+            if sys_conf and sys_conf.openrouter_api_key_enc:
+                api_key = decrypt(sys_conf.openrouter_api_key_enc)
+                if not api_key:
+                    results["openrouter"] = "✗ Decryption failed (key corruption?)"
+                else:
+                    import urllib.request
+                    req = urllib.request.Request(
+                        "https://openrouter.ai/api/v1/auth/check",
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json",
+                        }
+                    )
+                    try:
+                        urllib.request.urlopen(req, timeout=5)
+                        results["openrouter"] = "✓ OpenRouter API key valid"
+                    except urllib.error.HTTPError as e:
+                        if e.code == 401:
+                            results["openrouter"] = "✗ Invalid API key"
+                        else:
+                            results["openrouter"] = f"✗ HTTP {e.code}"
             else:
                 results["openrouter"] = "✗ No API key configured"
         except Exception as e:
             results["openrouter"] = f"✗ {str(e)[:50]}"
 
-        # Test ElevenLabs (basic check)
+        # Test ElevenLabs
         try:
-            results["elevenlabs"] = "✓ ElevenLabs configured"
+            if sys_conf and sys_conf.elevenlabs_api_key_enc:
+                api_key = decrypt(sys_conf.elevenlabs_api_key_enc)
+                if not api_key:
+                    results["elevenlabs"] = "✗ Decryption failed (key corruption?)"
+                else:
+                    import urllib.request
+                    req = urllib.request.Request(
+                        "https://api.elevenlabs.io/v1/voices",
+                        headers={
+                            "xi-api-key": api_key,
+                            "Content-Type": "application/json",
+                        }
+                    )
+                    try:
+                        urllib.request.urlopen(req, timeout=5)
+                        results["elevenlabs"] = "✓ ElevenLabs API key valid"
+                    except urllib.error.HTTPError as e:
+                        if e.code == 401:
+                            results["elevenlabs"] = "✗ Invalid API key"
+                        else:
+                            results["elevenlabs"] = f"✗ HTTP {e.code}"
+            else:
+                results["elevenlabs"] = "✗ No API key configured"
         except Exception as e:
             results["elevenlabs"] = f"✗ {str(e)[:50]}"
 

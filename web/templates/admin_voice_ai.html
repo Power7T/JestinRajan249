@@ -495,6 +495,13 @@ async function testConnections() {
     });
   }
 }
+
+// Auto-test connections on page load
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    testConnections();
+  }, 500);
+});
 </script>
 
 {%- endblock %}
