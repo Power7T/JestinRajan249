@@ -57,8 +57,8 @@ class SystemConfig(Base):
     google_maps_api_key_enc: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Google Maps Places API key
 
     # Primary models (used 99% of time)
-    primary_model: Mapped[str] = mapped_column(String(100), default="mistralai/mistral-large-2512")
-    routine_model: Mapped[str] = mapped_column(String(100), default="google/gemini-2.5-flash")
+    primary_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="mistralai/mistral-large-2512")
+    routine_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="google/gemini-2.5-flash")
 
     # Backup models (used if primary fails - 1% of time)
     primary_backup_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="anthropic/claude-3.5-sonnet")
@@ -78,7 +78,7 @@ class SystemConfig(Base):
     voice_elevenlabs_model: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="eleven_turbo_v2")
     voice_elevenlabs_stability: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.5)
     voice_elevenlabs_similarity: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.75)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, default=_now, onupdate=_now)
 
 # ---------------------------------------------------------------------------
 # PlanConfig — subscription plan tiers (admin-editable)
