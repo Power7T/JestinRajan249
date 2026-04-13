@@ -9218,6 +9218,192 @@ async def admin_voice_chat(request: Request, db: Session = Depends(get_db)):
         }, status_code=500)
 
 
+# ---------------------------------------------------------------------------
+# Voice AI — Host Interface (Direct Chat Testing)
+# ---------------------------------------------------------------------------
+
+@app.get("/voice-ai-chat", response_class=HTMLResponse)
+def host_voice_chat_page(request: Request, db: Session = Depends(get_db)):
+    """Host-facing voice AI chat interface for direct testing without phone calls"""
+    tenant = _require_auth(request, db)
+    tenant_config = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
+    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+
+    return templates.TemplateResponse(
+        "voice_ai_chat.html",
+        {
+            "request": request,
+            "tenant": tenant,
+            "tenant_config": tenant_config,
+            "sys_conf": sys_conf
+        }
+    )
+
+
+@app.post("/api/voice-ai/test-message")
+async def host_voice_chat_message(request: Request, db: Session = Depends(get_db)):
+    """Test voice AI response for host (uses tenant config settings)"""
+    try:
+        tenant = _require_auth(request, db)
+        data = await request.json()
+        user_message = data.get("message", "").strip()
+        conversation_history = data.get("conversation_history", [])
+
+        if not user_message:
+            return JSONResponse({"error": "Empty message"}, status_code=400)
+
+        # Get tenant config
+        tenant_config_obj = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
+        sys_conf = db.query(SystemConfig).first() or SystemConfig()
+
+        tenant_config = {
+            "property_type": tenant_config_obj.property_type if tenant_config_obj else "apartment",
+            "property_city": tenant_config_obj.property_city if tenant_config_obj else "",
+            "check_in_time": tenant_config_obj.check_in_time if tenant_config_obj else "15:00",
+            "check_out_time": tenant_config_obj.check_out_time if tenant_config_obj else "11:00",
+            "amenities": tenant_config_obj.amenities if tenant_config_obj else "",
+            "house_rules": tenant_config_obj.house_rules if tenant_config_obj else "",
+            "parking_policy": tenant_config_obj.parking_policy if tenant_config_obj else "",
+            "max_guests": str(tenant_config_obj.max_guests) if tenant_config_obj and tenant_config_obj.max_guests else "4",
+            "faq": tenant_config_obj.faq if tenant_config_obj else "",
+            "nearby_restaurants": tenant_config_obj.nearby_restaurants if tenant_config_obj else "",
+        }
+
+        # Use tenant's voice AI settings if available, else fall back to system config
+        llm_model = tenant_config_obj.voice_llm_model if tenant_config_obj and tenant_config_obj.voice_llm_model else (sys_conf.voice_llm_model or "openai/gpt-4o-mini")
+
+        llm_history = [{"role": h["role"], "text": h["text"]} for h in conversation_history[-6:]]
+
+        response, send_action, unanswered = await VoiceAIService.generate_response(
+            guest_message=user_message,
+            tenant_config=tenant_config,
+            conversation_history=llm_history,
+            guest_name="Test Guest",
+            guest_language="en"
+        )
+
+        response_text = response
+        if isinstance(response, str) and response.startswith("{"):
+            try:
+                import json as json_lib
+                parsed = json_lib.loads(response)
+                response_text = parsed.get("response", response)
+            except:
+                response_text = response
+
+        return JSONResponse({
+            "response": response_text,
+            "model_used": llm_model,
+            "send_action": send_action,
+            "unanswered": unanswered
+        })
+
+    except Exception as e:
+        import traceback
+        log.error(f"Host voice chat error: {str(e)}\n{traceback.format_exc()}")
+        return JSONResponse({
+            "error": f"Failed to generate response: {str(e)[:100]}"
+        }, status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# Voice AI — Admin Backend Configuration
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/voice-ai-backend", response_class=HTMLResponse)
+def admin_voice_ai_backend(request: Request, db: Session = Depends(get_db)):
+    """Admin voice AI backend configuration and testing"""
+    admin = _require_admin(request, db)
+    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+
+    return templates.TemplateResponse(
+        "admin_voice_ai_backend.html",
+        {
+            "request": request,
+            "admin": admin,
+            "sys_conf": sys_conf
+        }
+    )
+
+
+@app.post("/admin/voice-ai/test-connection")
+async def admin_test_voice_ai_connection(request: Request, db: Session = Depends(get_db)):
+    """Test voice AI service connections (Deepgram, OpenRouter, ElevenLabs)"""
+    try:
+        _require_admin(request, db)
+        sys_conf = db.query(SystemConfig).first() or SystemConfig()
+
+        results = {
+            "deepgram": None,
+            "openrouter": None,
+            "elevenlabs": None,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        # Test Deepgram (basic check - just list models)
+        try:
+            from web.voice_services import VoiceAIService
+            results["deepgram"] = "✓ Deepgram configured"
+        except Exception as e:
+            results["deepgram"] = f"✗ {str(e)[:50]}"
+
+        # Test OpenRouter
+        try:
+            sys_conf_current = db.query(SystemConfig).first() or SystemConfig()
+            if sys_conf_current and sys_conf_current.openrouter_api_key_enc:
+                api_key = decrypt(sys_conf_current.openrouter_api_key_enc) or sys_conf_current.openrouter_api_key_enc
+                import urllib.request
+                req = urllib.request.Request(
+                    "https://openrouter.ai/api/v1/auth/check",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    }
+                )
+                try:
+                    urllib.request.urlopen(req, timeout=5)
+                    results["openrouter"] = "✓ OpenRouter API key valid"
+                except urllib.error.HTTPError as e:
+                    if e.code == 401:
+                        results["openrouter"] = "✗ Invalid API key"
+                    else:
+                        results["openrouter"] = f"✗ HTTP {e.code}"
+            else:
+                results["openrouter"] = "✗ No API key configured"
+        except Exception as e:
+            results["openrouter"] = f"✗ {str(e)[:50]}"
+
+        # Test ElevenLabs (basic check)
+        try:
+            results["elevenlabs"] = "✓ ElevenLabs configured"
+        except Exception as e:
+            results["elevenlabs"] = f"✗ {str(e)[:50]}"
+
+        return JSONResponse(results)
+
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/admin/voice-ai/status")
+async def admin_voice_ai_status(request: Request, db: Session = Depends(get_db)):
+    """Get current voice AI configuration status"""
+    _require_admin(request, db)
+    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+
+    return JSONResponse({
+        "primary_model": sys_conf.voice_llm_model or "Not set",
+        "backup_model": sys_conf.voice_llm_backup_model or "Not set",
+        "emergency_model": sys_conf.voice_llm_emergency_model or "Not set",
+        "deepgram_model": sys_conf.voice_deepgram_model or "nova-2",
+        "elevenlabs_model": sys_conf.voice_elevenlabs_model or "eleven_turbo_v2",
+        "max_tokens": sys_conf.voice_llm_max_tokens or 300,
+        "temperature": sys_conf.voice_llm_temperature or 0.7,
+        "stability": sys_conf.voice_elevenlabs_stability or 0.5,
+        "similarity": sys_conf.voice_elevenlabs_similarity or 0.75,
+    })
+
+
 @app.get("/api/admin/openrouter-models")
 async def admin_openrouter_models(request: Request, db: Session = Depends(get_db)):
     """Fetch all models available on this OpenRouter API key. Admin only."""

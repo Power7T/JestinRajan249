@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Voice AI Backend Configuration — HostAI Admin{% endblock %}
+
+{% block main_wrapper %}
+<div class="min-h-screen bg-gray-100 py-8">
+  <div class="max-w-6xl mx-auto px-4">
+    <!-- Header -->
+    <div class="mb-8">
+      <a href="/admin/ai" class="text-blue-600 hover:text-blue-800 text-sm font-medium mb-4 inline-block">← Back to AI Engine</a>
+      <h1 class="text-4xl font-bold text-gray-900 mb-2">🎤 Voice AI Backend Configuration</h1>
+      <p class="text-gray-600">Configure and test your Voice AI system — LLM models, speech recognition, text-to-speech</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <!-- LLM Models Configuration -->
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="text-2xl">🧠</span>
+          LLM Models
+        </h2>
+        <div class="space-y-3 text-sm">
+          <div>
+            <p class="text-gray-600 font-semibold mb-1">Primary Model</p>
+            <p class="font-mono text-blue-600 bg-blue-50 p-2 rounded" id="primaryModel">{{ sys_conf.voice_llm_model or 'Not set' }}</p>
+          </div>
+          <div>
+            <p class="text-gray-600 font-semibold mb-1">Backup Model</p>
+            <p class="font-mono text-blue-600 bg-blue-50 p-2 rounded" id="backupModel">{{ sys_conf.voice_llm_backup_model or 'Not set' }}</p>
+          </div>
+          <div>
+            <p class="text-gray-600 font-semibold mb-1">Emergency Model</p>
+            <p class="font-mono text-blue-600 bg-blue-50 p-2 rounded" id="emergencyModel">{{ sys_conf.voice_llm_emergency_model or 'Not set' }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Speech Recognition (STT) -->
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="text-2xl">🎙️</span>
+          Speech-to-Text (STT)
+        </h2>
+        <div class="space-y-3 text-sm">
+          <div>
+            <p class="text-gray-600 font-semibold mb-1">Provider</p>
+            <p class="font-semibold text-gray-900 bg-gray-50 p-2 rounded">Deepgram</p>
+          </div>
+          <div>
+            <p class="text-gray-600 font-semibold mb-1">Model</p>
+            <p class="font-mono text-blue-600 bg-blue-50 p-2 rounded" id="deepgramModel">{{ sys_conf.voice_deepgram_model or 'nova-2' }}</p>
+          </div>
+          <p class="text-xs text-gray-500 pt-2">Transcribes audio to text in real-time</p>
+        </div>
+      </div>
+
+      <!-- Text-to-Speech (TTS) -->
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="text-2xl">🔊</span>
+          Text-to-Speech (TTS)
+        </h2>
+        <div class="space-y-3 text-sm">
+          <div>
+            <p class="text-gray-600 font-semibold mb-1">Provider</p>
+            <p class="font-semibold text-gray-900 bg-gray-50 p-2 rounded">ElevenLabs</p>
+          </div>
+          <div>
+            <p class="text-gray-600 font-semibold mb-1">Model</p>
+            <p class="font-mono text-blue-600 bg-blue-50 p-2 rounded" id="elevenlabsModel">{{ sys_conf.voice_elevenlabs_model or 'eleven_turbo_v2' }}</p>
+          </div>
+          <p class="text-xs text-gray-500 pt-2">Generates natural-sounding voice responses</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Response Parameters -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <span class="text-2xl">⚙️</span>
+        Response Parameters
+      </h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <p class="text-sm text-gray-600 font-semibold mb-2">Max Tokens</p>
+          <div class="bg-blue-50 p-3 rounded font-mono text-lg text-blue-600" id="maxTokens">{{ sys_conf.voice_llm_max_tokens or 300 }}</div>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600 font-semibold mb-2">Temperature</p>
+          <div class="bg-blue-50 p-3 rounded font-mono text-lg text-blue-600" id="temperature">{{ sys_conf.voice_llm_temperature or 0.7 }}</div>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600 font-semibold mb-2">Voice Stability</p>
+          <div class="bg-blue-50 p-3 rounded font-mono text-lg text-blue-600" id="stability">{{ sys_conf.voice_elevenlabs_stability or 0.5 }}</div>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600 font-semibold mb-2">Voice Similarity</p>
+          <div class="bg-blue-50 p-3 rounded font-mono text-lg text-blue-600" id="similarity">{{ sys_conf.voice_elevenlabs_similarity or 0.75 }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Service Connection Testing -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <span class="text-2xl">🧪</span>
+          Service Connection Status
+        </h2>
+        <button onclick="testConnections()" class="px-4 py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 transition">
+          Test Connections
+        </button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="border rounded-lg p-4">
+          <p class="font-semibold text-gray-900 mb-2">Deepgram (STT)</p>
+          <p class="text-sm text-gray-600" id="deepgramStatus">Click "Test Connections" to check</p>
+        </div>
+        <div class="border rounded-lg p-4">
+          <p class="font-semibold text-gray-900 mb-2">OpenRouter (LLM)</p>
+          <p class="text-sm text-gray-600" id="openrouterStatus">Click "Test Connections" to check</p>
+        </div>
+        <div class="border rounded-lg p-4">
+          <p class="font-semibold text-gray-900 mb-2">ElevenLabs (TTS)</p>
+          <p class="text-sm text-gray-600" id="elevenlabsStatus">Click "Test Connections" to check</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-4">Quick Actions</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <a href="/admin/voice-chat" class="block p-4 border rounded-lg hover:bg-gray-50 transition">
+          <p class="font-semibold text-gray-900">Admin Voice Chat Test</p>
+          <p class="text-sm text-gray-600 mt-1">Test voice AI with mock property data</p>
+        </a>
+        <a href="/voice-ai-chat" class="block p-4 border rounded-lg hover:bg-gray-50 transition">
+          <p class="font-semibold text-gray-900">Host Voice Chat Test</p>
+          <p class="text-sm text-gray-600 mt-1">Test using your actual property data</p>
+        </a>
+        <a href="/admin/ai" class="block p-4 border rounded-lg hover:bg-gray-50 transition">
+          <p class="font-semibold text-gray-900">AI Engine Settings</p>
+          <p class="text-sm text-gray-600 mt-1">Configure general AI models and settings</p>
+        </a>
+        <a href="/settings" class="block p-4 border rounded-lg hover:bg-gray-50 transition">
+          <p class="font-semibold text-gray-900">Property Settings</p>
+          <p class="text-sm text-gray-600 mt-1">Update property details for voice responses</p>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script nonce="{{ request.state.csp_nonce }}">
+async function testConnections() {
+  const deepgramEl = document.getElementById('deepgramStatus');
+  const openrouterEl = document.getElementById('openrouterStatus');
+  const elevenlabsEl = document.getElementById('elevenlabsStatus');
+
+  deepgramEl.textContent = 'Testing...';
+  openrouterEl.textContent = 'Testing...';
+  elevenlabsEl.textContent = 'Testing...';
+
+  try {
+    const response = await fetch('/admin/voice-ai/test-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      deepgramEl.textContent = data.deepgram || 'No status';
+      openrouterEl.textContent = data.openrouter || 'No status';
+      elevenlabsEl.textContent = data.elevenlabs || 'No status';
+
+      // Color code results
+      [deepgramEl, openrouterEl, elevenlabsEl].forEach(el => {
+        if (el.textContent.includes('✓')) {
+          el.className = 'text-sm text-green-700 font-semibold';
+        } else if (el.textContent.includes('✗')) {
+          el.className = 'text-sm text-red-700 font-semibold';
+        }
+      });
+    }
+  } catch (error) {
+    deepgramEl.textContent = '✗ Connection error';
+    openrouterEl.textContent = '✗ Connection error';
+    elevenlabsEl.textContent = '✗ Connection error';
+    [deepgramEl, openrouterEl, elevenlabsEl].forEach(el => {
+      el.className = 'text-sm text-red-700 font-semibold';
+    });
+  }
+}
+
+// Auto-load status on page load
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const response = await fetch('/api/admin/voice-ai/status');
+    if (response.ok) {
+      const data = await response.json();
+      document.getElementById('primaryModel').textContent = data.primary_model;
+      document.getElementById('backupModel').textContent = data.backup_model;
+      document.getElementById('emergencyModel').textContent = data.emergency_model;
+      document.getElementById('deepgramModel').textContent = data.deepgram_model;
+      document.getElementById('elevenlabsModel').textContent = data.elevenlabs_model;
+      document.getElementById('maxTokens').textContent = data.max_tokens;
+      document.getElementById('temperature').textContent = data.temperature;
+      document.getElementById('stability').textContent = data.stability;
+      document.getElementById('similarity').textContent = data.similarity;
+    }
+  } catch (error) {
+    console.error('Failed to load voice AI status:', error);
+  }
+});
+</script>
+{% endblock %}

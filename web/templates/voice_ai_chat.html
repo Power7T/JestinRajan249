@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% set title_text = "Voice AI Chat Test" %}
+{% block title %}Voice AI Chat — HostAI{% endblock %}
+
+{% block main_wrapper %}
+<div class="min-h-screen bg-gray-50 py-8">
+  <div class="max-w-2xl mx-auto px-4">
+    <div class="bg-white rounded-lg shadow">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-6 text-white">
+        <h1 class="text-3xl font-bold">Voice AI Chat Test</h1>
+        <p class="text-blue-100 mt-2">Direct conversation with your Voice AI — no phone call needed</p>
+      </div>
+
+      <div class="p-6 space-y-6">
+        <!-- Chat Display -->
+        <div class="bg-gray-100 rounded-lg p-4 h-96 overflow-y-auto border border-gray-200" id="chatContainer">
+          <div class="text-center text-gray-500 py-12">
+            <svg class="mx-auto h-12 w-12 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p>Start a conversation with your Voice AI</p>
+          </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="space-y-4">
+          <div class="flex gap-2">
+            <input
+              type="text"
+              id="messageInput"
+              class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Ask your Voice AI anything..."
+              onkeypress="if(event.key==='Enter' && !event.shiftKey) sendMessage()"
+            />
+            <button
+              onclick="sendMessage()"
+              class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+              id="sendBtn"
+            >
+              Send
+            </button>
+          </div>
+          <p class="text-xs text-gray-500">Press Enter or click Send to send your message</p>
+        </div>
+
+        <!-- Quick Test Prompts -->
+        <div class="border-t pt-6">
+          <h3 class="text-sm font-semibold text-gray-700 mb-3">Quick Test Prompts</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="setMessage('What is the WiFi password?')" class="p-2 text-left text-sm bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition">
+              <p class="font-medium text-blue-900">WiFi Password</p>
+              <p class="text-xs text-blue-700">Test basic question</p>
+            </button>
+            <button onclick="setMessage('When is check-in time?')" class="p-2 text-left text-sm bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition">
+              <p class="font-medium text-blue-900">Check-in Time</p>
+              <p class="text-xs text-blue-700">Test property info</p>
+            </button>
+            <button onclick="setMessage('What are the house rules?')" class="p-2 text-left text-sm bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition">
+              <p class="font-medium text-blue-900">House Rules</p>
+              <p class="text-xs text-blue-700">Test policy question</p>
+            </button>
+            <button onclick="setMessage('Is there parking?')" class="p-2 text-left text-sm bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition">
+              <p class="font-medium text-blue-900">Parking</p>
+              <p class="text-xs text-blue-700">Test amenity question</p>
+            </button>
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div class="border-t pt-6">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-gray-50 p-3 rounded">
+              <p class="text-xs text-gray-600 font-semibold uppercase">Response Time</p>
+              <p class="text-lg font-mono text-blue-600 mt-1" id="responseTime">—</p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded">
+              <p class="text-xs text-gray-600 font-semibold uppercase">Model</p>
+              <p class="text-sm font-mono text-blue-600 mt-1" id="modelUsed">{{ sys_conf.voice_llm_model or 'Not set' }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script nonce="{{ request.state.csp_nonce }}">
+let conversationHistory = [];
+
+function setMessage(text) {
+  document.getElementById('messageInput').value = text;
+  document.getElementById('messageInput').focus();
+}
+
+function addMessage(text, isGuest = true) {
+  const container = document.getElementById('chatContainer');
+
+  // Remove empty state
+  if (container.children.length === 1 && container.children[0].textContent.includes('Start a conversation')) {
+    container.innerHTML = '';
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = `p-3 rounded-lg mb-3 max-w-xs ${isGuest ? 'ml-auto bg-blue-600 text-white' : 'mr-auto bg-gray-200 text-gray-900'}`;
+  bubble.textContent = text;
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('messageInput');
+  const message = input.value.trim();
+
+  if (!message) return;
+
+  const sendBtn = document.getElementById('sendBtn');
+  sendBtn.disabled = true;
+  input.disabled = true;
+
+  addMessage(message, true);
+  conversationHistory.push({ role: 'user', text: message });
+  input.value = '';
+
+  const startTime = performance.now();
+
+  try {
+    const response = await fetch('/api/voice-ai/test-message', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Token': '{{ request.headers.get("X-Internal-Token", "") }}'
+      },
+      body: JSON.stringify({
+        message: message,
+        conversation_history: conversationHistory
+      })
+    });
+
+    const endTime = performance.now();
+    const responseTime = ((endTime - startTime) / 1000).toFixed(2);
+    document.getElementById('responseTime').textContent = responseTime + 's';
+
+    if (response.ok) {
+      const data = await response.json();
+      addMessage(data.response, false);
+      conversationHistory.push({ role: 'assistant', text: data.response });
+      if (data.model_used) {
+        document.getElementById('modelUsed').textContent = data.model_used;
+      }
+    } else {
+      const error = await response.json();
+      addMessage(`Error: ${error.error || 'Failed to get response'}`, false);
+    }
+  } catch (error) {
+    addMessage(`Error: ${error.message}`, false);
+  } finally {
+    sendBtn.disabled = false;
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('messageInput').focus();
+});
+</script>
+{% endblock %}
