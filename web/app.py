@@ -8843,11 +8843,11 @@ async def admin_voice_ai_save(
     voice_llm_backup_model: str = Form(""),
     voice_llm_emergency_model: str = Form(""),
     voice_deepgram_model: str = Form(""),
-    voice_llm_max_tokens: int = Form(300),
-    voice_llm_temperature: float = Form(0.7),
+    voice_llm_max_tokens: str = Form(""),
+    voice_llm_temperature: str = Form(""),
     voice_elevenlabs_model: str = Form(""),
-    voice_elevenlabs_stability: float = Form(0.5),
-    voice_elevenlabs_similarity: float = Form(0.75),
+    voice_elevenlabs_stability: str = Form(""),
+    voice_elevenlabs_similarity: str = Form(""),
     db: Session = Depends(get_db),
 ):
     """Save Voice AI configuration"""
@@ -8872,13 +8872,34 @@ async def admin_voice_ai_save(
     if voice_deepgram_model.strip():
         sys_conf.voice_deepgram_model = voice_deepgram_model.strip()
 
-    sys_conf.voice_llm_max_tokens = voice_llm_max_tokens
-    sys_conf.voice_llm_temperature = voice_llm_temperature
+    # Parse numeric values safely
+    try:
+        if voice_llm_max_tokens.strip():
+            sys_conf.voice_llm_max_tokens = int(voice_llm_max_tokens.strip())
+    except (ValueError, AttributeError):
+        sys_conf.voice_llm_max_tokens = 300
+
+    try:
+        if voice_llm_temperature.strip():
+            sys_conf.voice_llm_temperature = float(voice_llm_temperature.strip())
+    except (ValueError, AttributeError):
+        sys_conf.voice_llm_temperature = 0.7
 
     if voice_elevenlabs_model.strip():
         sys_conf.voice_elevenlabs_model = voice_elevenlabs_model.strip()
-    sys_conf.voice_elevenlabs_stability = voice_elevenlabs_stability
-    sys_conf.voice_elevenlabs_similarity = voice_elevenlabs_similarity
+
+    # Parse ElevenLabs voice settings safely
+    try:
+        if voice_elevenlabs_stability.strip():
+            sys_conf.voice_elevenlabs_stability = float(voice_elevenlabs_stability.strip())
+    except (ValueError, AttributeError):
+        sys_conf.voice_elevenlabs_stability = 0.5
+
+    try:
+        if voice_elevenlabs_similarity.strip():
+            sys_conf.voice_elevenlabs_similarity = float(voice_elevenlabs_similarity.strip())
+    except (ValueError, AttributeError):
+        sys_conf.voice_elevenlabs_similarity = 0.75
 
     db.add(sys_conf)
     db.commit()

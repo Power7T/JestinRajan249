@@ -471,7 +471,14 @@ async function testConnections() {
   elevenlabsEl.textContent = 'Testing...';
 
   try {
-    var response = await fetch('/admin/voice-ai/test-connection', { method: 'POST' });
+    var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+    var response = await fetch('/admin/voice-ai/test-connection', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ csrf_token: csrfToken })
+    });
     if (response.ok) {
       var data = await response.json();
       deepgramEl.textContent = data.deepgram || 'No status';
@@ -485,11 +492,16 @@ async function testConnections() {
           el.className = 'text-xs text-red-400 font-semibold';
         }
       });
+    } else {
+      deepgramEl.textContent = '✗ Error: ' + response.status;
+      openrouterEl.textContent = '✗ Error: ' + response.status;
+      elevenlabsEl.textContent = '✗ Error: ' + response.status;
     }
   } catch (error) {
-    deepgramEl.textContent = '✗ Connection error';
-    openrouterEl.textContent = '✗ Connection error';
-    elevenlabsEl.textContent = '✗ Connection error';
+    console.error('Test connection error:', error);
+    deepgramEl.textContent = '✗ ' + error.message;
+    openrouterEl.textContent = '✗ ' + error.message;
+    elevenlabsEl.textContent = '✗ ' + error.message;
     [deepgramEl, openrouterEl, elevenlabsEl].forEach(function(el) {
       el.className = 'text-xs text-red-400 font-semibold';
     });
@@ -498,8 +510,23 @@ async function testConnections() {
 
 // Auto-test connections on page load
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('Voice AI admin page loaded');
+
+  // Ensure button handlers are attached
+  var callBtn = document.getElementById('voiceCallBtn');
+  var muteBtn = document.getElementById('voiceMuteBtn');
+  var testBtn = document.querySelector('button[onclick*="testConnections"]');
+
+  console.log('Call button:', callBtn);
+  console.log('Mute button:', muteBtn);
+  console.log('Test button:', testBtn);
+
   setTimeout(function() {
-    testConnections();
+    try {
+      testConnections();
+    } catch (e) {
+      console.error('testConnections error:', e);
+    }
   }, 500);
 });
 </script>
