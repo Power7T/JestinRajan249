@@ -8820,6 +8820,61 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
     })
 
 
+@app.get("/admin/voice-ai", response_class=HTMLResponse)
+def admin_voice_ai(request: Request, db: Session = Depends(get_db)):
+    """Admin Voice AI configuration and live calling"""
+    admin = _require_admin(request, db)
+    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+
+    return templates.TemplateResponse("admin_voice_ai.html", {
+        "request": request,
+        "admin": admin,
+        "sys_conf": sys_conf,
+    })
+
+
+@app.post("/admin/voice-ai/save")
+async def admin_voice_ai_save(
+    request: Request,
+    voice_llm_model: str = Form(""),
+    voice_llm_backup_model: str = Form(""),
+    voice_llm_emergency_model: str = Form(""),
+    voice_deepgram_model: str = Form(""),
+    voice_llm_max_tokens: int = Form(300),
+    voice_llm_temperature: float = Form(0.7),
+    voice_elevenlabs_model: str = Form(""),
+    voice_elevenlabs_stability: float = Form(0.5),
+    voice_elevenlabs_similarity: float = Form(0.75),
+    db: Session = Depends(get_db),
+):
+    """Save Voice AI configuration"""
+    admin = _require_admin(request, db)
+    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+
+    # Update Voice AI settings
+    if voice_llm_model.strip():
+        sys_conf.voice_llm_model = voice_llm_model.strip()
+    if voice_llm_backup_model.strip():
+        sys_conf.voice_llm_backup_model = voice_llm_backup_model.strip()
+    if voice_llm_emergency_model.strip():
+        sys_conf.voice_llm_emergency_model = voice_llm_emergency_model.strip()
+    if voice_deepgram_model.strip():
+        sys_conf.voice_deepgram_model = voice_deepgram_model.strip()
+
+    sys_conf.voice_llm_max_tokens = voice_llm_max_tokens
+    sys_conf.voice_llm_temperature = voice_llm_temperature
+
+    if voice_elevenlabs_model.strip():
+        sys_conf.voice_elevenlabs_model = voice_elevenlabs_model.strip()
+    sys_conf.voice_elevenlabs_stability = voice_elevenlabs_stability
+    sys_conf.voice_elevenlabs_similarity = voice_elevenlabs_similarity
+
+    db.add(sys_conf)
+    db.commit()
+
+    return RedirectResponse(url="/admin/voice-ai", status_code=303)
+
+
 @app.get("/admin/host-profitability", response_class=HTMLResponse)
 def admin_host_profitability(request: Request, db: Session = Depends(get_db)):
     """Per-host profitability breakdown — see revenue, costs, and profit for each tenant."""
