@@ -67,6 +67,16 @@ else
 fi
 
 echo ""
+echo "Step 2b: Running additive schema sync..."
+if PYTHONPATH=/app python3 -c "from web.db import db_migrate; db_migrate()" 2>&1; then
+    echo "[Schema Sync] ✓ Completed successfully"
+else
+    echo "[Schema Sync] ✗ FAILED"
+    echo "FATAL: Additive schema sync failed. Check logs above."
+    exit 1
+fi
+
+echo ""
 echo "Step 3: Starting uvicorn..."
 PORT=${PORT:-8000}
 echo "[Uvicorn] Starting on 0.0.0.0:$PORT with 2 workers"

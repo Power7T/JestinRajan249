@@ -69,6 +69,9 @@ def test_load_system_config_handles_missing_backup_columns(tmp_path):
     assert sys_conf.sentiment_model == "model/sentiment"
     assert sys_conf.primary_backup_model == "anthropic/claude-3.5-sonnet"
     assert sys_conf.routine_backup_model == "anthropic/claude-3.5-haiku"
+    assert sys_conf.voice_llm_model == "openai/gpt-4o-mini"
+    assert sys_conf.voice_deepgram_model == "nova-2"
+    assert sys_conf.voice_elevenlabs_model == "eleven_turbo_v2"
 
 
 def test_admin_ai_page_shows_warning_in_compat_mode(client, monkeypatch):
@@ -79,6 +82,15 @@ def test_admin_ai_page_shows_warning_in_compat_mode(client, monkeypatch):
         sentiment_model="model/sentiment",
         primary_backup_model="anthropic/claude-3.5-sonnet",
         routine_backup_model="anthropic/claude-3.5-haiku",
+        voice_llm_model="openai/gpt-4o-mini",
+        voice_llm_backup_model="anthropic/claude-3.5-haiku",
+        voice_llm_emergency_model="meta-llama/llama-3.3-70b-instruct",
+        voice_deepgram_model="nova-2",
+        voice_llm_max_tokens=300,
+        voice_llm_temperature=0.7,
+        voice_elevenlabs_model="eleven_turbo_v2",
+        voice_elevenlabs_stability=0.5,
+        voice_elevenlabs_similarity=0.75,
     )
     setattr(sys_conf, "_schema_drift_fallback", True)
 

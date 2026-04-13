@@ -67,6 +67,17 @@ class SystemConfig(Base):
     # Fallback models (emergency only)
     fallback_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="meta-llama/llama-3.3-70b-instruct")
     sentiment_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="openai/gpt-4o-mini")
+
+    # Voice AI admin defaults and test harness settings
+    voice_llm_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="openai/gpt-4o-mini")
+    voice_llm_backup_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="anthropic/claude-3.5-haiku")
+    voice_llm_emergency_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="meta-llama/llama-3.3-70b-instruct")
+    voice_deepgram_model: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="nova-2")
+    voice_llm_max_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=300)
+    voice_llm_temperature: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.7)
+    voice_elevenlabs_model: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="eleven_turbo_v2")
+    voice_elevenlabs_stability: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.5)
+    voice_elevenlabs_similarity: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.75)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 # ---------------------------------------------------------------------------

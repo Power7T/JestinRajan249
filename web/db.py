@@ -24,7 +24,12 @@ def _env_flag(name: str, default: bool) -> bool:
 
 
 _AUTO_CREATE_TABLES = _env_flag("AUTO_CREATE_TABLES", _ALLOW_SCHEMA_MUTATION_DEFAULT)
-_AUTO_MIGRATE = _env_flag("AUTO_MIGRATE", _ALLOW_SCHEMA_MUTATION_DEFAULT)
+# Keep additive schema repair enabled by default so missed deploy migrations do
+# not leave the app hard-crashing on newer ORM columns.
+_AUTO_MIGRATE = _env_flag("AUTO_MIGRATE", True)
+if _ENVIRONMENT not in {"development", "dev", "test"} and not _AUTO_MIGRATE:
+    log.warning("AUTO_MIGRATE=false ignored in production; additive schema repair stays enabled")
+    _AUTO_MIGRATE = True
 
 _is_sqlite = DATABASE_URL.startswith("sqlite")
 
@@ -101,9 +106,20 @@ def db_migrate():
         # (table, column, sql_type, default_sql)
         ("system_config", "openrouter_api_key_enc",    "VARCHAR(255)", "NULL"),
         ("system_config", "primary_model",             "VARCHAR(100)", "'anthropic/claude-3.7-sonnet'"),
+        ("system_config", "primary_backup_model",      "VARCHAR(100)", "'anthropic/claude-3.5-sonnet'"),
         ("system_config", "fallback_model",            "VARCHAR(100)", "'meta-llama/llama-3.3-70b-instruct'"),
         ("system_config", "routine_model",             "VARCHAR(100)", "'google/gemini-2.5-flash'"),
+        ("system_config", "routine_backup_model",      "VARCHAR(100)", "'anthropic/claude-3.5-haiku'"),
         ("system_config", "sentiment_model",           "VARCHAR(100)", "'openai/gpt-4o-mini'"),
+        ("system_config", "voice_llm_model",           "VARCHAR(100)", "'openai/gpt-4o-mini'"),
+        ("system_config", "voice_llm_backup_model",    "VARCHAR(100)", "'anthropic/claude-3.5-haiku'"),
+        ("system_config", "voice_llm_emergency_model", "VARCHAR(100)", "'meta-llama/llama-3.3-70b-instruct'"),
+        ("system_config", "voice_deepgram_model",      "VARCHAR(50)",  "'nova-2'"),
+        ("system_config", "voice_llm_max_tokens",      "INTEGER",      "300"),
+        ("system_config", "voice_llm_temperature",     "FLOAT",        "0.7"),
+        ("system_config", "voice_elevenlabs_model",    "VARCHAR(50)",  "'eleven_turbo_v2'"),
+        ("system_config", "voice_elevenlabs_stability","FLOAT",        "0.5"),
+        ("system_config", "voice_elevenlabs_similarity","FLOAT",       "0.75"),
         ("system_config", "updated_at",                datetime_type,  "NULL"),
         ("tenant_configs", "timezone",                "VARCHAR(64)",  "'UTC'"),
         ("tenant_configs", "data_retention_days",     "INTEGER",      "30"),
@@ -120,6 +136,15 @@ def db_migrate():
         ("tenant_configs", "voice_twilio_auth_token_enc", "TEXT",     "NULL"),
         ("tenant_configs", "voice_twilio_from_number", "VARCHAR(32)", "NULL"),
         ("tenant_configs", "voice_elevenlabs_voice_id", "VARCHAR(64)", "'EXAVITQu4vr4xnSDxMaL'"),
+        ("tenant_configs", "voice_llm_model",          "VARCHAR(100)", "'openai/gpt-4o-mini'"),
+        ("tenant_configs", "voice_llm_backup_model",   "VARCHAR(100)", "'anthropic/claude-3.5-haiku'"),
+        ("tenant_configs", "voice_llm_emergency_model","VARCHAR(100)", "'meta-llama/llama-3.3-70b-instruct'"),
+        ("tenant_configs", "voice_deepgram_model",     "VARCHAR(50)",  "'nova-2'"),
+        ("tenant_configs", "voice_llm_max_tokens",     "INTEGER",      "300"),
+        ("tenant_configs", "voice_llm_temperature",    "FLOAT",        "0.7"),
+        ("tenant_configs", "voice_elevenlabs_stability","FLOAT",       "0.5"),
+        ("tenant_configs", "voice_elevenlabs_similarity","FLOAT",      "0.75"),
+        ("tenant_configs", "voice_elevenlabs_model",   "VARCHAR(50)",  "'eleven_turbo_v2'"),
         ("tenant_configs", "notify_host_on_guest_msg","BOOLEAN",      false_default),
         ("tenant_configs", "host_notify_phone",       "VARCHAR(32)",  "NULL"),
         ("tenant_configs", "email_ingest_mode",       "VARCHAR(32)",  "'imap'"),
@@ -184,6 +209,16 @@ def db_migrate():
         ("reservations", "latest_guest_sentiment_score","FLOAT",  "NULL"),
         ("reservations", "checkin_token_expires_at", datetime_type, "NULL"),
         # Voice calling (older DBs may have partial schema)
+        ("voice_calls", "guest_contact_id",       "VARCHAR(36)",  "NULL"),
+        ("voice_calls", "reservation_id",         "INTEGER",      "NULL"),
+        ("voice_calls", "twilio_call_id",         "VARCHAR(64)",  "NULL"),
+        ("voice_calls", "twilio_phone_number",    "VARCHAR(32)",  "NULL"),
+        ("voice_calls", "guest_phone_number",     "VARCHAR(32)",  "NULL"),
+        ("voice_calls", "call_type",              "VARCHAR(16)",  "'incoming'"),
+        ("voice_calls", "status",                 "VARCHAR(32)",  "'ringing'"),
+        ("voice_calls", "guest_messages",         "JSON",         "'[]'"),
+        ("voice_calls", "ai_responses",           "JSON",         "'[]'"),
+        ("voice_calls", "created_at",             datetime_type,  "NULL"),
         ("voice_calls", "full_transcript",        "TEXT",         "NULL"),
         ("voice_calls", "confidence_avg",         "FLOAT",        "NULL"),
         ("voice_calls", "sentiment",              "VARCHAR(16)",  "NULL"),
@@ -198,6 +233,14 @@ def db_migrate():
         ("voice_calls", "recording_consent_at",   datetime_type,  "NULL"),
         ("voice_calls", "started_at",             datetime_type,  "NULL"),
         ("voice_calls", "ended_at",               datetime_type,  "NULL"),
+        ("voice_knowledge_gaps", "call_id",       "VARCHAR(36)",  "NULL"),
+        ("voice_knowledge_gaps", "issue_ticket_id","INTEGER",     "NULL"),
+        ("voice_knowledge_gaps", "guest_phone",   "VARCHAR(32)",  "NULL"),
+        ("voice_knowledge_gaps", "guest_name",    "VARCHAR(128)", "NULL"),
+        ("voice_knowledge_gaps", "guest_room",    "VARCHAR(64)",  "NULL"),
+        ("voice_knowledge_gaps", "host_answer",   "TEXT",         "NULL"),
+        ("voice_knowledge_gaps", "saved_to",      "VARCHAR(32)",  "NULL"),
+        ("voice_knowledge_gaps", "created_at",    datetime_type,  "NULL"),
         ("voice_knowledge_gaps", "resolved",      "BOOLEAN",      false_default),
         ("voice_knowledge_gaps", "reply_sent",    "BOOLEAN",      false_default),
         ("voice_knowledge_gaps", "reply_sent_at", datetime_type,  "NULL"),

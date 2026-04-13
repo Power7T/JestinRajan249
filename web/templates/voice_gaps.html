@@ -133,6 +133,18 @@ tailwind.config = {
     </div>
   </div>
 
+  {% if voice_gaps_error %}
+  <div class="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-5 py-4 mb-8">
+    <div class="flex items-start gap-3">
+      <span class="material-symbols-outlined text-amber-300 mt-0.5">warning</span>
+      <div>
+        <p class="font-semibold text-amber-200">Voice gap data unavailable</p>
+        <p class="mt-1 text-sm text-amber-100/90">{{ voice_gaps_error }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ── Open gaps ──────────────────────────────────────────────────────── -->
   {% if open_gaps %}
   <section class="mb-12">

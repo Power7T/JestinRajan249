@@ -106,6 +106,7 @@ from web.security import (
     validate_csrf, validate_csrf_header, rate_limit, client_ip, is_request_secure,
 )
 from web.system_config_store import load_system_config, system_config_schema_is_behind
+from web.tenant_config_store import load_tenant_config
 from web.request_safety import ensure_public_hostname, ensure_public_url
 from web.workflow import (
     analyze_guest_sentiment,
@@ -713,32 +714,9 @@ def _get_tenant(tenant_id: str, db: Session) -> Tenant:
 
 
 def _get_or_create_config(tenant_id: str, db: Session) -> TenantConfig:
-    try:
-        cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
-    except Exception as exc:
-        db.rollback()
-        # Self-healing: if the crash is due to the missing 'digest_enabled' column, try to add it now
-        if "digest_enabled" in str(exc).lower():
-            try:
-                db.execute(text("ALTER TABLE tenant_configs ADD COLUMN digest_enabled BOOLEAN DEFAULT FALSE"))
-                db.commit()
-                cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
-            except Exception:
-                db.rollback()
-                raise exc
-        else:
-            raise exc
-
+    cfg = load_tenant_config(db, tenant_id, create_if_missing=True)
     if not cfg:
-        # Avoid crashing if the constructor itself finds new columns missing
-        try:
-            cfg = TenantConfig(tenant_id=tenant_id)
-            db.add(cfg)
-            db.commit()
-            db.refresh(cfg)
-        except Exception:
-            db.rollback()
-            raise
+        raise RuntimeError(f"Could not load tenant config for {tenant_id}")
     return cfg
 
 
@@ -6849,20 +6827,27 @@ def voice_gaps_page(request: Request, db: Session = Depends(get_db)):
     from web.models import VoiceKnowledgeGap
     tenant = _get_tenant(tenant_id, db)
     cfg    = _get_or_create_config(tenant_id, db)
-
-    open_gaps = (
-        db.query(VoiceKnowledgeGap)
-        .filter(VoiceKnowledgeGap.tenant_id == tenant_id, VoiceKnowledgeGap.resolved.is_(False))
-        .order_by(VoiceKnowledgeGap.created_at.desc())
-        .all()
-    )
-    resolved_gaps = (
-        db.query(VoiceKnowledgeGap)
-        .filter(VoiceKnowledgeGap.tenant_id == tenant_id, VoiceKnowledgeGap.resolved.is_(True))
-        .order_by(VoiceKnowledgeGap.resolved_at.desc())
-        .limit(20)
-        .all()
-    )
+    open_gaps = []
+    resolved_gaps = []
+    voice_gaps_error = None
+    try:
+        open_gaps = (
+            db.query(VoiceKnowledgeGap)
+            .filter(VoiceKnowledgeGap.tenant_id == tenant_id, VoiceKnowledgeGap.resolved.is_(False))
+            .order_by(VoiceKnowledgeGap.created_at.desc())
+            .all()
+        )
+        resolved_gaps = (
+            db.query(VoiceKnowledgeGap)
+            .filter(VoiceKnowledgeGap.tenant_id == tenant_id, VoiceKnowledgeGap.resolved.is_(True))
+            .order_by(VoiceKnowledgeGap.resolved_at.desc())
+            .limit(20)
+            .all()
+        )
+    except SQLAlchemyError:
+        db.rollback()
+        log.exception("Voice gaps page failed to load for tenant %s", tenant_id)
+        voice_gaps_error = "Voice knowledge-gap data is temporarily unavailable. Run the latest database migrations, then reload this page."
 
     return templates.TemplateResponse("voice_gaps.html", {
         "request": request,
@@ -6870,6 +6855,7 @@ def voice_gaps_page(request: Request, db: Session = Depends(get_db)):
         "cfg": cfg,
         "open_gaps": open_gaps,
         "resolved_gaps": resolved_gaps,
+        "voice_gaps_error": voice_gaps_error,
     })
 
 
@@ -11655,6 +11641,12 @@ def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
     from sqlalchemy import func, desc, text
     from datetime import timedelta as td
 
+    def _tenant_label(t: Tenant | None, fallback: str) -> str:
+        if not t:
+            return fallback[:8]
+        full_name = " ".join(part for part in [t.first_name, t.last_name] if part).strip()
+        return full_name or t.email or fallback[:8]
+
     # Get cost summary for last 30 days
     cutoff = datetime.now(timezone.utc) - td(days=30)
     usage_logs = db.query(APIUsageLog).filter(
@@ -11689,7 +11681,7 @@ def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
         limit_cfg = db.query(TenantRateLimit).filter_by(tenant_id=tenant_id).first()
         limit_usd = (limit_cfg.max_daily_cost_usd if limit_cfg else 50)
         top_tenants_today.append({
-            "name": t.name if t else tenant_id[:8],
+            "name": _tenant_label(t, tenant_id),
             "cost_today": cost or 0,
             "calls_today": calls,
             "daily_limit": limit_usd,
@@ -11715,7 +11707,7 @@ def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
         daily_cost = sum(log.cost_usd for log in daily_logs)
 
         rate_limits.append({
-            "tenant_name": t.name if t else limit.tenant_id[:8],
+            "tenant_name": _tenant_label(t, limit.tenant_id),
             "calls_per_hour": limit.voice_calls_per_hour,
             "calls_current": calls_current,
             "calls_usage_pct": min(100, (calls_current / max(limit.voice_calls_per_hour, 1)) * 100),

@@ -68,6 +68,23 @@ def _existing_system_config_columns(db: Session) -> set[str]:
 
 def _load_system_config_fallback(db: Session, exc: SQLAlchemyError) -> SystemConfig:
     db.rollback()
+    try:
+        from web.db import db_migrate
+        db_migrate()
+        db.rollback()
+        try:
+            repaired = db.query(SystemConfig).first()
+        except SQLAlchemyError as retry_exc:
+            if not _is_system_config_schema_drift(retry_exc):
+                raise
+            db.rollback()
+            log.warning("SystemConfig schema repair did not fully resolve drift: %s", retry_exc)
+        else:
+            return repaired
+    except Exception as repair_exc:
+        db.rollback()
+        log.warning("SystemConfig schema repair failed: %s", repair_exc)
+
     sys_conf = _system_config_defaults()
     try:
         existing_columns = _existing_system_config_columns(db)
