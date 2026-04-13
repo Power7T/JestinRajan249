@@ -169,12 +169,12 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
                   <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
                     <span style="font-size:0.7rem">ⓘ</span>
                   </button>
-                  <div class="tooltip-content">Most capable model for complex guest issues (Claude 3.5 Sonnet). Routine Model handles simple requests faster/cheaper.</div>
+                  <div class="tooltip-content">Complex issues model (Mistral Large). Handles maintenance, complaints, refunds with superior reasoning. Routine Model handles simple requests faster/cheaper.</div>
                 </div>
               </span>
             </label>
-            <input type="text" name="primary_model" class="compat-input" value="{{ sys_conf.primary_model }}" title="Technical ID: anthropic/claude-3.7-sonnet">
-            <p class="text-[10px] text-slate-500 font-medium">Claude 3.7 Sonnet <span class="text-slate-600 font-mono text-xs">(anthropic/claude-3.7-sonnet)</span></p>
+            <input type="text" name="primary_model" class="compat-input" value="{{ sys_conf.primary_model }}" title="Technical ID: mistralai/mistral-large-2512">
+            <p class="text-[10px] text-slate-500 font-medium">Mistral Large <span class="text-slate-600 font-mono text-xs">(mistralai/mistral-large-2512) ✓</span></p>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Routine Model</label>

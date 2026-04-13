@@ -55,7 +55,7 @@ class SystemConfig(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     openrouter_api_key_enc: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     google_maps_api_key_enc: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Google Maps Places API key
-    primary_model: Mapped[str] = mapped_column(String(100), default="anthropic/claude-3.7-sonnet")
+    primary_model: Mapped[str] = mapped_column(String(100), default="mistralai/mistral-large-2512")
     fallback_model: Mapped[str] = mapped_column(String(100), default="meta-llama/llama-3.3-70b-instruct")
     routine_model: Mapped[str] = mapped_column(String(100), default="google/gemini-2.5-flash")
     sentiment_model: Mapped[str] = mapped_column(String(100), default="openai/gpt-4o-mini")
