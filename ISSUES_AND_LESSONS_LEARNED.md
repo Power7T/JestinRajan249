@@ -1,7 +1,7 @@
 # HostAI — Issues Log & Lessons Learned
 > **Purpose:** Every bug, crash, 500 error, deployment failure, and design mistake encountered while building this project. Use this as a pre-flight checklist before every release.
 >
-> **Last updated:** 2026-04-05 | **Total issues documented:** 45+
+> **Last updated:** 2026-04-13 | **Total issues documented:** 50+
 
 ---
 
@@ -118,6 +118,24 @@
 - **Prevention:**
   - Always use `datetime.now(timezone.utc)` and `datetime.min.replace(tzinfo=timezone.utc)`
   - All `DateTime` columns in models should have `timezone=True`
+
+---
+
+### 1.11 — Model columns not in database (out-of-sync schema)
+- **Symptom:** `psycopg2.errors.UndefinedColumn: column system_config.primary_backup_model does not exist` on page load
+- **Root cause:** Columns were added to SQLAlchemy models (`SystemConfig`, `TenantConfig`) but database migrations to create those columns were never run or were pending
+- **Specific case:** Voice AI feature added 9 new columns to `TenantConfig` and 2 to `SystemConfig` but Railway database hadn't applied the migrations yet, causing 500 errors on every page trying to query those columns
+- **Fix:** 
+  - Created two Alembic migrations:
+    - `20260413_0000_voice_ai_tenant_config.py` — adds 9 voice AI columns to `tenant_configs`
+    - `20260413_0100_add_system_config_backup_models.py` — adds 2 backup model columns to `system_config`
+  - Made all new columns `nullable=True` in models to prevent errors when migrations haven't run yet
+  - Migrations run automatically on next deploy
+- **Prevention:**
+  - **Critical rule:** Never add a column to a SQLAlchemy model without immediately creating an Alembic migration for it
+  - Before deploying to production, verify: `alembic history | tail -20` includes all recent migrations
+  - Make new columns `nullable=True` to gracefully handle pre-migration state
+  - Add this check to pre-commit: `grep -n "mapped_column" models.py` then `grep -n "add_column" versions/*.py` — they should match
 
 ---
 
@@ -274,6 +292,21 @@
 - **Root cause:** `assign_to_team_member` FK was declared as `String` but `TeamMember.id` is `Integer`
 - **Fix:** Changed FK column type to `Integer`
 - **Prevention:** Always check the PK type of the referenced table before declaring a FK column
+
+---
+
+### 4.5 — Defining columns in model without corresponding migration
+- **Symptom:** `psycopg2.errors.UndefinedColumn: column X does not exist` on every page load
+- **Root cause:** Model class has column definition (e.g., `voice_llm_model: Mapped[str]`) but database doesn't have the column yet (migration is pending or not created)
+- **Example:** Added 11 voice AI columns to models but migrations only created after 500 errors on Railway
+- **Fix:** 
+  - Make all new columns `nullable=True` and `nullable=True` in their mapped_column definition
+  - Ensure migration file exists for each new column
+  - Verify migrations run before code that uses those columns
+- **Prevention:**
+  - **Golden rule:** For every `mapped_column(...)` added to a model, create a corresponding `op.add_column(...)` or `op.create_table(...)` in a migration **before** committing
+  - Run migrations locally before committing: `alembic upgrade head`
+  - Test that the app still starts if you temporarily comment out the new columns from models
 
 ---
 
@@ -453,6 +486,8 @@
 - [ ] Use `op.*` DDL functions, not raw SQL
 - [ ] Add new columns to `db_migrate()` ensure_columns list in `db.py`
 - [ ] Add new model classes to `init_db()` import block in `db.py`
+- [ ] **If adding model columns:** Make them `nullable=True` in the model to handle pre-migration state
+- [ ] Create migration file BEFORE or IMMEDIATELY AFTER committing model changes (never leave model columns without migrations)
 
 ### Before committing code
 - [ ] `grep -rn "current_user"` — should return 0 (all replaced with `tenant`)
@@ -463,8 +498,11 @@
 ### Before deploying
 - [ ] `alembic heads` shows exactly 1 head
 - [ ] All migration `down_revision` values point to actually-existing revision files
+- [ ] All new `mapped_column(...)` in models have corresponding `op.add_column(...)` in a migration
+- [ ] All new columns in migrations are `nullable=True` (to handle timing of migrations vs. code deploy)
 - [ ] Environment variables set: `DATABASE_URL`, `PORT`, `AUTO_MIGRATE`, `ENVIRONMENT`
 - [ ] Test login page with brand-new tenant (empty data — no voice calls, no reservations)
+- [ ] Test admin pages that load system_config or tenant_configs (make sure no 500 errors on undefined columns)
 - [ ] Jinja2 divisions all use `{{ (a / b) if b else 0 }}` pattern
 
 ### Mobile UI checklist per new page
