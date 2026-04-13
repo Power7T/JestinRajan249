@@ -313,51 +313,75 @@ window.toggleVoiceCall = async function() {
 
   if (!isCallActive) {
     try {
+      console.log('Starting voice call...');
+      statusEl.textContent = 'Requesting microphone...';
+
       voiceStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      console.log('Microphone access granted');
+
       isCallActive = true;
       callStartTime = Date.now();
 
       btn.style.background = 'linear-gradient(to right, #ef4444, #dc2626)';
       btn.innerHTML = '<span>📵</span><span id="callBtnText">End Call</span>';
       muteBtn.disabled = false;
-      statusEl.textContent = 'Connected';
+      statusEl.textContent = 'Connecting to AI...';
 
       var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      voiceWs = new WebSocket(protocol + '//' + window.location.host + '/ws/voice-ai/live');
+      var wsUrl = protocol + '//' + window.location.host + '/ws/voice-ai/live';
+      console.log('Connecting to WebSocket:', wsUrl);
+
+      voiceWs = new WebSocket(wsUrl);
 
       voiceWs.onopen = function() {
+        console.log('WebSocket connected');
+        statusEl.textContent = 'Connected';
         voiceWs.send(JSON.stringify({ type: 'start' }));
+        console.log('Sent start message');
+
         mediaRecorder = new MediaRecorder(voiceStream, { mimeType: 'audio/webm' });
+        console.log('MediaRecorder created');
+
         mediaRecorder.ondataavailable = function(e) {
           if (e.data.size > 0 && voiceWs && voiceWs.readyState === WebSocket.OPEN) {
+            console.log('Sending audio chunk:', e.data.size, 'bytes');
             e.data.arrayBuffer().then(function(buf) { voiceWs.send(buf); });
           }
         };
         mediaRecorder.start(100);
+        console.log('MediaRecorder started');
       };
 
       voiceWs.onmessage = function(event) {
-        var data = JSON.parse(event.data);
-        if (data.type === 'transcript') {
-          document.getElementById('userTranscript').textContent = data.text || '—';
-        } else if (data.type === 'response') {
-          document.getElementById('aiTranscript').textContent = data.text || '—';
-        } else if (data.type === 'audio') {
-          var binaryString = atob(data.audio);
-          var bytes = new Uint8Array(binaryString.length);
-          for (var i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
+        console.log('Message received:', event.data.substring(0, 100));
+        try {
+          var data = JSON.parse(event.data);
+          if (data.type === 'transcript') {
+            document.getElementById('userTranscript').textContent = data.text || '—';
+          } else if (data.type === 'response') {
+            document.getElementById('aiTranscript').textContent = data.text || '—';
+          } else if (data.type === 'audio') {
+            var binaryString = atob(data.audio);
+            var bytes = new Uint8Array(binaryString.length);
+            for (var i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            playAudioChunk(bytes);
           }
-          playAudioChunk(bytes);
+        } catch (e) {
+          console.error('Error parsing message:', e);
         }
       };
 
       voiceWs.onerror = function(err) {
-        statusEl.textContent = 'Connection error';
         console.error('WebSocket error:', err);
+        statusEl.textContent = 'Connection error: ' + (err.message || 'Unknown error');
       };
 
-      voiceWs.onclose = function() { endCall(); };
+      voiceWs.onclose = function(e) {
+        console.log('WebSocket closed:', e.code, e.reason);
+        endCall();
+      };
 
       var timerInterval = setInterval(function() {
         if (!isCallActive) {
@@ -372,8 +396,9 @@ window.toggleVoiceCall = async function() {
       }, 1000);
 
     } catch (err) {
-      statusEl.textContent = 'Microphone access denied';
-      console.error('Microphone error:', err);
+      console.error('Error:', err);
+      statusEl.textContent = 'Error: ' + err.message;
+      isCallActive = false;
     }
   } else {
     endCall();

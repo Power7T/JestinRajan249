@@ -9500,13 +9500,21 @@ async def voice_ai_synthesize(request: Request, db: Session = Depends(get_db)):
 async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(get_db)):
     """Live two-way audio streaming for Voice AI conversation"""
     await websocket.accept()
+    log.info("Voice AI WebSocket connection accepted")
 
     try:
         from web.integrations.voice import VoiceAIService
 
         # Receive initial config message
-        init_msg = await websocket.receive_text()
-        init_data = json.loads(init_msg)
+        try:
+            init_msg = await websocket.receive_text()
+            init_data = json.loads(init_msg)
+            log.info(f"Voice AI init message: {init_data}")
+        except Exception as e:
+            log.error(f"Failed to receive init message: {str(e)}")
+            await websocket.send_json({"type": "error", "message": "Failed to receive init message"})
+            await websocket.close()
+            return
 
         # Get tenant from auth (admin is authenticated)
         tenant = None
@@ -9564,6 +9572,24 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
         if sys_conf.voice_elevenlabs_similarity is not None:
             VoiceAIService.ELEVENLABS_SIMILARITY = float(sys_conf.voice_elevenlabs_similarity)
 
+        # Validate that required API keys are configured
+        if not VoiceAIService.DEEPGRAM_API_KEY:
+            await websocket.send_json({"type": "error", "message": "Deepgram API key not configured"})
+            await websocket.close()
+            return
+
+        if not VoiceAIService.OPENROUTER_API_KEY and not VoiceAIService.OPENAI_API_KEY:
+            await websocket.send_json({"type": "error", "message": "OpenRouter or OpenAI API key not configured"})
+            await websocket.close()
+            return
+
+        if not VoiceAIService.ELEVENLABS_API_KEY:
+            await websocket.send_json({"type": "error", "message": "ElevenLabs API key not configured"})
+            await websocket.close()
+            return
+
+        log.info("All voice AI API keys configured, starting conversation")
+
         tenant_config = {
             "property_type": tenant_config_obj.property_type if tenant_config_obj else "apartment",
             "property_city": tenant_config_obj.property_city if tenant_config_obj else "",
@@ -9587,16 +9613,19 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
         while True:
             try:
                 data = await websocket.receive_bytes()
-            except:
+                log.debug(f"Received audio chunk: {len(data)} bytes")
+            except Exception as e:
                 # Try to receive text for control messages
                 try:
                     text_msg = await websocket.receive_text()
                     control = json.loads(text_msg)
+                    log.debug(f"Received control message: {control}")
 
                     if control.get("type") == "mute":
                         is_muted = control.get("muted", False)
                     continue
-                except:
+                except Exception as e2:
+                    log.info(f"WebSocket closed or error: {str(e2)}")
                     break
 
             # Handle audio data
@@ -9606,13 +9635,18 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
                 # When we have enough audio, process it
                 if len(audio_buffer) >= audio_chunk_size:
                     try:
+                        log.info(f"Processing audio buffer: {len(audio_buffer)} bytes")
                         # Upload and transcribe
                         audio_url = await VoiceAIService.upload_to_r2(bytes(audio_buffer), f"voice-{uuid4()}.wav")
                         if not audio_url:
+                            log.info("R2 upload failed, trying S3 fallback")
                             audio_url = await VoiceAIService.upload_to_s3(bytes(audio_buffer), f"voice-{uuid4()}.wav")
 
                         if audio_url:
-                            transcript, _ = await VoiceAIService.transcribe_audio(audio_url)
+                            log.info(f"Audio uploaded to {audio_url}")
+                            transcript, confidence = await VoiceAIService.transcribe_audio(audio_url)
+                            log.info(f"Transcribed: '{transcript}' (confidence: {confidence})")
+
                             if transcript:
                                 # Send transcript to client
                                 await websocket.send_json({"type": "transcript", "text": transcript})
@@ -9625,6 +9659,7 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
                                     guest_name="Admin Voice",
                                     guest_language="en"
                                 )
+                                log.info(f"Generated response: {response[:100]}")
 
                                 response_text = response
                                 if isinstance(response, str) and response.startswith("{"):
@@ -9640,17 +9675,26 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
                                 # Synthesize audio
                                 voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
                                 audio_bytes, s3_url = await VoiceAIService.synthesize_speech(response_text, voice_id=voice_id)
+                                log.info(f"Synthesized audio: {len(audio_bytes) if audio_bytes else 0} bytes")
 
                                 if audio_bytes:
                                     # Send audio in chunks
                                     import base64
                                     audio_b64 = base64.b64encode(audio_bytes).decode()
                                     await websocket.send_json({"type": "audio", "audio": audio_b64})
+                            else:
+                                log.warning("Transcription returned empty")
+                        else:
+                            log.warning("Audio upload failed")
 
                         audio_buffer = bytearray()
                     except Exception as e:
-                        log.error(f"Voice processing error: {str(e)}")
-                        await websocket.send_json({"type": "error", "message": str(e)[:100]})
+                        import traceback
+                        log.error(f"Voice processing error: {str(e)}\n{traceback.format_exc()}")
+                        try:
+                            await websocket.send_json({"type": "error", "message": str(e)[:100]})
+                        except:
+                            pass
 
     except WebSocketDisconnect:
         log.info("Voice AI live call disconnected")
