@@ -458,6 +458,95 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     <button type="button" id="clear-chat-btn" class="mt-3 text-[0.65rem] text-slate-600 hover:text-slate-400 transition-colors">Clear chat</button>
   </div>
 
+  <!-- Voice AI Live Chat Interface -->
+  <div id="voiceAISection" class="mt-12 pt-8 border-t border-white/10">
+    <h2 class="text-3xl font-extrabold tracking-tight text-white mb-4">🎤 Voice AI Live Chat Testing</h2>
+    <p class="text-slate-400 text-sm mb-8">Test your Voice AI directly on-screen without making a phone call. Uses your property configuration.</p>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div class="xl:col-span-1">
+        <div class="glass-card rounded-3xl p-6 h-full flex flex-col">
+          <h3 class="text-lg font-bold text-white mb-4">Chat</h3>
+
+          <!-- Chat Display -->
+          <div class="flex-1 bg-gray-950 rounded-lg p-4 mb-4 overflow-y-auto border border-white/10 flex flex-col" id="voiceChatContainer" style="height:400px;min-height:400px;">
+            <div class="text-center text-slate-500 m-auto">
+              <p class="text-sm">Start a conversation with your Voice AI</p>
+            </div>
+          </div>
+
+          <!-- Input -->
+          <div class="space-y-2">
+            <div class="flex gap-2">
+              <input
+                type="text"
+                id="voiceChatInput"
+                class="flex-1 px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-white placeholder-slate-500 text-sm"
+                placeholder="Ask your Voice AI..."
+                onkeypress="if(event.key==='Enter') sendVoiceMessage()"
+              />
+              <button
+                onclick="sendVoiceMessage()"
+                class="px-6 py-2 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-[#002e6b] font-bold rounded-lg hover:shadow-lg transition text-sm"
+                id="voiceChatSendBtn"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="xl:col-span-2">
+        <div class="glass-card rounded-3xl p-6">
+          <h3 class="text-lg font-bold text-white mb-4">Quick Test Prompts</h3>
+          <div class="grid grid-cols-2 gap-3 mb-6">
+            <button onclick="setVoiceMessage('What is the WiFi password?')" class="p-3 text-left text-sm bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition">
+              <p class="font-semibold text-white">WiFi Password</p>
+              <p class="text-xs text-slate-500 mt-1">Test basic question</p>
+            </button>
+            <button onclick="setVoiceMessage('When is check-in time?')" class="p-3 text-left text-sm bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition">
+              <p class="font-semibold text-white">Check-in Time</p>
+              <p class="text-xs text-slate-500 mt-1">Test property info</p>
+            </button>
+            <button onclick="setVoiceMessage('What are the house rules?')" class="p-3 text-left text-sm bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition">
+              <p class="font-semibold text-white">House Rules</p>
+              <p class="text-xs text-slate-500 mt-1">Test policy question</p>
+            </button>
+            <button onclick="setVoiceMessage('Is there parking available?')" class="p-3 text-left text-sm bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition">
+              <p class="font-semibold text-white">Parking</p>
+              <p class="text-xs text-slate-500 mt-1">Test amenity question</p>
+            </button>
+          </div>
+
+          <hr class="border-white/10 mb-6">
+
+          <h3 class="text-lg font-bold text-white mb-4">Current Configuration</h3>
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p class="text-slate-500 font-semibold mb-1 text-xs uppercase">Primary LLM</p>
+              <p class="font-mono text-blue-300">{{ sys_conf.voice_llm_model or 'openai/gpt-4o-mini' }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 font-semibold mb-1 text-xs uppercase">Max Tokens</p>
+              <p class="font-mono text-blue-300">{{ sys_conf.voice_llm_max_tokens or 300 }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 font-semibold mb-1 text-xs uppercase">Deepgram Model</p>
+              <p class="font-mono text-blue-300">{{ sys_conf.voice_deepgram_model or 'nova-2' }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500 font-semibold mb-1 text-xs uppercase">ElevenLabs Model</p>
+              <p class="font-mono text-blue-300">{{ sys_conf.voice_elevenlabs_model or 'eleven_turbo_v2' }}</p>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-500 mt-6">💡 To change Voice AI settings, scroll up to the "Voice AI — LLM Models" section in the configuration form.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <script nonce="{{ request.state.csp_nonce }}">
@@ -623,6 +712,60 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     var q = this.value.toLowerCase();
     renderFetchedModels(allFetchedModels.filter(function(m) { return m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q); }));
   });
+
+  // Voice AI Chat functionality
+  var voiceHistory = [];
+  window.sendVoiceMessage = function() {
+    var input = document.getElementById('voiceChatInput');
+    var message = input.value.trim();
+    if (!message) return;
+
+    var container = document.getElementById('voiceChatContainer');
+    var bubble = document.createElement('div');
+    bubble.style.cssText = 'display:flex;flex-direction:column;gap:4px;align-items:flex-end;margin-bottom:8px;';
+    var msg = document.createElement('div');
+    msg.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:12px;background:rgba(93,141,239,0.3);color:#e3e1eb;border-bottom-right-radius:4px;';
+    msg.textContent = message;
+    bubble.appendChild(msg);
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+
+    voiceHistory.push({ role: 'user', text: message });
+    input.value = '';
+
+    var btn = document.getElementById('voiceChatSendBtn');
+    btn.disabled = true;
+
+    fetch('/api/voice-ai/test-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: message, conversation_history: voiceHistory })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      var respBubble = document.createElement('div');
+      respBubble.style.cssText = 'display:flex;flex-direction:column;gap:4px;align-items:flex-start;margin-bottom:8px;';
+      var respMsg = document.createElement('div');
+      respMsg.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,0.06);color:#c3c6d4;border:1px solid rgba(255,255,255,0.07);border-bottom-left-radius:4px;';
+      respMsg.textContent = data.response || 'No response';
+      respBubble.appendChild(respMsg);
+      container.appendChild(respBubble);
+      container.scrollTop = container.scrollHeight;
+      voiceHistory.push({ role: 'assistant', text: data.response });
+      btn.disabled = false;
+    }).catch(function(e) {
+      var errBubble = document.createElement('div');
+      var errMsg = document.createElement('div');
+      errMsg.style.cssText = 'color:#ff6b6b;';
+      errMsg.textContent = 'Error: ' + e.message;
+      errBubble.appendChild(errMsg);
+      container.appendChild(errBubble);
+      btn.disabled = false;
+    });
+  };
+
+  window.setVoiceMessage = function(text) {
+    document.getElementById('voiceChatInput').value = text;
+    document.getElementById('voiceChatInput').focus();
+  };
 
   function renderFetchedModels(models) {
     var container = document.getElementById('fetch-models-list');
