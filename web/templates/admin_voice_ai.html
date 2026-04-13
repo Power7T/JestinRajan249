@@ -101,6 +101,11 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <form method="POST" action="/admin/voice-ai/save" class="space-y-3">
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
         <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 OpenRouter API Key</label>
+          <input type="password" name="openrouter_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.openrouter_api_key_enc else '' }}" placeholder="sk-or-v1-...">
+          <p class="text-xs text-slate-500">Leave blank or as ******** to keep current key</p>
+        </div>
+        <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Primary Model</label>
           <input type="text" name="voice_llm_model" class="compat-input" value="{{ sys_conf.voice_llm_model }}" placeholder="openai/gpt-4o-mini">
           <p class="text-xs text-slate-500">Main LLM for responses</p>
@@ -140,6 +145,11 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           <p class="text-xs text-slate-500 mt-2">Enterprise-grade speech recognition</p>
         </div>
         <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 Deepgram API Key</label>
+          <input type="password" name="deepgram_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.deepgram_api_key_enc else '' }}" placeholder="Token ...">
+          <p class="text-xs text-slate-500">Leave blank or as ******** to keep current key</p>
+        </div>
+        <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Model</label>
           <input type="text" name="voice_deepgram_model" class="compat-input" value="{{ sys_conf.voice_deepgram_model or 'nova-2' }}" placeholder="nova-2">
           <p class="text-xs text-slate-500">Deepgram model for transcription</p>
@@ -158,6 +168,11 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Provider</p>
           <p class="font-semibold text-white bg-slate-800 p-2 rounded">ElevenLabs</p>
           <p class="text-xs text-slate-500 mt-2">Premium natural voice synthesis</p>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 ElevenLabs API Key</label>
+          <input type="password" name="elevenlabs_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.elevenlabs_api_key_enc else '' }}" placeholder="sk_...">
+          <p class="text-xs text-slate-500">Leave blank or as ******** to keep current key</p>
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Model</label>

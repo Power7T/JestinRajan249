@@ -8836,6 +8836,9 @@ def admin_voice_ai(request: Request, db: Session = Depends(get_db)):
 @app.post("/admin/voice-ai/save")
 async def admin_voice_ai_save(
     request: Request,
+    openrouter_api_key_enc: str = Form(""),
+    deepgram_api_key_enc: str = Form(""),
+    elevenlabs_api_key_enc: str = Form(""),
     voice_llm_model: str = Form(""),
     voice_llm_backup_model: str = Form(""),
     voice_llm_emergency_model: str = Form(""),
@@ -8850,6 +8853,14 @@ async def admin_voice_ai_save(
     """Save Voice AI configuration"""
     admin = _require_admin(request, db)
     sys_conf = db.query(SystemConfig).first() or SystemConfig()
+
+    # Update API Keys (only if provided and not masked)
+    if openrouter_api_key_enc.strip() and openrouter_api_key_enc != "********":
+        sys_conf.openrouter_api_key_enc = encrypt(openrouter_api_key_enc.strip())
+    if deepgram_api_key_enc.strip() and deepgram_api_key_enc != "********":
+        sys_conf.deepgram_api_key_enc = encrypt(deepgram_api_key_enc.strip())
+    if elevenlabs_api_key_enc.strip() and elevenlabs_api_key_enc != "********":
+        sys_conf.elevenlabs_api_key_enc = encrypt(elevenlabs_api_key_enc.strip())
 
     # Update Voice AI settings
     if voice_llm_model.strip():

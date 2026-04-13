@@ -105,6 +105,8 @@ def db_migrate():
     new_columns = [
         # (table, column, sql_type, default_sql)
         ("system_config", "openrouter_api_key_enc",    "VARCHAR(255)", "NULL"),
+        ("system_config", "deepgram_api_key_enc",      "VARCHAR(255)", "NULL"),
+        ("system_config", "elevenlabs_api_key_enc",    "VARCHAR(255)", "NULL"),
         ("system_config", "primary_model",             "VARCHAR(100)", "'anthropic/claude-3.7-sonnet'"),
         ("system_config", "primary_backup_model",      "VARCHAR(100)", "'anthropic/claude-3.5-sonnet'"),
         ("system_config", "fallback_model",            "VARCHAR(100)", "'meta-llama/llama-3.3-70b-instruct'"),

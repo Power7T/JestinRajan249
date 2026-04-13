@@ -55,6 +55,8 @@ class SystemConfig(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     openrouter_api_key_enc: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     google_maps_api_key_enc: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Google Maps Places API key
+    deepgram_api_key_enc: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Deepgram STT API key
+    elevenlabs_api_key_enc: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # ElevenLabs TTS API key
 
     # Primary models (used 99% of time)
     primary_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="mistralai/mistral-large-2512")
