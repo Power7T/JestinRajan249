@@ -20,7 +20,7 @@ def upgrade() -> None:
     # Get list of existing columns in system_config
     existing_columns = [col['name'] for col in inspector.get_columns('system_config')]
 
-    # Add missing columns if they don't exist
+    # Add missing columns if they don't exist (fallback_model and sentiment_model already exist in DB)
     columns_to_add = {
         'primary_model': sa.String(100),
         'routine_model': sa.String(100),

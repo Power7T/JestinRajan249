@@ -14,15 +14,25 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add backup model columns to system_config
-    op.add_column('system_config', sa.Column('primary_backup_model', sa.String(100), nullable=False, server_default='anthropic/claude-3.5-sonnet'))
-    op.add_column('system_config', sa.Column('routine_backup_model', sa.String(100), nullable=False, server_default='anthropic/claude-3.5-haiku'))
-    op.add_column('system_config', sa.Column('fallback_model', sa.String(100), nullable=False, server_default='meta-llama/llama-3.3-70b-instruct'))
-    op.add_column('system_config', sa.Column('sentiment_model', sa.String(100), nullable=False, server_default='openai/gpt-4o-mini'))
+    # Add backup model columns to system_config (fallback_model and sentiment_model already exist)
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_columns = [col['name'] for col in inspector.get_columns('system_config')]
+
+    if 'primary_backup_model' not in existing_columns:
+        op.add_column('system_config', sa.Column('primary_backup_model', sa.String(100), nullable=False, server_default='anthropic/claude-3.5-sonnet'))
+
+    if 'routine_backup_model' not in existing_columns:
+        op.add_column('system_config', sa.Column('routine_backup_model', sa.String(100), nullable=False, server_default='anthropic/claude-3.5-haiku'))
 
 
 def downgrade() -> None:
-    op.drop_column('system_config', 'sentiment_model')
-    op.drop_column('system_config', 'fallback_model')
-    op.drop_column('system_config', 'routine_backup_model')
-    op.drop_column('system_config', 'primary_backup_model')
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_columns = [col['name'] for col in inspector.get_columns('system_config')]
+
+    if 'routine_backup_model' in existing_columns:
+        op.drop_column('system_config', 'routine_backup_model')
+
+    if 'primary_backup_model' in existing_columns:
+        op.drop_column('system_config', 'primary_backup_model')
