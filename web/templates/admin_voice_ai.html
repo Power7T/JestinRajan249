@@ -559,18 +559,23 @@ document.addEventListener('DOMContentLoaded', function() {
   if (callBtn) {
     console.log('Attaching click handler to call button');
     callBtn.addEventListener('click', function(e) {
-      console.log('Click event fired on call button');
+      console.log('🎯 Click event fired on call button');
       e.preventDefault();
-      console.log('Call button clicked - calling toggleVoiceCall');
+      console.log('📞 Call button clicked - calling toggleVoiceCall');
+      // Add visual feedback immediately
+      callBtn.style.opacity = '0.7';
+      setTimeout(function() { callBtn.style.opacity = '1'; }, 100);
       try {
-        window.toggleVoiceCall();
+        var result = window.toggleVoiceCall();
+        console.log('toggleVoiceCall returned:', result);
       } catch (err) {
-        console.error('toggleVoiceCall error:', err);
+        console.error('❌ toggleVoiceCall error:', err);
+        document.getElementById('voiceStatus').textContent = '❌ Error: ' + err.message;
       }
     });
-    console.log('Click handler attached to call button');
+    console.log('✅ Click handler attached to call button');
   } else {
-    console.error('❌ Call button not found!');
+    console.error('❌❌❌ Call button not found!');
   }
 
   if (muteBtn) {
@@ -602,6 +607,21 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     console.error('❌ Test button not found!');
   }
+
+  // Create a hidden test button to verify button clicks work
+  var testClickBtn = document.createElement('button');
+  testClickBtn.id = 'testClickBtn';
+  testClickBtn.style.display = 'none';
+  testClickBtn.addEventListener('click', function() {
+    console.log('🧪 Test click button works!');
+  });
+  document.body.appendChild(testClickBtn);
+
+  // Simulate a click to verify event handling works
+  setTimeout(function() {
+    console.log('Testing button click event system...');
+    testClickBtn.click();
+  }, 1000);
 
   // Test connections after a short delay
   setTimeout(function() {
