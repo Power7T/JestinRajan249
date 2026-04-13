@@ -18,29 +18,42 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add voice AI LLM model columns
-    op.add_column('tenant_configs', sa.Column('voice_llm_model', sa.String(100), nullable=False, server_default='openai/gpt-4o-mini'))
-    op.add_column('tenant_configs', sa.Column('voice_llm_backup_model', sa.String(100), nullable=False, server_default='anthropic/claude-3.5-haiku'))
-    op.add_column('tenant_configs', sa.Column('voice_llm_emergency_model', sa.String(100), nullable=False, server_default='meta-llama/llama-3.3-70b-instruct'))
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_columns = {col['name'] for col in inspector.get_columns('tenant_configs')}
 
-    # Add voice AI speech recognition & synthesis columns
-    op.add_column('tenant_configs', sa.Column('voice_deepgram_model', sa.String(50), nullable=False, server_default='nova-2'))
-    op.add_column('tenant_configs', sa.Column('voice_llm_max_tokens', sa.Integer(), nullable=False, server_default='300'))
-    op.add_column('tenant_configs', sa.Column('voice_llm_temperature', sa.Float(), nullable=False, server_default='0.7'))
+    columns_to_add = {
+        'voice_llm_model': sa.Column('voice_llm_model', sa.String(100), nullable=False, server_default='openai/gpt-4o-mini'),
+        'voice_llm_backup_model': sa.Column('voice_llm_backup_model', sa.String(100), nullable=False, server_default='anthropic/claude-3.5-haiku'),
+        'voice_llm_emergency_model': sa.Column('voice_llm_emergency_model', sa.String(100), nullable=False, server_default='meta-llama/llama-3.3-70b-instruct'),
+        'voice_deepgram_model': sa.Column('voice_deepgram_model', sa.String(50), nullable=False, server_default='nova-2'),
+        'voice_llm_max_tokens': sa.Column('voice_llm_max_tokens', sa.Integer(), nullable=False, server_default='300'),
+        'voice_llm_temperature': sa.Column('voice_llm_temperature', sa.Float(), nullable=False, server_default='0.7'),
+        'voice_elevenlabs_stability': sa.Column('voice_elevenlabs_stability', sa.Float(), nullable=False, server_default='0.5'),
+        'voice_elevenlabs_similarity': sa.Column('voice_elevenlabs_similarity', sa.Float(), nullable=False, server_default='0.75'),
+        'voice_elevenlabs_model': sa.Column('voice_elevenlabs_model', sa.String(50), nullable=False, server_default='eleven_turbo_v2'),
+    }
 
-    # Add ElevenLabs TTS configuration
-    op.add_column('tenant_configs', sa.Column('voice_elevenlabs_stability', sa.Float(), nullable=False, server_default='0.5'))
-    op.add_column('tenant_configs', sa.Column('voice_elevenlabs_similarity', sa.Float(), nullable=False, server_default='0.75'))
-    op.add_column('tenant_configs', sa.Column('voice_elevenlabs_model', sa.String(50), nullable=False, server_default='eleven_turbo_v2'))
+    for column_name, column in columns_to_add.items():
+        if column_name not in existing_columns:
+            op.add_column('tenant_configs', column)
 
 
 def downgrade() -> None:
-    op.drop_column('tenant_configs', 'voice_elevenlabs_model')
-    op.drop_column('tenant_configs', 'voice_elevenlabs_similarity')
-    op.drop_column('tenant_configs', 'voice_elevenlabs_stability')
-    op.drop_column('tenant_configs', 'voice_llm_temperature')
-    op.drop_column('tenant_configs', 'voice_llm_max_tokens')
-    op.drop_column('tenant_configs', 'voice_deepgram_model')
-    op.drop_column('tenant_configs', 'voice_llm_emergency_model')
-    op.drop_column('tenant_configs', 'voice_llm_backup_model')
-    op.drop_column('tenant_configs', 'voice_llm_model')
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_columns = {col['name'] for col in inspector.get_columns('tenant_configs')}
+
+    for column_name in [
+        'voice_elevenlabs_model',
+        'voice_elevenlabs_similarity',
+        'voice_elevenlabs_stability',
+        'voice_llm_temperature',
+        'voice_llm_max_tokens',
+        'voice_deepgram_model',
+        'voice_llm_emergency_model',
+        'voice_llm_backup_model',
+        'voice_llm_model',
+    ]:
+        if column_name in existing_columns:
+            op.drop_column('tenant_configs', column_name)
