@@ -460,71 +460,65 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 
   <!-- Voice AI Live Chat Interface -->
   <div id="voiceAISection" class="mt-12 pt-8 border-t border-white/10">
-    <h2 class="text-3xl font-extrabold tracking-tight text-white mb-4">🎤 Voice AI Live Conversation</h2>
-    <p class="text-slate-400 text-sm mb-8">Talk directly with your Voice AI. Press Record, speak, and listen to the response.</p>
+    <h2 class="text-3xl font-extrabold tracking-tight text-white mb-4">☎️ Voice AI Live Call</h2>
+    <p class="text-slate-400 text-sm mb-8">Live two-way audio conversation. Like a real phone call with your Voice AI.</p>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
       <div class="xl:col-span-1">
         <div class="glass-card rounded-3xl p-6 h-full flex flex-col">
-          <h3 class="text-lg font-bold text-white mb-4">Live Conversation</h3>
+          <h3 class="text-lg font-bold text-white mb-4">Live Call</h3>
 
-          <!-- Chat Display -->
+          <!-- Call Status Display -->
           <div class="flex-1 bg-gray-950 rounded-lg p-4 mb-4 overflow-y-auto border border-white/10 flex flex-col" id="voiceChatContainer" style="height:400px;min-height:400px;">
             <div class="text-center text-slate-500 m-auto">
-              <p class="text-sm">Click Record to start speaking</p>
+              <p class="text-sm mb-4">Press Call to connect</p>
+              <div id="callTranscript" style="text-align:left;font-size:0.85rem;color:#c3c6d4;"></div>
             </div>
           </div>
 
-          <!-- Recording Controls -->
+          <!-- Call Controls -->
           <div class="space-y-3">
             <div class="flex gap-2">
               <button
-                onclick="toggleVoiceRecording()"
-                class="flex-1 px-4 py-3 bg-gradient-to-br from-red-500 to-red-600 text-white font-bold rounded-lg hover:shadow-lg transition text-sm flex items-center justify-center gap-2"
-                id="voiceRecordBtn"
+                onclick="toggleVoiceCall()"
+                class="flex-1 px-4 py-3 bg-gradient-to-br from-green-500 to-green-600 text-white font-bold rounded-lg hover:shadow-lg transition text-sm flex items-center justify-center gap-2"
+                id="voiceCallBtn"
               >
-                <span id="recordBtnIcon">🎙️</span>
-                <span id="recordBtnText">Record</span>
+                <span id="callBtnIcon">📞</span>
+                <span id="callBtnText">Call</span>
               </button>
               <button
-                onclick="playLastResponse()"
-                class="px-4 py-3 bg-gradient-to-br from-blue-600 to-blue-700 text-white font-bold rounded-lg hover:shadow-lg transition text-sm"
-                id="voicePlayBtn"
+                onclick="muteAudio()"
+                class="px-4 py-3 bg-gradient-to-br from-slate-600 to-slate-700 text-white font-bold rounded-lg hover:shadow-lg transition text-sm"
+                id="voiceMuteBtn"
                 disabled
               >
-                🔊 Play
+                🔊 Mute
               </button>
             </div>
-            <p class="text-xs text-slate-500 text-center" id="voiceStatus">Ready</p>
+            <p class="text-xs text-slate-500 text-center" id="voiceStatus">Ready to call</p>
+            <p class="text-xs text-slate-500 text-center" id="callDuration">--:--</p>
           </div>
         </div>
       </div>
 
       <div class="xl:col-span-2">
         <div class="glass-card rounded-3xl p-6">
-          <h3 class="text-lg font-bold text-white mb-4">Quick Voice Prompts</h3>
-          <div class="grid grid-cols-2 gap-3 mb-6">
-            <button onclick="sendVoicePrompt('What is the WiFi password?')" class="p-3 text-left text-sm bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition">
-              <p class="font-semibold text-white">WiFi Password</p>
-              <p class="text-xs text-slate-500 mt-1">Test basic question</p>
-            </button>
-            <button onclick="sendVoicePrompt('When is check-in time?')" class="p-3 text-left text-sm bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition">
-              <p class="font-semibold text-white">Check-in Time</p>
-              <p class="text-xs text-slate-500 mt-1">Test property info</p>
-            </button>
-            <button onclick="sendVoicePrompt('What are the house rules?')" class="p-3 text-left text-sm bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition">
-              <p class="font-semibold text-white">House Rules</p>
-              <p class="text-xs text-slate-500 mt-1">Test policy question</p>
-            </button>
-            <button onclick="sendVoicePrompt('Is there parking available?')" class="p-3 text-left text-sm bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition">
-              <p class="font-semibold text-white">Parking</p>
-              <p class="text-xs text-slate-500 mt-1">Test amenity question</p>
-            </button>
+          <h3 class="text-lg font-bold text-white mb-4">📊 Call Status</h3>
+          <div class="space-y-4 mb-6">
+            <div class="bg-gray-950 rounded-lg p-3 border border-white/10">
+              <p class="text-xs text-slate-500 font-semibold uppercase mb-2">You (User)</p>
+              <p class="text-sm text-white font-mono" id="userTranscript">—</p>
+            </div>
+            <div class="bg-gray-950 rounded-lg p-3 border border-white/10">
+              <p class="text-xs text-slate-500 font-semibold uppercase mb-2">Voice AI (Response)</p>
+              <p class="text-sm text-blue-300 font-mono" id="aiTranscript">—</p>
+            </div>
           </div>
 
           <hr class="border-white/10 mb-6">
 
-          <h3 class="text-lg font-bold text-white mb-4">Configuration</h3>
+          <h3 class="text-lg font-bold text-white mb-4">⚙️ Configuration</h3>
           <div class="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p class="text-slate-500 font-semibold mb-1 text-xs uppercase">Primary LLM</p>
@@ -535,7 +529,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
               <p class="font-mono text-blue-300 text-xs">{{ sys_conf.voice_elevenlabs_model or 'eleven_turbo_v2' }}</p>
             </div>
             <div>
-              <p class="text-slate-500 font-semibold mb-1 text-xs uppercase">Speech Recognition</p>
+              <p class="text-slate-500 font-semibold mb-1 text-xs uppercase">STT Engine</p>
               <p class="font-mono text-blue-300 text-xs">Deepgram (nova-2)</p>
             </div>
             <div>
@@ -544,7 +538,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
             </div>
           </div>
 
-          <p class="text-xs text-slate-500 mt-6">💡 To change Voice AI settings, scroll up to the "Voice AI — LLM Models" section.</p>
+          <p class="text-xs text-slate-500 mt-6">💡 Real-time audio streaming. Works like a real phone call.</p>
         </div>
       </div>
     </div>
@@ -716,195 +710,189 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     renderFetchedModels(allFetchedModels.filter(function(m) { return m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q); }));
   });
 
-  // Voice AI Live Conversation
-  var voiceHistory = [];
-  var mediaRecorder = null;
-  var audioChunks = [];
+  // Voice AI Live Call (WebSocket-based real-time audio streaming)
+  var voiceWs = null;
+  var voiceStream = null;
   var audioContext = null;
-  var lastAudioBuffer = null;
-  var isRecording = false;
+  var mediaRecorder = null;
+  var isCallActive = false;
+  var isMuted = false;
+  var callStartTime = 0;
+  var audioQueue = [];
+  var isPlayingAudio = false;
 
-  window.toggleVoiceRecording = async function() {
-    var btn = document.getElementById('voiceRecordBtn');
+  window.toggleVoiceCall = async function() {
+    var btn = document.getElementById('voiceCallBtn');
+    var muteBtn = document.getElementById('voiceMuteBtn');
     var statusEl = document.getElementById('voiceStatus');
 
-    if (!isRecording) {
-      // Start recording
+    if (!isCallActive) {
+      // Start call
       try {
-        var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
+        voiceStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+        isCallActive = true;
+        callStartTime = Date.now();
 
-        mediaRecorder.ondataavailable = function(e) {
-          audioChunks.push(e.data);
+        // Update UI
+        btn.style.background = 'linear-gradient(to right, #ef4444, #dc2626)';
+        btn.innerHTML = '<span id="callBtnIcon">📵</span><span id="callBtnText">End Call</span>';
+        muteBtn.disabled = false;
+        statusEl.textContent = 'Connected';
+
+        // Create WebSocket connection
+        var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        voiceWs = new WebSocket(protocol + '//' + window.location.host + '/ws/voice-ai/live');
+
+        voiceWs.onopen = function() {
+          // Send initial config (using first tenant for admin testing)
+          voiceWs.send(JSON.stringify({ type: 'start' }));
+
+          // Start recording and streaming
+          mediaRecorder = new MediaRecorder(voiceStream, { mimeType: 'audio/webm' });
+          mediaRecorder.ondataavailable = function(e) {
+            if (e.data.size > 0 && voiceWs && voiceWs.readyState === WebSocket.OPEN) {
+              e.data.arrayBuffer().then(function(buf) {
+                voiceWs.send(buf);
+              });
+            }
+          };
+          mediaRecorder.start(100); // Send chunks every 100ms
         };
 
-        mediaRecorder.onstop = function() {
-          var audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-          sendAudioMessage(audioBlob);
+        voiceWs.onmessage = function(event) {
+          var data = JSON.parse(event.data);
+
+          if (data.type === 'transcript') {
+            document.getElementById('userTranscript').textContent = data.text || '—';
+          } else if (data.type === 'response') {
+            document.getElementById('aiTranscript').textContent = data.text || '—';
+          } else if (data.type === 'audio') {
+            // Decode and queue audio for playback
+            var binaryString = atob(data.audio);
+            var bytes = new Uint8Array(binaryString.length);
+            for (var i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            playAudioChunk(bytes);
+          } else if (data.type === 'error') {
+            statusEl.textContent = 'Error: ' + data.message;
+          }
         };
 
-        mediaRecorder.start();
-        isRecording = true;
-        btn.style.background = 'linear-gradient(to right, #dc2626, #b91c1c)';
-        btn.innerHTML = '<span id="recordBtnIcon">⏹️</span><span id="recordBtnText">Stop</span>';
-        statusEl.textContent = 'Recording...';
+        voiceWs.onerror = function(err) {
+          statusEl.textContent = 'Connection error';
+          console.error('WebSocket error:', err);
+        };
+
+        voiceWs.onclose = function() {
+          endCall();
+        };
+
+        // Update call timer
+        var timerInterval = setInterval(function() {
+          if (!isCallActive) {
+            clearInterval(timerInterval);
+            return;
+          }
+          var elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+          var mins = Math.floor(elapsed / 60);
+          var secs = elapsed % 60;
+          document.getElementById('callDuration').textContent =
+            (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }, 1000);
+
       } catch (err) {
         statusEl.textContent = 'Microphone access denied';
         console.error('Microphone error:', err);
       }
     } else {
-      // Stop recording
-      isRecording = false;
-      if (mediaRecorder) {
-        mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(function(track) { track.stop(); });
-      }
-      btn.style.background = '';
-      btn.innerHTML = '<span id="recordBtnIcon">🎙️</span><span id="recordBtnText">Record</span>';
-      statusEl.textContent = 'Processing...';
+      // End call
+      endCall();
     }
   };
 
-  window.sendAudioMessage = function(audioBlob) {
-    var container = document.getElementById('voiceChatContainer');
+  function endCall() {
+    var btn = document.getElementById('voiceCallBtn');
+    var muteBtn = document.getElementById('voiceMuteBtn');
     var statusEl = document.getElementById('voiceStatus');
-    var playBtn = document.getElementById('voicePlayBtn');
-    var recordBtn = document.getElementById('voiceRecordBtn');
 
-    // Show user is speaking
-    var userBubble = document.createElement('div');
-    userBubble.style.cssText = 'display:flex;flex-direction:column;gap:4px;align-items:flex-end;margin-bottom:8px;';
-    var userMsg = document.createElement('div');
-    userMsg.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:12px;background:rgba(93,141,239,0.3);color:#e3e1eb;border-bottom-right-radius:4px;';
-    userMsg.textContent = '🎤 Speaking...';
-    userBubble.appendChild(userMsg);
-    container.appendChild(userBubble);
-    container.scrollTop = container.scrollHeight;
+    isCallActive = false;
 
-    recordBtn.disabled = true;
-    playBtn.disabled = true;
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
 
-    var formData = new FormData();
-    formData.append('audio', audioBlob, 'recording.wav');
+    if (voiceStream) {
+      voiceStream.getTracks().forEach(function(track) { track.stop(); });
+    }
 
-    fetch('/api/voice-ai/voice-message', {
-      method: 'POST',
-      body: formData
-    }).then(function(r) { return r.json(); }).then(function(data) {
-      // Update user message with transcript
-      userMsg.textContent = '👤 ' + (data.transcript || 'Processing...');
+    if (voiceWs) {
+      voiceWs.close();
+    }
 
-      // Show AI response
-      var aiBubble = document.createElement('div');
-      aiBubble.style.cssText = 'display:flex;flex-direction:column;gap:4px;align-items:flex-start;margin-bottom:8px;';
-      var aiMsg = document.createElement('div');
-      aiMsg.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,0.06);color:#c3c6d4;border:1px solid rgba(255,255,255,0.07);border-bottom-left-radius:4px;';
-      aiMsg.textContent = data.response || 'No response';
-      aiBubble.appendChild(aiMsg);
-      container.appendChild(aiBubble);
-      container.scrollTop = container.scrollHeight;
+    btn.style.background = '';
+    btn.innerHTML = '<span id="callBtnIcon">📞</span><span id="callBtnText">Call</span>';
+    muteBtn.disabled = true;
+    statusEl.textContent = 'Call ended';
+    document.getElementById('callDuration').textContent = '--:--';
+    document.getElementById('userTranscript').textContent = '—';
+    document.getElementById('aiTranscript').textContent = '—';
+  }
 
-      // Store audio response
-      if (data.audio_url) {
-        lastAudioBuffer = data.audio_url;
-        playBtn.disabled = false;
-      }
+  window.muteAudio = function() {
+    var btn = document.getElementById('voiceMuteBtn');
+    isMuted = !isMuted;
 
-      voiceHistory.push({ role: 'user', text: data.transcript });
-      voiceHistory.push({ role: 'assistant', text: data.response });
+    if (voiceStream) {
+      voiceStream.getTracks().forEach(function(track) { track.enabled = !isMuted; });
+    }
 
-      statusEl.textContent = 'Ready';
-      recordBtn.disabled = false;
+    if (isMuted) {
+      btn.textContent = '🔇 Unmute';
+      btn.style.background = 'linear-gradient(to right, #ef4444, #dc2626)';
+    } else {
+      btn.textContent = '🔊 Mute';
+      btn.style.background = '';
+    }
 
-      // Auto-play response
-      if (data.audio_url) {
-        setTimeout(function() { playLastResponse(); }, 500);
-      }
-    }).catch(function(e) {
-      var errBubble = document.createElement('div');
-      var errMsg = document.createElement('div');
-      errMsg.style.cssText = 'color:#ff6b6b;';
-      errMsg.textContent = '❌ Error: ' + e.message;
-      errBubble.appendChild(errMsg);
-      container.appendChild(errBubble);
-      container.scrollTop = container.scrollHeight;
-
-      statusEl.textContent = 'Error: ' + e.message;
-      recordBtn.disabled = false;
-    });
+    if (voiceWs && voiceWs.readyState === WebSocket.OPEN) {
+      voiceWs.send(JSON.stringify({ type: 'mute', muted: isMuted }));
+    }
   };
 
-  window.playLastResponse = function() {
-    if (!lastAudioBuffer) return;
-    var audio = new Audio(lastAudioBuffer);
-    audio.play();
-  };
+  function playAudioChunk(audioBytes) {
+    audioQueue.push(audioBytes);
+    if (!isPlayingAudio) {
+      playNextChunk();
+    }
+  }
 
-  window.sendVoicePrompt = function(text) {
-    var container = document.getElementById('voiceChatContainer');
-    var statusEl = document.getElementById('voiceStatus');
-    var playBtn = document.getElementById('voicePlayBtn');
-    var recordBtn = document.getElementById('voiceRecordBtn');
+  function playNextChunk() {
+    if (audioQueue.length === 0) {
+      isPlayingAudio = false;
+      return;
+    }
 
-    // Show text prompt as user message
-    var userBubble = document.createElement('div');
-    userBubble.style.cssText = 'display:flex;flex-direction:column;gap:4px;align-items:flex-end;margin-bottom:8px;';
-    var userMsg = document.createElement('div');
-    userMsg.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:12px;background:rgba(93,141,239,0.3);color:#e3e1eb;border-bottom-right-radius:4px;';
-    userMsg.textContent = '👤 ' + text;
-    userBubble.appendChild(userMsg);
-    container.appendChild(userBubble);
-    container.scrollTop = container.scrollHeight;
+    isPlayingAudio = true;
+    var chunk = audioQueue.shift();
 
-    recordBtn.disabled = true;
-    playBtn.disabled = true;
-    statusEl.textContent = 'Processing...';
+    // Convert to audio blob and play
+    var blob = new Blob([chunk], { type: 'audio/wav' });
+    var url = URL.createObjectURL(blob);
+    var audio = new Audio(url);
 
-    fetch('/api/voice-ai/test-message', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, conversation_history: voiceHistory })
-    }).then(function(r) { return r.json(); }).then(function(data) {
-      var aiBubble = document.createElement('div');
-      aiBubble.style.cssText = 'display:flex;flex-direction:column;gap:4px;align-items:flex-start;margin-bottom:8px;';
-      var aiMsg = document.createElement('div');
-      aiMsg.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,0.06);color:#c3c6d4;border:1px solid rgba(255,255,255,0.07);border-bottom-left-radius:4px;';
-      aiMsg.textContent = '🤖 ' + (data.response || 'No response');
-      aiBubble.appendChild(aiMsg);
-      container.appendChild(aiBubble);
-      container.scrollTop = container.scrollHeight;
+    audio.onended = function() {
+      URL.revokeObjectURL(url);
+      playNextChunk();
+    };
 
-      voiceHistory.push({ role: 'user', text: text });
-      voiceHistory.push({ role: 'assistant', text: data.response });
+    audio.onerror = function() {
+      URL.revokeObjectURL(url);
+      playNextChunk();
+    };
 
-      statusEl.textContent = 'Ready';
-      recordBtn.disabled = false;
-
-      // Fetch audio response
-      fetch('/api/voice-ai/synthesize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: data.response })
-      }).then(function(r) { return r.json(); }).then(function(audioData) {
-        if (audioData.audio_url) {
-          lastAudioBuffer = audioData.audio_url;
-          playBtn.disabled = false;
-          setTimeout(function() { playLastResponse(); }, 500);
-        }
-      }).catch(function(e) { console.error('TTS error:', e); });
-    }).catch(function(e) {
-      var errBubble = document.createElement('div');
-      var errMsg = document.createElement('div');
-      errMsg.style.cssText = 'color:#ff6b6b;';
-      errMsg.textContent = '❌ Error: ' + e.message;
-      errBubble.appendChild(errMsg);
-      container.appendChild(errBubble);
-
-      statusEl.textContent = 'Error: ' + e.message;
-      recordBtn.disabled = false;
-    });
-  };
+    audio.play().catch(function(e) { console.error('Audio play error:', e); });
+  }
 
   function renderFetchedModels(models) {
     var container = document.getElementById('fetch-models-list');

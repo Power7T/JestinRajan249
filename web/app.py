@@ -63,7 +63,7 @@ import urllib.request
 import urllib.error
 
 import uvicorn
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, Header, UploadFile, File
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, Header, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import (
     HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse, Response
 )
@@ -9407,6 +9407,146 @@ async def voice_ai_synthesize(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({
             "error": f"Failed to synthesize audio: {str(e)[:100]}"
         }, status_code=500)
+
+
+@app.websocket("/ws/voice-ai/live")
+async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(get_db)):
+    """Live two-way audio streaming for Voice AI conversation"""
+    await websocket.accept()
+
+    try:
+        from web.integrations.voice import VoiceAIService
+
+        # Receive initial config message
+        init_msg = await websocket.receive_text()
+        init_data = json.loads(init_msg)
+
+        # Get tenant from auth (admin is authenticated)
+        tenant = None
+        try:
+            cookie = websocket.headers.get("cookie", "")
+            # For now, we'll use a simple approach - require tenant_id in message
+            tenant_id = init_data.get("tenant_id")
+            if tenant_id:
+                tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+        except:
+            pass
+
+        # For admin testing, use first tenant
+        if not tenant:
+            tenant = db.query(Tenant).first()
+
+        if not tenant:
+            await websocket.send_json({"type": "error", "message": "No tenant found"})
+            await websocket.close()
+            return
+
+        # Get configs
+        tenant_config_obj = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
+        sys_conf = db.query(SystemConfig).first() or SystemConfig()
+
+        tenant_config = {
+            "property_type": tenant_config_obj.property_type if tenant_config_obj else "apartment",
+            "property_city": tenant_config_obj.property_city if tenant_config_obj else "",
+            "check_in_time": tenant_config_obj.check_in_time if tenant_config_obj else "15:00",
+            "check_out_time": tenant_config_obj.check_out_time if tenant_config_obj else "11:00",
+            "amenities": tenant_config_obj.amenities if tenant_config_obj else "",
+            "house_rules": tenant_config_obj.house_rules if tenant_config_obj else "",
+            "parking_policy": tenant_config_obj.parking_policy if tenant_config_obj else "",
+            "max_guests": str(tenant_config_obj.max_guests) if tenant_config_obj and tenant_config_obj.max_guests else "4",
+            "faq": tenant_config_obj.faq if tenant_config_obj else "",
+            "nearby_restaurants": tenant_config_obj.nearby_restaurants if tenant_config_obj else "",
+        }
+
+        # Buffer for collecting audio chunks
+        audio_buffer = bytearray()
+        audio_chunk_size = 32000  # ~2 seconds of audio at 16kHz
+        is_muted = False
+
+        await websocket.send_json({"type": "status", "message": "Connected"})
+
+        while True:
+            try:
+                data = await websocket.receive_bytes()
+            except:
+                # Try to receive text for control messages
+                try:
+                    text_msg = await websocket.receive_text()
+                    control = json.loads(text_msg)
+
+                    if control.get("type") == "mute":
+                        is_muted = control.get("muted", False)
+                    continue
+                except:
+                    break
+
+            # Handle audio data
+            if len(data) > 0 and not is_muted:
+                audio_buffer.extend(data)
+
+                # When we have enough audio, process it
+                if len(audio_buffer) >= audio_chunk_size:
+                    try:
+                        # Upload and transcribe
+                        audio_url = await VoiceAIService.upload_to_r2(bytes(audio_buffer), f"voice-{uuid4()}.wav")
+                        if not audio_url:
+                            audio_url = await VoiceAIService.upload_to_s3(bytes(audio_buffer), f"voice-{uuid4()}.wav")
+
+                        if audio_url:
+                            transcript, _ = await VoiceAIService.transcribe_audio(audio_url)
+                            if transcript:
+                                # Send transcript to client
+                                await websocket.send_json({"type": "transcript", "text": transcript})
+
+                                # Generate response
+                                response, _, _ = await VoiceAIService.generate_response(
+                                    guest_message=transcript,
+                                    tenant_config=tenant_config,
+                                    conversation_history=[],
+                                    guest_name="Admin Voice",
+                                    guest_language="en"
+                                )
+
+                                response_text = response
+                                if isinstance(response, str) and response.startswith("{"):
+                                    try:
+                                        parsed = json.loads(response)
+                                        response_text = parsed.get("response", response)
+                                    except:
+                                        response_text = response
+
+                                # Send response transcript
+                                await websocket.send_json({"type": "response", "text": response_text})
+
+                                # Synthesize audio
+                                voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
+                                audio_bytes, s3_url = await VoiceAIService.synthesize_speech(response_text, voice_id=voice_id)
+
+                                if audio_bytes:
+                                    # Send audio in chunks
+                                    import base64
+                                    audio_b64 = base64.b64encode(audio_bytes).decode()
+                                    await websocket.send_json({"type": "audio", "audio": audio_b64})
+
+                        audio_buffer = bytearray()
+                    except Exception as e:
+                        log.error(f"Voice processing error: {str(e)}")
+                        await websocket.send_json({"type": "error", "message": str(e)[:100]})
+
+    except WebSocketDisconnect:
+        log.info("Voice AI live call disconnected")
+    except Exception as e:
+        import traceback
+        log.error(f"Voice AI WebSocket error: {str(e)}\n{traceback.format_exc()}")
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)[:100]})
+        except:
+            pass
+    finally:
+        try:
+            await websocket.close()
+        except:
+            pass
 
 
 # ---------------------------------------------------------------------------
