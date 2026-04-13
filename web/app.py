@@ -9154,7 +9154,14 @@ def admin_voice_chat_page(request: Request, db: Session = Depends(get_db)):
     """Voice AI direct chat testing interface"""
     admin = _require_admin(request, db)
     sys_conf = db.query(SystemConfig).first() or SystemConfig()
-    return render("admin_voice_chat.html", sys_conf=sys_conf, admin=admin)
+    return templates.TemplateResponse(
+        "admin_voice_chat.html",
+        {
+            "request": request,
+            "admin": admin,
+            "sys_conf": sys_conf
+        }
+    )
 
 
 @app.post("/admin/voice/chat")
