@@ -105,6 +105,7 @@ from web.security import (
     CSRFMiddleware, SecurityHeadersMiddleware,
     validate_csrf, validate_csrf_header, rate_limit, client_ip, is_request_secure,
 )
+from web.system_config_store import load_system_config, system_config_schema_is_behind
 from web.request_safety import ensure_public_hostname, ensure_public_url
 from web.workflow import (
     analyze_guest_sentiment,
@@ -479,8 +480,8 @@ def _fix_stale_model_ids():
     }
     try:
         with SessionLocal() as db:
-            sys_conf = db.query(SystemConfig).first()
-            if not sys_conf:
+            sys_conf = load_system_config(db)
+            if not sys_conf or system_config_schema_is_behind(sys_conf):
                 return
             changed = False
             for old, new in _MODEL_RENAMES.items():
@@ -3373,7 +3374,7 @@ async def onboarding_demo(request: Request, db: Session = Depends(get_db)):
     cfg = _get_or_create_config(tenant_id, db)
     
     # Use system-wide configuration
-    sys_conf = db.query(SystemConfig).first()
+    sys_conf = load_system_config(db)
     if not sys_conf or not sys_conf.openrouter_api_key_enc:
         return JSONResponse({"error": "AI reply engine is not available right now. Please try again later."})
 
@@ -3616,7 +3617,7 @@ async def test_anthropic(
         return HTMLResponse('<p class="test-result test-fail">Not logged in.</p>')
     validate_csrf(request, csrf_token)
 
-    sys_conf = db.query(SystemConfig).first()
+    sys_conf = load_system_config(db)
     if not sys_conf or not sys_conf.openrouter_api_key_enc:
         return HTMLResponse('<p class="test-result test-fail">✗ AI engine not configured by admin.</p>')
 
@@ -3900,7 +3901,7 @@ async def settings_save(
     new_maps_url = str(form_data.get("google_maps_url", "")).strip()
     if new_maps_url and new_maps_url != (cfg.google_maps_url or ""):
         try:
-            sys_conf = db.query(SystemConfig).first()
+            sys_conf = load_system_config(db)
             gmaps_key = None
             if sys_conf and sys_conf.google_maps_api_key_enc:
                 gmaps_key = decrypt(sys_conf.google_maps_api_key_enc) or sys_conf.google_maps_api_key_enc
@@ -8808,12 +8809,8 @@ def admin_system(request: Request, db: Session = Depends(get_db)):
 def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
     admin = _require_admin(request, db)
 
-    sys_conf = db.query(SystemConfig).first()
-    if not sys_conf:
-        sys_conf = SystemConfig()
-        db.add(sys_conf)
-        db.commit()
-        db.refresh(sys_conf)
+    sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
+    schema_drift = system_config_schema_is_behind(sys_conf)
 
     usage_logs = []
     total_cost = 0.0
@@ -8831,6 +8828,7 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
         "request": request,
         "admin": admin,
         "sys_conf": sys_conf,
+        "schema_drift": schema_drift,
         "logs": usage_logs,
         "total_cost": total_cost,
     })
@@ -9114,10 +9112,10 @@ def admin_ai_save(
 ):
     admin = _require_admin(request, db)
     validate_csrf(request, csrf_token)  # Admin safeguard
-    sys_conf = db.query(SystemConfig).first()
-    if not sys_conf:
-        sys_conf = SystemConfig()
-        db.add(sys_conf)
+    sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
+    if system_config_schema_is_behind(sys_conf):
+        log.error("Cannot save AI config while system_config schema is behind the application model")
+        return RedirectResponse("/admin/ai?msg=schema_sync_required", status_code=302)
 
     if openrouter_api_key_enc.strip() and openrouter_api_key_enc != "********":
         sys_conf.openrouter_api_key_enc = encrypt(openrouter_api_key_enc.strip())
@@ -9153,7 +9151,7 @@ def admin_ai_save(
 def admin_voice_chat_page(request: Request, db: Session = Depends(get_db)):
     """Voice AI direct chat testing interface"""
     admin = _require_admin(request, db)
-    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+    sys_conf = load_system_config(db) or SystemConfig()
     return templates.TemplateResponse(
         "admin_voice_chat.html",
         {
@@ -9168,7 +9166,7 @@ def admin_voice_chat_page(request: Request, db: Session = Depends(get_db)):
 async def admin_voice_chat(request: Request, db: Session = Depends(get_db)):
     """Test voice AI response - no actual call routing"""
     admin = _require_admin(request, db)
-    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+    sys_conf = load_system_config(db) or SystemConfig()
 
     data = await request.json()
     user_message = data.get("message", "").strip()
@@ -9238,7 +9236,7 @@ async def admin_voice_chat(request: Request, db: Session = Depends(get_db)):
 async def admin_openrouter_models(request: Request, db: Session = Depends(get_db)):
     """Fetch all models available on this OpenRouter API key. Admin only."""
     _require_admin(request, db)
-    sys_conf = db.query(SystemConfig).first()
+    sys_conf = load_system_config(db)
     if not sys_conf or not sys_conf.openrouter_api_key_enc:
         return JSONResponse({"ok": False, "error": "OpenRouter API key not configured."}, status_code=400)
     api_key = decrypt(sys_conf.openrouter_api_key_enc) or sys_conf.openrouter_api_key_enc
@@ -9282,7 +9280,7 @@ async def admin_model_test(request: Request, db: Session = Depends(get_db)):
     if not model_id or not prompt:
         return JSONResponse({"ok": False, "error": "model and prompt are required"}, status_code=400)
 
-    sys_conf = db.query(SystemConfig).first()
+    sys_conf = load_system_config(db)
     if not sys_conf or not sys_conf.openrouter_api_key_enc:
         return JSONResponse({"ok": False, "error": "OpenRouter API key not configured in AI Engine settings."}, status_code=400)
 

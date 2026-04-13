@@ -279,7 +279,8 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
     from web.workflow import analyze_guest_sentiment as fallback_analyze
     from web.crypto import decrypt
     from web.db import SessionLocal
-    from web.models import SystemConfig, APIUsageLog
+    from web.models import APIUsageLog
+    from web.system_config_store import load_system_config
     import openai
 
     if not text.strip():
@@ -287,7 +288,7 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
 
     db = SessionLocal()
     try:
-        sys_conf = db.query(SystemConfig).first()
+        sys_conf = load_system_config(db)
         if not sys_conf or not sys_conf.openrouter_api_key_enc or sys_conf.openrouter_api_key_enc == "********":
             return fallback_analyze(text)
 
@@ -369,7 +370,8 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
 def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional[str] = None, property_context: str = "", tenant_id: Optional[str] = None) -> str:
     """Generate draft via OpenRouter configured centrally by administrator."""
     from web.db import SessionLocal
-    from web.models import SystemConfig, APIUsageLog, TenantConfig
+    from web.models import APIUsageLog, TenantConfig
+    from web.system_config_store import load_system_config
     from datetime import timedelta
     import openai
 
@@ -398,7 +400,7 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
     )
 
     with SessionLocal() as db:
-        sys_conf = db.query(SystemConfig).first()
+        sys_conf = load_system_config(db)
 
         # Check free tier usage limits
         if tenant_id:

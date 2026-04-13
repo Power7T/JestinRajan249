@@ -138,6 +138,13 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   </div>
   {% endif %}
 
+  {% if schema_drift or request.query_params.get("msg") == "schema_sync_required" %}
+  <div class="bg-amber-500/10 border border-amber-400/30 text-amber-200 px-4 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+    <span class="material-symbols-outlined text-sm">warning</span>
+    The AI settings page is running in compatibility mode because the database schema is behind the app code. Read-only viewing is safe, but saving requires the latest migrations to run.
+  </div>
+  {% endif %}
+
   <!-- Key Metrics -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
     <div class="glass-card p-5 rounded-2xl">
