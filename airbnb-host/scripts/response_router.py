@@ -34,6 +34,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
 import anthropic
+import requests
 from filelock import FileLock
 from dotenv import load_dotenv
 
@@ -57,13 +58,10 @@ SYSTEM_PROMPT = _parts[2].strip() if len(_parts) >= 3 else _raw
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
-# Use OpenRouter if available, fall back to Anthropic
+# Initialize client only if using Anthropic directly
+_client = None
 if OPENROUTER_API_KEY:
-  _client = anthropic.Anthropic(
-    api_key=OPENROUTER_API_KEY,
-    base_url="https://openrouter.ai/api/v1"
-  )
-  log.info("Using OpenRouter API for Claude models")
+  log.info("Using OpenRouter API directly for Claude models")
 elif ANTHROPIC_API_KEY:
   _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
   log.info("Using Anthropic API directly")
@@ -223,15 +221,43 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = No
     last_exc = None
     for attempt, delay in enumerate(zip(range(_MAX_RETRIES), _RETRY_DELAYS), 1):
         try:
-            response = _client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=max_tokens,
-                system=SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": user_content}],
-            )
-            if not response.content or not response.content[0].text:
-                raise ValueError("Empty response from Claude API")
-            return response.content[0].text.strip()
+            # Use requests directly for OpenRouter (SDK has compatibility issues)
+            if OPENROUTER_API_KEY:
+                response = requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "anthropic/claude-sonnet-4.6",
+                        "messages": [
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": user_content}
+                        ],
+                        "max_tokens": max_tokens,
+                    },
+                    timeout=30
+                )
+                if response.status_code != 200:
+                    raise RuntimeError(f"OpenRouter API error {response.status_code}: {response.text[:200]}")
+                result = response.json()
+                if not result.get("choices") or not result["choices"][0].get("message"):
+                    raise ValueError("Empty response from OpenRouter")
+                return result["choices"][0]["message"]["content"].strip()
+            else:
+                # Use SDK for direct Anthropic API
+                if _client is None:
+                    raise RuntimeError("No API client available (missing OPENROUTER_API_KEY and ANTHROPIC_API_KEY)")
+                response = _client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=max_tokens,
+                    system=SYSTEM_PROMPT,
+                    messages=[{"role": "user", "content": user_content}],
+                )
+                if not response.content or not response.content[0].text:
+                    raise ValueError("Empty response from Claude API")
+                return response.content[0].text.strip()
         except Exception as exc:
             last_exc = exc
             _, wait = delay
