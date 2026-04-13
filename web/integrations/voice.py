@@ -34,11 +34,16 @@ SENDABLE_KEYS = {
 class VoiceAIService:
     """Orchestrate speech-to-text, LLM response, and text-to-speech."""
 
-    DEEPGRAM_API_KEY      = os.getenv("DEEPGRAM_API_KEY")
-    OPENAI_API_KEY        = os.getenv("OPENAI_API_KEY")
-    OPENROUTER_API_KEY    = os.getenv("OPENROUTER_API_KEY")
-    ELEVENLABS_API_KEY    = os.getenv("ELEVENLABS_API_KEY")
-    ELEVENLABS_VOICE_ID   = os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
+    DEEPGRAM_API_KEY        = os.getenv("DEEPGRAM_API_KEY")
+    DEEPGRAM_MODEL          = os.getenv("DEEPGRAM_MODEL", "nova-2")
+    OPENAI_API_KEY          = os.getenv("OPENAI_API_KEY")
+    OPENROUTER_API_KEY      = os.getenv("OPENROUTER_API_KEY")
+    LLM_MODEL               = os.getenv("LLM_MODEL", "openai/gpt-4o-mini")
+    ELEVENLABS_API_KEY      = os.getenv("ELEVENLABS_API_KEY")
+    ELEVENLABS_VOICE_ID     = os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
+    ELEVENLABS_MODEL        = os.getenv("ELEVENLABS_MODEL", "eleven_turbo_v2")
+    ELEVENLABS_STABILITY    = float(os.getenv("ELEVENLABS_STABILITY", "0.5"))
+    ELEVENLABS_SIMILARITY   = float(os.getenv("ELEVENLABS_SIMILARITY", "0.75"))
 
     CLOUDFLARE_ACCOUNT_ID       = os.getenv("CLOUDFLARE_ACCOUNT_ID")
     CLOUDFLARE_ACCESS_KEY_ID    = os.getenv("CLOUDFLARE_ACCESS_KEY_ID")
@@ -70,7 +75,7 @@ class VoiceAIService:
                         "Content-Type": "application/json",
                     },
                     params={
-                        "model": "nova-2",
+                        "model": VoiceAIService.DEEPGRAM_MODEL,
                         "detect_language": "true",
                         "punctuate": "true",
                     },
@@ -240,7 +245,7 @@ or when you don't know:
                                 "X-OpenRouter-Title": "HostAI Voice",
                             },
                             json={
-                                "model": "openai/gpt-4o-mini",
+                                "model": VoiceAIService.LLM_MODEL,
                                 "messages": [{"role": "system", "content": system_prompt}] + messages,
                                 "temperature": 0.7,
                                 "max_tokens": 300,
@@ -330,8 +335,11 @@ or when you don't know:
                     },
                     json={
                         "text": text,
-                        "model_id": "eleven_turbo_v2",
-                        "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
+                        "model_id": VoiceAIService.ELEVENLABS_MODEL,
+                        "voice_settings": {
+                            "stability": VoiceAIService.ELEVENLABS_STABILITY,
+                            "similarity_boost": VoiceAIService.ELEVENLABS_SIMILARITY
+                        },
                     },
                 )
                 if response.status_code == 200:

@@ -9511,25 +9511,37 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
         tenant_config_obj = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
         sys_conf = db.query(SystemConfig).first() or SystemConfig()
 
-        # Set API keys from database for VoiceAIService
+        # Set API keys and configuration from database for VoiceAIService
         if sys_conf.deepgram_api_key_enc:
             decrypted = decrypt(sys_conf.deepgram_api_key_enc)
             if decrypted:
                 VoiceAIService.DEEPGRAM_API_KEY = decrypted
             else:
                 log.error("Failed to decrypt Deepgram API key")
+        if sys_conf.voice_deepgram_model:
+            VoiceAIService.DEEPGRAM_MODEL = sys_conf.voice_deepgram_model
+
         if sys_conf.openrouter_api_key_enc:
             decrypted = decrypt(sys_conf.openrouter_api_key_enc)
             if decrypted:
                 VoiceAIService.OPENROUTER_API_KEY = decrypted
             else:
                 log.error("Failed to decrypt OpenRouter API key")
+        if sys_conf.voice_llm_model:
+            VoiceAIService.LLM_MODEL = sys_conf.voice_llm_model
+
         if sys_conf.elevenlabs_api_key_enc:
             decrypted = decrypt(sys_conf.elevenlabs_api_key_enc)
             if decrypted:
                 VoiceAIService.ELEVENLABS_API_KEY = decrypted
             else:
                 log.error("Failed to decrypt ElevenLabs API key")
+        if sys_conf.voice_elevenlabs_model:
+            VoiceAIService.ELEVENLABS_MODEL = sys_conf.voice_elevenlabs_model
+        if sys_conf.voice_elevenlabs_stability is not None:
+            VoiceAIService.ELEVENLABS_STABILITY = float(sys_conf.voice_elevenlabs_stability)
+        if sys_conf.voice_elevenlabs_similarity is not None:
+            VoiceAIService.ELEVENLABS_SIMILARITY = float(sys_conf.voice_elevenlabs_similarity)
 
         tenant_config = {
             "property_type": tenant_config_obj.property_type if tenant_config_obj else "apartment",
