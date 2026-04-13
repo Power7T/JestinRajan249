@@ -9099,6 +9099,16 @@ def admin_ai_save(
     routine_model: str = Form("google/gemini-2.5-flash"),
     fallback_model: str = Form(...),
     sentiment_model: str = Form("openai/gpt-4o-mini"),
+    # Voice AI settings
+    voice_llm_model: str = Form("openai/gpt-4o-mini"),
+    voice_llm_backup_model: str = Form("anthropic/claude-3.5-haiku"),
+    voice_llm_emergency_model: str = Form("meta-llama/llama-3.3-70b-instruct"),
+    voice_deepgram_model: str = Form("nova-2"),
+    voice_llm_max_tokens: int = Form(300),
+    voice_llm_temperature: float = Form(0.7),
+    voice_elevenlabs_model: str = Form("eleven_turbo_v2"),
+    voice_elevenlabs_stability: float = Form(0.5),
+    voice_elevenlabs_similarity: float = Form(0.75),
     csrf_token: str = Form(None),
     db: Session = Depends(get_db)
 ):
@@ -9117,6 +9127,16 @@ def admin_ai_save(
     sys_conf.routine_model = routine_model.strip()
     sys_conf.fallback_model = fallback_model.strip()
     sys_conf.sentiment_model = sentiment_model.strip()
+    # Save voice AI settings
+    sys_conf.voice_llm_model = voice_llm_model.strip()
+    sys_conf.voice_llm_backup_model = voice_llm_backup_model.strip()
+    sys_conf.voice_llm_emergency_model = voice_llm_emergency_model.strip()
+    sys_conf.voice_deepgram_model = voice_deepgram_model.strip()
+    sys_conf.voice_llm_max_tokens = voice_llm_max_tokens
+    sys_conf.voice_llm_temperature = voice_llm_temperature
+    sys_conf.voice_elevenlabs_model = voice_elevenlabs_model.strip()
+    sys_conf.voice_elevenlabs_stability = voice_elevenlabs_stability
+    sys_conf.voice_elevenlabs_similarity = voice_elevenlabs_similarity
     db.commit()
 
     # Audit log + admin alert
@@ -9127,6 +9147,84 @@ def admin_ai_save(
     db.commit()
 
     return RedirectResponse("/admin/ai?msg=saved", status_code=302)
+
+
+@app.get("/admin/voice-chat", response_class=HTMLResponse)
+def admin_voice_chat_page(request: Request, db: Session = Depends(get_db)):
+    """Voice AI direct chat testing interface"""
+    admin = _require_admin(request, db)
+    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+    return render("admin_voice_chat.html", sys_conf=sys_conf, admin=admin)
+
+
+@app.post("/admin/voice/chat")
+async def admin_voice_chat(request: Request, db: Session = Depends(get_db)):
+    """Test voice AI response - no actual call routing"""
+    admin = _require_admin(request, db)
+    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+
+    data = await request.json()
+    user_message = data.get("message", "").strip()
+    conversation_history = data.get("conversation_history", [])
+
+    if not user_message:
+        return JSONResponse({"error": "Empty message"}, status_code=400)
+
+    try:
+        # Import voice integration
+        from integrations.voice import VoiceAIService
+
+        # Get tenant config (mock for testing)
+        tenant_config = {
+            "property_type": "apartment",
+            "property_city": "Test City",
+            "check_in_time": "15:00",
+            "check_out_time": "11:00",
+            "amenities": "WiFi, Pool, Gym",
+            "house_rules": "No parties after 10pm",
+            "parking_policy": "Parking included",
+            "max_guests": "4",
+            "faq": "Common questions answered",
+            "nearby_restaurants": "Many great options nearby",
+        }
+
+        # Build conversation history for LLM
+        llm_history = [{"role": h["role"], "text": h["text"]} for h in conversation_history[-6:]]
+
+        # Generate response using voice AI
+        response, send_action, unanswered = await VoiceAIService.generate_response(
+            guest_message=user_message,
+            tenant_config=tenant_config,
+            conversation_history=llm_history,
+            guest_name="Test Guest",
+            guest_language="en"
+        )
+
+        # Parse response if it's JSON
+        if isinstance(response, str) and response.startswith("{"):
+            try:
+                import json
+                parsed = json.loads(response)
+                response_text = parsed.get("voice", response)
+            except:
+                response_text = response
+        else:
+            response_text = response
+
+        return JSONResponse({
+            "response": response_text,
+            "model_used": sys_conf.voice_llm_model,
+            "send_action": send_action,
+            "unanswered": unanswered
+        })
+
+    except Exception as e:
+        import traceback
+        log.error(f"Voice chat error: {str(e)}\n{traceback.format_exc()}")
+        return JSONResponse({
+            "error": f"Failed to generate response: {str(e)[:100]}",
+            "detail": str(e)
+        }, status_code=500)
 
 
 @app.get("/api/admin/openrouter-models")

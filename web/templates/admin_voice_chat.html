@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% set tenant = admin %}
+{% block title %}Voice AI Direct Chat — HostAI{% endblock %}
+
+{% block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+  darkMode: "class",
+  theme: { extend: { colors: {
+    "primary": "#aec6ff","primary-container":"#5d8ef1","on-primary":"#002e6b",
+    "surface":"#121319","surface-container":"#1e1f26","surface-container-lowest":"#0d0e14",
+    "surface-container-high":"#292930","on-surface":"#e3e1eb","on-surface-variant":"#c3c6d4",
+    "outline":"#424752","outline-variant":"#34343b","error":"#ffb4ab","tertiary":"#ffb960",
+    "secondary":"#bdf4ff","secondary-fixed-dim":"#00daf3",
+  }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
+}
+</script>
+<style>
+body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
+.glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border-top:1px solid rgba(174,198,255,0.1); border-left:1px solid rgba(174,198,255,0.1); }
+.message-bubble { padding: 1rem; border-radius: 0.75rem; margin-bottom: 1rem; max-width: 80%; }
+.message-guest { background: #5B8DEF; margin-left: auto; color: white; }
+.message-ai { background: #1e1f26; border: 1px solid #424752; margin-right: auto; }
+.chat-container { height: 500px; overflow-y: auto; display: flex; flex-direction: column; }
+.loading { display: inline-block; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.compat-input { width: 100%; border-radius: 0.5rem; border: 1px solid rgba(66,71,82,0.4); background: #0d0e14; color: #e3e1eb; padding: 0.6rem 0.8rem; font-size: 0.85rem; transition: border-color 0.15s; outline: none; }
+.compat-input:focus { border-color: #5B8DEF; }
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+<div class="min-h-screen bg-[#08090F] p-4 md:p-8">
+  <div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+      <a href="/admin/ai" class="inline-flex items-center gap-2 text-sm text-[#aec6ff] hover:text-white mb-4 transition-colors">
+        <span class="material-symbols-outlined text-lg">arrow_back</span>
+        Back to AI Engine
+      </a>
+      <h1 class="text-4xl font-extrabold text-white mb-2">🎤 Voice AI Direct Chat</h1>
+      <p class="text-slate-400">Test voice AI responses in real-time without making a phone call</p>
+    </div>
+
+    <!-- Main Chat Interface -->
+    <div class="glass-card rounded-3xl p-6 mb-6">
+      <!-- Chat Display -->
+      <div class="chat-container border border-white/10 rounded-xl bg-[#0d0e14] p-4 mb-6" id="chatContainer">
+        <div class="text-slate-500 text-center py-8">
+          <span class="material-symbols-outlined text-5xl opacity-50">chat_bubble_outline</span>
+          <p class="mt-2">Start a conversation with the voice AI</p>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Your Message</label>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              id="messageInput"
+              class="compat-input flex-1"
+              placeholder="Ask something (e.g., 'What's the WiFi password?', 'When is check-in?')"
+              onkeypress="if(event.key==='Enter' && !event.shiftKey) sendMessage()"
+            >
+            <button
+              onclick="sendMessage()"
+              class="px-6 py-2 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-[#002e6b] font-bold rounded-lg hover:shadow-[0_0_20px_rgba(174,198,255,0.3)] transition-all"
+              id="sendBtn"
+            >
+              Send
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Press Enter to send</p>
+        </div>
+
+        <!-- Model Info -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 border-t border-white/10">
+          <div class="bg-white/5 rounded-lg p-3">
+            <p class="text-[10px] text-slate-500 uppercase font-bold">Primary Model</p>
+            <p class="text-sm text-[#aec6ff] font-mono mt-1" id="modelPrimary">{{ sys_conf.voice_llm_model.split('/')[-1] }}</p>
+          </div>
+          <div class="bg-white/5 rounded-lg p-3">
+            <p class="text-[10px] text-slate-500 uppercase font-bold">Backup Model</p>
+            <p class="text-sm text-[#aec6ff] font-mono mt-1" id="modelBackup">{{ sys_conf.voice_llm_backup_model.split('/')[-1] }}</p>
+          </div>
+          <div class="bg-white/5 rounded-lg p-3">
+            <p class="text-[10px] text-slate-500 uppercase font-bold">Response Time</p>
+            <p class="text-sm text-[#aec6ff] font-mono mt-1" id="responseTime">—</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Test Prompts -->
+    <div class="glass-card rounded-3xl p-6 mb-6">
+      <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+        <span class="material-symbols-outlined">lightbulb</span>
+        Quick Test Prompts
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <button onclick="setMessage('What is the WiFi password?')" class="text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#5B8DEF]/50 transition-all text-sm">
+          <p class="font-semibold text-white">WiFi Password</p>
+          <p class="text-[10px] text-slate-500 mt-1">Routine message test</p>
+        </button>
+        <button onclick="setMessage('When is check-in time?')" class="text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#5B8DEF]/50 transition-all text-sm">
+          <p class="font-semibold text-white">Check-in Time</p>
+          <p class="text-[10px] text-slate-500 mt-1">Property info test</p>
+        </button>
+        <button onclick="setMessage('The AC is broken and not cooling')" class="text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#5B8DEF]/50 transition-all text-sm">
+          <p class="font-semibold text-white">Maintenance Issue</p>
+          <p class="text-[10px] text-slate-500 mt-1">Complex message test</p>
+        </button>
+        <button onclick="setMessage('Where is the parking?')" class="text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#5B8DEF]/50 transition-all text-sm">
+          <p class="font-semibold text-white">Parking Location</p>
+          <p class="text-[10px] text-slate-500 mt-1">Amenity info test</p>
+        </button>
+      </div>
+    </div>
+
+    <!-- Settings Info -->
+    <div class="glass-card rounded-3xl p-6">
+      <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+        <span class="material-symbols-outlined">settings</span>
+        Current Voice AI Settings
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div>
+          <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">STT Model (Speech-to-Text)</p>
+          <p class="text-white font-mono">{{ sys_conf.voice_deepgram_model }}</p>
+        </div>
+        <div>
+          <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">TTS Model (Text-to-Speech)</p>
+          <p class="text-white font-mono">{{ sys_conf.voice_elevenlabs_model }}</p>
+        </div>
+        <div>
+          <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Max Tokens</p>
+          <p class="text-white font-mono">{{ sys_conf.voice_llm_max_tokens }}</p>
+        </div>
+        <div>
+          <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Temperature</p>
+          <p class="text-white font-mono">{{ sys_conf.voice_llm_temperature }}</p>
+        </div>
+        <div>
+          <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">TTS Stability</p>
+          <p class="text-white font-mono">{{ sys_conf.voice_elevenlabs_stability }}</p>
+        </div>
+        <div>
+          <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">TTS Similarity</p>
+          <p class="text-white font-mono">{{ sys_conf.voice_elevenlabs_similarity }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script nonce="{{ request.state.csp_nonce }}">
+let conversationHistory = [];
+
+function setMessage(text) {
+  document.getElementById('messageInput').value = text;
+  document.getElementById('messageInput').focus();
+}
+
+function addMessage(text, isGuest = true) {
+  const container = document.getElementById('chatContainer');
+
+  // Remove empty state
+  if (container.children.length === 1 && container.children[0].textContent.includes('Start a conversation')) {
+    container.innerHTML = '';
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = `message-bubble ${isGuest ? 'message-guest' : 'message-ai'}`;
+  bubble.textContent = text;
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addLoadingMessage() {
+  const container = document.getElementById('chatContainer');
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble message-ai';
+  bubble.innerHTML = '<span class="loading">AI is thinking</span>...';
+  bubble.id = 'loadingMessage';
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeLoadingMessage() {
+  const loading = document.getElementById('loadingMessage');
+  if (loading) loading.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('messageInput');
+  const message = input.value.trim();
+
+  if (!message) return;
+
+  // Disable input while processing
+  const sendBtn = document.getElementById('sendBtn');
+  sendBtn.disabled = true;
+  input.disabled = true;
+
+  // Add guest message
+  addMessage(message, true);
+  conversationHistory.push({ role: 'user', text: message });
+  input.value = '';
+
+  // Show loading
+  addLoadingMessage();
+
+  const startTime = performance.now();
+
+  try {
+    // Call backend API
+    const response = await fetch('/admin/voice/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Token': '{{ request.headers.get("X-Internal-Token", "") }}'
+      },
+      body: JSON.stringify({
+        message: message,
+        conversation_history: conversationHistory
+      })
+    });
+
+    const endTime = performance.now();
+    const responseTime = ((endTime - startTime) / 1000).toFixed(2);
+    document.getElementById('responseTime').textContent = responseTime + 's';
+
+    if (response.ok) {
+      const data = await response.json();
+      removeLoadingMessage();
+
+      // Add AI response
+      addMessage(data.response, false);
+      conversationHistory.push({ role: 'assistant', text: data.response });
+
+      // Update model info if provided
+      if (data.model_used) {
+        const modelEl = document.querySelector(`[id*="model"]`);
+        if (modelEl) {
+          // Could update to show which model was used
+        }
+      }
+    } else {
+      removeLoadingMessage();
+      const error = await response.json();
+      addMessage(`❌ Error: ${error.detail || 'Failed to get response'}`, false);
+    }
+  } catch (error) {
+    removeLoadingMessage();
+    addMessage(`❌ Error: ${error.message}`, false);
+  } finally {
+    sendBtn.disabled = false;
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+// Focus input on load
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('messageInput').focus();
+});
+</script>
+{%- endblock %}
