@@ -404,8 +404,21 @@ window.toggleVoiceCall = async function() {
     } catch (err) {
       console.error('Error in toggleVoiceCall:', err);
       var errorMsg = err.message || String(err);
-      statusEl.textContent = '❌ Error: ' + errorMsg;
-      document.getElementById('userTranscript').textContent = errorMsg;
+
+      // Provide helpful error messages
+      var displayMsg = errorMsg;
+      if (errorMsg.includes('Permission denied') || errorMsg.includes('permission')) {
+        displayMsg = '🎤 Microphone blocked - Click the microphone icon in address bar and select "Allow"';
+      } else if (errorMsg.includes('NotAllowedError')) {
+        displayMsg = '🎤 Microphone access denied - Please grant permission in browser settings';
+      } else if (errorMsg.includes('NotFoundError')) {
+        displayMsg = '🎤 No microphone found on this device';
+      } else if (errorMsg.includes('NotReadableError')) {
+        displayMsg = '🎤 Microphone is being used by another app - Close other apps and try again';
+      }
+
+      statusEl.textContent = '❌ ' + displayMsg;
+      document.getElementById('userTranscript').textContent = displayMsg;
       isCallActive = false;
     }
   } else {
