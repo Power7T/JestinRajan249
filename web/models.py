@@ -65,8 +65,8 @@ class SystemConfig(Base):
     routine_backup_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="anthropic/claude-3.5-haiku")
 
     # Fallback models (emergency only)
-    fallback_model: Mapped[str] = mapped_column(String(100), default="meta-llama/llama-3.3-70b-instruct")
-    sentiment_model: Mapped[str] = mapped_column(String(100), default="openai/gpt-4o-mini")
+    fallback_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="meta-llama/llama-3.3-70b-instruct")
+    sentiment_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="openai/gpt-4o-mini")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 # ---------------------------------------------------------------------------
