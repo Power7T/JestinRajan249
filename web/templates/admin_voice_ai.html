@@ -322,8 +322,17 @@ window.toggleVoiceCall = async function() {
       console.log('Starting voice call...');
       statusEl.textContent = 'Requesting microphone...';
 
-      voiceStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-      console.log('Microphone access granted');
+      // Try to get microphone with audio constraints
+      console.log('Requesting getUserMedia with constraints...');
+      voiceStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      console.log('✅ Microphone access granted');
+      console.log('Audio tracks:', voiceStream.getAudioTracks().length);
 
       isCallActive = true;
       callStartTime = Date.now();
@@ -403,18 +412,25 @@ window.toggleVoiceCall = async function() {
 
     } catch (err) {
       console.error('Error in toggleVoiceCall:', err);
+      console.error('Error name:', err.name);
+      console.error('Error message:', err.message);
+      console.error('Full error:', err);
+
+      var errorName = err.name || '';
       var errorMsg = err.message || String(err);
 
-      // Provide helpful error messages
+      // Provide helpful error messages based on error type
       var displayMsg = errorMsg;
-      if (errorMsg.includes('Permission denied') || errorMsg.includes('permission')) {
-        displayMsg = '🎤 Microphone blocked - Click the microphone icon in address bar and select "Allow"';
-      } else if (errorMsg.includes('NotAllowedError')) {
-        displayMsg = '🎤 Microphone access denied - Please grant permission in browser settings';
-      } else if (errorMsg.includes('NotFoundError')) {
+      if (errorName === 'NotAllowedError' || errorMsg.includes('Permission denied')) {
+        displayMsg = '🔄 Reload the page - Permission was just granted. Reload and try calling again';
+      } else if (errorName === 'NotFoundError' || errorMsg.includes('Requested device not found')) {
         displayMsg = '🎤 No microphone found on this device';
-      } else if (errorMsg.includes('NotReadableError')) {
-        displayMsg = '🎤 Microphone is being used by another app - Close other apps and try again';
+      } else if (errorName === 'NotReadableError' || errorMsg.includes('Could not start')) {
+        displayMsg = '🎤 Microphone in use - Close other apps/tabs using microphone (Chrome, Zoom, etc) and try again';
+      } else if (errorName === 'SecurityError' || errorMsg.includes('https')) {
+        displayMsg = '🔒 HTTPS required - This feature requires a secure connection. Please use https://';
+      } else if (errorMsg.includes('Type')) {
+        displayMsg = '⚠️ Browser error - Try a different browser or check browser settings';
       }
 
       statusEl.textContent = '❌ ' + displayMsg;
