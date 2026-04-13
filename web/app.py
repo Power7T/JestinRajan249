@@ -9306,6 +9306,109 @@ async def host_voice_chat_message(request: Request, db: Session = Depends(get_db
         }, status_code=500)
 
 
+@app.post("/api/voice-ai/voice-message")
+async def voice_ai_voice_message(request: Request, audio: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Handle audio voice message: transcribe → generate response → synthesize audio"""
+    try:
+        tenant = _require_auth(request, db)
+        from web.integrations.voice import VoiceAIService
+
+        # Read audio file
+        audio_bytes = await audio.read()
+
+        # Step 1: Upload audio to S3/R2 to get URL for transcription
+        audio_url = await VoiceAIService.upload_to_r2(audio_bytes, f"voice-chat-{uuid4()}.wav")
+        if not audio_url:
+            audio_url = await VoiceAIService.upload_to_s3(audio_bytes, f"voice-chat-{uuid4()}.wav")
+
+        transcript, confidence = await VoiceAIService.transcribe_audio(audio_url)
+
+        if not transcript:
+            return JSONResponse({"error": "Could not transcribe audio"}, status_code=400)
+
+        # Step 2: Generate LLM response
+        tenant_config_obj = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
+        sys_conf = db.query(SystemConfig).first() or SystemConfig()
+
+        tenant_config = {
+            "property_type": tenant_config_obj.property_type if tenant_config_obj else "apartment",
+            "property_city": tenant_config_obj.property_city if tenant_config_obj else "",
+            "check_in_time": tenant_config_obj.check_in_time if tenant_config_obj else "15:00",
+            "check_out_time": tenant_config_obj.check_out_time if tenant_config_obj else "11:00",
+            "amenities": tenant_config_obj.amenities if tenant_config_obj else "",
+            "house_rules": tenant_config_obj.house_rules if tenant_config_obj else "",
+            "parking_policy": tenant_config_obj.parking_policy if tenant_config_obj else "",
+            "max_guests": str(tenant_config_obj.max_guests) if tenant_config_obj and tenant_config_obj.max_guests else "4",
+            "faq": tenant_config_obj.faq if tenant_config_obj else "",
+            "nearby_restaurants": tenant_config_obj.nearby_restaurants if tenant_config_obj else "",
+        }
+
+        response, send_action, unanswered = await VoiceAIService.generate_response(
+            guest_message=transcript,
+            tenant_config=tenant_config,
+            conversation_history=[],
+            guest_name="Voice Guest",
+            guest_language="en"
+        )
+
+        response_text = response
+        if isinstance(response, str) and response.startswith("{"):
+            try:
+                import json as json_lib
+                parsed = json_lib.loads(response)
+                response_text = parsed.get("response", response)
+            except:
+                response_text = response
+
+        # Step 3: Synthesize response to audio
+        voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
+        audio_bytes_response, s3_url = await VoiceAIService.synthesize_speech(response_text, voice_id=voice_id)
+
+        return JSONResponse({
+            "transcript": transcript,
+            "response": response_text,
+            "audio_url": s3_url,
+            "confidence": confidence
+        })
+
+    except Exception as e:
+        import traceback
+        log.error(f"Voice message error: {str(e)}\n{traceback.format_exc()}")
+        return JSONResponse({
+            "error": f"Failed to process voice message: {str(e)[:100]}"
+        }, status_code=500)
+
+
+@app.post("/api/voice-ai/synthesize")
+async def voice_ai_synthesize(request: Request, db: Session = Depends(get_db)):
+    """Synthesize text to speech (text-to-speech)"""
+    try:
+        tenant = _require_auth(request, db)
+        data = await request.json()
+        text = data.get("text", "").strip()
+
+        if not text:
+            return JSONResponse({"error": "Empty text"}, status_code=400)
+
+        from web.integrations.voice import VoiceAIService
+
+        tenant_config_obj = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
+        voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
+
+        audio_bytes, s3_url = await VoiceAIService.synthesize_speech(text, voice_id=voice_id)
+
+        return JSONResponse({
+            "audio_url": s3_url
+        })
+
+    except Exception as e:
+        import traceback
+        log.error(f"Voice synthesize error: {str(e)}\n{traceback.format_exc()}")
+        return JSONResponse({
+            "error": f"Failed to synthesize audio: {str(e)[:100]}"
+        }, status_code=500)
+
+
 # ---------------------------------------------------------------------------
 # Voice AI — Admin Backend Configuration
 # ---------------------------------------------------------------------------
