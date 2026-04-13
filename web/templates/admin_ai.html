@@ -182,6 +182,36 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
             <p class="text-[10px] text-slate-500 font-medium">Gemini 2.5 Flash <span class="text-slate-600 font-mono text-xs">(google/gemini-2.5-flash) ✓</span></p>
           </div>
           <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <span style="display:inline-flex;align-items:center;gap:0.3rem">
+                Primary Backup Model
+                <div class="tooltip-container">
+                  <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+                    <span style="font-size:0.7rem">ⓘ</span>
+                  </button>
+                  <div class="tooltip-content">Backup for complex issues (used if primary fails). Claude 3.5 Sonnet recommended for reliability.</div>
+                </div>
+              </span>
+            </label>
+            <input type="text" name="primary_backup_model" class="compat-input" value="{{ sys_conf.primary_backup_model }}" title="Technical ID: anthropic/claude-3.5-sonnet">
+            <p class="text-[10px] text-slate-500 font-medium">Claude 3.5 Sonnet <span class="text-slate-600 font-mono text-xs">(anthropic/claude-3.5-sonnet) ✓</span></p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <span style="display:inline-flex;align-items:center;gap:0.3rem">
+                Routine Backup Model
+                <div class="tooltip-container">
+                  <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
+                    <span style="font-size:0.7rem">ⓘ</span>
+                  </button>
+                  <div class="tooltip-content">Backup for routine requests (used if primary fails). Claude 3.5 Haiku recommended for cost-efficiency.</div>
+                </div>
+              </span>
+            </label>
+            <input type="text" name="routine_backup_model" class="compat-input" value="{{ sys_conf.routine_backup_model }}" title="Technical ID: anthropic/claude-3.5-haiku">
+            <p class="text-[10px] text-slate-500 font-medium">Claude 3.5 Haiku <span class="text-slate-600 font-mono text-xs">(anthropic/claude-3.5-haiku) ✓</span></p>
+          </div>
+          <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Fallback Model</label>
             <input type="text" name="fallback_model" class="compat-input" value="{{ sys_conf.fallback_model }}" title="Technical ID: meta-llama/llama-3.3-70b-instruct">
             <p class="text-[10px] text-slate-500 font-medium">Llama 3.3 70B <span class="text-slate-600 font-mono text-xs">(meta-llama/llama-3.3-70b-instruct)</span></p>
@@ -267,6 +297,12 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       </button>
       <button type="button" class="model-tab px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff]" data-model="{{ sys_conf.routine_model }}">
         Routine<br><span class="font-mono opacity-60 text-[0.6rem]">{{ sys_conf.routine_model.split('/')[-1] }}</span>
+      </button>
+      <button type="button" class="model-tab px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff]" data-model="{{ sys_conf.primary_backup_model }}">
+        Primary Backup<br><span class="font-mono opacity-60 text-[0.6rem]">{{ sys_conf.primary_backup_model.split('/')[-1] }}</span>
+      </button>
+      <button type="button" class="model-tab px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff]" data-model="{{ sys_conf.routine_backup_model }}">
+        Routine Backup<br><span class="font-mono opacity-60 text-[0.6rem]">{{ sys_conf.routine_backup_model.split('/')[-1] }}</span>
       </button>
       <button type="button" class="model-tab px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white/5 border border-white/10 text-slate-400 hover:border-[#5B8DEF]/40 hover:text-[#aec6ff]" data-model="{{ sys_conf.fallback_model }}">
         Fallback<br><span class="font-mono opacity-60 text-[0.6rem]">{{ sys_conf.fallback_model.split('/')[-1] }}</span>

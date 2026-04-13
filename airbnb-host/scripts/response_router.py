@@ -192,17 +192,61 @@ _SKILL_CMD_MAP = {
 _CALENDAR_SKILLS = {"checkin", "cleaner-brief"}
 
 
-def _select_model(msg_type: str) -> str:
-    """
-    Hybrid tier strategy: route messages to different models based on complexity.
-    - Routine (80% of traffic): Gemini 2.5 Flash (fastest, cheapest)
-    - Complex (20% of traffic): Mistral Large (better reasoning, lower cost than Claude)
-    """
-    if msg_type == "routine":
-        return "google/gemini-2.5-flash"
-    else:  # complex or calendar
-        return "mistralai/mistral-large-2512"
+def _get_system_config():
+    """Get current system config from database"""
+    from db import SessionLocal
+    from models import SystemConfig
+    session = SessionLocal()
+    config = session.query(SystemConfig).first()
+    session.close()
+    return config
 
+def _select_model_with_fallback(msg_type: str) -> tuple:
+    """
+    Get model fallback chain (primary, backup, emergency) from configurable settings.
+    Returns: (primary_model, backup_model, emergency_model)
+    """
+    config = _get_system_config()
+    if not config:
+        # Fallback to defaults if no config
+        if msg_type == "routine":
+            return ("google/gemini-2.5-flash", "anthropic/claude-3.5-haiku", "meta-llama/llama-3.3-70b-instruct")
+        else:
+            return ("mistralai/mistral-large-2512", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.3-70b-instruct")
+
+    # Use configured models
+    if msg_type == "routine":
+        return (config.routine_model, config.routine_backup_model, config.fallback_model)
+    else:  # complex or calendar
+        return (config.primary_model, config.primary_backup_model, config.fallback_model)
+
+def _call_openrouter(model: str, message: str, system_prompt: str, max_tokens: int):
+    """Call OpenRouter API with a specific model"""
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": message}
+                ],
+                "max_tokens": max_tokens,
+            },
+            timeout=30
+        )
+        if response.status_code != 200:
+            raise RuntimeError(f"OpenRouter API error {response.status_code}: {response.text[:200]}")
+        result = response.json()
+        if not result.get("choices") or not result["choices"][0].get("message"):
+            raise ValueError("Empty response from OpenRouter")
+        return result["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        raise RuntimeError(f"Model {model} failed: {str(e)[:100]}")
 
 def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = None, thread_context: str = None) -> str:
     if skill and skill in _SKILL_CMD_MAP:
@@ -213,7 +257,9 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = No
         skill_cmd = "/complaint"
 
     max_tokens = 1024 if skill in _CALENDAR_SKILLS else 512
-    model = _select_model(msg_type)
+
+    # Get 3-layer fallback chain (primary, backup, emergency)
+    primary_model, backup_model, emergency_model = _select_model_with_fallback(msg_type)
 
     # Build context section with conversation history if available
     context_section = f"<context>\n{message}\n</context>"
@@ -231,8 +277,16 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = No
         "Return ONLY the output text ready to send or use. No headings, no meta-commentary, "
         "no 'Here is a draft:' preamble. Just the content itself."
     )
+
+    # Try 3-layer fallback: primary → backup → emergency
+    models_to_try = [
+        ("primary", primary_model),
+        ("backup", backup_model),
+        ("emergency", emergency_model),
+    ]
+
     last_exc = None
-    for attempt, delay in enumerate(zip(range(_MAX_RETRIES), _RETRY_DELAYS), 1):
+    for layer_name, model in models_to_try:
         try:
             # Use requests directly for OpenRouter (SDK has compatibility issues)
             if OPENROUTER_API_KEY:
@@ -257,7 +311,9 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = No
                 result = response.json()
                 if not result.get("choices") or not result["choices"][0].get("message"):
                     raise ValueError("Empty response from OpenRouter")
-                return result["choices"][0]["message"]["content"].strip()
+                draft = result["choices"][0]["message"]["content"].strip()
+                log.info(f"Draft generated using {layer_name} model ({model})")
+                return draft
             else:
                 # Use SDK for direct Anthropic API
                 if _client is None:
@@ -270,13 +326,17 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: str = No
                 )
                 if not response.content or not response.content[0].text:
                     raise ValueError("Empty response from Claude API")
-                return response.content[0].text.strip()
+                draft = response.content[0].text.strip()
+                log.info(f"Draft generated using {layer_name} model ({model})")
+                return draft
         except Exception as exc:
             last_exc = exc
-            _, wait = delay
-            log.warning("API attempt %d failed (%s): %s — retrying in %ds", attempt, model, exc, wait)
-            time.sleep(wait)
-    raise RuntimeError(f"API failed after {_MAX_RETRIES} attempts ({model}): {last_exc}")
+            log.warning(f"{layer_name} model ({model}) failed: {str(exc)[:100]} — trying next layer")
+            # Continue to next layer
+            continue
+
+    # All layers failed
+    raise RuntimeError(f"All model layers failed. Primary: {primary_model}, Backup: {backup_model}, Emergency: {emergency_model}. Last error: {last_exc}")
 
 # ---------------------------------------------------------------------------
 # FastAPI app
