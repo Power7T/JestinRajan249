@@ -21,7 +21,7 @@ def upgrade() -> None:
         ))
     except Exception:
         pass
-    conn.commit()
+    # Let Alembic manage the migration transaction/version stamp.
 
 
 def downgrade() -> None:
