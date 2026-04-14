@@ -305,46 +305,65 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 window.toggleVoiceCall = async function() {
-  console.log('toggleVoiceCall() function called');
   var btn = document.getElementById('voiceCallBtn');
   var muteBtn = document.getElementById('voiceMuteBtn');
   var statusEl = document.getElementById('voiceStatus');
 
-  console.log('Elements found - btn:', !!btn, 'muteBtn:', !!muteBtn, 'statusEl:', !!statusEl);
-
-  if (!btn || !statusEl) {
-    console.error('Required elements not found');
-    return;
-  }
+  if (!btn || !statusEl) return;
 
   if (!isCallActive) {
     try {
-      console.log('Starting voice call...');
-      statusEl.textContent = 'Requesting microphone...';
-
-      // Try to get microphone - use soft constraints that can fail gracefully
-      console.log('Requesting getUserMedia...');
-      try {
-        // Try with audio enhancements (soft constraints)
-        voiceStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: {ideal: true},
-            noiseSuppression: {ideal: true},
-            autoGainControl: {ideal: true}
-          }
-        });
-        console.log('✅ Microphone with enhancements');
-      } catch (e1) {
-        console.log('Retrying with basic audio only...');
-        // Fallback: just audio, no constraints
-        voiceStream = await navigator.mediaDevices.getUserMedia({audio: true});
-        console.log('✅ Microphone basic mode');
+      // ── 1. HTTPS check ──────────────────────────────────────────────
+      var isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      if (!isSecure) {
+        statusEl.textContent = '❌ HTTPS required for microphone';
+        document.getElementById('userTranscript').textContent =
+          'Microphone requires HTTPS. Open this page at https://' + location.host + location.pathname;
+        return;
       }
-      console.log('✅ Microphone access granted');
-      var tracks = voiceStream.getAudioTracks();
-      console.log('Audio tracks:', tracks.length);
-      if (tracks.length > 0) {
-        console.log('Track settings:', tracks[0].getSettings());
+
+      // ── 2. API availability check ────────────────────────────────────
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        statusEl.textContent = '❌ Browser does not support microphone access';
+        document.getElementById('userTranscript').textContent = 'Try Chrome, Firefox, or Edge browser.';
+        return;
+      }
+
+      statusEl.textContent = 'Connecting microphone...';
+
+      // ── 3. Check current permission state ───────────────────────────
+      try {
+        var permResult = await navigator.permissions.query({name: 'microphone'});
+        console.log('Microphone permission state:', permResult.state);
+        if (permResult.state === 'denied') {
+          statusEl.textContent = '❌ Microphone permanently blocked';
+          document.getElementById('userTranscript').textContent =
+            'Your browser has permanently blocked microphone for this site. To fix: Click the lock/info icon in the address bar → Site settings → Microphone → Change to "Allow" → Reload the page.';
+          return;
+        }
+      } catch(e) { /* permissions API not supported, continue */ }
+
+      // ── 4. Get microphone ────────────────────────────────────────────
+      try {
+        voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (micErr) {
+        if (micErr.name === 'NotAllowedError') {
+          // Permission was denied in the prompt - tell them to click Allow
+          statusEl.textContent = '❌ Microphone blocked';
+          document.getElementById('userTranscript').textContent =
+            'To fix: Click the microphone/lock icon in the address bar → set to "Allow" → then reload this page and try again.';
+        } else if (micErr.name === 'NotFoundError') {
+          statusEl.textContent = '❌ No microphone found';
+          document.getElementById('userTranscript').textContent = 'No microphone detected on this device.';
+        } else if (micErr.name === 'NotReadableError') {
+          statusEl.textContent = '❌ Microphone in use by another app';
+          document.getElementById('userTranscript').textContent = 'Close Zoom, Discord, Teams, or any other app using the mic, then try again.';
+        } else {
+          statusEl.textContent = '❌ Mic error: ' + micErr.name;
+          document.getElementById('userTranscript').textContent = micErr.message;
+        }
+        isCallActive = false;
+        return;
       }
 
       isCallActive = true;
@@ -424,34 +443,9 @@ window.toggleVoiceCall = async function() {
       }, 1000);
 
     } catch (err) {
-      console.error('Error in toggleVoiceCall:', err);
-      console.error('Error name:', err.name);
-      console.error('Error message:', err.message);
-      console.error('Full error:', err);
-
-      var errorName = err.name || '';
-      var errorMsg = err.message || String(err);
-
-      // Provide helpful error messages based on error type
-      var displayMsg = errorMsg;
-      if (errorName === 'NotAllowedError' || errorMsg.includes('Permission denied')) {
-        // NotAllowedError can happen if:
-        // 1. Permission not granted yet
-        // 2. Already in a call
-        // 3. Window not in focus
-        displayMsg = '⚠️ NotAllowedError - Permission issue. Try: 1) Reload page, 2) Click address bar and ensure permission is set to "Allow", 3) Make sure browser tab is focused';
-      } else if (errorName === 'NotFoundError' || errorMsg.includes('Requested device not found')) {
-        displayMsg = '🎤 No microphone found on this device';
-      } else if (errorName === 'NotReadableError' || errorMsg.includes('Could not start')) {
-        displayMsg = '🎤 Microphone in use - Close Chrome, Zoom, Discord, or other apps using microphone and try again';
-      } else if (errorName === 'SecurityError' || errorMsg.includes('https')) {
-        displayMsg = '🔒 HTTPS required - This feature needs a secure connection';
-      } else if (errorMsg.includes('Type')) {
-        displayMsg = '⚠️ Browser error - Try refreshing or use Chrome/Firefox';
-      }
-
-      statusEl.textContent = '❌ ' + displayMsg;
-      document.getElementById('userTranscript').textContent = displayMsg;
+      console.error('Unexpected error in toggleVoiceCall:', err);
+      statusEl.textContent = '❌ Unexpected error: ' + err.message;
+      document.getElementById('userTranscript').textContent = err.name + ': ' + err.message;
       isCallActive = false;
     }
   } else {
