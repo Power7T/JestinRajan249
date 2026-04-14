@@ -951,7 +951,7 @@ function playNextChunk() {
 }
 
 function playChunkWithAudioElement(chunk) {
-  var blob = new Blob([chunk], { type: 'audio/mpeg' }); // ElevenLabs returns MP3
+  var blob = new Blob([chunk], { type: 'audio/mpeg' }); // Google TTS / ElevenLabs both return MP3
   var url = URL.createObjectURL(blob);
   var audio = new Audio(url);
   currentAudio = audio;

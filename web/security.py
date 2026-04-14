@@ -271,6 +271,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         "img-src 'self' data: https://images.unsplash.com https://cdn.tailwindcss.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "connect-src 'self' https://cdn.tailwindcss.com wss: ws:; "
+        "media-src 'self' blob:; "
         "object-src 'none'; "
         "base-uri 'self'; "
         "frame-ancestors 'none';"

@@ -9837,10 +9837,10 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
                             await websocket.send_json({"type": "audio", "audio": base64.b64encode(audio_bytes).decode()})
                             log.info(f"Sent TTS audio: {len(audio_bytes)} bytes")
                         else:
-                            log.warning("ElevenLabs returned no audio for live admin voice test")
+                            log.warning("TTS returned no audio for live admin voice test (provider=%s)", VoiceAIService.TTS_PROVIDER)
                             await websocket.send_json({
                                 "type": "error",
-                                "message": "ElevenLabs returned no audio. Check the API key, selected voice, and model."
+                                "message": "TTS returned no audio. Check the Google TTS API key and config in Voice AI settings."
                             })
 
                     except Exception as exc:
