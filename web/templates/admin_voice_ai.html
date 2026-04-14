@@ -331,27 +331,15 @@ window.toggleVoiceCall = async function() {
 
       statusEl.textContent = 'Connecting microphone...';
 
-      // ── 3. Check current permission state ───────────────────────────
-      try {
-        var permResult = await navigator.permissions.query({name: 'microphone'});
-        console.log('Microphone permission state:', permResult.state);
-        if (permResult.state === 'denied') {
-          statusEl.textContent = '❌ Microphone permanently blocked';
-          document.getElementById('userTranscript').textContent =
-            'Your browser has permanently blocked microphone for this site. To fix: Click the lock/info icon in the address bar → Site settings → Microphone → Change to "Allow" → Reload the page.';
-          return;
-        }
-      } catch(e) { /* permissions API not supported, continue */ }
-
-      // ── 4. Get microphone ────────────────────────────────────────────
+      // ── 3. Get microphone directly ───────────────────────────────────
       try {
         voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       } catch (micErr) {
-        if (micErr.name === 'NotAllowedError') {
-          // Permission was denied in the prompt - tell them to click Allow
+        console.error('getUserMedia failed:', micErr.name, micErr.message);
+        if (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError') {
           statusEl.textContent = '❌ Microphone blocked';
           document.getElementById('userTranscript').textContent =
-            'To fix: Click the microphone/lock icon in the address bar → set to "Allow" → then reload this page and try again.';
+            'Click the 🔒 lock icon in address bar → Site settings → Microphone → Allow → Reload page.';
         } else if (micErr.name === 'NotFoundError') {
           statusEl.textContent = '❌ No microphone found';
           document.getElementById('userTranscript').textContent = 'No microphone detected on this device.';
