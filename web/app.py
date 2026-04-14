@@ -105,7 +105,12 @@ from web.security import (
     CSRFMiddleware, SecurityHeadersMiddleware,
     validate_csrf, validate_csrf_header, rate_limit, client_ip, is_request_secure,
 )
-from web.system_config_store import load_system_config, save_system_config, system_config_schema_is_behind
+from web.system_config_store import (
+    load_system_config,
+    missing_system_config_columns,
+    save_system_config,
+    system_config_schema_is_behind,
+)
 from web.tenant_config_store import load_tenant_config
 from web.request_safety import ensure_public_hostname, ensure_public_url
 from web.workflow import (
@@ -8820,12 +8825,42 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
     })
 
 
+# Voice AI pages only depend on this subset of system_config fields. Missing
+# unrelated columns should not keep the voice admin UI stuck in warning mode.
+VOICE_AI_SYSTEM_CONFIG_FIELDS = {
+    "openrouter_api_key_enc",
+    "deepgram_api_key_enc",
+    "elevenlabs_api_key_enc",
+    "cloudflare_account_id",
+    "cloudflare_r2_access_key_enc",
+    "cloudflare_r2_secret_key_enc",
+    "cloudflare_r2_bucket",
+    "voice_llm_model",
+    "voice_llm_backup_model",
+    "voice_llm_emergency_model",
+    "voice_deepgram_model",
+    "voice_llm_max_tokens",
+    "voice_llm_temperature",
+    "voice_elevenlabs_model",
+    "voice_elevenlabs_stability",
+    "voice_elevenlabs_similarity",
+    "voice_elevenlabs_voice_id",
+}
+
+
+def _voice_ai_schema_missing(db: Session) -> set[str]:
+    try:
+        return missing_system_config_columns(db) & VOICE_AI_SYSTEM_CONFIG_FIELDS
+    except Exception:
+        return set(VOICE_AI_SYSTEM_CONFIG_FIELDS)
+
+
 @app.get("/admin/voice-ai", response_class=HTMLResponse)
 def admin_voice_ai(request: Request, db: Session = Depends(get_db)):
     """Admin Voice AI configuration and live calling"""
     admin = _require_admin(request, db)
     sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
-    schema_drift = system_config_schema_is_behind(sys_conf)
+    schema_drift = bool(_voice_ai_schema_missing(db))
 
     return templates.TemplateResponse("admin_voice_ai.html", {
         "request": request,
@@ -8924,7 +8959,7 @@ async def admin_voice_ai_save(
     except (ValueError, AttributeError):
         sys_conf.voice_elevenlabs_similarity = 0.75
 
-    schema_drift = system_config_schema_is_behind(sys_conf)
+    schema_drift = bool(_voice_ai_schema_missing(db))
     save_system_config(db, sys_conf)
 
     if schema_drift:
@@ -9830,7 +9865,7 @@ def admin_voice_ai_backend(request: Request, db: Session = Depends(get_db)):
     """Admin voice AI backend configuration and testing"""
     admin = _require_admin(request, db)
     sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
-    schema_drift = system_config_schema_is_behind(sys_conf)
+    schema_drift = bool(_voice_ai_schema_missing(db))
 
     return templates.TemplateResponse(
         "admin_voice_ai_backend.html",
@@ -9855,7 +9890,7 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
             "openrouter": None,
             "elevenlabs": None,
             "timestamp": datetime.utcnow().isoformat(),
-            "schema_drift": system_config_schema_is_behind(sys_conf),
+            "schema_drift": bool(_voice_ai_schema_missing(db)),
         }
 
         # Test Deepgram
@@ -9924,25 +9959,50 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                 else:
                     import urllib.request
                     selected_voice_id = getattr(sys_conf, "voice_elevenlabs_voice_id", None) or "EXAVITQu4vr4xnSDxMaL"
-                    # Validate key using /v1/user — lightweight, no TTS credits used
                     req = urllib.request.Request(
-                        "https://api.elevenlabs.io/v1/user",
+                        "https://api.elevenlabs.io/v1/voices",
                         headers={"xi-api-key": api_key},
                     )
                     try:
                         resp = urllib.request.urlopen(req, timeout=5)
                         resp.read()
-                        results["elevenlabs"] = "✓ ElevenLabs API key valid"
+
+                        tts_req = urllib.request.Request(
+                            f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice_id}",
+                            headers={
+                                "xi-api-key": api_key,
+                                "Content-Type": "application/json",
+                            },
+                            data=json.dumps({
+                                "text": "Voice test OK.",
+                                "model_id": sys_conf.voice_elevenlabs_model or "eleven_turbo_v2",
+                                "voice_settings": {
+                                    "stability": float(sys_conf.voice_elevenlabs_stability or 0.5),
+                                    "similarity_boost": float(sys_conf.voice_elevenlabs_similarity or 0.75),
+                                },
+                            }).encode("utf-8"),
+                        )
+                        tts_resp = urllib.request.urlopen(tts_req, timeout=10)
+                        audio_preview = tts_resp.read()
+                        if audio_preview:
+                            results["elevenlabs"] = "✓ ElevenLabs API key valid and sample synthesis returned audio"
+                        else:
+                            results["elevenlabs"] = "✗ Key valid, but ElevenLabs returned an empty audio response"
                     except urllib.error.HTTPError as e:
                         body = ""
                         try:
                             body = e.read().decode("utf-8", errors="replace")[:100]
                         except Exception:
                             pass
-                        if e.code in (401, 403):
+                        body_lower = body.lower()
+                        if e.code == 401 or "invalid api key" in body_lower or "invalid_api_key" in body_lower:
                             results["elevenlabs"] = "✗ Invalid API key"
-                        elif e.code == 400 and "invalid" in body.lower():
-                            results["elevenlabs"] = "✗ Invalid API key"
+                        elif e.code == 403:
+                            results["elevenlabs"] = "✗ Key accepted, but this ElevenLabs account cannot access the requested TTS endpoint/model"
+                        elif e.code == 400 and ("model" in body_lower or "voice" in body_lower):
+                            results["elevenlabs"] = "✗ Key valid, but the selected ElevenLabs voice/model was rejected"
+                        elif e.code == 400 and ("credit" in body_lower or "quota" in body_lower or "limit" in body_lower):
+                            results["elevenlabs"] = "✗ Key valid, but the ElevenLabs account has no usable credits/quota"
                         else:
                             results["elevenlabs"] = f"✗ HTTP {e.code}: {body[:60]}"
             else:
@@ -9973,7 +10033,7 @@ async def admin_voice_ai_status(request: Request, db: Session = Depends(get_db))
         "temperature": sys_conf.voice_llm_temperature or 0.7,
         "stability": sys_conf.voice_elevenlabs_stability or 0.5,
         "similarity": sys_conf.voice_elevenlabs_similarity or 0.75,
-        "schema_drift": system_config_schema_is_behind(sys_conf),
+        "schema_drift": bool(_voice_ai_schema_missing(db)),
     })
 
 

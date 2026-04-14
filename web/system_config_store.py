@@ -108,6 +108,14 @@ def _existing_system_config_columns(db: Session) -> set[str]:
     return {col["name"] for col in inspector.get_columns(_SYSTEM_CONFIG_TABLE)}
 
 
+def existing_system_config_columns(db: Session) -> set[str]:
+    return _existing_system_config_columns(db)
+
+
+def missing_system_config_columns(db: Session) -> set[str]:
+    return set(SystemConfig.__table__.columns.keys()) - _existing_system_config_columns(db)
+
+
 def _query_system_configs(db: Session) -> list[SystemConfig]:
     return db.query(SystemConfig).all()
 
