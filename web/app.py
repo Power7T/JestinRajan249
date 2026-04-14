@@ -9605,10 +9605,10 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
 
         # Buffer for collecting audio chunks
         audio_buffer = bytearray()
-        audio_chunk_size = 32000  # ~2 seconds of audio at 16kHz
+        audio_chunk_size = 16000  # ~1 second of webm audio
         is_muted = False
 
-        await websocket.send_json({"type": "status", "message": "Connected"})
+        await websocket.send_json({"type": "ready", "message": "Connected"})
 
         while True:
             try:
@@ -9636,64 +9636,55 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
                 if len(audio_buffer) >= audio_chunk_size:
                     try:
                         log.info(f"Processing audio buffer: {len(audio_buffer)} bytes")
-                        # Upload and transcribe
-                        audio_url = await VoiceAIService.upload_to_r2(bytes(audio_buffer), f"voice-{uuid4()}.wav")
-                        if not audio_url:
-                            log.info("R2 upload failed, trying S3 fallback")
-                            audio_url = await VoiceAIService.upload_to_s3(bytes(audio_buffer), f"voice-{uuid4()}.wav")
+                        # Send bytes directly to Deepgram — no R2/S3 upload needed
+                        transcript, confidence = await VoiceAIService.transcribe_bytes(bytes(audio_buffer))
+                        audio_buffer = bytearray()  # reset immediately after consuming
+                        log.info(f"Transcribed: '{transcript}' (confidence: {confidence})")
 
-                        if audio_url:
-                            log.info(f"Audio uploaded to {audio_url}")
-                            transcript, confidence = await VoiceAIService.transcribe_audio(audio_url)
-                            log.info(f"Transcribed: '{transcript}' (confidence: {confidence})")
+                        if transcript and transcript.strip():
+                            # Send transcript to client
+                            await websocket.send_json({"type": "transcript", "text": transcript})
 
-                            if transcript:
-                                # Send transcript to client
-                                await websocket.send_json({"type": "transcript", "text": transcript})
+                            # Generate LLM response
+                            response, _, _ = await VoiceAIService.generate_response(
+                                guest_message=transcript,
+                                tenant_config=tenant_config,
+                                conversation_history=[],
+                                guest_name="Admin Voice",
+                                guest_language="en"
+                            )
+                            log.info(f"Generated response: {str(response)[:100]}")
 
-                                # Generate response
-                                response, _, _ = await VoiceAIService.generate_response(
-                                    guest_message=transcript,
-                                    tenant_config=tenant_config,
-                                    conversation_history=[],
-                                    guest_name="Admin Voice",
-                                    guest_language="en"
-                                )
-                                log.info(f"Generated response: {response[:100]}")
+                            # Extract voice text if JSON
+                            response_text = response
+                            if isinstance(response, str) and response.strip().startswith("{"):
+                                try:
+                                    parsed = json.loads(response)
+                                    response_text = parsed.get("voice", parsed.get("response", response))
+                                except Exception:
+                                    response_text = response
 
-                                response_text = response
-                                if isinstance(response, str) and response.startswith("{"):
-                                    try:
-                                        parsed = json.loads(response)
-                                        response_text = parsed.get("response", response)
-                                    except:
-                                        response_text = response
+                            # Send response text to client
+                            await websocket.send_json({"type": "response", "text": response_text})
 
-                                # Send response transcript
-                                await websocket.send_json({"type": "response", "text": response_text})
+                            # Synthesize speech via ElevenLabs
+                            voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
+                            audio_bytes, _ = await VoiceAIService.synthesize_speech(response_text, voice_id=voice_id)
+                            log.info(f"Synthesized: {len(audio_bytes) if audio_bytes else 0} bytes")
 
-                                # Synthesize audio
-                                voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
-                                audio_bytes, s3_url = await VoiceAIService.synthesize_speech(response_text, voice_id=voice_id)
-                                log.info(f"Synthesized audio: {len(audio_bytes) if audio_bytes else 0} bytes")
-
-                                if audio_bytes:
-                                    # Send audio in chunks
-                                    import base64
-                                    audio_b64 = base64.b64encode(audio_bytes).decode()
-                                    await websocket.send_json({"type": "audio", "audio": audio_b64})
-                            else:
-                                log.warning("Transcription returned empty")
+                            if audio_bytes:
+                                import base64
+                                audio_b64 = base64.b64encode(audio_bytes).decode()
+                                await websocket.send_json({"type": "audio", "audio": audio_b64})
                         else:
-                            log.warning("Audio upload failed")
+                            log.info("Empty transcript — skipping response")
 
-                        audio_buffer = bytearray()
                     except Exception as e:
                         import traceback
                         log.error(f"Voice processing error: {str(e)}\n{traceback.format_exc()}")
                         try:
                             await websocket.send_json({"type": "error", "message": str(e)[:100]})
-                        except:
+                        except Exception:
                             pass
 
     except WebSocketDisconnect:

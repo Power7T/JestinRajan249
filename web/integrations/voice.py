@@ -55,6 +55,44 @@ class VoiceAIService:
     # ──────────────────────────────────────────────────────────────────────────
 
     @staticmethod
+    async def transcribe_bytes(audio_bytes: bytes) -> tuple[str, float]:
+        """Send raw audio bytes directly to Deepgram — no file upload needed."""
+        import asyncio
+
+        async def _call():
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.post(
+                    "https://api.deepgram.com/v1/listen",
+                    headers={
+                        "Authorization": f"Token {VoiceAIService.DEEPGRAM_API_KEY}",
+                        "Content-Type": "audio/webm",
+                    },
+                    params={
+                        "model": VoiceAIService.DEEPGRAM_MODEL,
+                        "detect_language": "true",
+                        "punctuate": "true",
+                    },
+                    content=audio_bytes,
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    channels = data.get("results", {}).get("channels", [])
+                    if channels:
+                        alt = channels[0]["alternatives"][0]
+                        return alt.get("transcript", ""), alt.get("confidence", 0.8)
+                logger.error(f"Deepgram error: {response.status_code} {response.text[:200]}")
+                return "", 0.0
+
+        try:
+            return await asyncio.wait_for(_call(), timeout=8.0)
+        except asyncio.TimeoutError:
+            logger.error("Deepgram transcribe_bytes timeout")
+            return "", 0.0
+        except Exception as e:
+            logger.error(f"Deepgram transcribe_bytes error: {e}")
+            return "", 0.0
+
+    @staticmethod
     async def transcribe_audio(audio_url: str) -> tuple[str, float]:
         """
         Transcribe audio from URL using Deepgram STT with timeout protection.
