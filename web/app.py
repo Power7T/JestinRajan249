@@ -9633,7 +9633,7 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
 
         # Buffer for collecting audio chunks
         audio_buffer = bytearray()
-        audio_chunk_size = 16000  # ~1 second of webm audio
+        audio_chunk_size = 1  # process every chunk the browser sends (2s MediaRecorder interval)
         is_muted = False
 
         await websocket.send_json({"type": "ready", "message": "Connected"})

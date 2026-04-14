@@ -398,21 +398,25 @@ window.toggleVoiceCall = async function() {
 
       voiceWs.onopen = function() {
         console.log('WebSocket connected');
-        statusEl.textContent = 'Connected';
+        statusEl.textContent = 'Listening... (speak now)';
         voiceWs.send(JSON.stringify({ type: 'start' }));
-        console.log('Sent start message');
 
-        mediaRecorder = new MediaRecorder(voiceStream, { mimeType: 'audio/webm' });
-        console.log('MediaRecorder created');
+        // Pick a MIME type the browser actually supports
+        var mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg', ''].find(function(t) {
+          return t === '' || MediaRecorder.isTypeSupported(t);
+        });
+        mediaRecorder = new MediaRecorder(voiceStream, mimeType ? { mimeType: mimeType } : {});
+        console.log('MediaRecorder MIME:', mediaRecorder.mimeType);
 
         mediaRecorder.ondataavailable = function(e) {
           if (e.data.size > 0 && voiceWs && voiceWs.readyState === WebSocket.OPEN) {
-            console.log('Sending audio chunk:', e.data.size, 'bytes');
+            console.log('Audio chunk sent:', e.data.size, 'bytes');
             e.data.arrayBuffer().then(function(buf) { voiceWs.send(buf); });
           }
         };
-        mediaRecorder.start(100);
-        console.log('MediaRecorder started');
+        // Send a 2-second chunk — enough audio for meaningful transcription
+        mediaRecorder.start(2000);
+        console.log('MediaRecorder started (2s chunks)');
       };
 
       voiceWs.onmessage = function(event) {
@@ -534,7 +538,7 @@ function playNextChunk() {
 
   isPlayingAudio = true;
   var chunk = audioQueue.shift();
-  var blob = new Blob([chunk], { type: 'audio/wav' });
+  var blob = new Blob([chunk], { type: 'audio/mpeg' }); // ElevenLabs returns MP3
   var url = URL.createObjectURL(blob);
   var audio = new Audio(url);
 
