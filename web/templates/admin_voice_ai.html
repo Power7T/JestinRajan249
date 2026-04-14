@@ -175,19 +175,43 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           <p class="text-xs text-slate-500">Leave blank or as ******** to keep current key</p>
         </div>
         <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">AI Voice</label>
+          <select name="voice_elevenlabs_voice_id" class="compat-input" style="appearance:auto;">
+            <option value="" {% if not sys_conf.voice_elevenlabs_voice_id %}selected{% endif %}>Default (Rachel)</option>
+            <option value="EXAVITQu4vr4xnSDxMaL" {% if sys_conf.voice_elevenlabs_voice_id == 'EXAVITQu4vr4xnSDxMaL' %}selected{% endif %}>Rachel — Calm Female</option>
+            <option value="21m00Tcm4TlvDq8ikWAM" {% if sys_conf.voice_elevenlabs_voice_id == '21m00Tcm4TlvDq8ikWAM' %}selected{% endif %}>Rachel v2 — Female</option>
+            <option value="AZnzlk1XvdvUeBnXmlld" {% if sys_conf.voice_elevenlabs_voice_id == 'AZnzlk1XvdvUeBnXmlld' %}selected{% endif %}>Domi — Confident Female</option>
+            <option value="MF3mGyEYCl7XYWbV9V6O" {% if sys_conf.voice_elevenlabs_voice_id == 'MF3mGyEYCl7XYWbV9V6O' %}selected{% endif %}>Elli — Emotional Female</option>
+            <option value="TxGEqnHWrfWFTfGW9XjX" {% if sys_conf.voice_elevenlabs_voice_id == 'TxGEqnHWrfWFTfGW9XjX' %}selected{% endif %}>Josh — Deep Male</option>
+            <option value="VR6AewLTigWG4xSOukaG" {% if sys_conf.voice_elevenlabs_voice_id == 'VR6AewLTigWG4xSOukaG' %}selected{% endif %}>Arnold — Crisp Male</option>
+            <option value="pNInz6obpgDQGcFmaJgB" {% if sys_conf.voice_elevenlabs_voice_id == 'pNInz6obpgDQGcFmaJgB' %}selected{% endif %}>Adam — Warm Male</option>
+            <option value="yoZ06aMxZJJ28mfd3POQ" {% if sys_conf.voice_elevenlabs_voice_id == 'yoZ06aMxZJJ28mfd3POQ' %}selected{% endif %}>Sam — Raspy Male</option>
+            <option value="jBpfuIE2acCO8z3wKNLl" {% if sys_conf.voice_elevenlabs_voice_id == 'jBpfuIE2acCO8z3wKNLl' %}selected{% endif %}>Gigi — Animated Female</option>
+            <option value="onwK4e9ZLuTAKqWW03F9" {% if sys_conf.voice_elevenlabs_voice_id == 'onwK4e9ZLuTAKqWW03F9' %}selected{% endif %}>Daniel — Deep British Male</option>
+            <option value="custom" {% if sys_conf.voice_elevenlabs_voice_id and sys_conf.voice_elevenlabs_voice_id not in ['EXAVITQu4vr4xnSDxMaL','21m00Tcm4TlvDq8ikWAM','AZnzlk1XvdvUeBnXmlld','MF3mGyEYCl7XYWbV9V6O','TxGEqnHWrfWFTfGW9XjX','VR6AewLTigWG4xSOukaG','pNInz6obpgDQGcFmaJgB','yoZ06aMxZJJ28mfd3POQ','jBpfuIE2acCO8z3wKNLl','onwK4e9ZLuTAKqWW03F9'] %}selected{% endif %}>Custom Voice ID...</option>
+          </select>
+          <input type="text" name="voice_elevenlabs_voice_id_custom" class="compat-input mt-1" value="{{ sys_conf.voice_elevenlabs_voice_id if sys_conf.voice_elevenlabs_voice_id and sys_conf.voice_elevenlabs_voice_id not in ['EXAVITQu4vr4xnSDxMaL','21m00Tcm4TlvDq8ikWAM','AZnzlk1XvdvUeBnXmlld','MF3mGyEYCl7XYWbV9V6O','TxGEqnHWrfWFTfGW9XjX','VR6AewLTigWG4xSOukaG','pNInz6obpgDQGcFmaJgB','yoZ06aMxZJJ28mfd3POQ','jBpfuIE2acCO8z3wKNLl','onwK4e9ZLuTAKqWW03F9'] else '' }}" placeholder="Paste custom ElevenLabs voice ID here" id="customVoiceIdInput" style="display:none">
+          <p class="text-xs text-slate-500">Voice your AI assistant uses for calls. <a href="https://elevenlabs.io/voice-library" class="text-blue-400 underline" target="_blank">Browse voices</a></p>
+        </div>
+        <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Model</label>
-          <input type="text" name="voice_elevenlabs_model" class="compat-input" value="{{ sys_conf.voice_elevenlabs_model or 'eleven_turbo_v2' }}" placeholder="eleven_turbo_v2">
-          <p class="text-xs text-slate-500">ElevenLabs voice model</p>
+          <select name="voice_elevenlabs_model" class="compat-input" style="appearance:auto;">
+            <option value="eleven_turbo_v2" {% if (sys_conf.voice_elevenlabs_model or 'eleven_turbo_v2') == 'eleven_turbo_v2' %}selected{% endif %}>eleven_turbo_v2 — Fastest</option>
+            <option value="eleven_turbo_v2_5" {% if sys_conf.voice_elevenlabs_model == 'eleven_turbo_v2_5' %}selected{% endif %}>eleven_turbo_v2_5 — Fast + Multilingual</option>
+            <option value="eleven_multilingual_v2" {% if sys_conf.voice_elevenlabs_model == 'eleven_multilingual_v2' %}selected{% endif %}>eleven_multilingual_v2 — High Quality</option>
+            <option value="eleven_monolingual_v1" {% if sys_conf.voice_elevenlabs_model == 'eleven_monolingual_v1' %}selected{% endif %}>eleven_monolingual_v1 — English Only</option>
+          </select>
+          <p class="text-xs text-slate-500">Faster model = lower latency on calls</p>
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Stability</label>
           <input type="number" name="voice_elevenlabs_stability" class="compat-input" step="0.01" min="0" max="1" value="{{ sys_conf.voice_elevenlabs_stability or 0.5 }}">
-          <p class="text-xs text-slate-500">Voice consistency (0-1)</p>
+          <p class="text-xs text-slate-500">Voice consistency (0–1). Higher = more stable</p>
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Similarity</label>
           <input type="number" name="voice_elevenlabs_similarity" class="compat-input" step="0.01" min="0" max="1" value="{{ sys_conf.voice_elevenlabs_similarity or 0.75 }}">
-          <p class="text-xs text-slate-500">Voice similarity (0-1)</p>
+          <p class="text-xs text-slate-500">Voice similarity (0–1). Higher = more expressive</p>
         </div>
         <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition text-sm">Save TTS Config</button>
       </form>
@@ -314,6 +338,19 @@ var isMuted = false;
 var callStartTime = 0;
 var audioQueue = [];
 var isPlayingAudio = false;
+
+// Voice ID custom field toggle
+document.addEventListener('DOMContentLoaded', function() {
+  var voiceSelect = document.querySelector('select[name="voice_elevenlabs_voice_id"]');
+  var customInput = document.getElementById('customVoiceIdInput');
+  if (voiceSelect && customInput) {
+    function toggleCustomInput() {
+      customInput.style.display = voiceSelect.value === 'custom' ? 'block' : 'none';
+    }
+    toggleCustomInput();
+    voiceSelect.addEventListener('change', toggleCustomInput);
+  }
+});
 
 // Sidebar toggle
 document.addEventListener('DOMContentLoaded', function() {

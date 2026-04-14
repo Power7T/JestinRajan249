@@ -8850,6 +8850,8 @@ async def admin_voice_ai_save(
     voice_llm_max_tokens: str = Form(""),
     voice_llm_temperature: str = Form(""),
     voice_elevenlabs_model: str = Form(""),
+    voice_elevenlabs_voice_id: str = Form(""),
+    voice_elevenlabs_voice_id_custom: str = Form(""),
     voice_elevenlabs_stability: str = Form(""),
     voice_elevenlabs_similarity: str = Form(""),
     db: Session = Depends(get_db),
@@ -8901,6 +8903,11 @@ async def admin_voice_ai_save(
 
     if voice_elevenlabs_model.strip():
         sys_conf.voice_elevenlabs_model = voice_elevenlabs_model.strip()
+
+    # Voice ID — prefer custom field if "Custom Voice ID..." was selected
+    _vid = voice_elevenlabs_voice_id_custom.strip() if voice_elevenlabs_voice_id.strip() == "custom" else voice_elevenlabs_voice_id.strip()
+    if _vid:
+        sys_conf.voice_elevenlabs_voice_id = _vid
 
     # Parse ElevenLabs voice settings safely
     try:
@@ -9609,7 +9616,12 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
             "faq": tenant_config_obj.faq if tenant_config_obj else "",
             "nearby_restaurants": tenant_config_obj.nearby_restaurants if tenant_config_obj else "",
         }
-        voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
+        # Voice ID: prefer tenant config, fall back to system config (set from admin TTS form)
+        voice_id = (
+            (tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None)
+            or sys_conf.voice_elevenlabs_voice_id
+            or "EXAVITQu4vr4xnSDxMaL"  # Rachel (default)
+        )
 
         log.info("Voice AI API keys loaded — opening Deepgram streaming connection")
 

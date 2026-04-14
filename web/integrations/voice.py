@@ -265,9 +265,11 @@ or when you don't know:
             import asyncio
 
             messages = []
-            for i, msg in enumerate(conversation_history[-6:]):
-                role = "user" if i % 2 == 0 else "assistant"
-                messages.append({"role": role, "content": msg["text"]})
+            for msg in conversation_history[-10:]:
+                role = msg.get("role", "user")
+                content = msg.get("content") or msg.get("text", "")
+                if content:
+                    messages.append({"role": role, "content": content})
             messages.append({"role": "user", "content": guest_message})
 
             async def _call_llm():
@@ -382,17 +384,22 @@ or when you don't know:
                 )
                 if response.status_code == 200:
                     audio_bytes = response.content
-                    url = await VoiceAIService.upload_to_r2(audio_bytes, f"voice_{uuid.uuid4()}.mp3")
-                    return audio_bytes, url
+                    # Upload to R2 in background — don't block audio delivery
+                    import asyncio as _asyncio
+                    if VoiceAIService.CLOUDFLARE_ACCOUNT_ID and VoiceAIService.CLOUDFLARE_R2_BUCKET:
+                        _asyncio.create_task(
+                            VoiceAIService.upload_to_r2(audio_bytes, f"voice_{uuid.uuid4()}.mp3")
+                        )
+                    return audio_bytes, ""
                 logger.error(f"ElevenLabs error: {response.status_code} {response.text}")
                 return b"", ""
 
         try:
-            # Hard timeout: 5 seconds for ElevenLabs TTS
-            result = await asyncio.wait_for(_call_elevenlabs(), timeout=5.0)
+            # 15-second timeout: ElevenLabs can take 3-8s, R2 upload adds more
+            result = await asyncio.wait_for(_call_elevenlabs(), timeout=15.0)
             return result
         except asyncio.TimeoutError:
-            logger.error(f"[TIMEOUT] ElevenLabs TTS exceeded 5s timeout")
+            logger.error(f"[TIMEOUT] ElevenLabs TTS exceeded 15s timeout")
             return b"", ""  # Fallback: no audio
         except Exception as e:
             logger.error(f"ElevenLabs TTS error: {e}")
