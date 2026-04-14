@@ -9933,35 +9933,32 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                     )
                     try:
                         resp = urllib.request.urlopen(req, timeout=5)
-                        payload = json.loads(resp.read().decode("utf-8"))
-                        voices = payload.get("voices", []) if isinstance(payload, dict) else []
-                        if selected_voice_id and not any(v.get("voice_id") == selected_voice_id for v in voices if isinstance(v, dict)):
-                            results["elevenlabs"] = "✗ API key valid, but configured voice ID was not found"
-                        else:
-                            tts_req = urllib.request.Request(
-                                f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice_id}",
-                                headers={
-                                    "xi-api-key": api_key,
-                                    "Content-Type": "application/json",
+                        resp.read()  # consume response
+                        # Key is valid — now do a quick TTS test
+                        tts_req = urllib.request.Request(
+                            f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice_id}",
+                            headers={
+                                "xi-api-key": api_key,
+                                "Content-Type": "application/json",
+                            },
+                            data=json.dumps({
+                                "text": "Voice test OK.",
+                                "model_id": sys_conf.voice_elevenlabs_model or "eleven_turbo_v2",
+                                "voice_settings": {
+                                    "stability": float(sys_conf.voice_elevenlabs_stability or 0.5),
+                                    "similarity_boost": float(sys_conf.voice_elevenlabs_similarity or 0.75),
                                 },
-                                data=json.dumps({
-                                    "text": "This is a voice test.",
-                                    "model_id": sys_conf.voice_elevenlabs_model or "eleven_turbo_v2",
-                                    "voice_settings": {
-                                        "stability": float(sys_conf.voice_elevenlabs_stability or 0.5),
-                                        "similarity_boost": float(sys_conf.voice_elevenlabs_similarity or 0.75),
-                                    },
-                                }).encode("utf-8"),
-                            )
-                            tts_resp = urllib.request.urlopen(tts_req, timeout=10)
-                            audio_preview = tts_resp.read()
-                            if audio_preview:
-                                results["elevenlabs"] = "✓ ElevenLabs API key valid and sample synthesis returned audio"
-                            else:
-                                results["elevenlabs"] = "✗ ElevenLabs returned an empty audio response"
+                            }).encode("utf-8"),
+                        )
+                        tts_resp = urllib.request.urlopen(tts_req, timeout=10)
+                        audio_preview = tts_resp.read()
+                        if audio_preview:
+                            results["elevenlabs"] = "✓ ElevenLabs API key valid and sample synthesis returned audio"
+                        else:
+                            results["elevenlabs"] = "✗ ElevenLabs returned an empty audio response"
                     except urllib.error.HTTPError as e:
-                        if e.code == 401:
-                            results["elevenlabs"] = "✗ Invalid API key"
+                        if e.code in (400, 401, 403):
+                            results["elevenlabs"] = "✗ Invalid API key (check key in ElevenLabs → API Keys section)"
                         else:
                             results["elevenlabs"] = f"✗ HTTP {e.code}"
             else:
