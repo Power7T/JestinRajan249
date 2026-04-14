@@ -1,4 +1,4 @@
-"""Voice AI service: Deepgram (STT) → OpenAI (LLM) → ElevenLabs (TTS)
+"""Voice AI service: Deepgram (STT) → OpenAI (LLM) → Google TTS / ElevenLabs (TTS)
 
 generate_response() returns (voice_text, send_action) where:
   send_action = None | {"type": str, "content": str}
@@ -44,6 +44,13 @@ class VoiceAIService:
     ELEVENLABS_MODEL        = os.getenv("ELEVENLABS_MODEL", "eleven_turbo_v2")
     ELEVENLABS_STABILITY    = float(os.getenv("ELEVENLABS_STABILITY", "0.5"))
     ELEVENLABS_SIMILARITY   = float(os.getenv("ELEVENLABS_SIMILARITY", "0.75"))
+
+    # Google Cloud TTS
+    GOOGLE_TTS_API_KEY      = os.getenv("GOOGLE_TTS_API_KEY")
+    GOOGLE_TTS_VOICE        = os.getenv("GOOGLE_TTS_VOICE", "en-US-Neural2-F")
+    GOOGLE_TTS_LANGUAGE     = os.getenv("GOOGLE_TTS_LANGUAGE", "en-US")
+    GOOGLE_TTS_SPEAKING_RATE = float(os.getenv("GOOGLE_TTS_SPEAKING_RATE", "1.0"))
+    TTS_PROVIDER            = os.getenv("TTS_PROVIDER", "google")  # "google" | "elevenlabs"
 
     CLOUDFLARE_ACCOUNT_ID       = os.getenv("CLOUDFLARE_ACCOUNT_ID")
     CLOUDFLARE_ACCESS_KEY_ID    = os.getenv("CLOUDFLARE_ACCESS_KEY_ID")
@@ -355,16 +362,82 @@ or when you don't know:
     @staticmethod
     async def synthesize_speech(text: str, voice_id: Optional[str] = None) -> tuple[bytes, str]:
         """
-        Convert text to speech using ElevenLabs with timeout protection.
+        Convert text to speech.
+        Routes to Google Cloud TTS (default) or ElevenLabs based on TTS_PROVIDER.
         Returns (audio_bytes, audio_url).
-        voice_id: optional voice ID (defaults to class ELEVENLABS_VOICE_ID)
-
-        Timeout: 5 seconds for ElevenLabs TTS
-        Fallback on timeout: (b"", "") — no audio, guest won't hear response
+        Fallback: if primary fails, tries the other provider.
         """
         import asyncio
 
-        async def _call_elevenlabs():
+        provider = VoiceAIService.TTS_PROVIDER or "google"
+
+        if provider == "google":
+            result = await VoiceAIService._synthesize_google(text)
+            if result[0]:
+                return result
+            # Fallback to ElevenLabs if Google fails
+            logger.warning("Google TTS failed, falling back to ElevenLabs")
+            return await VoiceAIService._synthesize_elevenlabs(text, voice_id)
+        else:
+            result = await VoiceAIService._synthesize_elevenlabs(text, voice_id)
+            if result[0]:
+                return result
+            # Fallback to Google if ElevenLabs fails
+            logger.warning("ElevenLabs TTS failed, falling back to Google TTS")
+            return await VoiceAIService._synthesize_google(text)
+
+    @staticmethod
+    async def _synthesize_google(text: str) -> tuple[bytes, str]:
+        """Google Cloud TTS — Neural2 voices, unlimited concurrency, ~$1.60/mo at scale."""
+        import asyncio
+        import base64
+
+        async def _call():
+            api_key = VoiceAIService.GOOGLE_TTS_API_KEY
+            if not api_key:
+                logger.error("Google TTS: no API key configured")
+                return b"", ""
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    f"https://texttospeech.googleapis.com/v1/text:synthesize?key={api_key}",
+                    json={
+                        "input": {"text": text},
+                        "voice": {
+                            "languageCode": VoiceAIService.GOOGLE_TTS_LANGUAGE,
+                            "name": VoiceAIService.GOOGLE_TTS_VOICE,
+                        },
+                        "audioConfig": {
+                            "audioEncoding": "MP3",
+                            "speakingRate": VoiceAIService.GOOGLE_TTS_SPEAKING_RATE,
+                        },
+                    },
+                )
+                if resp.status_code == 200:
+                    audio_bytes = base64.b64decode(resp.json()["audioContent"])
+                    import asyncio as _asyncio
+                    if VoiceAIService.CLOUDFLARE_ACCOUNT_ID and VoiceAIService.CLOUDFLARE_R2_BUCKET:
+                        _asyncio.create_task(
+                            VoiceAIService.upload_to_r2(audio_bytes, f"voice_{uuid.uuid4()}.mp3")
+                        )
+                    return audio_bytes, ""
+                logger.error(f"Google TTS error: {resp.status_code} {resp.text[:200]}")
+                return b"", ""
+
+        try:
+            return await asyncio.wait_for(_call(), timeout=10.0)
+        except asyncio.TimeoutError:
+            logger.error("[TIMEOUT] Google TTS exceeded 10s")
+            return b"", ""
+        except Exception as e:
+            logger.error(f"Google TTS error: {e}")
+            return b"", ""
+
+    @staticmethod
+    async def _synthesize_elevenlabs(text: str, voice_id: Optional[str] = None) -> tuple[bytes, str]:
+        """ElevenLabs TTS — optional premium voices."""
+        import asyncio
+
+        async def _call():
             vid = voice_id or VoiceAIService.ELEVENLABS_VOICE_ID
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
@@ -378,13 +451,12 @@ or when you don't know:
                         "model_id": VoiceAIService.ELEVENLABS_MODEL,
                         "voice_settings": {
                             "stability": VoiceAIService.ELEVENLABS_STABILITY,
-                            "similarity_boost": VoiceAIService.ELEVENLABS_SIMILARITY
+                            "similarity_boost": VoiceAIService.ELEVENLABS_SIMILARITY,
                         },
                     },
                 )
                 if response.status_code == 200:
                     audio_bytes = response.content
-                    # Upload to R2 in background — don't block audio delivery
                     import asyncio as _asyncio
                     if VoiceAIService.CLOUDFLARE_ACCOUNT_ID and VoiceAIService.CLOUDFLARE_R2_BUCKET:
                         _asyncio.create_task(
@@ -395,12 +467,10 @@ or when you don't know:
                 return b"", ""
 
         try:
-            # 15-second timeout: ElevenLabs can take 3-8s, R2 upload adds more
-            result = await asyncio.wait_for(_call_elevenlabs(), timeout=15.0)
-            return result
+            return await asyncio.wait_for(_call(), timeout=15.0)
         except asyncio.TimeoutError:
-            logger.error(f"[TIMEOUT] ElevenLabs TTS exceeded 15s timeout")
-            return b"", ""  # Fallback: no audio
+            logger.error("[TIMEOUT] ElevenLabs TTS exceeded 15s")
+            return b"", ""
         except Exception as e:
             logger.error(f"ElevenLabs TTS error: {e}")
             return b"", ""

@@ -8832,6 +8832,8 @@ VOICE_AI_CRITICAL_SYSTEM_CONFIG_FIELDS = {
     "openrouter_api_key_enc",
     "deepgram_api_key_enc",
     "elevenlabs_api_key_enc",
+    "google_tts_api_key_enc",
+    "voice_tts_provider",
     "voice_llm_model",
     "voice_llm_backup_model",
     "voice_llm_emergency_model",
@@ -8842,6 +8844,9 @@ VOICE_AI_CRITICAL_SYSTEM_CONFIG_FIELDS = {
     "voice_elevenlabs_stability",
     "voice_elevenlabs_similarity",
     "voice_elevenlabs_voice_id",
+    "voice_google_tts_voice",
+    "voice_google_tts_language",
+    "voice_google_tts_speaking_rate",
 }
 
 
@@ -8886,6 +8891,11 @@ async def admin_voice_ai_save(
     openrouter_api_key_enc: str = Form(""),
     deepgram_api_key_enc: str = Form(""),
     elevenlabs_api_key_enc: str = Form(""),
+    google_tts_api_key_enc: str = Form(""),
+    voice_tts_provider: str = Form("google"),
+    voice_google_tts_voice: str = Form(""),
+    voice_google_tts_language: str = Form(""),
+    voice_google_tts_speaking_rate: str = Form(""),
     cloudflare_account_id: str = Form(""),
     cloudflare_r2_access_key_enc: str = Form(""),
     cloudflare_r2_secret_key_enc: str = Form(""),
@@ -8914,6 +8924,21 @@ async def admin_voice_ai_save(
         sys_conf.deepgram_api_key_enc = encrypt(deepgram_api_key_enc.strip())
     if elevenlabs_api_key_enc.strip() and elevenlabs_api_key_enc != "********":
         sys_conf.elevenlabs_api_key_enc = encrypt(elevenlabs_api_key_enc.strip())
+    if google_tts_api_key_enc.strip() and google_tts_api_key_enc != "********":
+        sys_conf.google_tts_api_key_enc = encrypt(google_tts_api_key_enc.strip())
+
+    # TTS provider selection
+    if voice_tts_provider.strip() in ("google", "elevenlabs"):
+        sys_conf.voice_tts_provider = voice_tts_provider.strip()
+    if voice_google_tts_voice.strip():
+        sys_conf.voice_google_tts_voice = voice_google_tts_voice.strip()
+    if voice_google_tts_language.strip():
+        sys_conf.voice_google_tts_language = voice_google_tts_language.strip()
+    try:
+        if voice_google_tts_speaking_rate.strip():
+            sys_conf.voice_google_tts_speaking_rate = float(voice_google_tts_speaking_rate.strip())
+    except (ValueError, AttributeError):
+        sys_conf.voice_google_tts_speaking_rate = 1.0
 
     # R2 credentials (account_id and bucket are plain text; keys are encrypted)
     if cloudflare_account_id.strip():
@@ -9646,6 +9671,22 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
         if sys_conf.voice_elevenlabs_similarity is not None:
             VoiceAIService.ELEVENLABS_SIMILARITY = float(sys_conf.voice_elevenlabs_similarity)
 
+        # Google Cloud TTS
+        if getattr(sys_conf, "google_tts_api_key_enc", None):
+            dec = decrypt(sys_conf.google_tts_api_key_enc)
+            if dec:
+                VoiceAIService.GOOGLE_TTS_API_KEY = dec
+            else:
+                log.error("Failed to decrypt Google TTS API key")
+        if getattr(sys_conf, "voice_tts_provider", None):
+            VoiceAIService.TTS_PROVIDER = sys_conf.voice_tts_provider
+        if getattr(sys_conf, "voice_google_tts_voice", None):
+            VoiceAIService.GOOGLE_TTS_VOICE = sys_conf.voice_google_tts_voice
+        if getattr(sys_conf, "voice_google_tts_language", None):
+            VoiceAIService.GOOGLE_TTS_LANGUAGE = sys_conf.voice_google_tts_language
+        if getattr(sys_conf, "voice_google_tts_speaking_rate", None) is not None:
+            VoiceAIService.GOOGLE_TTS_SPEAKING_RATE = float(sys_conf.voice_google_tts_speaking_rate)
+
         if not VoiceAIService.DEEPGRAM_API_KEY:
             await websocket.send_json({"type": "error", "message": "Deepgram API key not configured"})
             await websocket.close()
@@ -9654,7 +9695,13 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
             await websocket.send_json({"type": "error", "message": "OpenRouter or OpenAI API key not configured"})
             await websocket.close()
             return
-        if not VoiceAIService.ELEVENLABS_API_KEY:
+        # Require at least one TTS provider
+        tts_provider = VoiceAIService.TTS_PROVIDER or "google"
+        if tts_provider == "google" and not VoiceAIService.GOOGLE_TTS_API_KEY:
+            await websocket.send_json({"type": "error", "message": "Google TTS API key not configured"})
+            await websocket.close()
+            return
+        if tts_provider == "elevenlabs" and not VoiceAIService.ELEVENLABS_API_KEY:
             await websocket.send_json({"type": "error", "message": "ElevenLabs API key not configured"})
             await websocket.close()
             return
@@ -9898,6 +9945,7 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
         results = {
             "deepgram": None,
             "openrouter": None,
+            "google_tts": None,
             "elevenlabs": None,
             "timestamp": datetime.utcnow().isoformat(),
             "schema_drift": bool(_voice_ai_critical_schema_missing(db)),
@@ -9959,6 +10007,40 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                 results["openrouter"] = "✗ No API key configured"
         except Exception as e:
             results["openrouter"] = f"✗ {str(e)[:50]}"
+
+        # Test Google Cloud TTS
+        try:
+            if sys_conf and sys_conf.google_tts_api_key_enc:
+                api_key = decrypt(sys_conf.google_tts_api_key_enc)
+                if not api_key:
+                    results["google_tts"] = "✗ Decryption failed (key corruption?)"
+                else:
+                    import httpx as _httpx
+                    import base64 as _base64
+                    async with _httpx.AsyncClient(timeout=10) as client:
+                        resp = await client.post(
+                            f"https://texttospeech.googleapis.com/v1/text:synthesize?key={api_key}",
+                            json={
+                                "input": {"text": "OK"},
+                                "voice": {
+                                    "languageCode": getattr(sys_conf, "voice_google_tts_language", None) or "en-US",
+                                    "name": getattr(sys_conf, "voice_google_tts_voice", None) or "en-US-Neural2-F",
+                                },
+                                "audioConfig": {"audioEncoding": "MP3"},
+                            },
+                        )
+                    if resp.status_code == 200 and resp.json().get("audioContent"):
+                        results["google_tts"] = "✓ Google TTS API key valid and synthesis working"
+                    elif resp.status_code == 400:
+                        results["google_tts"] = f"✗ Bad request (check voice/language config): {resp.text[:80]}"
+                    elif resp.status_code in (401, 403):
+                        results["google_tts"] = "✗ Invalid or unauthorized API key"
+                    else:
+                        results["google_tts"] = f"✗ HTTP {resp.status_code}: {resp.text[:60]}"
+            else:
+                results["google_tts"] = "✗ No Google TTS API key configured"
+        except Exception as e:
+            results["google_tts"] = f"✗ {str(e)[:50]}"
 
         # Test ElevenLabs
         try:

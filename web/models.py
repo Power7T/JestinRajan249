@@ -85,6 +85,12 @@ class SystemConfig(Base):
     voice_elevenlabs_stability: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.5)
     voice_elevenlabs_similarity: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.75)
     voice_elevenlabs_voice_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, default="EXAVITQu4vr4xnSDxMaL")
+    # Google Cloud TTS
+    google_tts_api_key_enc: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    voice_tts_provider: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default="google")
+    voice_google_tts_voice: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, default="en-US-Neural2-F")
+    voice_google_tts_language: Mapped[Optional[str]] = mapped_column(String(16), nullable=True, default="en-US")
+    voice_google_tts_speaking_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=1.0)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, default=_now, onupdate=_now)
 
 # ---------------------------------------------------------------------------

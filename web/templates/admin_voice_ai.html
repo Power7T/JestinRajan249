@@ -184,57 +184,137 @@ select.compat-input { appearance: auto; cursor: pointer; }
     <!-- Text-to-Speech (TTS) -->
     <div class="glass-card rounded-3xl p-6">
       <h2 class="text-lg font-bold text-white mb-4">🔊 Text-to-Speech</h2>
-      <form method="POST" action="/admin/voice-ai/save" class="space-y-3">
+      <form method="POST" action="/admin/voice-ai/save" class="space-y-4">
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+        <!-- Provider Toggle -->
         <div>
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Provider</p>
-          <p class="font-semibold text-white bg-slate-800 p-2 rounded">ElevenLabs</p>
-          <p class="text-xs text-slate-500 mt-2">Premium natural voice synthesis</p>
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">TTS Provider</p>
+          <div class="flex gap-2">
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="voice_tts_provider" value="google" id="tts_google"
+                {% if (sys_conf.voice_tts_provider or 'google') == 'google' %}checked{% endif %}
+                class="sr-only" onchange="document.getElementById('googleTtsSection').style.display='block';document.getElementById('elevenTtsSection').style.display='none'">
+              <div class="tts-option border-2 rounded-xl p-3 text-center transition
+                {% if (sys_conf.voice_tts_provider or 'google') == 'google' %}border-blue-500 bg-blue-900/30{% else %}border-slate-600 bg-slate-800{% endif %}"
+                id="googleTtsLabel">
+                <div class="text-lg mb-1">🟢</div>
+                <div class="font-bold text-white text-sm">Google TTS</div>
+                <div class="text-xs text-slate-400">FREE • Unlimited concurrent</div>
+              </div>
+            </label>
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="voice_tts_provider" value="elevenlabs" id="tts_elevenlabs"
+                {% if sys_conf.voice_tts_provider == 'elevenlabs' %}checked{% endif %}
+                class="sr-only" onchange="document.getElementById('googleTtsSection').style.display='none';document.getElementById('elevenTtsSection').style.display='block'">
+              <div class="tts-option border-2 rounded-xl p-3 text-center transition
+                {% if sys_conf.voice_tts_provider == 'elevenlabs' %}border-purple-500 bg-purple-900/30{% else %}border-slate-600 bg-slate-800{% endif %}"
+                id="elevenTtsLabel">
+                <div class="text-lg mb-1">🟣</div>
+                <div class="font-bold text-white text-sm">ElevenLabs</div>
+                <div class="text-xs text-slate-400">Optional • Premium voices</div>
+              </div>
+            </label>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 ElevenLabs API Key</label>
-          <input type="password" name="elevenlabs_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.elevenlabs_api_key_enc else '' }}" placeholder="sk_...">
-          <p class="text-xs text-slate-500">Leave blank or as ******** to keep current key</p>
+
+        <!-- Google TTS Settings -->
+        <div id="googleTtsSection" {% if sys_conf.voice_tts_provider == 'elevenlabs' %}style="display:none"{% endif %} class="space-y-3 border border-blue-800 rounded-xl p-4 bg-blue-950/20">
+          <p class="text-xs font-bold text-blue-400 uppercase tracking-wider">Google Cloud TTS — Neural2</p>
+          <div class="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-900/20 border border-emerald-800 rounded-lg px-3 py-2">
+            <span>✓</span>
+            <span>~FREE up to 1M chars/month • Unlimited concurrent calls • No IP restrictions</span>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 Google TTS API Key</label>
+            <input type="password" name="google_tts_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.google_tts_api_key_enc else '' }}" placeholder="AIza...">
+            <p class="text-xs text-slate-500 mt-1">Leave blank or ******** to keep current key</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Voice</label>
+            <select name="voice_google_tts_voice" class="compat-input" style="appearance:auto;">
+              <option value="en-US-Neural2-F" {% if (sys_conf.voice_google_tts_voice or 'en-US-Neural2-F') == 'en-US-Neural2-F' %}selected{% endif %}>en-US-Neural2-F — Female, Warm (Recommended)</option>
+              <option value="en-US-Neural2-C" {% if sys_conf.voice_google_tts_voice == 'en-US-Neural2-C' %}selected{% endif %}>en-US-Neural2-C — Female, Professional</option>
+              <option value="en-US-Neural2-H" {% if sys_conf.voice_google_tts_voice == 'en-US-Neural2-H' %}selected{% endif %}>en-US-Neural2-H — Female, Friendly</option>
+              <option value="en-US-Neural2-A" {% if sys_conf.voice_google_tts_voice == 'en-US-Neural2-A' %}selected{% endif %}>en-US-Neural2-A — Male, Deep</option>
+              <option value="en-US-Neural2-D" {% if sys_conf.voice_google_tts_voice == 'en-US-Neural2-D' %}selected{% endif %}>en-US-Neural2-D — Male, Calm</option>
+              <option value="en-US-Neural2-I" {% if sys_conf.voice_google_tts_voice == 'en-US-Neural2-I' %}selected{% endif %}>en-US-Neural2-I — Male, Authoritative</option>
+              <option value="en-GB-Neural2-A" {% if sys_conf.voice_google_tts_voice == 'en-GB-Neural2-A' %}selected{% endif %}>en-GB-Neural2-A — British Female</option>
+              <option value="en-GB-Neural2-B" {% if sys_conf.voice_google_tts_voice == 'en-GB-Neural2-B' %}selected{% endif %}>en-GB-Neural2-B — British Male</option>
+              <option value="en-AU-Neural2-A" {% if sys_conf.voice_google_tts_voice == 'en-AU-Neural2-A' %}selected{% endif %}>en-AU-Neural2-A — Australian Female</option>
+              <option value="en-IN-Neural2-A" {% if sys_conf.voice_google_tts_voice == 'en-IN-Neural2-A' %}selected{% endif %}>en-IN-Neural2-A — Indian Female</option>
+              <option value="es-ES-Neural2-A" {% if sys_conf.voice_google_tts_voice == 'es-ES-Neural2-A' %}selected{% endif %}>es-ES-Neural2-A — Spanish Female</option>
+              <option value="fr-FR-Neural2-A" {% if sys_conf.voice_google_tts_voice == 'fr-FR-Neural2-A' %}selected{% endif %}>fr-FR-Neural2-A — French Female</option>
+              <option value="de-DE-Neural2-A" {% if sys_conf.voice_google_tts_voice == 'de-DE-Neural2-A' %}selected{% endif %}>de-DE-Neural2-A — German Female</option>
+              <option value="hi-IN-Neural2-A" {% if sys_conf.voice_google_tts_voice == 'hi-IN-Neural2-A' %}selected{% endif %}>hi-IN-Neural2-A — Hindi Female</option>
+              <option value="ja-JP-Neural2-B" {% if sys_conf.voice_google_tts_voice == 'ja-JP-Neural2-B' %}selected{% endif %}>ja-JP-Neural2-B — Japanese Female</option>
+            </select>
+            <p class="text-xs text-slate-500 mt-1">Neural2 voices sound natural and human-like</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Language Code</label>
+            <input type="text" name="voice_google_tts_language" class="compat-input" value="{{ sys_conf.voice_google_tts_language or 'en-US' }}" placeholder="en-US">
+            <p class="text-xs text-slate-500 mt-1">Must match your selected voice (auto-set when voice changes)</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Speaking Rate</label>
+            <input type="number" name="voice_google_tts_speaking_rate" class="compat-input" step="0.1" min="0.5" max="2.0" value="{{ sys_conf.voice_google_tts_speaking_rate or 1.0 }}">
+            <p class="text-xs text-slate-500 mt-1">1.0 = normal. 0.9 = slightly slower (better for guests)</p>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">AI Voice</label>
-          <select name="voice_elevenlabs_voice_id" class="compat-input" style="appearance:auto;">
-            <option value="" {% if not sys_conf.voice_elevenlabs_voice_id %}selected{% endif %}>Default (Rachel)</option>
-            <option value="EXAVITQu4vr4xnSDxMaL" {% if sys_conf.voice_elevenlabs_voice_id == 'EXAVITQu4vr4xnSDxMaL' %}selected{% endif %}>Rachel — Calm Female</option>
-            <option value="21m00Tcm4TlvDq8ikWAM" {% if sys_conf.voice_elevenlabs_voice_id == '21m00Tcm4TlvDq8ikWAM' %}selected{% endif %}>Rachel v2 — Female</option>
-            <option value="AZnzlk1XvdvUeBnXmlld" {% if sys_conf.voice_elevenlabs_voice_id == 'AZnzlk1XvdvUeBnXmlld' %}selected{% endif %}>Domi — Confident Female</option>
-            <option value="MF3mGyEYCl7XYWbV9V6O" {% if sys_conf.voice_elevenlabs_voice_id == 'MF3mGyEYCl7XYWbV9V6O' %}selected{% endif %}>Elli — Emotional Female</option>
-            <option value="TxGEqnHWrfWFTfGW9XjX" {% if sys_conf.voice_elevenlabs_voice_id == 'TxGEqnHWrfWFTfGW9XjX' %}selected{% endif %}>Josh — Deep Male</option>
-            <option value="VR6AewLTigWG4xSOukaG" {% if sys_conf.voice_elevenlabs_voice_id == 'VR6AewLTigWG4xSOukaG' %}selected{% endif %}>Arnold — Crisp Male</option>
-            <option value="pNInz6obpgDQGcFmaJgB" {% if sys_conf.voice_elevenlabs_voice_id == 'pNInz6obpgDQGcFmaJgB' %}selected{% endif %}>Adam — Warm Male</option>
-            <option value="yoZ06aMxZJJ28mfd3POQ" {% if sys_conf.voice_elevenlabs_voice_id == 'yoZ06aMxZJJ28mfd3POQ' %}selected{% endif %}>Sam — Raspy Male</option>
-            <option value="jBpfuIE2acCO8z3wKNLl" {% if sys_conf.voice_elevenlabs_voice_id == 'jBpfuIE2acCO8z3wKNLl' %}selected{% endif %}>Gigi — Animated Female</option>
-            <option value="onwK4e9ZLuTAKqWW03F9" {% if sys_conf.voice_elevenlabs_voice_id == 'onwK4e9ZLuTAKqWW03F9' %}selected{% endif %}>Daniel — Deep British Male</option>
-            <option value="custom" {% if sys_conf.voice_elevenlabs_voice_id and sys_conf.voice_elevenlabs_voice_id not in ['EXAVITQu4vr4xnSDxMaL','21m00Tcm4TlvDq8ikWAM','AZnzlk1XvdvUeBnXmlld','MF3mGyEYCl7XYWbV9V6O','TxGEqnHWrfWFTfGW9XjX','VR6AewLTigWG4xSOukaG','pNInz6obpgDQGcFmaJgB','yoZ06aMxZJJ28mfd3POQ','jBpfuIE2acCO8z3wKNLl','onwK4e9ZLuTAKqWW03F9'] %}selected{% endif %}>Custom Voice ID...</option>
-          </select>
-          <input type="text" name="voice_elevenlabs_voice_id_custom" class="compat-input mt-1" value="{{ sys_conf.voice_elevenlabs_voice_id if sys_conf.voice_elevenlabs_voice_id and sys_conf.voice_elevenlabs_voice_id not in ['EXAVITQu4vr4xnSDxMaL','21m00Tcm4TlvDq8ikWAM','AZnzlk1XvdvUeBnXmlld','MF3mGyEYCl7XYWbV9V6O','TxGEqnHWrfWFTfGW9XjX','VR6AewLTigWG4xSOukaG','pNInz6obpgDQGcFmaJgB','yoZ06aMxZJJ28mfd3POQ','jBpfuIE2acCO8z3wKNLl','onwK4e9ZLuTAKqWW03F9'] else '' }}" placeholder="Paste custom ElevenLabs voice ID here" id="customVoiceIdInput" style="display:none">
-          <p class="text-xs text-slate-500">Voice your AI assistant uses for calls. <a href="https://elevenlabs.io/voice-library" class="text-blue-400 underline" target="_blank">Browse voices</a></p>
+
+        <!-- ElevenLabs Settings (Optional) -->
+        <div id="elevenTtsSection" {% if (sys_conf.voice_tts_provider or 'google') != 'elevenlabs' %}style="display:none"{% endif %} class="space-y-3 border border-purple-800 rounded-xl p-4 bg-purple-950/20">
+          <p class="text-xs font-bold text-purple-400 uppercase tracking-wider">ElevenLabs — Optional Premium Voices</p>
+          <div class="flex items-center gap-2 text-xs text-amber-400 bg-amber-900/20 border border-amber-800 rounded-lg px-3 py-2">
+            <span>⚠</span>
+            <span>Limited concurrency on free/starter plans. May block Railway IPs on free tier.</span>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 ElevenLabs API Key</label>
+            <input type="password" name="elevenlabs_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.elevenlabs_api_key_enc else '' }}" placeholder="sk_...">
+            <p class="text-xs text-slate-500">Leave blank or ******** to keep current key</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">AI Voice</label>
+            <select name="voice_elevenlabs_voice_id" class="compat-input" style="appearance:auto;">
+              <option value="" {% if not sys_conf.voice_elevenlabs_voice_id %}selected{% endif %}>Default (Rachel)</option>
+              <option value="EXAVITQu4vr4xnSDxMaL" {% if sys_conf.voice_elevenlabs_voice_id == 'EXAVITQu4vr4xnSDxMaL' %}selected{% endif %}>Rachel — Calm Female</option>
+              <option value="21m00Tcm4TlvDq8ikWAM" {% if sys_conf.voice_elevenlabs_voice_id == '21m00Tcm4TlvDq8ikWAM' %}selected{% endif %}>Rachel v2 — Female</option>
+              <option value="AZnzlk1XvdvUeBnXmlld" {% if sys_conf.voice_elevenlabs_voice_id == 'AZnzlk1XvdvUeBnXmlld' %}selected{% endif %}>Domi — Confident Female</option>
+              <option value="MF3mGyEYCl7XYWbV9V6O" {% if sys_conf.voice_elevenlabs_voice_id == 'MF3mGyEYCl7XYWbV9V6O' %}selected{% endif %}>Elli — Emotional Female</option>
+              <option value="TxGEqnHWrfWFTfGW9XjX" {% if sys_conf.voice_elevenlabs_voice_id == 'TxGEqnHWrfWFTfGW9XjX' %}selected{% endif %}>Josh — Deep Male</option>
+              <option value="VR6AewLTigWG4xSOukaG" {% if sys_conf.voice_elevenlabs_voice_id == 'VR6AewLTigWG4xSOukaG' %}selected{% endif %}>Arnold — Crisp Male</option>
+              <option value="pNInz6obpgDQGcFmaJgB" {% if sys_conf.voice_elevenlabs_voice_id == 'pNInz6obpgDQGcFmaJgB' %}selected{% endif %}>Adam — Warm Male</option>
+              <option value="yoZ06aMxZJJ28mfd3POQ" {% if sys_conf.voice_elevenlabs_voice_id == 'yoZ06aMxZJJ28mfd3POQ' %}selected{% endif %}>Sam — Raspy Male</option>
+              <option value="jBpfuIE2acCO8z3wKNLl" {% if sys_conf.voice_elevenlabs_voice_id == 'jBpfuIE2acCO8z3wKNLl' %}selected{% endif %}>Gigi — Animated Female</option>
+              <option value="onwK4e9ZLuTAKqWW03F9" {% if sys_conf.voice_elevenlabs_voice_id == 'onwK4e9ZLuTAKqWW03F9' %}selected{% endif %}>Daniel — Deep British Male</option>
+              <option value="custom" {% if sys_conf.voice_elevenlabs_voice_id and sys_conf.voice_elevenlabs_voice_id not in ['EXAVITQu4vr4xnSDxMaL','21m00Tcm4TlvDq8ikWAM','AZnzlk1XvdvUeBnXmlld','MF3mGyEYCl7XYWbV9V6O','TxGEqnHWrfWFTfGW9XjX','VR6AewLTigWG4xSOukaG','pNInz6obpgDQGcFmaJgB','yoZ06aMxZJJ28mfd3POQ','jBpfuIE2acCO8z3wKNLl','onwK4e9ZLuTAKqWW03F9'] %}selected{% endif %}>Custom Voice ID...</option>
+            </select>
+            <input type="text" name="voice_elevenlabs_voice_id_custom" class="compat-input mt-1" value="{{ sys_conf.voice_elevenlabs_voice_id if sys_conf.voice_elevenlabs_voice_id and sys_conf.voice_elevenlabs_voice_id not in ['EXAVITQu4vr4xnSDxMaL','21m00Tcm4TlvDq8ikWAM','AZnzlk1XvdvUeBnXmlld','MF3mGyEYCl7XYWbV9V6O','TxGEqnHWrfWFTfGW9XjX','VR6AewLTigWG4xSOukaG','pNInz6obpgDQGcFmaJgB','yoZ06aMxZJJ28mfd3POQ','jBpfuIE2acCO8z3wKNLl','onwK4e9ZLuTAKqWW03F9'] else '' }}" placeholder="Paste custom ElevenLabs voice ID here" id="customVoiceIdInput" style="display:none">
+            <p class="text-xs text-slate-500"><a href="https://elevenlabs.io/voice-library" class="text-blue-400 underline" target="_blank">Browse voices</a></p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Model</label>
+            <select name="voice_elevenlabs_model" class="compat-input" style="appearance:auto;">
+              <option value="eleven_turbo_v2" {% if (sys_conf.voice_elevenlabs_model or 'eleven_turbo_v2') == 'eleven_turbo_v2' %}selected{% endif %}>eleven_turbo_v2 — Fastest</option>
+              <option value="eleven_turbo_v2_5" {% if sys_conf.voice_elevenlabs_model == 'eleven_turbo_v2_5' %}selected{% endif %}>eleven_turbo_v2_5 — Fast + Multilingual</option>
+              <option value="eleven_multilingual_v2" {% if sys_conf.voice_elevenlabs_model == 'eleven_multilingual_v2' %}selected{% endif %}>eleven_multilingual_v2 — High Quality</option>
+              <option value="eleven_monolingual_v1" {% if sys_conf.voice_elevenlabs_model == 'eleven_monolingual_v1' %}selected{% endif %}>eleven_monolingual_v1 — English Only</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Stability</label>
+              <input type="number" name="voice_elevenlabs_stability" class="compat-input" step="0.01" min="0" max="1" value="{{ sys_conf.voice_elevenlabs_stability or 0.5 }}">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Similarity</label>
+              <input type="number" name="voice_elevenlabs_similarity" class="compat-input" step="0.01" min="0" max="1" value="{{ sys_conf.voice_elevenlabs_similarity or 0.75 }}">
+            </div>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Model</label>
-          <select name="voice_elevenlabs_model" class="compat-input" style="appearance:auto;">
-            <option value="eleven_turbo_v2" {% if (sys_conf.voice_elevenlabs_model or 'eleven_turbo_v2') == 'eleven_turbo_v2' %}selected{% endif %}>eleven_turbo_v2 — Fastest</option>
-            <option value="eleven_turbo_v2_5" {% if sys_conf.voice_elevenlabs_model == 'eleven_turbo_v2_5' %}selected{% endif %}>eleven_turbo_v2_5 — Fast + Multilingual</option>
-            <option value="eleven_multilingual_v2" {% if sys_conf.voice_elevenlabs_model == 'eleven_multilingual_v2' %}selected{% endif %}>eleven_multilingual_v2 — High Quality</option>
-            <option value="eleven_monolingual_v1" {% if sys_conf.voice_elevenlabs_model == 'eleven_monolingual_v1' %}selected{% endif %}>eleven_monolingual_v1 — English Only</option>
-          </select>
-          <p class="text-xs text-slate-500">Faster model = lower latency on calls</p>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Stability</label>
-          <input type="number" name="voice_elevenlabs_stability" class="compat-input" step="0.01" min="0" max="1" value="{{ sys_conf.voice_elevenlabs_stability or 0.5 }}">
-          <p class="text-xs text-slate-500">Voice consistency (0–1). Higher = more stable</p>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Similarity</label>
-          <input type="number" name="voice_elevenlabs_similarity" class="compat-input" step="0.01" min="0" max="1" value="{{ sys_conf.voice_elevenlabs_similarity or 0.75 }}">
-          <p class="text-xs text-slate-500">Voice similarity (0–1). Higher = more expressive</p>
-        </div>
+
         <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition text-sm">Save TTS Config</button>
       </form>
     </div>
@@ -335,8 +415,12 @@ select.compat-input { appearance: auto; cursor: pointer; }
             <span class="text-sm text-white">OpenRouter (LLM)</span>
             <span class="text-xs" id="openrouterStatus">—</span>
           </div>
+          <div class="flex items-center justify-between p-2 border border-green-900/40 rounded bg-green-950/10">
+            <span class="text-sm text-white">Google TTS <span class="text-xs text-emerald-400">★ Active</span></span>
+            <span class="text-xs" id="googleTtsStatus">—</span>
+          </div>
           <div class="flex items-center justify-between p-2 border border-white/10 rounded">
-            <span class="text-sm text-white">ElevenLabs (TTS)</span>
+            <span class="text-sm text-slate-400">ElevenLabs (optional)</span>
             <span class="text-xs" id="elevenlabsStatus">—</span>
           </div>
           <button
@@ -475,7 +559,7 @@ function scheduleAudioWatchdog(responseText) {
   }, 8000);
 }
 
-// Voice ID custom field toggle
+// Voice ID custom field toggle (ElevenLabs)
 document.addEventListener('DOMContentLoaded', function() {
   var voiceSelect = document.querySelector('select[name="voice_elevenlabs_voice_id"]');
   var customInput = document.getElementById('customVoiceIdInput');
@@ -486,6 +570,35 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleCustomInput();
     voiceSelect.addEventListener('change', toggleCustomInput);
   }
+
+  // Google TTS: auto-sync language code when voice changes
+  var googleVoiceSelect = document.querySelector('select[name="voice_google_tts_voice"]');
+  var googleLangInput = document.querySelector('input[name="voice_google_tts_language"]');
+  if (googleVoiceSelect && googleLangInput) {
+    googleVoiceSelect.addEventListener('change', function() {
+      var voice = googleVoiceSelect.value;
+      var lang = voice.substring(0, voice.lastIndexOf('-'));
+      if (lang) googleLangInput.value = lang;
+    });
+  }
+
+  // TTS provider radio — highlight selected card
+  document.querySelectorAll('input[name="voice_tts_provider"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      document.getElementById('googleTtsLabel').className = radio.value === 'google'
+        ? 'tts-option border-2 border-blue-500 bg-blue-900/30 rounded-xl p-3 text-center transition'
+        : 'tts-option border-2 border-slate-600 bg-slate-800 rounded-xl p-3 text-center transition';
+      document.getElementById('elevenTtsLabel').className = radio.value === 'elevenlabs'
+        ? 'tts-option border-2 border-purple-500 bg-purple-900/30 rounded-xl p-3 text-center transition'
+        : 'tts-option border-2 border-slate-600 bg-slate-800 rounded-xl p-3 text-center transition';
+      // Also update the star label in service status
+      var googleStatusRow = document.querySelector('#googleTtsStatus')?.closest('div');
+      if (googleStatusRow) {
+        var label = googleStatusRow.querySelector('span.text-sm');
+        if (label) label.innerHTML = 'Google TTS ' + (radio.value === 'google' ? '<span class="text-xs text-emerald-400">★ Active</span>' : '<span class="text-xs text-slate-500">standby</span>');
+      }
+    });
+  });
 });
 
 // Sidebar toggle
@@ -877,28 +990,29 @@ function playChunkWithAudioElement(chunk) {
 async function testConnections() {
   var deepgramEl = document.getElementById('deepgramStatus');
   var openrouterEl = document.getElementById('openrouterStatus');
+  var googleTtsEl = document.getElementById('googleTtsStatus');
   var elevenlabsEl = document.getElementById('elevenlabsStatus');
 
   deepgramEl.textContent = 'Testing...';
   openrouterEl.textContent = 'Testing...';
+  googleTtsEl.textContent = 'Testing...';
   elevenlabsEl.textContent = 'Testing...';
 
   try {
     var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
     var response = await fetch('/admin/voice-ai/test-connection', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ csrf_token: csrfToken })
     });
     if (response.ok) {
       var data = await response.json();
       deepgramEl.textContent = data.deepgram || 'No status';
       openrouterEl.textContent = data.openrouter || 'No status';
+      googleTtsEl.textContent = data.google_tts || 'No status';
       elevenlabsEl.textContent = data.elevenlabs || 'No status';
 
-      [deepgramEl, openrouterEl, elevenlabsEl].forEach(function(el) {
+      [deepgramEl, openrouterEl, googleTtsEl, elevenlabsEl].forEach(function(el) {
         if (el.textContent.includes('✓')) {
           el.className = 'text-xs text-green-400 font-semibold';
         } else if (el.textContent.includes('✗')) {
@@ -906,16 +1020,15 @@ async function testConnections() {
         }
       });
     } else {
-      deepgramEl.textContent = '✗ Error: ' + response.status;
-      openrouterEl.textContent = '✗ Error: ' + response.status;
-      elevenlabsEl.textContent = '✗ Error: ' + response.status;
+      [deepgramEl, openrouterEl, googleTtsEl, elevenlabsEl].forEach(function(el) {
+        el.textContent = '✗ Error: ' + response.status;
+        el.className = 'text-xs text-red-400 font-semibold';
+      });
     }
   } catch (error) {
     console.error('Test connection error:', error);
-    deepgramEl.textContent = '✗ ' + error.message;
-    openrouterEl.textContent = '✗ ' + error.message;
-    elevenlabsEl.textContent = '✗ ' + error.message;
-    [deepgramEl, openrouterEl, elevenlabsEl].forEach(function(el) {
+    [deepgramEl, openrouterEl, googleTtsEl, elevenlabsEl].forEach(function(el) {
+      el.textContent = '✗ ' + error.message;
       el.className = 'text-xs text-red-400 font-semibold';
     });
   }
