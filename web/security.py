@@ -270,7 +270,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
         "img-src 'self' data: https://images.unsplash.com https://cdn.tailwindcss.com; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "connect-src 'self' https://cdn.tailwindcss.com; "
+        "connect-src 'self' https://cdn.tailwindcss.com wss: ws:; "
         "object-src 'none'; "
         "base-uri 'self'; "
         "frame-ancestors 'none';"
@@ -293,7 +293,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         h["X-XSS-Protection"]         = "0"        # Deprecated; CSP handles this
         h["Referrer-Policy"]          = "strict-origin-when-cross-origin"
-        h["Permissions-Policy"]       = "geolocation=(), microphone=(), camera=()"
+        # Allow microphone only on voice AI admin page for live call testing
+        if request.url.path.startswith("/admin/voice-ai"):
+            h["Permissions-Policy"] = "geolocation=(), microphone=(self), camera=()"
+        else:
+            h["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
         h["Content-Security-Policy"]  = self._CSP_TEMPLATE.replace("{nonce}", nonce)
         if is_request_secure(request):
             h["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
