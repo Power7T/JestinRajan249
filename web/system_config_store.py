@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
@@ -10,6 +11,46 @@ log = logging.getLogger(__name__)
 
 _SCHEMA_DRIFT_MARKER = "_schema_drift_fallback"
 _SYSTEM_CONFIG_TABLE = "system_config"
+
+
+def _is_populated(value: object | None) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    return True
+
+
+def _config_rank(source: object) -> tuple[int, datetime, str]:
+    populated = 0
+    for column in SystemConfig.__table__.columns:
+        if column.name == "id":
+            continue
+        if _is_populated(getattr(source, column.name, None)):
+            populated += 1
+
+    updated_at = getattr(source, "updated_at", None)
+    if not isinstance(updated_at, datetime):
+        updated_at = datetime.min.replace(tzinfo=timezone.utc)
+    elif updated_at.tzinfo is None:
+        updated_at = updated_at.replace(tzinfo=timezone.utc)
+
+    identifier = str(getattr(source, "id", "") or "")
+    return (populated, updated_at, identifier)
+
+
+def _select_preferred_system_config(records: list[SystemConfig]) -> SystemConfig | None:
+    if not records:
+        return None
+    selected = max(records, key=_config_rank)
+    if len(records) > 1:
+        log.warning(
+            "Multiple SystemConfig rows detected; selected id=%s updated_at=%s from %d rows",
+            getattr(selected, "id", None),
+            getattr(selected, "updated_at", None),
+            len(records),
+        )
+    return selected
 
 
 def _default_for_column(column) -> object | None:
@@ -66,6 +107,10 @@ def _existing_system_config_columns(db: Session) -> set[str]:
     return {col["name"] for col in inspector.get_columns(_SYSTEM_CONFIG_TABLE)}
 
 
+def _query_system_configs(db: Session) -> list[SystemConfig]:
+    return db.query(SystemConfig).all()
+
+
 def _load_system_config_fallback(db: Session, exc: SQLAlchemyError) -> SystemConfig:
     db.rollback()
     try:
@@ -73,7 +118,7 @@ def _load_system_config_fallback(db: Session, exc: SQLAlchemyError) -> SystemCon
         db_migrate()
         db.rollback()
         try:
-            repaired = db.query(SystemConfig).first()
+            repaired = _select_preferred_system_config(_query_system_configs(db))
         except SQLAlchemyError as retry_exc:
             if not _is_system_config_schema_drift(retry_exc):
                 raise
@@ -98,9 +143,10 @@ def _load_system_config_fallback(db: Session, exc: SQLAlchemyError) -> SystemCon
         if column_name in existing_columns
     ]
     if selectable:
-        row = db.execute(sa.select(*selectable).limit(1)).mappings().first()
-        if row:
-            for key, value in row.items():
+        rows = db.execute(sa.select(*selectable)).mappings().all()
+        if rows:
+            best_row = max(rows, key=_config_rank)
+            for key, value in best_row.items():
                 setattr(sys_conf, key, value)
 
     log.warning("SystemConfig schema drift detected; using compatibility defaults: %s", exc)
@@ -109,7 +155,7 @@ def _load_system_config_fallback(db: Session, exc: SQLAlchemyError) -> SystemCon
 
 def load_system_config(db: Session, *, create_if_missing: bool = False) -> SystemConfig | None:
     try:
-        sys_conf = db.query(SystemConfig).first()
+        sys_conf = _select_preferred_system_config(_query_system_configs(db))
     except SQLAlchemyError as exc:
         if not _is_system_config_schema_drift(exc):
             raise

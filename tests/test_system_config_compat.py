@@ -74,6 +74,75 @@ def test_load_system_config_handles_missing_backup_columns(tmp_path):
     assert sys_conf.voice_elevenlabs_model == "eleven_turbo_v2"
 
 
+def test_load_system_config_prefers_most_recent_populated_row(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'multi-system-config.db'}")
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE system_config (
+                id VARCHAR(36) PRIMARY KEY,
+                openrouter_api_key_enc VARCHAR(255),
+                google_maps_api_key_enc VARCHAR(255),
+                deepgram_api_key_enc VARCHAR(255),
+                elevenlabs_api_key_enc VARCHAR(255),
+                cloudflare_account_id VARCHAR(255),
+                cloudflare_r2_access_key_enc VARCHAR(255),
+                cloudflare_r2_secret_key_enc VARCHAR(255),
+                cloudflare_r2_bucket VARCHAR(255),
+                primary_model VARCHAR(100),
+                routine_model VARCHAR(100),
+                primary_backup_model VARCHAR(100),
+                routine_backup_model VARCHAR(100),
+                fallback_model VARCHAR(100),
+                sentiment_model VARCHAR(100),
+                voice_llm_model VARCHAR(100),
+                voice_llm_backup_model VARCHAR(100),
+                voice_llm_emergency_model VARCHAR(100),
+                voice_deepgram_model VARCHAR(50),
+                voice_llm_max_tokens INTEGER,
+                voice_llm_temperature FLOAT,
+                voice_elevenlabs_model VARCHAR(50),
+                voice_elevenlabs_stability FLOAT,
+                voice_elevenlabs_similarity FLOAT,
+                voice_elevenlabs_voice_id VARCHAR(64),
+                updated_at DATETIME
+            )
+        """))
+        conn.execute(
+            text("""
+                INSERT INTO system_config (
+                    id, elevenlabs_api_key_enc, cloudflare_account_id,
+                    voice_elevenlabs_voice_id, updated_at
+                ) VALUES (
+                    'cfg-old', 'stale-elevenlabs', 'chandango12@gmail.com',
+                    'EXAVITQu4vr4xnSDxMaL', '2026-04-13 00:00:00'
+                )
+            """)
+        )
+        conn.execute(
+            text("""
+                INSERT INTO system_config (
+                    id, openrouter_api_key_enc, deepgram_api_key_enc, elevenlabs_api_key_enc,
+                    cloudflare_account_id, cloudflare_r2_bucket, voice_llm_model,
+                    voice_elevenlabs_voice_id, updated_at
+                ) VALUES (
+                    'cfg-new', 'good-openrouter', 'good-deepgram', 'good-elevenlabs',
+                    'real-account-id', 'real-bucket', 'openai/gpt-4o-mini',
+                    'VR6AewLTigWG4xSOukaG', '2026-04-14 00:00:00'
+                )
+            """)
+        )
+
+    SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+    with SessionLocal() as db:
+        sys_conf = load_system_config(db)
+
+    assert sys_conf is not None
+    assert sys_conf.id == "cfg-new"
+    assert sys_conf.elevenlabs_api_key_enc == "good-elevenlabs"
+    assert sys_conf.cloudflare_account_id == "real-account-id"
+    assert sys_conf.voice_elevenlabs_voice_id == "VR6AewLTigWG4xSOukaG"
+
+
 def test_admin_ai_page_shows_warning_in_compat_mode(client, monkeypatch):
     sys_conf = SystemConfig(
         primary_model="model/primary",
