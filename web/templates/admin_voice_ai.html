@@ -95,6 +95,13 @@ select.compat-input { appearance: auto; cursor: pointer; }
     </div>
   </div>
 
+  {% if schema_drift or request.query_params.get("msg") == "schema_sync_required" %}
+  <div class="bg-amber-500/10 border border-amber-400/30 text-amber-200 px-4 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+    <span class="material-symbols-outlined text-sm">warning</span>
+    The Voice AI page is running in compatibility mode because the database schema is behind the app code. Read-only viewing and live testing are safe, but saving requires the latest migrations to run.
+  </div>
+  {% endif %}
+
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
     <!-- LLM Configuration -->
     <div class="glass-card rounded-3xl p-6">

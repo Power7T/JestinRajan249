@@ -8824,12 +8824,14 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
 def admin_voice_ai(request: Request, db: Session = Depends(get_db)):
     """Admin Voice AI configuration and live calling"""
     admin = _require_admin(request, db)
-    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+    sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
+    schema_drift = system_config_schema_is_behind(sys_conf)
 
     return templates.TemplateResponse("admin_voice_ai.html", {
         "request": request,
         "admin": admin,
         "sys_conf": sys_conf,
+        "schema_drift": schema_drift,
     })
 
 
@@ -8858,7 +8860,10 @@ async def admin_voice_ai_save(
 ):
     """Save Voice AI configuration"""
     admin = _require_admin(request, db)
-    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+    sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
+    if system_config_schema_is_behind(sys_conf):
+        log.error("Cannot save voice AI config while system_config schema is behind the application model")
+        return RedirectResponse("/admin/voice-ai?msg=schema_sync_required", status_code=302)
 
     # Update API Keys (only if provided and not masked)
     if openrouter_api_key_enc.strip() and openrouter_api_key_enc != "********":
@@ -9334,8 +9339,8 @@ async def admin_voice_chat(request: Request, db: Session = Depends(get_db)):
 def host_voice_chat_page(request: Request, db: Session = Depends(get_db)):
     """Host-facing voice AI chat interface for direct testing without phone calls"""
     tenant = _require_auth(request, db)
-    tenant_config = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
-    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+    tenant_config = load_tenant_config(db, tenant.id)
+    sys_conf = load_system_config(db) or SystemConfig()
 
     return templates.TemplateResponse(
         "voice_ai_chat.html",
@@ -9361,8 +9366,8 @@ async def host_voice_chat_message(request: Request, db: Session = Depends(get_db
             return JSONResponse({"error": "Empty message"}, status_code=400)
 
         # Get tenant config
-        tenant_config_obj = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
-        sys_conf = db.query(SystemConfig).first() or SystemConfig()
+        tenant_config_obj = load_tenant_config(db, tenant.id)
+        sys_conf = load_system_config(db) or SystemConfig()
 
         tenant_config = {
             "property_type": tenant_config_obj.property_type if tenant_config_obj else "apartment",
@@ -9435,8 +9440,8 @@ async def voice_ai_voice_message(request: Request, audio: UploadFile = File(...)
             return JSONResponse({"error": "Could not transcribe audio"}, status_code=400)
 
         # Step 2: Generate LLM response
-        tenant_config_obj = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
-        sys_conf = db.query(SystemConfig).first() or SystemConfig()
+        tenant_config_obj = load_tenant_config(db, tenant.id)
+        sys_conf = load_system_config(db) or SystemConfig()
 
         tenant_config = {
             "property_type": tenant_config_obj.property_type if tenant_config_obj else "apartment",
@@ -9500,7 +9505,7 @@ async def voice_ai_synthesize(request: Request, db: Session = Depends(get_db)):
 
         from web.integrations.voice import VoiceAIService
 
-        tenant_config_obj = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
+        tenant_config_obj = load_tenant_config(db, tenant.id)
         voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
 
         audio_bytes, s3_url = await VoiceAIService.synthesize_speech(text, voice_id=voice_id)
@@ -9558,14 +9563,12 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
             except Exception:
                 pass
         if not tenant:
-            tenant = db.query(Tenant).first()
-        if not tenant:
-            await websocket.send_json({"type": "error", "message": "No tenant found"})
+            await websocket.send_json({"type": "error", "message": "No authenticated tenant found"})
             await websocket.close()
             return
 
-        tenant_config_obj = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
-        sys_conf = db.query(SystemConfig).first() or SystemConfig()
+        tenant_config_obj = load_tenant_config(db, tenant.id)
+        sys_conf = load_system_config(db) or SystemConfig()
 
         # Load API keys
         if sys_conf.deepgram_api_key_enc:
@@ -9624,10 +9627,11 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
             "faq": tenant_config_obj.faq if tenant_config_obj else "",
             "nearby_restaurants": tenant_config_obj.nearby_restaurants if tenant_config_obj else "",
         }
-        # Voice ID: prefer tenant config, fall back to system config (set from admin TTS form)
+        # Admin live testing should respect the system-level voice selected on the
+        # page before falling back to the tenant's default voice profile.
         voice_id = (
-            (tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None)
-            or getattr(sys_conf, "voice_elevenlabs_voice_id", None)
+            getattr(sys_conf, "voice_elevenlabs_voice_id", None)
+            or (tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None)
             or "EXAVITQu4vr4xnSDxMaL"  # Rachel (default)
         )
 
@@ -9826,14 +9830,16 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
 def admin_voice_ai_backend(request: Request, db: Session = Depends(get_db)):
     """Admin voice AI backend configuration and testing"""
     admin = _require_admin(request, db)
-    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+    sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
+    schema_drift = system_config_schema_is_behind(sys_conf)
 
     return templates.TemplateResponse(
         "admin_voice_ai_backend.html",
         {
             "request": request,
             "admin": admin,
-            "sys_conf": sys_conf
+            "sys_conf": sys_conf,
+            "schema_drift": schema_drift,
         }
     )
 
@@ -9843,13 +9849,14 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
     """Test voice AI service connections (Deepgram, OpenRouter, ElevenLabs)"""
     try:
         _require_admin(request, db)
-        sys_conf = db.query(SystemConfig).first() or SystemConfig()
+        sys_conf = load_system_config(db) or SystemConfig()
 
         results = {
             "deepgram": None,
             "openrouter": None,
             "elevenlabs": None,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
+            "schema_drift": system_config_schema_is_behind(sys_conf),
         }
 
         # Test Deepgram
@@ -9932,7 +9939,27 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                         if selected_voice_id and not any(v.get("voice_id") == selected_voice_id for v in voices if isinstance(v, dict)):
                             results["elevenlabs"] = "✗ API key valid, but configured voice ID was not found"
                         else:
-                            results["elevenlabs"] = "✓ ElevenLabs API key valid"
+                            tts_req = urllib.request.Request(
+                                f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice_id}",
+                                headers={
+                                    "xi-api-key": api_key,
+                                    "Content-Type": "application/json",
+                                },
+                                data=json.dumps({
+                                    "text": "This is a voice test.",
+                                    "model_id": sys_conf.voice_elevenlabs_model or "eleven_turbo_v2",
+                                    "voice_settings": {
+                                        "stability": float(sys_conf.voice_elevenlabs_stability or 0.5),
+                                        "similarity_boost": float(sys_conf.voice_elevenlabs_similarity or 0.75),
+                                    },
+                                }).encode("utf-8"),
+                            )
+                            tts_resp = urllib.request.urlopen(tts_req, timeout=10)
+                            audio_preview = tts_resp.read()
+                            if audio_preview:
+                                results["elevenlabs"] = "✓ ElevenLabs API key valid and sample synthesis returned audio"
+                            else:
+                                results["elevenlabs"] = "✗ ElevenLabs returned an empty audio response"
                     except urllib.error.HTTPError as e:
                         if e.code == 401:
                             results["elevenlabs"] = "✗ Invalid API key"
@@ -9953,7 +9980,7 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
 async def admin_voice_ai_status(request: Request, db: Session = Depends(get_db)):
     """Get current voice AI configuration status"""
     _require_admin(request, db)
-    sys_conf = db.query(SystemConfig).first() or SystemConfig()
+    sys_conf = load_system_config(db) or SystemConfig()
 
     return JSONResponse({
         "primary_model": sys_conf.voice_llm_model or "Not set",
@@ -9961,10 +9988,12 @@ async def admin_voice_ai_status(request: Request, db: Session = Depends(get_db))
         "emergency_model": sys_conf.voice_llm_emergency_model or "Not set",
         "deepgram_model": sys_conf.voice_deepgram_model or "nova-2",
         "elevenlabs_model": sys_conf.voice_elevenlabs_model or "eleven_turbo_v2",
+        "voice_id": getattr(sys_conf, "voice_elevenlabs_voice_id", None) or "EXAVITQu4vr4xnSDxMaL",
         "max_tokens": sys_conf.voice_llm_max_tokens or 300,
         "temperature": sys_conf.voice_llm_temperature or 0.7,
         "stability": sys_conf.voice_elevenlabs_stability or 0.5,
         "similarity": sys_conf.voice_elevenlabs_similarity or 0.75,
+        "schema_drift": system_config_schema_is_behind(sys_conf),
     })
 
 

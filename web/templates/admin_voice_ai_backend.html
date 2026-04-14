@@ -11,6 +11,12 @@
       <p class="text-gray-600">Configure and test your Voice AI system — LLM models, speech recognition, text-to-speech</p>
     </div>
 
+    {% if schema_drift %}
+    <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      The Voice AI backend is running in compatibility mode because the database schema is behind the app code. Viewing and connection tests are safe, but config writes require the latest migrations.
+    </div>
+    {% endif %}
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
       <!-- LLM Models Configuration -->
       <div class="bg-white rounded-lg shadow p-6">
