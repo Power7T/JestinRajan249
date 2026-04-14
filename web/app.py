@@ -9967,61 +9967,40 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                 if not api_key:
                     results["elevenlabs"] = "✗ Decryption failed (key corruption?)"
                 else:
-                    import urllib.request
-                    import urllib.error
+                    from web.integrations.voice import VoiceAIService
+                    import httpx
+
                     selected_voice_id = getattr(sys_conf, "voice_elevenlabs_voice_id", None) or "EXAVITQu4vr4xnSDxMaL"
-                    try:
-                        auth_req = urllib.request.Request(
+
+                    VoiceAIService.ELEVENLABS_API_KEY = api_key
+                    VoiceAIService.ELEVENLABS_MODEL = sys_conf.voice_elevenlabs_model or "eleven_turbo_v2"
+                    VoiceAIService.ELEVENLABS_STABILITY = float(sys_conf.voice_elevenlabs_stability or 0.5)
+                    VoiceAIService.ELEVENLABS_SIMILARITY = float(sys_conf.voice_elevenlabs_similarity or 0.75)
+
+                    async with httpx.AsyncClient(timeout=10) as client:
+                        auth_resp = await client.get(
                             "https://api.elevenlabs.io/v1/user",
                             headers={"xi-api-key": api_key},
                         )
-                        auth_resp = urllib.request.urlopen(auth_req, timeout=5)
-                        auth_resp.read()
 
-                        tts_req = urllib.request.Request(
-                            f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice_id}",
-                            headers={
-                                "xi-api-key": api_key,
-                                "Content-Type": "application/json",
-                            },
-                            data=json.dumps({
-                                "text": "Voice test OK.",
-                                "model_id": sys_conf.voice_elevenlabs_model or "eleven_turbo_v2",
-                                "voice_settings": {
-                                    "stability": float(sys_conf.voice_elevenlabs_stability or 0.5),
-                                    "similarity_boost": float(sys_conf.voice_elevenlabs_similarity or 0.75),
-                                },
-                            }).encode("utf-8"),
-                        )
-                        tts_resp = urllib.request.urlopen(tts_req, timeout=10)
-                        audio_preview = tts_resp.read()
+                    if auth_resp.status_code in {401, 403}:
+                        body_lower = auth_resp.text.lower()
+                        if (
+                            "invalid api key" in body_lower
+                            or "invalid_api_key" in body_lower
+                            or auth_resp.status_code == 401
+                        ):
+                            results["elevenlabs"] = "✗ Invalid API key"
+                        else:
+                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but this account cannot access the requested endpoint"
+                    elif auth_resp.status_code >= 400:
+                        results["elevenlabs"] = f"✗ HTTP {auth_resp.status_code}: {auth_resp.text[:60]}"
+                    else:
+                        audio_preview, _ = await VoiceAIService.synthesize_speech("Voice test OK.", voice_id=selected_voice_id)
                         if audio_preview:
                             results["elevenlabs"] = "✓ ElevenLabs API key valid and sample synthesis returned audio"
                         else:
                             results["elevenlabs"] = "✓ ElevenLabs API key valid, but ElevenLabs returned an empty audio response"
-                    except urllib.error.HTTPError as e:
-                        body = ""
-                        try:
-                            body = e.read().decode("utf-8", errors="replace")[:100]
-                        except Exception:
-                            pass
-                        body_lower = body.lower()
-                        if e.code in {401, 403} and (
-                            "invalid api key" in body_lower
-                            or "invalid_api_key" in body_lower
-                            or "unauthorized" in body_lower
-                        ):
-                            results["elevenlabs"] = "✗ Invalid API key"
-                        elif e.code == 401:
-                            results["elevenlabs"] = "✗ Invalid API key"
-                        elif e.code == 403:
-                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but this account cannot access the requested TTS endpoint/model"
-                        elif e.code == 400 and ("model" in body_lower or "voice" in body_lower):
-                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but the selected ElevenLabs voice/model was rejected"
-                        elif e.code == 400 and ("credit" in body_lower or "quota" in body_lower or "limit" in body_lower):
-                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but the ElevenLabs account has no usable credits/quota"
-                        else:
-                            results["elevenlabs"] = f"✓ ElevenLabs API key valid, but sample synthesis failed (HTTP {e.code}: {body[:60]})"
             else:
                 results["elevenlabs"] = "✗ No API key configured"
         except Exception as e:
