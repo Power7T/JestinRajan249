@@ -9980,54 +9980,54 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                             headers={"xi-api-key": api_key},
                         )
 
-                    if auth_resp.status_code in {401, 403}:
-                        body_lower = auth_resp.text.lower()
-                        if (
-                            "invalid api key" in body_lower
-                            or "invalid_api_key" in body_lower
-                            or auth_resp.status_code == 401
-                        ):
-                            results["elevenlabs"] = "✗ Invalid API key"
+                        if auth_resp.status_code in {401, 403}:
+                            body_lower = auth_resp.text.lower()
+                            if (
+                                "invalid api key" in body_lower
+                                or "invalid_api_key" in body_lower
+                                or auth_resp.status_code == 401
+                            ):
+                                results["elevenlabs"] = "✗ Invalid API key"
+                            else:
+                                results["elevenlabs"] = "✓ ElevenLabs API key valid, but this account cannot access the requested endpoint"
+                        elif auth_resp.status_code >= 400:
+                            results["elevenlabs"] = f"✗ HTTP {auth_resp.status_code}: {auth_resp.text[:60]}"
                         else:
-                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but this account cannot access the requested endpoint"
-                    elif auth_resp.status_code >= 400:
-                        results["elevenlabs"] = f"✗ HTTP {auth_resp.status_code}: {auth_resp.text[:60]}"
-                    else:
-                        tts_resp = await client.post(
-                            f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice_id}",
-                            headers={
-                                "xi-api-key": api_key,
-                                "Content-Type": "application/json",
-                            },
-                            json={
-                                "text": "Voice test OK.",
-                                "model_id": model_id,
-                                "voice_settings": {
-                                    "stability": stability,
-                                    "similarity_boost": similarity,
+                            tts_resp = await client.post(
+                                f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice_id}",
+                                headers={
+                                    "xi-api-key": api_key,
+                                    "Content-Type": "application/json",
                                 },
-                            },
-                        )
-                        body_lower = tts_resp.text.lower()
-                        if tts_resp.status_code == 200 and tts_resp.content:
-                            results["elevenlabs"] = "✓ ElevenLabs API key valid and sample synthesis returned audio"
-                        elif tts_resp.status_code == 401 and (
-                            "detected_unusual_activity" in body_lower
-                            or "free tier usage disabled" in body_lower
-                        ):
-                            results["elevenlabs"] = "✗ ElevenLabs blocked TTS from this Railway environment (free-tier unusual-activity restriction)"
-                        elif tts_resp.status_code == 401:
-                            results["elevenlabs"] = "✗ Invalid API key"
-                        elif tts_resp.status_code == 403:
-                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but this account cannot access the requested TTS endpoint/model"
-                        elif tts_resp.status_code == 400 and ("model" in body_lower or "voice" in body_lower):
-                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but the selected ElevenLabs voice/model was rejected"
-                        elif tts_resp.status_code == 400 and ("credit" in body_lower or "quota" in body_lower or "limit" in body_lower):
-                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but the ElevenLabs account has no usable credits/quota"
-                        elif tts_resp.status_code >= 400:
-                            results["elevenlabs"] = f"✓ ElevenLabs API key valid, but sample synthesis failed (HTTP {tts_resp.status_code}: {tts_resp.text[:60]})"
-                        else:
-                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but ElevenLabs returned an empty audio response"
+                                json={
+                                    "text": "Voice test OK.",
+                                    "model_id": model_id,
+                                    "voice_settings": {
+                                        "stability": stability,
+                                        "similarity_boost": similarity,
+                                    },
+                                },
+                            )
+                            body_lower = tts_resp.text.lower()
+                            if tts_resp.status_code == 200 and tts_resp.content:
+                                results["elevenlabs"] = "✓ ElevenLabs API key valid and sample synthesis returned audio"
+                            elif tts_resp.status_code == 401 and (
+                                "detected_unusual_activity" in body_lower
+                                or "free tier usage disabled" in body_lower
+                            ):
+                                results["elevenlabs"] = "✗ ElevenLabs blocked TTS from this Railway environment (free-tier unusual-activity restriction)"
+                            elif tts_resp.status_code == 401:
+                                results["elevenlabs"] = "✗ Invalid API key"
+                            elif tts_resp.status_code == 403:
+                                results["elevenlabs"] = "✓ ElevenLabs API key valid, but this account cannot access the requested TTS endpoint/model"
+                            elif tts_resp.status_code == 400 and ("model" in body_lower or "voice" in body_lower):
+                                results["elevenlabs"] = "✓ ElevenLabs API key valid, but the selected ElevenLabs voice/model was rejected"
+                            elif tts_resp.status_code == 400 and ("credit" in body_lower or "quota" in body_lower or "limit" in body_lower):
+                                results["elevenlabs"] = "✓ ElevenLabs API key valid, but the ElevenLabs account has no usable credits/quota"
+                            elif tts_resp.status_code >= 400:
+                                results["elevenlabs"] = f"✓ ElevenLabs API key valid, but sample synthesis failed (HTTP {tts_resp.status_code}: {tts_resp.text[:60]})"
+                            else:
+                                results["elevenlabs"] = "✓ ElevenLabs API key valid, but ElevenLabs returned an empty audio response"
             else:
                 results["elevenlabs"] = "✗ No API key configured"
         except Exception as e:
