@@ -405,18 +405,44 @@ window.toggleVoiceCall = async function() {
         var mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg', ''].find(function(t) {
           return t === '' || MediaRecorder.isTypeSupported(t);
         });
-        mediaRecorder = new MediaRecorder(voiceStream, mimeType ? { mimeType: mimeType } : {});
-        console.log('MediaRecorder MIME:', mediaRecorder.mimeType);
 
-        mediaRecorder.ondataavailable = function(e) {
-          if (e.data.size > 0 && voiceWs && voiceWs.readyState === WebSocket.OPEN) {
-            console.log('Audio chunk sent:', e.data.size, 'bytes');
-            e.data.arrayBuffer().then(function(buf) { voiceWs.send(buf); });
-          }
-        };
-        // Send a 2-second chunk — enough audio for meaningful transcription
-        mediaRecorder.start(2000);
-        console.log('MediaRecorder started (2s chunks)');
+        // Start-stop loop: each recording is a COMPLETE webm file (with header)
+        // so Deepgram can always decode it. Continuous recording only produces
+        // valid webm for the first chunk — subsequent chunks lack the file header.
+        function startRecordingCycle() {
+          if (!isCallActive || !voiceWs || voiceWs.readyState !== WebSocket.OPEN) return;
+
+          var rec = new MediaRecorder(voiceStream, mimeType ? { mimeType: mimeType } : {});
+          var chunks = [];
+
+          rec.ondataavailable = function(e) {
+            if (e.data.size > 0) chunks.push(e.data);
+          };
+
+          rec.onstop = function() {
+            if (chunks.length > 0 && voiceWs && voiceWs.readyState === WebSocket.OPEN) {
+              var blob = new Blob(chunks, { type: rec.mimeType });
+              blob.arrayBuffer().then(function(buf) {
+                console.log('Sending complete audio chunk:', buf.byteLength, 'bytes');
+                voiceWs.send(buf);
+              });
+            }
+            // Schedule next recording cycle
+            if (isCallActive) {
+              setTimeout(startRecordingCycle, 100);
+            }
+          };
+
+          rec.start();
+          mediaRecorder = rec;
+          // Stop after 3 seconds to produce a complete file
+          setTimeout(function() {
+            if (rec.state === 'recording') rec.stop();
+          }, 3000);
+        }
+
+        startRecordingCycle();
+        console.log('Recording cycle started (3s per cycle)');
       };
 
       voiceWs.onmessage = function(event) {
