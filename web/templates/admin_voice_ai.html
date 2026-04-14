@@ -306,7 +306,9 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 // Voice AI Live Call
 var voiceWs = null;
 var voiceStream = null;
-var mediaRecorder = null;
+var audioContext = null;
+var scriptProcessor = null;
+var sourceNode = null;
 var isCallActive = false;
 var isMuted = false;
 var callStartTime = 0;
@@ -398,61 +400,58 @@ window.toggleVoiceCall = async function() {
 
       voiceWs.onopen = function() {
         console.log('WebSocket connected');
-        statusEl.textContent = 'Listening... (speak now)';
         voiceWs.send(JSON.stringify({ type: 'start' }));
 
-        // Pick a MIME type the browser actually supports
-        var mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg', ''].find(function(t) {
-          return t === '' || MediaRecorder.isTypeSupported(t);
-        });
+        // Real-time PCM streaming via AudioContext + ScriptProcessor
+        // Browser captures raw Int16 PCM at 16kHz and streams directly to server.
+        // Server pipes to Deepgram WebSocket — no batching, no delays.
+        try {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+          sourceNode = audioContext.createMediaStreamSource(voiceStream);
 
-        // Start-stop loop: each recording is a COMPLETE webm file (with header)
-        // so Deepgram can always decode it. Continuous recording only produces
-        // valid webm for the first chunk — subsequent chunks lack the file header.
-        function startRecordingCycle() {
-          if (!isCallActive || !voiceWs || voiceWs.readyState !== WebSocket.OPEN) return;
-
-          var rec = new MediaRecorder(voiceStream, mimeType ? { mimeType: mimeType } : {});
-          var chunks = [];
-
-          rec.ondataavailable = function(e) {
-            if (e.data.size > 0) chunks.push(e.data);
+          // 4096 samples at 16kHz ≈ 256ms per callback — responsive without flooding
+          scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+          scriptProcessor.onaudioprocess = function(e) {
+            if (!isCallActive || !voiceWs || voiceWs.readyState !== WebSocket.OPEN || isMuted) return;
+            var float32 = e.inputBuffer.getChannelData(0);
+            // Convert float32 [-1,1] → int16 [-32768,32767]
+            var int16 = new Int16Array(float32.length);
+            for (var i = 0; i < float32.length; i++) {
+              var s = Math.max(-1, Math.min(1, float32[i]));
+              int16[i] = s < 0 ? s * 32768 : s * 32767;
+            }
+            voiceWs.send(int16.buffer);
           };
 
-          rec.onstop = function() {
-            if (chunks.length > 0 && voiceWs && voiceWs.readyState === WebSocket.OPEN) {
-              var blob = new Blob(chunks, { type: rec.mimeType });
-              blob.arrayBuffer().then(function(buf) {
-                console.log('Sending complete audio chunk:', buf.byteLength, 'bytes');
-                voiceWs.send(buf);
-              });
-            }
-            // Schedule next recording cycle
-            if (isCallActive) {
-              setTimeout(startRecordingCycle, 100);
-            }
-          };
+          sourceNode.connect(scriptProcessor);
+          // Connect to destination (required for onaudioprocess to fire in some browsers)
+          scriptProcessor.connect(audioContext.destination);
 
-          rec.start();
-          mediaRecorder = rec;
-          // Stop after 3 seconds to produce a complete file
-          setTimeout(function() {
-            if (rec.state === 'recording') rec.stop();
-          }, 3000);
+          statusEl.textContent = 'Listening... (speak now)';
+          console.log('Real-time PCM streaming started at 16kHz');
+        } catch (audioErr) {
+          console.error('AudioContext error:', audioErr);
+          statusEl.textContent = '❌ Audio capture error: ' + audioErr.message;
+          endCall();
         }
-
-        startRecordingCycle();
-        console.log('Recording cycle started (3s per cycle)');
       };
 
       voiceWs.onmessage = function(event) {
-        console.log('Message received:', event.data.substring(0, 100));
         try {
           var data = JSON.parse(event.data);
-          if (data.type === 'transcript') {
-            document.getElementById('userTranscript').textContent = data.text || '—';
+          if (data.type === 'interim') {
+            // Show partial transcript in italic while user is still speaking
+            var el = document.getElementById('userTranscript');
+            el.textContent = data.text || '';
+            el.style.opacity = '0.6';
+          } else if (data.type === 'transcript') {
+            var el = document.getElementById('userTranscript');
+            el.textContent = data.text || '—';
+            el.style.opacity = '1';
+            statusEl.textContent = 'Thinking...';
           } else if (data.type === 'response') {
             document.getElementById('aiTranscript').textContent = data.text || '—';
+            statusEl.textContent = 'Speaking...';
           } else if (data.type === 'audio') {
             var binaryString = atob(data.audio);
             var bytes = new Uint8Array(binaryString.length);
@@ -460,6 +459,12 @@ window.toggleVoiceCall = async function() {
               bytes[i] = binaryString.charCodeAt(i);
             }
             playAudioChunk(bytes);
+            statusEl.textContent = 'Listening... (speak now)';
+          } else if (data.type === 'error') {
+            console.error('Server error:', data.message);
+            statusEl.textContent = '❌ ' + (data.message || 'Error');
+          } else if (data.type === 'ready') {
+            statusEl.textContent = 'Connected — initializing...';
           }
         } catch (e) {
           console.error('Error parsing message:', e);
@@ -507,16 +512,28 @@ function endCall() {
 
   isCallActive = false;
 
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
+  // Disconnect AudioContext nodes
+  if (scriptProcessor) {
+    try { scriptProcessor.disconnect(); } catch(e) {}
+    scriptProcessor = null;
+  }
+  if (sourceNode) {
+    try { sourceNode.disconnect(); } catch(e) {}
+    sourceNode = null;
+  }
+  if (audioContext) {
+    try { audioContext.close(); } catch(e) {}
+    audioContext = null;
   }
 
   if (voiceStream) {
     voiceStream.getTracks().forEach(function(track) { track.stop(); });
+    voiceStream = null;
   }
 
   if (voiceWs) {
     voiceWs.close();
+    voiceWs = null;
   }
 
   btn.style.background = '';
@@ -525,6 +542,7 @@ function endCall() {
   statusEl.textContent = 'Call ended';
   document.getElementById('callDuration').textContent = '--:--';
   document.getElementById('userTranscript').textContent = '—';
+  document.getElementById('userTranscript').style.opacity = '1';
   document.getElementById('aiTranscript').textContent = '—';
 }
 

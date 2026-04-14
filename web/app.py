@@ -9512,9 +9512,13 @@ async def voice_ai_synthesize(request: Request, db: Session = Depends(get_db)):
 
 @app.websocket("/ws/voice-ai/live")
 async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(get_db)):
-    """Live two-way audio streaming for Voice AI conversation"""
+    """Real-time two-way audio streaming for Voice AI conversation via Deepgram WebSocket"""
     await websocket.accept()
     log.info("Voice AI WebSocket connection accepted")
+
+    dg_connection = None
+    process_task = None
+    listener_task = None
 
     try:
         from web.integrations.voice import VoiceAIService
@@ -9530,53 +9534,47 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
             await websocket.close()
             return
 
-        # Get tenant from auth (admin is authenticated)
+        # Resolve tenant
         tenant = None
         try:
-            cookie = websocket.headers.get("cookie", "")
-            # For now, we'll use a simple approach - require tenant_id in message
             tenant_id = init_data.get("tenant_id")
             if tenant_id:
                 tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
-        except:
+        except Exception:
             pass
-
-        # For admin testing, use first tenant
         if not tenant:
             tenant = db.query(Tenant).first()
-
         if not tenant:
             await websocket.send_json({"type": "error", "message": "No tenant found"})
             await websocket.close()
             return
 
-        # Get configs
         tenant_config_obj = db.query(TenantConfig).filter(TenantConfig.tenant_id == tenant.id).first()
         sys_conf = db.query(SystemConfig).first() or SystemConfig()
 
-        # Set API keys and configuration from database for VoiceAIService
+        # Load API keys
         if sys_conf.deepgram_api_key_enc:
-            decrypted = decrypt(sys_conf.deepgram_api_key_enc)
-            if decrypted:
-                VoiceAIService.DEEPGRAM_API_KEY = decrypted
+            dec = decrypt(sys_conf.deepgram_api_key_enc)
+            if dec:
+                VoiceAIService.DEEPGRAM_API_KEY = dec
             else:
                 log.error("Failed to decrypt Deepgram API key")
         if sys_conf.voice_deepgram_model:
             VoiceAIService.DEEPGRAM_MODEL = sys_conf.voice_deepgram_model
 
         if sys_conf.openrouter_api_key_enc:
-            decrypted = decrypt(sys_conf.openrouter_api_key_enc)
-            if decrypted:
-                VoiceAIService.OPENROUTER_API_KEY = decrypted
+            dec = decrypt(sys_conf.openrouter_api_key_enc)
+            if dec:
+                VoiceAIService.OPENROUTER_API_KEY = dec
             else:
                 log.error("Failed to decrypt OpenRouter API key")
         if sys_conf.voice_llm_model:
             VoiceAIService.LLM_MODEL = sys_conf.voice_llm_model
 
         if sys_conf.elevenlabs_api_key_enc:
-            decrypted = decrypt(sys_conf.elevenlabs_api_key_enc)
-            if decrypted:
-                VoiceAIService.ELEVENLABS_API_KEY = decrypted
+            dec = decrypt(sys_conf.elevenlabs_api_key_enc)
+            if dec:
+                VoiceAIService.ELEVENLABS_API_KEY = dec
             else:
                 log.error("Failed to decrypt ElevenLabs API key")
         if sys_conf.voice_elevenlabs_model:
@@ -9586,37 +9584,18 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
         if sys_conf.voice_elevenlabs_similarity is not None:
             VoiceAIService.ELEVENLABS_SIMILARITY = float(sys_conf.voice_elevenlabs_similarity)
 
-        # Load R2 credentials if configured
-        if sys_conf.cloudflare_account_id:
-            VoiceAIService.CLOUDFLARE_ACCOUNT_ID = sys_conf.cloudflare_account_id
-        if sys_conf.cloudflare_r2_bucket:
-            VoiceAIService.CLOUDFLARE_R2_BUCKET = sys_conf.cloudflare_r2_bucket
-        if sys_conf.cloudflare_r2_access_key_enc:
-            dec = decrypt(sys_conf.cloudflare_r2_access_key_enc)
-            if dec:
-                VoiceAIService.CLOUDFLARE_ACCESS_KEY_ID = dec
-        if sys_conf.cloudflare_r2_secret_key_enc:
-            dec = decrypt(sys_conf.cloudflare_r2_secret_key_enc)
-            if dec:
-                VoiceAIService.CLOUDFLARE_SECRET_ACCESS_KEY = dec
-
-        # Validate that required API keys are configured
         if not VoiceAIService.DEEPGRAM_API_KEY:
             await websocket.send_json({"type": "error", "message": "Deepgram API key not configured"})
             await websocket.close()
             return
-
         if not VoiceAIService.OPENROUTER_API_KEY and not VoiceAIService.OPENAI_API_KEY:
             await websocket.send_json({"type": "error", "message": "OpenRouter or OpenAI API key not configured"})
             await websocket.close()
             return
-
         if not VoiceAIService.ELEVENLABS_API_KEY:
             await websocket.send_json({"type": "error", "message": "ElevenLabs API key not configured"})
             await websocket.close()
             return
-
-        log.info("All voice AI API keys configured, starting conversation")
 
         tenant_config = {
             "property_type": tenant_config_obj.property_type if tenant_config_obj else "apartment",
@@ -9630,105 +9609,187 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
             "faq": tenant_config_obj.faq if tenant_config_obj else "",
             "nearby_restaurants": tenant_config_obj.nearby_restaurants if tenant_config_obj else "",
         }
+        voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
 
-        # Buffer for collecting audio chunks
-        audio_buffer = bytearray()
-        audio_chunk_size = 1  # process every chunk the browser sends (2s MediaRecorder interval)
+        log.info("Voice AI API keys loaded — opening Deepgram streaming connection")
+
+        # Queue to pass final transcripts from Deepgram listener → processing coroutine
+        transcript_queue: asyncio.Queue = asyncio.Queue()
         is_muted = False
 
+        # Build Deepgram streaming WebSocket URL
+        dg_model = VoiceAIService.DEEPGRAM_MODEL or "nova-2"
+        dg_url = (
+            f"wss://api.deepgram.com/v1/listen"
+            f"?model={dg_model}"
+            f"&encoding=linear16"
+            f"&sample_rate=16000"
+            f"&channels=1"
+            f"&punctuate=true"
+            f"&interim_results=true"
+            f"&utterance_end_ms=1200"
+            f"&vad_events=true"
+        )
+
+        import websockets as ws_lib
+
+        try:
+            dg_connection = await ws_lib.connect(
+                dg_url,
+                additional_headers={"Authorization": f"Token {VoiceAIService.DEEPGRAM_API_KEY}"},
+            )
+        except Exception as e:
+            import traceback
+            log.error(f"Deepgram WS connect error: {e}\n{traceback.format_exc()}")
+            await websocket.send_json({"type": "error", "message": f"Deepgram connect error: {str(e)[:80]}"})
+            await websocket.close()
+            return
+
         await websocket.send_json({"type": "ready", "message": "Connected"})
+        log.info("Deepgram WebSocket stream opened — ready for real-time audio")
 
-        while True:
+        # Coroutine 1: Listen to Deepgram → put final transcripts into queue
+        async def deepgram_listener():
             try:
-                data = await websocket.receive_bytes()
-                log.debug(f"Received audio chunk: {len(data)} bytes")
-            except Exception as e:
-                # Try to receive text for control messages
-                try:
-                    text_msg = await websocket.receive_text()
-                    control = json.loads(text_msg)
-                    log.debug(f"Received control message: {control}")
-
-                    if control.get("type") == "mute":
-                        is_muted = control.get("muted", False)
-                    continue
-                except Exception as e2:
-                    log.info(f"WebSocket closed or error: {str(e2)}")
-                    break
-
-            # Handle audio data
-            if len(data) > 0 and not is_muted:
-                audio_buffer.extend(data)
-
-                # When we have enough audio, process it
-                if len(audio_buffer) >= audio_chunk_size:
+                async for message in dg_connection:
                     try:
-                        log.info(f"Processing audio buffer: {len(audio_buffer)} bytes")
-                        # Send bytes directly to Deepgram — no R2/S3 upload needed
-                        transcript, confidence = await VoiceAIService.transcribe_bytes(bytes(audio_buffer))
-                        audio_buffer = bytearray()  # reset immediately after consuming
-                        log.info(f"Transcribed: '{transcript}' (confidence: {confidence})")
+                        data = json.loads(message)
+                        msg_type = data.get("type", "")
+                        if msg_type == "Results":
+                            channel = data.get("channel", {})
+                            alts = channel.get("alternatives", [])
+                            if alts:
+                                transcript = alts[0].get("transcript", "").strip()
+                                is_final = data.get("is_final", False)
+                                if transcript:
+                                    if is_final:
+                                        log.info(f"Deepgram final: '{transcript}'")
+                                        await transcript_queue.put(transcript)
+                                    else:
+                                        try:
+                                            await websocket.send_json({"type": "interim", "text": transcript})
+                                        except Exception:
+                                            pass
+                        elif msg_type == "Metadata":
+                            log.debug(f"Deepgram metadata: {data}")
+                        elif msg_type == "Error":
+                            log.error(f"Deepgram error event: {data}")
+                    except Exception as exc:
+                        log.warning(f"Deepgram message parse error: {exc}")
+            except Exception as exc:
+                log.info(f"Deepgram listener ended: {exc}")
+            finally:
+                await transcript_queue.put(None)  # Signal processor to stop
 
-                        if transcript and transcript.strip():
-                            # Send transcript to client
-                            await websocket.send_json({"type": "transcript", "text": transcript})
+        # Coroutine 2: consume final transcripts → LLM → TTS → send audio to client
+        async def process_transcripts():
+            conversation_history = []
+            while True:
+                try:
+                    transcript = await transcript_queue.get()
+                    if transcript is None:
+                        break
+                    try:
+                        await websocket.send_json({"type": "transcript", "text": transcript})
 
-                            # Generate LLM response
-                            response, _, _ = await VoiceAIService.generate_response(
-                                guest_message=transcript,
-                                tenant_config=tenant_config,
-                                conversation_history=[],
-                                guest_name="Admin Voice",
-                                guest_language="en"
-                            )
-                            log.info(f"Generated response: {str(response)[:100]}")
+                        response, _, _ = await VoiceAIService.generate_response(
+                            guest_message=transcript,
+                            tenant_config=tenant_config,
+                            conversation_history=conversation_history,
+                            guest_name="Admin Voice",
+                            guest_language="en"
+                        )
+                        log.info(f"LLM response: {str(response)[:120]}")
 
-                            # Extract voice text if JSON
-                            response_text = response
-                            if isinstance(response, str) and response.strip().startswith("{"):
-                                try:
-                                    parsed = json.loads(response)
-                                    response_text = parsed.get("voice", parsed.get("response", response))
-                                except Exception:
-                                    response_text = response
+                        response_text = response
+                        if isinstance(response, str) and response.strip().startswith("{"):
+                            try:
+                                parsed = json.loads(response)
+                                response_text = parsed.get("voice", parsed.get("response", response))
+                            except Exception:
+                                pass
 
-                            # Send response text to client
-                            await websocket.send_json({"type": "response", "text": response_text})
+                        await websocket.send_json({"type": "response", "text": response_text})
 
-                            # Synthesize speech via ElevenLabs
-                            voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
-                            audio_bytes, _ = await VoiceAIService.synthesize_speech(response_text, voice_id=voice_id)
-                            log.info(f"Synthesized: {len(audio_bytes) if audio_bytes else 0} bytes")
+                        conversation_history.append({"role": "user", "content": transcript})
+                        conversation_history.append({"role": "assistant", "content": response_text})
+                        if len(conversation_history) > 20:
+                            conversation_history = conversation_history[-20:]
 
-                            if audio_bytes:
-                                import base64
-                                audio_b64 = base64.b64encode(audio_bytes).decode()
-                                await websocket.send_json({"type": "audio", "audio": audio_b64})
-                        else:
-                            log.info("Empty transcript — skipping response")
+                        audio_bytes, _ = await VoiceAIService.synthesize_speech(response_text, voice_id=voice_id)
+                        if audio_bytes:
+                            import base64
+                            await websocket.send_json({"type": "audio", "audio": base64.b64encode(audio_bytes).decode()})
+                            log.info(f"Sent TTS audio: {len(audio_bytes)} bytes")
 
-                    except Exception as e:
+                    except Exception as exc:
                         import traceback
-                        log.error(f"Voice processing error: {str(e)}\n{traceback.format_exc()}")
+                        log.error(f"Voice processing error: {exc}\n{traceback.format_exc()}")
                         try:
-                            await websocket.send_json({"type": "error", "message": str(e)[:100]})
+                            await websocket.send_json({"type": "error", "message": str(exc)[:100]})
                         except Exception:
                             pass
+                except asyncio.CancelledError:
+                    break
+
+        listener_task = asyncio.create_task(deepgram_listener())  # noqa: F841 (referenced in finally via outer scope)
+        process_task = asyncio.create_task(process_transcripts())
+
+        # Main loop: receive binary audio + control messages from browser
+        # PCM audio → forward to Deepgram; text → handle mute/control
+        while True:
+            try:
+                msg = await websocket.receive()
+                if msg.get("type") == "websocket.disconnect":
+                    break
+                raw_bytes = msg.get("bytes")
+                text_data = msg.get("text")
+                if raw_bytes:
+                    if not is_muted:
+                        await dg_connection.send(raw_bytes)
+                elif text_data:
+                    try:
+                        control = json.loads(text_data)
+                        if control.get("type") == "mute":
+                            is_muted = control.get("muted", False)
+                            log.debug(f"Mute: {is_muted}")
+                    except Exception:
+                        pass
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                log.info(f"Voice AI receive loop ended: {e}")
+                break
 
     except WebSocketDisconnect:
         log.info("Voice AI live call disconnected")
     except Exception as e:
         import traceback
-        log.error(f"Voice AI WebSocket error: {str(e)}\n{traceback.format_exc()}")
+        log.error(f"Voice AI WebSocket error: {e}\n{traceback.format_exc()}")
         try:
             await websocket.send_json({"type": "error", "message": str(e)[:100]})
-        except:
+        except Exception:
             pass
     finally:
+        # Cancel background tasks
+        for t in [listener_task, process_task]:
+            if t:
+                t.cancel()
+                try:
+                    await t
+                except (asyncio.CancelledError, Exception):
+                    pass
+        # Close Deepgram WebSocket
+        if dg_connection:
+            try:
+                await dg_connection.close()
+            except Exception:
+                pass
         try:
             await websocket.close()
-        except:
+        except Exception:
             pass
+        log.info("Voice AI live call ended")
 
 
 # ---------------------------------------------------------------------------
