@@ -821,36 +821,20 @@ function playNextChunk() {
   }
 
   var buffer = chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength);
-
-  if (audioContext && audioContext.state !== 'closed') {
-    Promise.resolve(
-      audioContext.state === 'suspended'
-        ? audioContext.resume().catch(function(err) {
-            console.warn('AudioContext resume failed:', err);
-          })
-        : null
-    ).then(function() {
-      return audioContext.decodeAudioData(buffer.slice(0));
-    }).then(function(decodedBuffer) {
-      currentAudioSource = audioContext.createBufferSource();
-      currentAudioSource.buffer = decodedBuffer;
-      currentAudioSource.connect(audioContext.destination);
-      currentAudioSource.onended = function() {
-        try {
-          currentAudioSource.disconnect();
-        } catch (e) {}
-        currentAudioSource = null;
-        playNextChunk();
-      };
-      currentAudioSource.start(0);
-    }).catch(function(decodeErr) {
-      console.warn('AudioContext decode failed, falling back to HTMLAudioElement:', decodeErr);
-      playChunkWithAudioElement(chunk);
-    });
+  // ElevenLabs returns MP3. Playback through a dedicated HTMLAudioElement is
+  // more reliable than decoding the MP3 on the same AudioContext that is
+  // currently driving microphone capture at 16kHz.
+  if (!buffer.byteLength) {
+    showVoicePlaybackIssue(
+      'warning',
+      'Empty audio payload',
+      'The browser received an empty MP3 buffer. Check ElevenLabs/API/config and restart the call.',
+      'Server returned no audio'
+    );
     return;
   }
 
-  playChunkWithAudioElement(chunk);
+  playChunkWithAudioElement(new Uint8Array(buffer));
 }
 
 function playChunkWithAudioElement(chunk) {

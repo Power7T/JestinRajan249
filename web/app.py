@@ -9968,14 +9968,15 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                     results["elevenlabs"] = "✗ Decryption failed (key corruption?)"
                 else:
                     import urllib.request
+                    import urllib.error
                     selected_voice_id = getattr(sys_conf, "voice_elevenlabs_voice_id", None) or "EXAVITQu4vr4xnSDxMaL"
-                    req = urllib.request.Request(
-                        "https://api.elevenlabs.io/v1/voices",
-                        headers={"xi-api-key": api_key},
-                    )
                     try:
-                        resp = urllib.request.urlopen(req, timeout=5)
-                        resp.read()
+                        auth_req = urllib.request.Request(
+                            "https://api.elevenlabs.io/v1/user",
+                            headers={"xi-api-key": api_key},
+                        )
+                        auth_resp = urllib.request.urlopen(auth_req, timeout=5)
+                        auth_resp.read()
 
                         tts_req = urllib.request.Request(
                             f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice_id}",
@@ -9997,7 +9998,7 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                         if audio_preview:
                             results["elevenlabs"] = "✓ ElevenLabs API key valid and sample synthesis returned audio"
                         else:
-                            results["elevenlabs"] = "✗ Key valid, but ElevenLabs returned an empty audio response"
+                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but ElevenLabs returned an empty audio response"
                     except urllib.error.HTTPError as e:
                         body = ""
                         try:
@@ -10005,16 +10006,22 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                         except Exception:
                             pass
                         body_lower = body.lower()
-                        if e.code == 401 or "invalid api key" in body_lower or "invalid_api_key" in body_lower:
+                        if e.code in {401, 403} and (
+                            "invalid api key" in body_lower
+                            or "invalid_api_key" in body_lower
+                            or "unauthorized" in body_lower
+                        ):
+                            results["elevenlabs"] = "✗ Invalid API key"
+                        elif e.code == 401:
                             results["elevenlabs"] = "✗ Invalid API key"
                         elif e.code == 403:
-                            results["elevenlabs"] = "✗ Key accepted, but this ElevenLabs account cannot access the requested TTS endpoint/model"
+                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but this account cannot access the requested TTS endpoint/model"
                         elif e.code == 400 and ("model" in body_lower or "voice" in body_lower):
-                            results["elevenlabs"] = "✗ Key valid, but the selected ElevenLabs voice/model was rejected"
+                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but the selected ElevenLabs voice/model was rejected"
                         elif e.code == 400 and ("credit" in body_lower or "quota" in body_lower or "limit" in body_lower):
-                            results["elevenlabs"] = "✗ Key valid, but the ElevenLabs account has no usable credits/quota"
+                            results["elevenlabs"] = "✓ ElevenLabs API key valid, but the ElevenLabs account has no usable credits/quota"
                         else:
-                            results["elevenlabs"] = f"✗ HTTP {e.code}: {body[:60]}"
+                            results["elevenlabs"] = f"✓ ElevenLabs API key valid, but sample synthesis failed (HTTP {e.code}: {body[:60]})"
             else:
                 results["elevenlabs"] = "✗ No API key configured"
         except Exception as e:
