@@ -12,6 +12,15 @@ log = logging.getLogger(__name__)
 
 _SCHEMA_DRIFT_MARKER = "_schema_drift_fallback"
 _SYSTEM_CONFIG_TABLE = "system_config"
+_SYSTEM_CONFIG_SELECTION_PRIORITY_FIELDS = (
+    "openrouter_api_key_enc",
+    "deepgram_api_key_enc",
+    "elevenlabs_api_key_enc",
+    "voice_elevenlabs_voice_id",
+    "voice_elevenlabs_model",
+    "voice_llm_model",
+    "voice_deepgram_model",
+)
 
 
 def _is_populated(value: object | None) -> bool:
@@ -22,22 +31,41 @@ def _is_populated(value: object | None) -> bool:
     return True
 
 
+def _value_for_rank(source: object, column_name: str) -> object | None:
+    if hasattr(source, "get"):
+        try:
+            return source.get(column_name)  # type: ignore[no-any-return]
+        except TypeError:
+            pass
+    try:
+        return getattr(source, column_name)
+    except AttributeError:
+        try:
+            return source[column_name]  # type: ignore[index]
+        except Exception:
+            return None
+
+
 def _config_rank(source: object) -> tuple[int, datetime, str]:
+    priority_populated = 0
     populated = 0
     for column in SystemConfig.__table__.columns:
         if column.name == "id":
             continue
-        if _is_populated(getattr(source, column.name, None)):
+        value = _value_for_rank(source, column.name)
+        if _is_populated(value):
             populated += 1
+            if column.name in _SYSTEM_CONFIG_SELECTION_PRIORITY_FIELDS:
+                priority_populated += 1
 
-    updated_at = getattr(source, "updated_at", None)
+    updated_at = _value_for_rank(source, "updated_at")
     if not isinstance(updated_at, datetime):
         updated_at = datetime.min.replace(tzinfo=timezone.utc)
     elif updated_at.tzinfo is None:
         updated_at = updated_at.replace(tzinfo=timezone.utc)
 
-    identifier = str(getattr(source, "id", "") or "")
-    return (populated, updated_at, identifier)
+    identifier = str(_value_for_rank(source, "id") or "")
+    return (priority_populated * 100 + populated, updated_at, identifier)
 
 
 def _select_preferred_system_config(records: list[SystemConfig]) -> SystemConfig | None:
@@ -120,6 +148,29 @@ def _query_system_configs(db: Session) -> list[SystemConfig]:
     return db.query(SystemConfig).all()
 
 
+def _prune_other_system_config_rows(db: Session, keep_id: str) -> None:
+    if not keep_id:
+        return
+    try:
+        existing_columns = _existing_system_config_columns(db)
+    except Exception as inspect_exc:
+        log.warning("SystemConfig duplicate pruning skipped; inspection failed: %s", inspect_exc)
+        return
+    if "id" not in existing_columns:
+        return
+    table = SystemConfig.__table__
+    result = db.execute(
+        sa.delete(table).where(table.c.id != keep_id)
+    )
+    deleted = getattr(result, "rowcount", None)
+    if deleted:
+        log.warning(
+            "Pruned %s duplicate SystemConfig rows after saving id=%s",
+            deleted,
+            keep_id,
+        )
+
+
 def _load_system_config_fallback(db: Session, exc: SQLAlchemyError) -> SystemConfig:
     db.rollback()
     try:
@@ -179,8 +230,15 @@ def load_system_config(db: Session, *, create_if_missing: bool = False) -> Syste
 
 
 def save_system_config(db: Session, sys_conf: SystemConfig) -> SystemConfig:
+    now = datetime.now(timezone.utc)
+    if hasattr(sys_conf, "updated_at"):
+        sys_conf.updated_at = now
+
     if not system_config_schema_is_behind(sys_conf):
         db.add(sys_conf)
+        db.flush()
+        if getattr(sys_conf, "id", None):
+            _prune_other_system_config_rows(db, str(sys_conf.id))
         db.commit()
         db.refresh(sys_conf)
         return sys_conf
@@ -205,6 +263,8 @@ def save_system_config(db: Session, sys_conf: SystemConfig) -> SystemConfig:
                 row_id = str(existing_row)
 
     values = {column_name: getattr(sys_conf, column_name, None) for column_name in writable_columns}
+    if "updated_at" in existing_columns:
+        values["updated_at"] = now
 
     if "id" in existing_columns and existing_row is not None:
         db.execute(
@@ -217,6 +277,9 @@ def save_system_config(db: Session, sys_conf: SystemConfig) -> SystemConfig:
         if "id" in existing_columns:
             insert_values["id"] = row_id
         db.execute(sa.insert(table).values(**insert_values))
+
+    if "id" in existing_columns:
+        _prune_other_system_config_rows(db, row_id)
 
     db.commit()
     log.warning(

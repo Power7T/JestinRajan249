@@ -194,7 +194,16 @@ def test_save_system_config_updates_existing_columns_in_compat_mode(tmp_path):
                 INSERT INTO system_config (
                     id, openrouter_api_key_enc, elevenlabs_api_key_enc, cloudflare_account_id, voice_elevenlabs_model, updated_at
                 ) VALUES (
-                    'cfg-1', 'old-openrouter', 'old-elevenlabs', 'old-account', 'eleven_turbo_v2', '2026-04-13 00:00:00'
+                    'cfg-old', 'old-openrouter', 'old-elevenlabs', 'old-account', 'eleven_turbo_v2', '2026-04-13 00:00:00'
+                )
+            """)
+        )
+        conn.execute(
+            text("""
+                INSERT INTO system_config (
+                    id, openrouter_api_key_enc, elevenlabs_api_key_enc, cloudflare_account_id, voice_elevenlabs_model, updated_at
+                ) VALUES (
+                    'cfg-new', 'fresh-openrouter', 'fresh-elevenlabs', 'fresh-account', 'eleven_multilingual_v2', '2026-04-14 00:00:00'
                 )
             """)
         )
@@ -204,23 +213,74 @@ def test_save_system_config_updates_existing_columns_in_compat_mode(tmp_path):
         sys_conf = load_system_config(db)
         assert sys_conf is not None
         assert system_config_schema_is_behind(sys_conf)
+        assert sys_conf.id == "cfg-new"
 
-        sys_conf.openrouter_api_key_enc = "new-openrouter"
-        sys_conf.elevenlabs_api_key_enc = "new-elevenlabs"
-        sys_conf.cloudflare_account_id = "new-account"
+        sys_conf.openrouter_api_key_enc = "saved-openrouter"
+        sys_conf.elevenlabs_api_key_enc = "saved-elevenlabs"
+        sys_conf.cloudflare_account_id = "saved-account"
         sys_conf.voice_elevenlabs_voice_id = "VR6AewLTigWG4xSOukaG"
 
         saved = save_system_config(db, sys_conf)
 
     with engine.connect() as conn:
+        row_count = conn.execute(text("SELECT COUNT(*) FROM system_config")).scalar_one()
         row = conn.execute(text("""
-            SELECT openrouter_api_key_enc, elevenlabs_api_key_enc, cloudflare_account_id, voice_elevenlabs_model
+            SELECT id, openrouter_api_key_enc, elevenlabs_api_key_enc, cloudflare_account_id, voice_elevenlabs_model, updated_at
             FROM system_config
-            WHERE id = 'cfg-1'
+            LIMIT 1
         """)).mappings().one()
 
+    with SessionLocal() as db:
+        reloaded = load_system_config(db)
+
     assert saved is not None
-    assert row["openrouter_api_key_enc"] == "new-openrouter"
-    assert row["elevenlabs_api_key_enc"] == "new-elevenlabs"
-    assert row["cloudflare_account_id"] == "new-account"
-    assert row["voice_elevenlabs_model"] == "eleven_turbo_v2"
+    assert row_count == 1
+    assert row["id"] == "cfg-new"
+    assert row["openrouter_api_key_enc"] == "saved-openrouter"
+    assert row["elevenlabs_api_key_enc"] == "saved-elevenlabs"
+    assert row["cloudflare_account_id"] == "saved-account"
+    assert row["voice_elevenlabs_model"] == "eleven_multilingual_v2"
+    assert reloaded is not None
+    assert reloaded.id == "cfg-new"
+    assert reloaded.elevenlabs_api_key_enc == "saved-elevenlabs"
+
+
+def test_load_system_config_prefers_row_with_fresh_voice_key_over_stale_duplicate(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'voice-key-selection.db'}")
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE system_config (
+                id VARCHAR(36) PRIMARY KEY,
+                elevenlabs_api_key_enc VARCHAR(255),
+                voice_elevenlabs_voice_id VARCHAR(64),
+                voice_elevenlabs_model VARCHAR(50),
+                updated_at DATETIME
+            )
+        """))
+        conn.execute(
+            text("""
+                INSERT INTO system_config (
+                    id, elevenlabs_api_key_enc, voice_elevenlabs_voice_id, voice_elevenlabs_model, updated_at
+                ) VALUES (
+                    'cfg-stale', 'stale-elevenlabs', 'EXAVITQu4vr4xnSDxMaL', 'eleven_turbo_v2', '2026-04-13 00:00:00'
+                )
+            """)
+        )
+        conn.execute(
+            text("""
+                INSERT INTO system_config (
+                    id, elevenlabs_api_key_enc, voice_elevenlabs_voice_id, voice_elevenlabs_model, updated_at
+                ) VALUES (
+                    'cfg-fresh', 'fresh-elevenlabs', 'VR6AewLTigWG4xSOukaG', 'eleven_multilingual_v2', '2026-04-14 00:00:00'
+                )
+            """)
+        )
+
+    SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+    with SessionLocal() as db:
+        sys_conf = load_system_config(db)
+
+    assert sys_conf is not None
+    assert sys_conf.id == "cfg-fresh"
+    assert sys_conf.elevenlabs_api_key_enc == "fresh-elevenlabs"
+    assert sys_conf.voice_elevenlabs_voice_id == "VR6AewLTigWG4xSOukaG"

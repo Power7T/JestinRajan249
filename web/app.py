@@ -8825,16 +8825,13 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
     })
 
 
-# Voice AI pages only depend on this subset of system_config fields. Missing
-# unrelated columns should not keep the voice admin UI stuck in warning mode.
-VOICE_AI_SYSTEM_CONFIG_FIELDS = {
+# Voice AI pages only depend on this subset of system_config fields. Optional
+# R2 storage fields are intentionally excluded so they do not keep the warning
+# visible when live calling still works.
+VOICE_AI_CRITICAL_SYSTEM_CONFIG_FIELDS = {
     "openrouter_api_key_enc",
     "deepgram_api_key_enc",
     "elevenlabs_api_key_enc",
-    "cloudflare_account_id",
-    "cloudflare_r2_access_key_enc",
-    "cloudflare_r2_secret_key_enc",
-    "cloudflare_r2_bucket",
     "voice_llm_model",
     "voice_llm_backup_model",
     "voice_llm_emergency_model",
@@ -8848,11 +8845,24 @@ VOICE_AI_SYSTEM_CONFIG_FIELDS = {
 }
 
 
-def _voice_ai_schema_missing(db: Session) -> set[str]:
+def _voice_ai_critical_schema_missing(db: Session) -> set[str]:
     try:
-        return missing_system_config_columns(db) & VOICE_AI_SYSTEM_CONFIG_FIELDS
+        missing = missing_system_config_columns(db) & VOICE_AI_CRITICAL_SYSTEM_CONFIG_FIELDS
     except Exception:
-        return set(VOICE_AI_SYSTEM_CONFIG_FIELDS)
+        return set(VOICE_AI_CRITICAL_SYSTEM_CONFIG_FIELDS)
+
+    if not missing:
+        return missing
+
+    try:
+        from web.db import db_migrate
+
+        db_migrate()
+        db.rollback()
+        return missing_system_config_columns(db) & VOICE_AI_CRITICAL_SYSTEM_CONFIG_FIELDS
+    except Exception as exc:
+        log.warning("Voice AI schema repair failed: %s", exc)
+        return missing
 
 
 @app.get("/admin/voice-ai", response_class=HTMLResponse)
@@ -8860,7 +8870,7 @@ def admin_voice_ai(request: Request, db: Session = Depends(get_db)):
     """Admin Voice AI configuration and live calling"""
     admin = _require_admin(request, db)
     sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
-    schema_drift = bool(_voice_ai_schema_missing(db))
+    schema_drift = bool(_voice_ai_critical_schema_missing(db))
 
     return templates.TemplateResponse("admin_voice_ai.html", {
         "request": request,
@@ -8959,7 +8969,7 @@ async def admin_voice_ai_save(
     except (ValueError, AttributeError):
         sys_conf.voice_elevenlabs_similarity = 0.75
 
-    schema_drift = bool(_voice_ai_schema_missing(db))
+    schema_drift = bool(_voice_ai_critical_schema_missing(db))
     save_system_config(db, sys_conf)
 
     if schema_drift:
@@ -9865,7 +9875,7 @@ def admin_voice_ai_backend(request: Request, db: Session = Depends(get_db)):
     """Admin voice AI backend configuration and testing"""
     admin = _require_admin(request, db)
     sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
-    schema_drift = bool(_voice_ai_schema_missing(db))
+    schema_drift = bool(_voice_ai_critical_schema_missing(db))
 
     return templates.TemplateResponse(
         "admin_voice_ai_backend.html",
@@ -9890,7 +9900,7 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
             "openrouter": None,
             "elevenlabs": None,
             "timestamp": datetime.utcnow().isoformat(),
-            "schema_drift": bool(_voice_ai_schema_missing(db)),
+            "schema_drift": bool(_voice_ai_critical_schema_missing(db)),
         }
 
         # Test Deepgram
@@ -10033,7 +10043,7 @@ async def admin_voice_ai_status(request: Request, db: Session = Depends(get_db))
         "temperature": sys_conf.voice_llm_temperature or 0.7,
         "stability": sys_conf.voice_elevenlabs_stability or 0.5,
         "similarity": sys_conf.voice_elevenlabs_similarity or 0.75,
-        "schema_drift": bool(_voice_ai_schema_missing(db)),
+        "schema_drift": bool(_voice_ai_critical_schema_missing(db)),
     })
 
 
