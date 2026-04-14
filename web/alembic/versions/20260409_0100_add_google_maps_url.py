@@ -15,21 +15,16 @@ depends_on = None
 
 def upgrade() -> None:
     conn = op.get_bind()
-    if conn.dialect.name == 'postgresql':
-        try:
-            conn.execute(sa.text(
-                "ALTER TABLE tenant_configs ADD COLUMN google_maps_url VARCHAR(512)"
-            ))
-        except Exception:
-            pass
-    elif conn.dialect.name == 'sqlite':
-        try:
-            conn.execute(sa.text(
-                "ALTER TABLE tenant_configs ADD COLUMN google_maps_url VARCHAR(512)"
-            ))
-        except Exception:
-            pass
-    # Let Alembic manage the migration transaction/version stamp.
+    inspector = sa.inspect(conn)
+    if "tenant_configs" not in inspector.get_table_names():
+        return
+
+    existing_columns = {col["name"] for col in inspector.get_columns("tenant_configs")}
+    if "google_maps_url" not in existing_columns:
+        op.add_column(
+            "tenant_configs",
+            sa.Column("google_maps_url", sa.String(length=512), nullable=True),
+        )
 
 
 def downgrade() -> None:

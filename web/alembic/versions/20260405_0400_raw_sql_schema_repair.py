@@ -1,7 +1,4 @@
-"""Raw SQL schema repair - add missing columns directly
-
-Uses raw SQL to ensure all missing columns exist. This is more reliable
-than the Alembic ops layer for fixing schema drift.
+"""Schema repair - add missing columns directly.
 
 Revision ID: 20260405_0400
 Revises: 20260405_0300
@@ -16,64 +13,38 @@ branch_labels = None
 depends_on = None
 
 
+def _table_columns(conn, table_name: str) -> set[str]:
+    inspector = sa.inspect(conn)
+    if table_name not in inspector.get_table_names():
+        return set()
+    return {col["name"] for col in inspector.get_columns(table_name)}
+
+
 def upgrade() -> None:
-    """Add missing columns using raw SQL."""
+    """Add missing columns without relying on caught DDL errors."""
     conn = op.get_bind()
-    
-    # Check database type and add columns
-    if conn.dialect.name == 'postgresql':
-        # PostgreSQL - use ALTER TABLE with IF NOT EXISTS
-        try:
-            conn.execute(sa.text("""
-                ALTER TABLE tenant_configs 
-                ADD COLUMN digest_enabled BOOLEAN NOT NULL DEFAULT false
-            """))
-        except:
-            pass  # Column already exists
-        
-        try:
-            conn.execute(sa.text("""
-                ALTER TABLE tenants 
-                ADD COLUMN voice_forward_enabled BOOLEAN NOT NULL DEFAULT false
-            """))
-        except:
-            pass
-        
-        try:
-            conn.execute(sa.text("""
-                ALTER TABLE tenants 
-                ADD COLUMN voice_forward_number VARCHAR(32)
-            """))
-        except:
-            pass
-            
-    elif conn.dialect.name == 'sqlite':
-        # SQLite - use ALTER TABLE
-        try:
-            conn.execute(sa.text("""
-                ALTER TABLE tenant_configs 
-                ADD COLUMN digest_enabled BOOLEAN NOT NULL DEFAULT 0
-            """))
-        except:
-            pass
-        
-        try:
-            conn.execute(sa.text("""
-                ALTER TABLE tenants 
-                ADD COLUMN voice_forward_enabled BOOLEAN NOT NULL DEFAULT 0
-            """))
-        except:
-            pass
-        
-        try:
-            conn.execute(sa.text("""
-                ALTER TABLE tenants 
-                ADD COLUMN voice_forward_number VARCHAR(32)
-            """))
-        except:
-            pass
-    
-    # Let Alembic manage the migration transaction/version stamp.
+    false_default = sa.text("0") if conn.dialect.name == "sqlite" else sa.text("false")
+
+    tenant_config_columns = _table_columns(conn, "tenant_configs")
+    if "digest_enabled" not in tenant_config_columns:
+        op.add_column(
+            "tenant_configs",
+            sa.Column("digest_enabled", sa.Boolean(), nullable=False, server_default=false_default),
+        )
+
+    tenant_columns = _table_columns(conn, "tenants")
+    if "voice_forward_enabled" not in tenant_columns:
+        op.add_column(
+            "tenants",
+            sa.Column("voice_forward_enabled", sa.Boolean(), nullable=False, server_default=false_default),
+        )
+        tenant_columns.add("voice_forward_enabled")
+
+    if "voice_forward_number" not in tenant_columns:
+        op.add_column(
+            "tenants",
+            sa.Column("voice_forward_number", sa.String(length=32), nullable=True),
+        )
 
 
 def downgrade() -> None:

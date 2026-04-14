@@ -15,15 +15,16 @@ depends_on = None
 
 def upgrade() -> None:
     conn = op.get_bind()
-    for dialect in ('postgresql', 'sqlite'):
-        if conn.dialect.name == dialect:
-            try:
-                conn.execute(sa.text(
-                    "ALTER TABLE system_config ADD COLUMN google_maps_api_key_enc VARCHAR(255)"
-                ))
-            except Exception:
-                pass
-    # Let Alembic manage the migration transaction/version stamp.
+    inspector = sa.inspect(conn)
+    if "system_config" not in inspector.get_table_names():
+        return
+
+    existing_columns = {col["name"] for col in inspector.get_columns("system_config")}
+    if "google_maps_api_key_enc" not in existing_columns:
+        op.add_column(
+            "system_config",
+            sa.Column("google_maps_api_key_enc", sa.String(length=255), nullable=True),
+        )
 
 
 def downgrade() -> None:

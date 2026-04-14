@@ -15,13 +15,16 @@ depends_on = None
 
 def upgrade() -> None:
     conn = op.get_bind()
-    try:
-        conn.execute(sa.text(
-            "ALTER TABLE tenant_configs ADD COLUMN twilio_whatsapp_number VARCHAR(32)"
-        ))
-    except Exception:
-        pass
-    # Let Alembic manage the migration transaction/version stamp.
+    inspector = sa.inspect(conn)
+    if "tenant_configs" not in inspector.get_table_names():
+        return
+
+    existing_columns = {col["name"] for col in inspector.get_columns("tenant_configs")}
+    if "twilio_whatsapp_number" not in existing_columns:
+        op.add_column(
+            "tenant_configs",
+            sa.Column("twilio_whatsapp_number", sa.String(length=32), nullable=True),
+        )
 
 
 def downgrade() -> None:
