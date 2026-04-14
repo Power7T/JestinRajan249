@@ -84,6 +84,7 @@ class SystemConfig(Base):
     voice_elevenlabs_model: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="eleven_turbo_v2")
     voice_elevenlabs_stability: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.5)
     voice_elevenlabs_similarity: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.75)
+    voice_elevenlabs_voice_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, default="EXAVITQu4vr4xnSDxMaL")
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, default=_now, onupdate=_now)
 
 # ---------------------------------------------------------------------------

@@ -279,6 +279,10 @@ select.compat-input { appearance: auto; cursor: pointer; }
             </button>
           </div>
           <p class="text-xs text-slate-500 text-center" id="voiceStatus">Ready to call</p>
+          <div id="voicePlaybackAlert" class="hidden rounded-2xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100" role="status" aria-live="polite">
+            <p class="font-bold uppercase tracking-wider mb-1" id="voicePlaybackAlertTitle">Playback issue</p>
+            <p id="voicePlaybackAlertText">Audio playback warnings will appear here.</p>
+          </div>
           <p class="text-xs text-slate-500 text-center" id="callDuration">--:--</p>
         </div>
       </div>
@@ -339,6 +343,116 @@ var isMuted = false;
 var callStartTime = 0;
 var audioQueue = [];
 var isPlayingAudio = false;
+var currentAudio = null;
+var currentAudioSource = null;
+var audioPlaybackIssue = null;
+var audioWatchdogTimer = null;
+var audioWatchdogToken = 0;
+
+function setVoiceStatus(message) {
+  var statusEl = document.getElementById('voiceStatus');
+  if (statusEl) statusEl.textContent = message;
+}
+
+function setVoicePlaybackAlert(kind, title, detail) {
+  var alertEl = document.getElementById('voicePlaybackAlert');
+  var alertTitleEl = document.getElementById('voicePlaybackAlertTitle');
+  var alertTextEl = document.getElementById('voicePlaybackAlertText');
+  if (!alertEl || !alertTitleEl || !alertTextEl) return;
+
+  if (!title || !detail) {
+    alertEl.className = 'hidden rounded-2xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100';
+    alertTitleEl.textContent = 'Playback issue';
+    alertTextEl.textContent = 'Audio playback warnings will appear here.';
+    return;
+  }
+
+  if (kind === 'warning') {
+    alertEl.className = 'rounded-2xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100';
+  } else {
+    alertEl.className = 'rounded-2xl border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-xs text-rose-100';
+  }
+  alertTitleEl.textContent = title;
+  alertTextEl.textContent = detail;
+}
+
+function clearVoicePlaybackAlert() {
+  setVoicePlaybackAlert(null, null, null);
+}
+
+function clearAudioWatchdog() {
+  if (audioWatchdogTimer) {
+    clearTimeout(audioWatchdogTimer);
+    audioWatchdogTimer = null;
+  }
+  audioWatchdogToken += 1;
+}
+
+function revokeAudioUrl(audio) {
+  if (audio && audio._voiceObjectUrl) {
+    try {
+      URL.revokeObjectURL(audio._voiceObjectUrl);
+    } catch (e) {}
+    audio._voiceObjectUrl = null;
+  }
+}
+
+function stopCurrentAudio() {
+  if (currentAudioSource) {
+    try {
+      currentAudioSource.stop();
+    } catch (e) {}
+    try {
+      currentAudioSource.disconnect();
+    } catch (e) {}
+    currentAudioSource = null;
+  }
+  if (!currentAudio) return;
+  revokeAudioUrl(currentAudio);
+  try {
+    currentAudio.pause();
+    currentAudio.removeAttribute('src');
+    currentAudio.load();
+  } catch (e) {}
+  currentAudio = null;
+}
+
+function resetVoiceAudioState() {
+  clearAudioWatchdog();
+  audioQueue = [];
+  isPlayingAudio = false;
+  audioPlaybackIssue = null;
+  stopCurrentAudio();
+  clearVoicePlaybackAlert();
+}
+
+function showVoicePlaybackIssue(kind, title, detail, statusMessage) {
+  audioPlaybackIssue = detail || title || 'Playback issue';
+  clearAudioWatchdog();
+  audioQueue = [];
+  isPlayingAudio = false;
+  stopCurrentAudio();
+  setVoiceStatus(statusMessage || title || 'Voice playback issue');
+  setVoicePlaybackAlert(kind, title || 'Playback issue', detail || 'Voice audio could not be played.');
+}
+
+function scheduleAudioWatchdog(responseText) {
+  clearAudioWatchdog();
+  var token = audioWatchdogToken;
+  var preview = (responseText || 'the latest response').trim().replace(/\s+/g, ' ');
+  if (preview.length > 80) {
+    preview = preview.slice(0, 77) + '...';
+  }
+  audioWatchdogTimer = setTimeout(function() {
+    if (!isCallActive || token !== audioWatchdogToken) return;
+    showVoicePlaybackIssue(
+      'warning',
+      'No audio returned',
+      'The assistant replied, but no TTS audio arrived for "' + preview + '". Check ElevenLabs/API/config and restart the call.',
+      'No TTS audio received'
+    );
+  }, 8000);
+}
 
 // Voice ID custom field toggle
 document.addEventListener('DOMContentLoaded', function() {
@@ -422,12 +536,16 @@ window.toggleVoiceCall = async function() {
         return;
       }
 
+      resetVoiceAudioState();
+      isMuted = false;
       isCallActive = true;
       callStartTime = Date.now();
 
       btn.style.background = 'linear-gradient(to right, #ef4444, #dc2626)';
       btn.innerHTML = '<span>📵</span><span id="callBtnText">End Call</span>';
       muteBtn.disabled = false;
+      muteBtn.textContent = '🔊 Mute';
+      muteBtn.style.background = '';
       statusEl.textContent = 'Connecting to AI...';
 
       var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -438,13 +556,18 @@ window.toggleVoiceCall = async function() {
 
       voiceWs.onopen = function() {
         console.log('WebSocket connected');
-        voiceWs.send(JSON.stringify({ type: 'start' }));
+        voiceWs.send(JSON.stringify({ type: 'start', tenant_id: '{{ admin.id }}' }));
 
         // Real-time PCM streaming via AudioContext + ScriptProcessor
         // Browser captures raw Int16 PCM at 16kHz and streams directly to server.
         // Server pipes to Deepgram WebSocket — no batching, no delays.
         try {
           audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+          if (audioContext.state === 'suspended') {
+            audioContext.resume().catch(function(err) {
+              console.warn('AudioContext resume failed:', err);
+            });
+          }
           sourceNode = audioContext.createMediaStreamSource(voiceStream);
 
           // 4096 samples at 16kHz ≈ 256ms per callback — responsive without flooding
@@ -490,18 +613,42 @@ window.toggleVoiceCall = async function() {
           } else if (data.type === 'response') {
             document.getElementById('aiTranscript').textContent = data.text || '—';
             statusEl.textContent = 'Speaking...';
+            scheduleAudioWatchdog(data.text || '');
           } else if (data.type === 'audio') {
+            clearAudioWatchdog();
+            if (!data.audio || !data.audio.trim()) {
+              showVoicePlaybackIssue(
+                'warning',
+                'Empty audio payload',
+                'The server responded, but the audio payload was empty. Check ElevenLabs API access and voice settings.',
+                'Server returned no audio'
+              );
+              return;
+            }
             var binaryString = atob(data.audio);
             var bytes = new Uint8Array(binaryString.length);
             for (var i = 0; i < binaryString.length; i++) {
               bytes[i] = binaryString.charCodeAt(i);
             }
-            playAudioChunk(bytes);
-            statusEl.textContent = 'Listening... (speak now)';
+            if (!bytes.length) {
+              showVoicePlaybackIssue(
+                'warning',
+                'Empty audio payload',
+                'The server returned an empty audio buffer. Check ElevenLabs/API/config and restart the call.',
+                'Server returned no audio'
+              );
+              return;
+            }
+            if (playAudioChunk(bytes)) {
+              statusEl.textContent = 'Listening... (speak now)';
+            }
           } else if (data.type === 'error') {
             console.error('Server error:', data.message);
+            clearAudioWatchdog();
             statusEl.textContent = '❌ ' + (data.message || 'Error');
+            setVoicePlaybackAlert('error', 'Server error', data.message || 'An unknown voice error occurred.');
           } else if (data.type === 'ready') {
+            clearVoicePlaybackAlert();
             statusEl.textContent = 'Connected — initializing...';
           }
         } catch (e) {
@@ -511,7 +658,9 @@ window.toggleVoiceCall = async function() {
 
       voiceWs.onerror = function(err) {
         console.error('WebSocket error:', err);
+        clearAudioWatchdog();
         statusEl.textContent = 'Connection error: ' + (err.message || 'Unknown error');
+        setVoicePlaybackAlert('error', 'Connection error', err.message || 'Unknown websocket error');
       };
 
       voiceWs.onclose = function(e) {
@@ -533,6 +682,7 @@ window.toggleVoiceCall = async function() {
 
     } catch (err) {
       console.error('Unexpected error in toggleVoiceCall:', err);
+      clearAudioWatchdog();
       statusEl.textContent = '❌ Unexpected error: ' + err.message;
       document.getElementById('userTranscript').textContent = err.name + ': ' + err.message;
       isCallActive = false;
@@ -549,6 +699,9 @@ function endCall() {
   var statusEl = document.getElementById('voiceStatus');
 
   isCallActive = false;
+  clearAudioWatchdog();
+  resetVoiceAudioState();
+  isMuted = false;
 
   // Disconnect AudioContext nodes
   if (scriptProcessor) {
@@ -577,6 +730,8 @@ function endCall() {
   btn.style.background = '';
   btn.innerHTML = '<span>📞</span><span id="callBtnText">Call</span>';
   muteBtn.disabled = true;
+  muteBtn.textContent = '🔊 Mute';
+  muteBtn.style.background = '';
   statusEl.textContent = 'Call ended';
   document.getElementById('callDuration').textContent = '--:--';
   document.getElementById('userTranscript').textContent = '—';
@@ -586,6 +741,7 @@ function endCall() {
 
 window.muteAudio = function() {
   var btn = document.getElementById('voiceMuteBtn');
+  if (!btn) return;
   isMuted = !isMuted;
 
   if (voiceStream) {
@@ -606,10 +762,23 @@ window.muteAudio = function() {
 };
 
 function playAudioChunk(audioBytes) {
+  if (audioPlaybackIssue) {
+    return false;
+  }
+  if (!audioBytes || !audioBytes.length) {
+    showVoicePlaybackIssue(
+      'warning',
+      'Empty audio payload',
+      'The server returned an empty audio chunk. Check ElevenLabs/API/config and restart the call.',
+      'Server returned no audio'
+    );
+    return false;
+  }
   audioQueue.push(audioBytes);
   if (!isPlayingAudio) {
     playNextChunk();
   }
+  return true;
 }
 
 function playNextChunk() {
@@ -620,21 +789,84 @@ function playNextChunk() {
 
   isPlayingAudio = true;
   var chunk = audioQueue.shift();
+  if (!chunk || !chunk.length) {
+    showVoicePlaybackIssue(
+      'warning',
+      'Empty audio payload',
+      'An empty audio chunk was queued. Check ElevenLabs/API/config and restart the call.',
+      'Server returned no audio'
+    );
+    return;
+  }
+
+  var buffer = chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength);
+
+  if (audioContext && audioContext.state !== 'closed') {
+    Promise.resolve(
+      audioContext.state === 'suspended'
+        ? audioContext.resume().catch(function(err) {
+            console.warn('AudioContext resume failed:', err);
+          })
+        : null
+    ).then(function() {
+      return audioContext.decodeAudioData(buffer.slice(0));
+    }).then(function(decodedBuffer) {
+      currentAudioSource = audioContext.createBufferSource();
+      currentAudioSource.buffer = decodedBuffer;
+      currentAudioSource.connect(audioContext.destination);
+      currentAudioSource.onended = function() {
+        try {
+          currentAudioSource.disconnect();
+        } catch (e) {}
+        currentAudioSource = null;
+        playNextChunk();
+      };
+      currentAudioSource.start(0);
+    }).catch(function(decodeErr) {
+      console.warn('AudioContext decode failed, falling back to HTMLAudioElement:', decodeErr);
+      playChunkWithAudioElement(chunk);
+    });
+    return;
+  }
+
+  playChunkWithAudioElement(chunk);
+}
+
+function playChunkWithAudioElement(chunk) {
   var blob = new Blob([chunk], { type: 'audio/mpeg' }); // ElevenLabs returns MP3
   var url = URL.createObjectURL(blob);
   var audio = new Audio(url);
+  currentAudio = audio;
+  audio._voiceObjectUrl = url;
 
   audio.onended = function() {
-    URL.revokeObjectURL(url);
+    revokeAudioUrl(audio);
+    currentAudio = null;
     playNextChunk();
   };
 
   audio.onerror = function() {
-    URL.revokeObjectURL(url);
-    playNextChunk();
+    revokeAudioUrl(audio);
+    currentAudio = null;
+    showVoicePlaybackIssue(
+      'error',
+      'Playback failed',
+      'The browser could not decode or play the TTS audio. Restart the call after checking codec and output device settings.',
+      'Audio playback failed'
+    );
   };
 
-  audio.play().catch(function(e) { console.error('Audio play error:', e); });
+  audio.play().catch(function(e) {
+    console.error('Audio play error:', e);
+    revokeAudioUrl(audio);
+    currentAudio = null;
+    showVoicePlaybackIssue(
+      'error',
+      'Playback blocked',
+      'The browser blocked audio playback: ' + (e && e.message ? e.message : 'unknown error') + '. End and restart the call to recover.',
+      'Audio playback was blocked'
+    );
+  });
 }
 
 async function testConnections() {

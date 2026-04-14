@@ -9541,14 +9541,22 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
             await websocket.close()
             return
 
-        # Resolve tenant
+        # Resolve the current authenticated tenant first. Falling back to the
+        # first tenant in the database makes the admin test harness use the
+        # wrong voice settings and can silently point TTS at an invalid voice.
         tenant = None
         try:
-            tenant_id = init_data.get("tenant_id")
-            if tenant_id:
-                tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+            tenant_id = get_current_tenant_id(websocket)  # type: ignore[arg-type]
+            tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
         except Exception:
             pass
+        if not tenant:
+            try:
+                tenant_id = init_data.get("tenant_id")
+                if tenant_id:
+                    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+            except Exception:
+                pass
         if not tenant:
             tenant = db.query(Tenant).first()
         if not tenant:
@@ -9619,7 +9627,7 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
         # Voice ID: prefer tenant config, fall back to system config (set from admin TTS form)
         voice_id = (
             (tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None)
-            or sys_conf.voice_elevenlabs_voice_id
+            or getattr(sys_conf, "voice_elevenlabs_voice_id", None)
             or "EXAVITQu4vr4xnSDxMaL"  # Rachel (default)
         )
 
@@ -9733,6 +9741,12 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
                             import base64
                             await websocket.send_json({"type": "audio", "audio": base64.b64encode(audio_bytes).decode()})
                             log.info(f"Sent TTS audio: {len(audio_bytes)} bytes")
+                        else:
+                            log.warning("ElevenLabs returned no audio for live admin voice test")
+                            await websocket.send_json({
+                                "type": "error",
+                                "message": "ElevenLabs returned no audio. Check the API key, selected voice, and model."
+                            })
 
                     except Exception as exc:
                         import traceback
@@ -9903,6 +9917,7 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                     results["elevenlabs"] = "✗ Decryption failed (key corruption?)"
                 else:
                     import urllib.request
+                    selected_voice_id = getattr(sys_conf, "voice_elevenlabs_voice_id", None) or "EXAVITQu4vr4xnSDxMaL"
                     req = urllib.request.Request(
                         "https://api.elevenlabs.io/v1/voices",
                         headers={
@@ -9911,8 +9926,13 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
                         }
                     )
                     try:
-                        urllib.request.urlopen(req, timeout=5)
-                        results["elevenlabs"] = "✓ ElevenLabs API key valid"
+                        resp = urllib.request.urlopen(req, timeout=5)
+                        payload = json.loads(resp.read().decode("utf-8"))
+                        voices = payload.get("voices", []) if isinstance(payload, dict) else []
+                        if selected_voice_id and not any(v.get("voice_id") == selected_voice_id for v in voices if isinstance(v, dict)):
+                            results["elevenlabs"] = "✗ API key valid, but configured voice ID was not found"
+                        else:
+                            results["elevenlabs"] = "✓ ElevenLabs API key valid"
                     except urllib.error.HTTPError as e:
                         if e.code == 401:
                             results["elevenlabs"] = "✗ Invalid API key"
