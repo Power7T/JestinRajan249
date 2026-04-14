@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
@@ -167,3 +168,51 @@ def load_system_config(db: Session, *, create_if_missing: bool = False) -> Syste
         db.commit()
         db.refresh(sys_conf)
     return sys_conf
+
+
+def save_system_config(db: Session, sys_conf: SystemConfig) -> SystemConfig:
+    if not system_config_schema_is_behind(sys_conf):
+        db.add(sys_conf)
+        db.commit()
+        db.refresh(sys_conf)
+        return sys_conf
+
+    existing_columns = _existing_system_config_columns(db)
+    writable_columns = [
+        column.name
+        for column in SystemConfig.__table__.columns
+        if column.name != "id" and column.name in existing_columns
+    ]
+    row_id = getattr(sys_conf, "id", None) or str(uuid4())
+
+    table = SystemConfig.__table__
+    existing_row = None
+    if "id" in existing_columns:
+        existing_row = db.execute(
+            sa.select(table.c.id).where(table.c.id == row_id).limit(1)
+        ).scalar_one_or_none()
+        if existing_row is None:
+            existing_row = db.execute(sa.select(table.c.id).limit(1)).scalar_one_or_none()
+            if existing_row is not None:
+                row_id = str(existing_row)
+
+    values = {column_name: getattr(sys_conf, column_name, None) for column_name in writable_columns}
+
+    if "id" in existing_columns and existing_row is not None:
+        db.execute(
+            sa.update(table)
+            .where(table.c.id == row_id)
+            .values(**values)
+        )
+    else:
+        insert_values = dict(values)
+        if "id" in existing_columns:
+            insert_values["id"] = row_id
+        db.execute(sa.insert(table).values(**insert_values))
+
+    db.commit()
+    log.warning(
+        "Saved SystemConfig in compatibility mode using existing columns only; unsupported columns remain pending schema sync"
+    )
+    refreshed = load_system_config(db)
+    return refreshed or sys_conf

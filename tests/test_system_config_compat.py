@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 
 import web.app as app_mod
 from web.models import SystemConfig
-from web.system_config_store import load_system_config, system_config_schema_is_behind
+from web.system_config_store import load_system_config, save_system_config, system_config_schema_is_behind
 
 
 def test_load_system_config_handles_missing_backup_columns(tmp_path):
@@ -174,3 +174,53 @@ def test_admin_ai_page_shows_warning_in_compat_mode(client, monkeypatch):
 
     assert response.status_code == 200
     assert b"compatibility mode" in response.content
+
+
+def test_save_system_config_updates_existing_columns_in_compat_mode(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'legacy-system-config-save.db'}")
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE system_config (
+                id VARCHAR(36) PRIMARY KEY,
+                openrouter_api_key_enc VARCHAR(255),
+                elevenlabs_api_key_enc VARCHAR(255),
+                cloudflare_account_id VARCHAR(255),
+                voice_elevenlabs_model VARCHAR(50),
+                updated_at DATETIME
+            )
+        """))
+        conn.execute(
+            text("""
+                INSERT INTO system_config (
+                    id, openrouter_api_key_enc, elevenlabs_api_key_enc, cloudflare_account_id, voice_elevenlabs_model, updated_at
+                ) VALUES (
+                    'cfg-1', 'old-openrouter', 'old-elevenlabs', 'old-account', 'eleven_turbo_v2', '2026-04-13 00:00:00'
+                )
+            """)
+        )
+
+    SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+    with SessionLocal() as db:
+        sys_conf = load_system_config(db)
+        assert sys_conf is not None
+        assert system_config_schema_is_behind(sys_conf)
+
+        sys_conf.openrouter_api_key_enc = "new-openrouter"
+        sys_conf.elevenlabs_api_key_enc = "new-elevenlabs"
+        sys_conf.cloudflare_account_id = "new-account"
+        sys_conf.voice_elevenlabs_voice_id = "VR6AewLTigWG4xSOukaG"
+
+        saved = save_system_config(db, sys_conf)
+
+    with engine.connect() as conn:
+        row = conn.execute(text("""
+            SELECT openrouter_api_key_enc, elevenlabs_api_key_enc, cloudflare_account_id, voice_elevenlabs_model
+            FROM system_config
+            WHERE id = 'cfg-1'
+        """)).mappings().one()
+
+    assert saved is not None
+    assert row["openrouter_api_key_enc"] == "new-openrouter"
+    assert row["elevenlabs_api_key_enc"] == "new-elevenlabs"
+    assert row["cloudflare_account_id"] == "new-account"
+    assert row["voice_elevenlabs_model"] == "eleven_turbo_v2"

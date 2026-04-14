@@ -105,7 +105,7 @@ from web.security import (
     CSRFMiddleware, SecurityHeadersMiddleware,
     validate_csrf, validate_csrf_header, rate_limit, client_ip, is_request_secure,
 )
-from web.system_config_store import load_system_config, system_config_schema_is_behind
+from web.system_config_store import load_system_config, save_system_config, system_config_schema_is_behind
 from web.tenant_config_store import load_tenant_config
 from web.request_safety import ensure_public_hostname, ensure_public_url
 from web.workflow import (
@@ -8861,9 +8861,6 @@ async def admin_voice_ai_save(
     """Save Voice AI configuration"""
     admin = _require_admin(request, db)
     sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
-    if system_config_schema_is_behind(sys_conf):
-        log.error("Cannot save voice AI config while system_config schema is behind the application model")
-        return RedirectResponse("/admin/voice-ai?msg=schema_sync_required", status_code=302)
 
     # Update API Keys (only if provided and not masked)
     if openrouter_api_key_enc.strip() and openrouter_api_key_enc != "********":
@@ -8927,10 +8924,12 @@ async def admin_voice_ai_save(
     except (ValueError, AttributeError):
         sys_conf.voice_elevenlabs_similarity = 0.75
 
-    db.add(sys_conf)
-    db.commit()
+    schema_drift = system_config_schema_is_behind(sys_conf)
+    save_system_config(db, sys_conf)
 
-    return RedirectResponse(url="/admin/voice-ai", status_code=303)
+    if schema_drift:
+        return RedirectResponse(url="/admin/voice-ai?msg=compat_saved", status_code=303)
+    return RedirectResponse(url="/admin/voice-ai?msg=saved", status_code=303)
 
 
 @app.get("/admin/host-profitability", response_class=HTMLResponse)

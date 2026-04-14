@@ -98,7 +98,21 @@ select.compat-input { appearance: auto; cursor: pointer; }
   {% if schema_drift or request.query_params.get("msg") == "schema_sync_required" %}
   <div class="bg-amber-500/10 border border-amber-400/30 text-amber-200 px-4 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
     <span class="material-symbols-outlined text-sm">warning</span>
-    The Voice AI page is running in compatibility mode because the database schema is behind the app code. Read-only viewing and live testing are safe, but saving requires the latest migrations to run.
+    The Voice AI page is running in compatibility mode because the database schema is behind the app code. Existing fields can still be saved, but newly added fields stay pending until migrations catch up.
+  </div>
+  {% endif %}
+
+  {% if request.query_params.get("msg") == "saved" %}
+  <div class="bg-emerald-500/10 border border-emerald-400/30 text-emerald-200 px-4 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+    <span class="material-symbols-outlined text-sm">check_circle</span>
+    Voice AI settings saved.
+  </div>
+  {% endif %}
+
+  {% if request.query_params.get("msg") == "compat_saved" %}
+  <div class="bg-emerald-500/10 border border-emerald-400/30 text-emerald-200 px-4 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+    <span class="material-symbols-outlined text-sm">check_circle</span>
+    Compatible Voice AI fields were saved. Any settings backed by missing DB columns will start persisting once the schema sync completes.
   </div>
   {% endif %}
 
