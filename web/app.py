@@ -8839,6 +8839,10 @@ async def admin_voice_ai_save(
     openrouter_api_key_enc: str = Form(""),
     deepgram_api_key_enc: str = Form(""),
     elevenlabs_api_key_enc: str = Form(""),
+    cloudflare_account_id: str = Form(""),
+    cloudflare_r2_access_key_enc: str = Form(""),
+    cloudflare_r2_secret_key_enc: str = Form(""),
+    cloudflare_r2_bucket: str = Form(""),
     voice_llm_model: str = Form(""),
     voice_llm_backup_model: str = Form(""),
     voice_llm_emergency_model: str = Form(""),
@@ -8861,6 +8865,16 @@ async def admin_voice_ai_save(
         sys_conf.deepgram_api_key_enc = encrypt(deepgram_api_key_enc.strip())
     if elevenlabs_api_key_enc.strip() and elevenlabs_api_key_enc != "********":
         sys_conf.elevenlabs_api_key_enc = encrypt(elevenlabs_api_key_enc.strip())
+
+    # R2 credentials (account_id and bucket are plain text; keys are encrypted)
+    if cloudflare_account_id.strip():
+        sys_conf.cloudflare_account_id = cloudflare_account_id.strip()
+    if cloudflare_r2_bucket.strip():
+        sys_conf.cloudflare_r2_bucket = cloudflare_r2_bucket.strip()
+    if cloudflare_r2_access_key_enc.strip() and cloudflare_r2_access_key_enc != "********":
+        sys_conf.cloudflare_r2_access_key_enc = encrypt(cloudflare_r2_access_key_enc.strip())
+    if cloudflare_r2_secret_key_enc.strip() and cloudflare_r2_secret_key_enc != "********":
+        sys_conf.cloudflare_r2_secret_key_enc = encrypt(cloudflare_r2_secret_key_enc.strip())
 
     # Update Voice AI settings
     if voice_llm_model.strip():
@@ -9571,6 +9585,20 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
             VoiceAIService.ELEVENLABS_STABILITY = float(sys_conf.voice_elevenlabs_stability)
         if sys_conf.voice_elevenlabs_similarity is not None:
             VoiceAIService.ELEVENLABS_SIMILARITY = float(sys_conf.voice_elevenlabs_similarity)
+
+        # Load R2 credentials if configured
+        if sys_conf.cloudflare_account_id:
+            VoiceAIService.CLOUDFLARE_ACCOUNT_ID = sys_conf.cloudflare_account_id
+        if sys_conf.cloudflare_r2_bucket:
+            VoiceAIService.CLOUDFLARE_R2_BUCKET = sys_conf.cloudflare_r2_bucket
+        if sys_conf.cloudflare_r2_access_key_enc:
+            dec = decrypt(sys_conf.cloudflare_r2_access_key_enc)
+            if dec:
+                VoiceAIService.CLOUDFLARE_ACCESS_KEY_ID = dec
+        if sys_conf.cloudflare_r2_secret_key_enc:
+            dec = decrypt(sys_conf.cloudflare_r2_secret_key_enc)
+            if dec:
+                VoiceAIService.CLOUDFLARE_SECRET_ACCESS_KEY = dec
 
         # Validate that required API keys are configured
         if not VoiceAIService.DEEPGRAM_API_KEY:

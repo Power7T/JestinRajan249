@@ -194,6 +194,34 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     </div>
   </div>
 
+  <!-- Cloudflare R2 Storage -->
+  <div class="glass-card rounded-3xl p-6 mb-6">
+    <h2 class="text-lg font-bold text-white mb-1">☁️ Cloudflare R2 Storage</h2>
+    <p class="text-xs text-slate-500 mb-4">Optional — used to store recorded audio files. Live calls work without R2.</p>
+    <form method="POST" action="/admin/voice-ai/save" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Account ID</label>
+        <input type="text" name="cloudflare_account_id" class="compat-input" value="{{ sys_conf.cloudflare_account_id or '' }}" placeholder="abc123...">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 Access Key ID</label>
+        <input type="password" name="cloudflare_r2_access_key_enc" class="compat-input" value="{{ '********' if sys_conf.cloudflare_r2_access_key_enc else '' }}" placeholder="Access key...">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 Secret Access Key</label>
+        <input type="password" name="cloudflare_r2_secret_key_enc" class="compat-input" value="{{ '********' if sys_conf.cloudflare_r2_secret_key_enc else '' }}" placeholder="Secret key...">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Bucket Name</label>
+        <input type="text" name="cloudflare_r2_bucket" class="compat-input" value="{{ sys_conf.cloudflare_r2_bucket or '' }}" placeholder="my-audio-bucket">
+      </div>
+      <div class="md:col-span-2 lg:col-span-4">
+        <button type="submit" class="px-6 py-2 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 transition text-sm">Save R2 Config</button>
+      </div>
+    </form>
+  </div>
+
   <!-- Live Call Testing -->
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
     <div class="xl:col-span-1">
