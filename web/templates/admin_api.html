@@ -120,6 +120,73 @@ document.addEventListener('DOMContentLoaded', function() {
   testBtn.addEventListener('click', runTests);
   // Auto-run on load
   runTests();
+
+  // ── Usage stats ───────────────────────────────────────────────────────────
+  // Maps api-status key → api_usage_logs service name
+  var USAGE_KEY_MAP = {
+    openrouter:    'openrouter',
+    deepgram:      'deepgram',
+    google_tts:    null,   // not yet logged separately
+    elevenlabs:    'elevenlabs',
+    twilio_sms:    'twilio',
+    twilio_voice:  'twilio',
+    google_maps:   null,
+    cloudflare_r2: null,
+  };
+
+  function fmt$(v) {
+    if (!v) return '$0.00';
+    return v < 0.001 ? ('$' + v.toFixed(6)) : v < 1 ? ('$' + v.toFixed(4)) : ('$' + v.toFixed(2));
+  }
+  function fmtN(v) {
+    return v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'K' : String(v||0);
+  }
+
+  function renderUsageTile(key, svc) {
+    var tile = document.getElementById('tile-' + key);
+    if (!tile) return;
+    var usageEl = tile.querySelector('.usage-strip');
+    if (!usageEl) return;
+
+    var calls = svc ? svc.calls : 0;
+    var cost  = svc ? svc.cost  : 0;
+    var detail = '';
+    if (svc) {
+      if (svc.in_tokens || svc.out_tokens) {
+        detail = fmtN(svc.in_tokens) + '/' + fmtN(svc.out_tokens) + ' tok';
+      } else if (svc.duration_s) {
+        detail = Math.round(svc.duration_s) + 's audio';
+      } else if (svc.characters) {
+        detail = fmtN(svc.characters) + ' chars';
+      }
+    }
+
+    usageEl.innerHTML =
+      '<span class="text-slate-500">' + fmtN(calls) + ' calls' + (detail ? ' · ' + detail : '') + '</span>'
+      + '<span class="font-mono font-bold ' + (cost > 0 ? 'text-[#27c93f]' : 'text-slate-600') + '">' + fmt$(cost) + '</span>';
+  }
+
+  function loadUsageStats() {
+    fetch('/admin/api-usage-stats', { credentials: 'same-origin' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var byService = data.by_service || {};
+        Object.keys(USAGE_KEY_MAP).forEach(function(key) {
+          var svcName = USAGE_KEY_MAP[key];
+          renderUsageTile(key, svcName ? byService[svcName] : null);
+        });
+
+        // Update global cost strip
+        var totalCostEl  = document.getElementById('strip-total-cost');
+        var totalCallsEl = document.getElementById('strip-total-calls');
+        if (totalCostEl)  totalCostEl.textContent  = fmt$(data.total_cost);
+        if (totalCallsEl) totalCallsEl.textContent = fmtN(data.total_calls) + ' calls (30d)';
+      })
+      .catch(function() {});
+  }
+
+  loadUsageStats();
+  testBtn.addEventListener('click', loadUsageStats);
 });
 </script>{% endblock %}
 {% endblock %}
@@ -268,8 +335,13 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     </div>
     <div class="w-px h-8 bg-white/10"></div>
     <div>
-      <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">30-Day Spend</div>
-      <div class="text-xl font-bold text-white font-mono">${{ "%.2f"|format(predicted_monthly) }}</div>
+      <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">30-Day Spend (logged)</div>
+      <div id="strip-total-cost" class="text-xl font-bold text-white font-mono">${{ "%.2f"|format(predicted_monthly) }}</div>
+    </div>
+    <div class="w-px h-8 bg-white/10"></div>
+    <div>
+      <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total API Calls (30d)</div>
+      <div id="strip-total-calls" class="text-xl font-bold text-white font-mono">—</div>
     </div>
   </div>
 
@@ -308,9 +380,13 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
         </div>
       </div>
 
-      <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between gap-4">
+      <div class="mt-3 pt-3 border-t border-white/5 flex items-center justify-between gap-4">
         <p class="status-msg text-xs text-slate-400 leading-snug">Waiting for test…</p>
         <span class="status-ms text-xs font-mono text-slate-600 flex-shrink-0">—</span>
+      </div>
+      <!-- 30-day usage row -->
+      <div class="usage-strip mt-2 flex items-center justify-between text-xs text-slate-500">
+        <span>—</span><span>—</span>
       </div>
     </div>
     {% endfor %}

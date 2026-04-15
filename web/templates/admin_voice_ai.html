@@ -441,6 +441,34 @@ select.compat-input { appearance: auto; cursor: pointer; }
             Test Services
           </button>
         </div>
+
+        <!-- Cost & Token Usage Section -->
+        <hr class="border-white/10 my-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-white">💰 Cost & Usage <span class="text-xs font-normal text-slate-500 ml-1">last 30 days</span></h3>
+          <button id="refreshUsageBtn" class="text-xs text-[#aec6ff] hover:text-white flex items-center gap-1 transition">
+            <span class="material-symbols-outlined text-sm">refresh</span>Refresh
+          </button>
+        </div>
+
+        <!-- Summary strip -->
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div class="bg-gray-950 rounded-lg p-3 border border-white/10 text-center">
+            <div class="text-[0.6rem] text-slate-500 uppercase tracking-widest mb-1">Total Spend</div>
+            <div id="usageTotalCost" class="text-lg font-bold text-[#27c93f] font-mono">—</div>
+          </div>
+          <div class="bg-gray-950 rounded-lg p-3 border border-white/10 text-center">
+            <div class="text-[0.6rem] text-slate-500 uppercase tracking-widest mb-1">API Calls</div>
+            <div id="usageTotalCalls" class="text-lg font-bold text-white font-mono">—</div>
+          </div>
+        </div>
+
+        <!-- Per-service breakdown -->
+        <div class="space-y-2" id="usageBreakdown">
+          <div class="text-xs text-slate-500 text-center py-4">Loading usage data…</div>
+        </div>
+
+        <p id="usageTimestamp" class="text-[0.6rem] text-slate-600 text-right mt-3"></p>
       </div>
     </div>
   </div>
@@ -1135,6 +1163,76 @@ document.addEventListener('DOMContentLoaded', function() {
       console.error('testConnections error:', e);
     }
   }, 500);
+
+  // ── Usage & Cost ──────────────────────────────────────────────────────────
+  var SERVICE_LABELS = {
+    openrouter:   { label: 'OpenRouter (LLM)',    unit: 'tokens' },
+    deepgram:     { label: 'Deepgram (STT)',       unit: 'seconds' },
+    elevenlabs:   { label: 'ElevenLabs (TTS)',     unit: 'chars' },
+    twilio:       { label: 'Twilio (Voice)',       unit: 'calls' },
+    openai:       { label: 'OpenAI',               unit: 'tokens' },
+  };
+
+  function fmt$(v) { return v < 0.001 ? ('$' + v.toFixed(6)) : v < 1 ? ('$' + v.toFixed(4)) : ('$' + v.toFixed(2)); }
+  function fmtN(v) { return v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'K' : String(v); }
+
+  function renderUsage(data) {
+    var totalCostEl  = document.getElementById('usageTotalCost');
+    var totalCallsEl = document.getElementById('usageTotalCalls');
+    var breakdownEl  = document.getElementById('usageBreakdown');
+    var tsEl         = document.getElementById('usageTimestamp');
+
+    if (totalCostEl)  totalCostEl.textContent  = fmt$(data.total_cost || 0);
+    if (totalCallsEl) totalCallsEl.textContent = fmtN(data.total_calls || 0);
+
+    var services = data.by_service || {};
+    var keys = Object.keys(services);
+    if (!keys.length) {
+      if (breakdownEl) breakdownEl.innerHTML = '<div class="text-xs text-slate-500 text-center py-4">No API calls logged yet — usage will appear here after the first AI interaction.</div>';
+      return;
+    }
+
+    var html = '';
+    keys.sort(function(a, b) { return (services[b].cost || 0) - (services[a].cost || 0); });
+    keys.forEach(function(svc) {
+      var s = services[svc];
+      var meta = SERVICE_LABELS[svc] || { label: svc, unit: '' };
+      var usageDetail = '';
+      if (s.in_tokens || s.out_tokens) {
+        usageDetail = fmtN(s.in_tokens) + ' in / ' + fmtN(s.out_tokens) + ' out tokens';
+      } else if (s.duration_s) {
+        usageDetail = Math.round(s.duration_s) + 's audio';
+      } else if (s.characters) {
+        usageDetail = fmtN(s.characters) + ' chars';
+      }
+      html += '<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">'
+        + '<div>'
+        + '<p class="text-sm text-white font-medium">' + meta.label + '</p>'
+        + (usageDetail ? '<p class="text-xs text-slate-500">' + usageDetail + ' · ' + fmtN(s.calls) + ' calls</p>' : '<p class="text-xs text-slate-500">' + fmtN(s.calls) + ' calls</p>')
+        + '</div>'
+        + '<span class="text-sm font-bold font-mono ' + (s.cost > 0 ? 'text-[#27c93f]' : 'text-slate-500') + '">' + fmt$(s.cost || 0) + '</span>'
+        + '</div>';
+    });
+    if (breakdownEl) breakdownEl.innerHTML = html;
+    if (tsEl && data.timestamp) {
+      var d = new Date(data.timestamp + 'Z');
+      tsEl.textContent = 'Updated ' + d.toLocaleTimeString();
+    }
+  }
+
+  function loadUsage() {
+    fetch('/admin/api-usage-stats', { credentials: 'same-origin' })
+      .then(function(r) { return r.json(); })
+      .then(renderUsage)
+      .catch(function() {
+        var el = document.getElementById('usageBreakdown');
+        if (el) el.innerHTML = '<div class="text-xs text-red-400 text-center py-2">Failed to load usage data</div>';
+      });
+  }
+
+  loadUsage();
+  var refreshBtn = document.getElementById('refreshUsageBtn');
+  if (refreshBtn) refreshBtn.addEventListener('click', loadUsage);
 });
 </script>
 

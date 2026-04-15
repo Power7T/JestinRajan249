@@ -9547,6 +9547,76 @@ async def admin_api_status(request: Request, db: Session = Depends(get_db)):
     return JSONResponse(results)
 
 
+@app.get("/admin/api-usage-stats")
+def admin_api_usage_stats(request: Request, db: Session = Depends(get_db)):
+    """Return 30-day usage & cost stats per API service from api_usage_logs."""
+    _require_admin(request, db)
+    from datetime import timedelta
+    from sqlalchemy import func as _func, case as _case
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+
+    try:
+        rows = (
+            db.query(
+                APIUsageLog.service,
+                _func.count(APIUsageLog.id).label("calls"),
+                _func.sum(APIUsageLog.cost_usd).label("cost"),
+                _func.sum(APIUsageLog.input_tokens).label("in_tokens"),
+                _func.sum(APIUsageLog.output_tokens).label("out_tokens"),
+                _func.sum(APIUsageLog.duration_seconds).label("duration_s"),
+                _func.sum(APIUsageLog.characters).label("characters"),
+            )
+            .filter(APIUsageLog.created_at >= cutoff)
+            .group_by(APIUsageLog.service)
+            .all()
+        )
+    except Exception:
+        rows = []
+
+    stats: dict = {}
+    for r in rows:
+        stats[r.service] = {
+            "calls":      int(r.calls or 0),
+            "cost":       round(float(r.cost or 0), 6),
+            "in_tokens":  int(r.in_tokens or 0),
+            "out_tokens": int(r.out_tokens or 0),
+            "duration_s": round(float(r.duration_s or 0), 1),
+            "characters": int(r.characters or 0),
+        }
+
+    # Also pull total across all services
+    total_cost = sum(v["cost"] for v in stats.values())
+    total_calls = sum(v["calls"] for v in stats.values())
+
+    # Last 7 daily totals (for sparkline feel)
+    daily: list = []
+    try:
+        for day_offset in range(6, -1, -1):
+            day_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=day_offset)
+            day_end   = day_start + timedelta(days=1)
+            day_cost  = db.query(_func.sum(APIUsageLog.cost_usd)).filter(
+                APIUsageLog.created_at >= day_start,
+                APIUsageLog.created_at < day_end,
+            ).scalar() or 0.0
+            day_calls = db.query(_func.count(APIUsageLog.id)).filter(
+                APIUsageLog.created_at >= day_start,
+                APIUsageLog.created_at < day_end,
+            ).scalar() or 0
+            daily.append({"date": day_start.strftime("%m/%d"), "cost": round(float(day_cost), 6), "calls": int(day_calls)})
+    except Exception:
+        daily = []
+
+    return JSONResponse({
+        "by_service":   stats,
+        "total_cost":   round(total_cost, 6),
+        "total_calls":  total_calls,
+        "daily":        daily,
+        "period_days":  30,
+        "timestamp":    datetime.utcnow().isoformat(),
+    })
+
+
 @app.post("/admin/ai/save", response_class=HTMLResponse)
 def admin_ai_save(
     request: Request,
