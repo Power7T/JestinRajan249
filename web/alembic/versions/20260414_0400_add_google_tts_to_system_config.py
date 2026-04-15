@@ -1,8 +1,8 @@
 """Add Google TTS fields to system_config
 
-Revision ID: 20260414_0300
-Revises: 20260414_0200
-Create Date: 2026-04-14 03:00:00.000000+00:00
+Revision ID: 20260414_0400
+Revises: 20260414_0300
+Create Date: 2026-04-14 04:00:00.000000+00:00
 """
 from typing import Sequence, Union
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = "20260414_0300"
-down_revision: Union[str, None] = "20260414_0200"
+revision: str = "20260414_0400"
+down_revision: Union[str, None] = "20260414_0300"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
