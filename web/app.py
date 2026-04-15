@@ -3731,6 +3731,7 @@ def _save_voice_ai_settings(
     voice_twilio_auth_token: str,
     voice_twilio_from_number: str,
     voice_elevenlabs_voice_id: str,
+    voice_google_tts_voice: str = "",
     voice_send_channel: str,
     voice_post_call_summary: str,
     voice_scheduled_calls_enabled: str,
@@ -3743,6 +3744,8 @@ def _save_voice_ai_settings(
     if voice_twilio_auth_token.strip():
         cfg.voice_twilio_auth_token_enc = encrypt(voice_twilio_auth_token.strip())
     cfg.voice_elevenlabs_voice_id = voice_elevenlabs_voice_id.strip() or "EXAVITQu4vr4xnSDxMaL"
+    if voice_google_tts_voice.strip():
+        cfg.voice_google_tts_voice = voice_google_tts_voice.strip()
     cfg.voice_send_channel = voice_send_channel.strip() or "disabled"
     cfg.voice_post_call_summary = voice_post_call_summary.strip().lower() == "true"
     cfg.voice_scheduled_calls_enabled = voice_scheduled_calls_enabled.strip().lower() == "true"
@@ -4075,6 +4078,7 @@ async def voice_ai_settings_save(
     voice_twilio_auth_token: str = Form(""),
     voice_twilio_from_number: str = Form(""),
     voice_elevenlabs_voice_id: str = Form("EXAVITQu4vr4xnSDxMaL"),
+    voice_google_tts_voice: str = Form(""),
     voice_send_channel: str = Form("disabled"),
     voice_post_call_summary: str = Form("false"),
     voice_scheduled_calls_enabled: str = Form("false"),
@@ -4111,6 +4115,7 @@ async def voice_ai_settings_save(
         voice_twilio_auth_token=voice_twilio_auth_token,
         voice_twilio_from_number=voice_twilio_from_number,
         voice_elevenlabs_voice_id=voice_elevenlabs_voice_id,
+        voice_google_tts_voice=voice_google_tts_voice,
         voice_send_channel=voice_send_channel,
         voice_post_call_summary=voice_post_call_summary,
         voice_scheduled_calls_enabled=voice_scheduled_calls_enabled,
@@ -9747,11 +9752,19 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
             "faq": tenant_config_obj.faq if tenant_config_obj else "",
             "nearby_restaurants": tenant_config_obj.nearby_restaurants if tenant_config_obj else "",
         }
-        # Admin live testing should respect the system-level voice selected on the
-        # page before falling back to the tenant's default voice profile.
+        # Apply tenant's Google TTS voice preference (overrides system default if set)
+        tenant_google_voice = getattr(tenant_config_obj, "voice_google_tts_voice", None) if tenant_config_obj else None
+        if tenant_google_voice:
+            VoiceAIService.GOOGLE_TTS_VOICE = tenant_google_voice
+            # Auto-derive language code from voice name (e.g. "en-GB-Neural2-A" → "en-GB")
+            parts = tenant_google_voice.split("-")
+            if len(parts) >= 2:
+                VoiceAIService.GOOGLE_TTS_LANGUAGE = f"{parts[0]}-{parts[1]}"
+
+        # ElevenLabs voice: prefer tenant setting over system default
         voice_id = (
-            getattr(sys_conf, "voice_elevenlabs_voice_id", None)
-            or (tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None)
+            (tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None)
+            or getattr(sys_conf, "voice_elevenlabs_voice_id", None)
             or "EXAVITQu4vr4xnSDxMaL"  # Rachel (default)
         )
 

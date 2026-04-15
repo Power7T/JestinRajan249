@@ -255,16 +255,49 @@ tailwind.config = {
         </div>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Voice Selection</label>
-          <select name="voice_elevenlabs_voice_id" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
-            <option value="EXAVITQu4vr4xnSDxMaL" {% if (cfg.voice_elevenlabs_voice_id or 'EXAVITQu4vr4xnSDxMaL') == 'EXAVITQu4vr4xnSDxMaL' %}selected{% endif %}>Rachel - Female (Default)</option>
-            <option value="VR6AewLTigWG4xSOukaG" {% if cfg.voice_elevenlabs_voice_id == 'VR6AewLTigWG4xSOukaG' %}selected{% endif %}>Arnold - Male</option>
-            <option value="pNInz6obpgDQGcFmaJgB" {% if cfg.voice_elevenlabs_voice_id == 'pNInz6obpgDQGcFmaJgB' %}selected{% endif %}>Adam - Male</option>
-            <option value="MF3mGyEYCl7XYWbV9V6O" {% if cfg.voice_elevenlabs_voice_id == 'MF3mGyEYCl7XYWbV9V6O' %}selected{% endif %}>Elli - Female</option>
-            <option value="AZnzlk1XvdvUeBnXmlld" {% if cfg.voice_elevenlabs_voice_id == 'AZnzlk1XvdvUeBnXmlld' %}selected{% endif %}>Domi - Female</option>
-            <option value="ErXwobaYiN019PkySvjV" {% if cfg.voice_elevenlabs_voice_id == 'ErXwobaYiN019PkySvjV' %}selected{% endif %}>Antoni - Male</option>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">AI Voice</label>
+          <p class="text-[0.7rem] text-slate-500 mb-2">Choose the voice your AI uses during calls. Google Neural2 voices are crisp, natural-sounding, and free up to 1M chars/month.</p>
+          <select name="voice_google_tts_voice" class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#5B8DEF]">
+            {% set cur_voice = cfg.voice_google_tts_voice or 'en-US-Neural2-F' %}
+            <optgroup label="🇺🇸 English (US) — Female">
+              <option value="en-US-Neural2-C" {% if cur_voice == 'en-US-Neural2-C' %}selected{% endif %}>Neural2-C — Warm &amp; Friendly (US F)</option>
+              <option value="en-US-Neural2-E" {% if cur_voice == 'en-US-Neural2-E' %}selected{% endif %}>Neural2-E — Clear &amp; Professional (US F)</option>
+              <option value="en-US-Neural2-F" {% if cur_voice == 'en-US-Neural2-F' %}selected{% endif %}>Neural2-F — Natural &amp; Confident (US F) ★ Default</option>
+              <option value="en-US-Neural2-G" {% if cur_voice == 'en-US-Neural2-G' %}selected{% endif %}>Neural2-G — Calm &amp; Soothing (US F)</option>
+              <option value="en-US-Neural2-H" {% if cur_voice == 'en-US-Neural2-H' %}selected{% endif %}>Neural2-H — Bright &amp; Energetic (US F)</option>
+              <option value="en-US-Wavenet-F" {% if cur_voice == 'en-US-Wavenet-F' %}selected{% endif %}>Wavenet-F — Soft &amp; Welcoming (US F)</option>
+              <option value="en-US-Wavenet-G" {% if cur_voice == 'en-US-Wavenet-G' %}selected{% endif %}>Wavenet-G — Smooth &amp; Gentle (US F)</option>
+            </optgroup>
+            <optgroup label="🇺🇸 English (US) — Male">
+              <option value="en-US-Neural2-A" {% if cur_voice == 'en-US-Neural2-A' %}selected{% endif %}>Neural2-A — Deep &amp; Authoritative (US M)</option>
+              <option value="en-US-Neural2-B" {% if cur_voice == 'en-US-Neural2-B' %}selected{% endif %}>Neural2-B — Warm &amp; Casual (US M)</option>
+              <option value="en-US-Neural2-D" {% if cur_voice == 'en-US-Neural2-D' %}selected{% endif %}>Neural2-D — Clear &amp; Friendly (US M)</option>
+              <option value="en-US-Neural2-I" {% if cur_voice == 'en-US-Neural2-I' %}selected{% endif %}>Neural2-I — Smooth &amp; Calm (US M)</option>
+              <option value="en-US-Neural2-J" {% if cur_voice == 'en-US-Neural2-J' %}selected{% endif %}>Neural2-J — Bright &amp; Conversational (US M)</option>
+              <option value="en-US-Wavenet-B" {% if cur_voice == 'en-US-Wavenet-B' %}selected{% endif %}>Wavenet-B — Rich &amp; Warm (US M)</option>
+              <option value="en-US-Wavenet-D" {% if cur_voice == 'en-US-Wavenet-D' %}selected{% endif %}>Wavenet-D — Natural &amp; Professional (US M)</option>
+            </optgroup>
+            <optgroup label="🇬🇧 English (UK)">
+              <option value="en-GB-Neural2-A" {% if cur_voice == 'en-GB-Neural2-A' %}selected{% endif %}>Neural2-A — British Female</option>
+              <option value="en-GB-Neural2-B" {% if cur_voice == 'en-GB-Neural2-B' %}selected{% endif %}>Neural2-B — British Male</option>
+              <option value="en-GB-Neural2-C" {% if cur_voice == 'en-GB-Neural2-C' %}selected{% endif %}>Neural2-C — British Female (Alt)</option>
+              <option value="en-GB-Neural2-D" {% if cur_voice == 'en-GB-Neural2-D' %}selected{% endif %}>Neural2-D — British Male (Alt)</option>
+            </optgroup>
+            <optgroup label="🇦🇺 English (Australia)">
+              <option value="en-AU-Neural2-A" {% if cur_voice == 'en-AU-Neural2-A' %}selected{% endif %}>Neural2-A — Australian Female</option>
+              <option value="en-AU-Neural2-B" {% if cur_voice == 'en-AU-Neural2-B' %}selected{% endif %}>Neural2-B — Australian Male</option>
+              <option value="en-AU-Neural2-C" {% if cur_voice == 'en-AU-Neural2-C' %}selected{% endif %}>Neural2-C — Australian Female (Alt)</option>
+              <option value="en-AU-Neural2-D" {% if cur_voice == 'en-AU-Neural2-D' %}selected{% endif %}>Neural2-D — Australian Male (Alt)</option>
+            </optgroup>
+            <optgroup label="🇮🇳 English (India)">
+              <option value="en-IN-Neural2-A" {% if cur_voice == 'en-IN-Neural2-A' %}selected{% endif %}>Neural2-A — Indian Female</option>
+              <option value="en-IN-Neural2-B" {% if cur_voice == 'en-IN-Neural2-B' %}selected{% endif %}>Neural2-B — Indian Male</option>
+              <option value="en-IN-Neural2-C" {% if cur_voice == 'en-IN-Neural2-C' %}selected{% endif %}>Neural2-C — Indian Male (Alt)</option>
+              <option value="en-IN-Neural2-D" {% if cur_voice == 'en-IN-Neural2-D' %}selected{% endif %}>Neural2-D — Indian Female (Alt)</option>
+            </optgroup>
           </select>
+          <p class="text-[0.65rem] text-slate-600 mt-1.5">Neural2 = highest quality. Wavenet = good quality. Both powered by Google Cloud TTS.</p>
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Send Info During Call Via</label>
@@ -371,7 +404,9 @@ tailwind.config = {
         <p class="text-[0.65rem] font-bold text-[#aec6ff] uppercase tracking-[0.3em] mb-3">Your Property Context</p>
         <p class="text-xs text-slate-400 mb-3">The AI will use this info to answer guest questions. Fill in missing fields so your AI knows more.</p>
         <div class="space-y-2">
+          {% set cur_goog_voice = cfg.voice_google_tts_voice or 'en-US-Neural2-F (default)' %}
           {% set ctx_fields = [
+            ('voice_google_tts_voice', 'AI Voice',    cur_goog_voice),
             ('property_city',     'Location',       cfg.property_city),
             ('check_in_time',     'Check-in',       cfg.check_in_time),
             ('check_out_time',    'Check-out',       cfg.check_out_time),

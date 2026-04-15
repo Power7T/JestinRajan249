@@ -158,6 +158,7 @@ def db_migrate():
         ("tenant_configs", "voice_elevenlabs_stability","FLOAT",       "0.5"),
         ("tenant_configs", "voice_elevenlabs_similarity","FLOAT",      "0.75"),
         ("tenant_configs", "voice_elevenlabs_model",   "VARCHAR(50)",  "'eleven_turbo_v2'"),
+        ("tenant_configs", "voice_google_tts_voice",  "VARCHAR(64)",  "NULL"),
         ("tenant_configs", "notify_host_on_guest_msg","BOOLEAN",      false_default),
         ("tenant_configs", "host_notify_phone",       "VARCHAR(32)",  "NULL"),
         ("tenant_configs", "email_ingest_mode",       "VARCHAR(32)",  "'imap'"),

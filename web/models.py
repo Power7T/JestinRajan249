@@ -284,6 +284,9 @@ class TenantConfig(Base):
     voice_elevenlabs_similarity:  Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.75)
     voice_elevenlabs_model:       Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="eleven_turbo_v2")
 
+    # Voice AI — Google Cloud TTS voice (per-tenant override; falls back to system default)
+    voice_google_tts_voice:       Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
     # Host notifications on guest messages
     notify_host_on_guest_msg: Mapped[bool]           = mapped_column(Boolean, default=False)
     host_notify_phone:        Mapped[Optional[str]]  = mapped_column(String(32), nullable=True)  # optional separate phone for notifications
