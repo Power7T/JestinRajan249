@@ -786,6 +786,7 @@ tailwind.config = {
 {%- endblock %}
 {%- endblock %}
 
+{%- block scripts %}
 <script nonce="{{ request.state.csp_nonce }}">
 function toggleTranscript(id) {
   const el = document.getElementById('transcript-' + id);
@@ -1126,3 +1127,4 @@ document.addEventListener('click', function (event) {
   });
 })();
 </script>
+{%- endblock %}
