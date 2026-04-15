@@ -12,6 +12,36 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+# OpenRouter / model pricing table (USD per 1M tokens, input/output)
+_MODEL_PRICE: dict[str, tuple[float, float]] = {
+    "anthropic/claude-3.7-sonnet":          (3.00,  15.00),
+    "anthropic/claude-3.5-sonnet":          (3.00,  15.00),
+    "anthropic/claude-3-opus":              (15.00, 75.00),
+    "anthropic/claude-3-haiku":             (0.25,   1.25),
+    "meta-llama/llama-3.3-70b-instruct":    (0.12,   0.30),
+    "meta-llama/llama-3.1-70b-instruct":    (0.12,   0.30),
+    "mistralai/mistral-large":              (2.00,   6.00),
+    "mistralai/mistral-7b-instruct":        (0.07,   0.07),
+    "google/gemini-2.5-flash":              (0.075,  0.30),
+    "google/gemini-flash-1.5":              (0.075,  0.30),
+    "openai/gpt-4o":                        (5.00,  15.00),
+    "openai/gpt-4o-mini":                   (0.15,   0.60),
+}
+
+def _calc_model_cost(model: str, input_tokens: int, output_tokens: int) -> float:
+    """Return USD cost for a model call given token counts."""
+    # Exact match first, then prefix match
+    price = _MODEL_PRICE.get(model)
+    if price is None:
+        for k, v in _MODEL_PRICE.items():
+            if model.startswith(k) or k in model:
+                price = v
+                break
+    if price is None:
+        # Unknown model — default to cheap estimate
+        price = (1.00, 3.00)
+    return (input_tokens / 1_000_000) * price[0] + (output_tokens / 1_000_000) * price[1]
+
 import anthropic
 
 from web.workflow import build_structured_policy_context
@@ -333,16 +363,13 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
 
                 usage = resp.usage
                 if usage:
-                    cost = 0.0
-                    if "gpt-4o-mini" in model:
-                        cost = (usage.prompt_tokens / 1000000 * 0.15) + (usage.completion_tokens / 1000000 * 0.60)
                     log_entry = APIUsageLog(
                         tenant_id=tenant_id,
                         service="openrouter",
                         operation=f"sentiment_analysis:{model}",
                         input_tokens=usage.prompt_tokens,
                         output_tokens=usage.completion_tokens,
-                        cost_usd=cost
+                        cost_usd=_calc_model_cost(model, usage.prompt_tokens, usage.completion_tokens),
                     )
                     db.add(log_entry)
                     db.commit()
@@ -467,13 +494,16 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
                     if guest_name:
                         content = content.replace("Guest", guest_name)
 
-                    # Log usage
+                    # Log usage with real cost
+                    _in_tok  = resp.usage.prompt_tokens     if (hasattr(resp, 'usage') and resp.usage) else 0
+                    _out_tok = resp.usage.completion_tokens if (hasattr(resp, 'usage') and resp.usage) else 0
                     log_entry = APIUsageLog(
                         tenant_id=tenant_id,
                         service="openrouter",
                         operation=f"generate_draft:{model_to_use}",
-                        input_tokens=resp.usage.prompt_tokens if hasattr(resp, 'usage') else 0,
-                        output_tokens=resp.usage.completion_tokens if hasattr(resp, 'usage') else 0,
+                        input_tokens=_in_tok,
+                        output_tokens=_out_tok,
+                        cost_usd=_calc_model_cost(model_to_use, _in_tok, _out_tok),
                     )
                     db.add(log_entry)
 
