@@ -393,6 +393,7 @@ tailwind.config = {
   {% endif %}
 
   {% if tab == 'test' %}
+  <input type="hidden" name="csrf_token" id="test-csrf" value="{{ request.state.csrf_token }}">
   <!-- ── AI Test Call Section ─────────────────────────────────────── -->
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
 
@@ -434,10 +435,57 @@ tailwind.config = {
       <!-- Live Call Widget -->
       <div class="glass-card rounded-3xl p-5 border border-green-500/15">
         <p class="text-[0.65rem] font-bold text-green-400 uppercase tracking-[0.3em] mb-3">☎️ Live Test Call</p>
-        <p class="text-xs text-slate-400 mb-4">Speak as a guest — the AI answers using your actual property info. Any questions it can't answer appear as knowledge gaps below.</p>
+
+        <!-- Inline Voice Picker -->
+        <div class="mb-4 p-3 rounded-2xl bg-white/5 border border-white/8">
+          <label class="block text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest mb-2">AI Voice</label>
+          <div class="flex gap-2">
+            <select id="inlineVoicePicker" class="flex-1 px-2.5 py-1.5 bg-[#0d0e14] border border-white/10 rounded-lg text-white text-xs focus:outline-none focus:border-green-500 truncate">
+              {% set cv = cfg.voice_google_tts_voice or 'en-US-Neural2-F' %}
+              <optgroup label="🇺🇸 US — Female">
+                <option value="en-US-Neural2-C" {% if cv == 'en-US-Neural2-C' %}selected{% endif %}>Neural2-C · Warm &amp; Friendly</option>
+                <option value="en-US-Neural2-E" {% if cv == 'en-US-Neural2-E' %}selected{% endif %}>Neural2-E · Clear &amp; Professional</option>
+                <option value="en-US-Neural2-F" {% if cv == 'en-US-Neural2-F' %}selected{% endif %}>Neural2-F · Natural ★</option>
+                <option value="en-US-Neural2-G" {% if cv == 'en-US-Neural2-G' %}selected{% endif %}>Neural2-G · Calm &amp; Soothing</option>
+                <option value="en-US-Neural2-H" {% if cv == 'en-US-Neural2-H' %}selected{% endif %}>Neural2-H · Bright &amp; Energetic</option>
+                <option value="en-US-Wavenet-F" {% if cv == 'en-US-Wavenet-F' %}selected{% endif %}>Wavenet-F · Soft &amp; Welcoming</option>
+              </optgroup>
+              <optgroup label="🇺🇸 US — Male">
+                <option value="en-US-Neural2-A" {% if cv == 'en-US-Neural2-A' %}selected{% endif %}>Neural2-A · Deep &amp; Authoritative</option>
+                <option value="en-US-Neural2-B" {% if cv == 'en-US-Neural2-B' %}selected{% endif %}>Neural2-B · Warm &amp; Casual</option>
+                <option value="en-US-Neural2-D" {% if cv == 'en-US-Neural2-D' %}selected{% endif %}>Neural2-D · Clear &amp; Friendly</option>
+                <option value="en-US-Neural2-I" {% if cv == 'en-US-Neural2-I' %}selected{% endif %}>Neural2-I · Smooth &amp; Calm</option>
+                <option value="en-US-Neural2-J" {% if cv == 'en-US-Neural2-J' %}selected{% endif %}>Neural2-J · Bright &amp; Conversational</option>
+                <option value="en-US-Wavenet-D" {% if cv == 'en-US-Wavenet-D' %}selected{% endif %}>Wavenet-D · Natural &amp; Professional</option>
+              </optgroup>
+              <optgroup label="🇬🇧 British">
+                <option value="en-GB-Neural2-A" {% if cv == 'en-GB-Neural2-A' %}selected{% endif %}>Neural2-A · British Female</option>
+                <option value="en-GB-Neural2-B" {% if cv == 'en-GB-Neural2-B' %}selected{% endif %}>Neural2-B · British Male</option>
+                <option value="en-GB-Neural2-C" {% if cv == 'en-GB-Neural2-C' %}selected{% endif %}>Neural2-C · British Female Alt</option>
+                <option value="en-GB-Neural2-D" {% if cv == 'en-GB-Neural2-D' %}selected{% endif %}>Neural2-D · British Male Alt</option>
+              </optgroup>
+              <optgroup label="🇦🇺 Australian">
+                <option value="en-AU-Neural2-A" {% if cv == 'en-AU-Neural2-A' %}selected{% endif %}>Neural2-A · Australian Female</option>
+                <option value="en-AU-Neural2-B" {% if cv == 'en-AU-Neural2-B' %}selected{% endif %}>Neural2-B · Australian Male</option>
+                <option value="en-AU-Neural2-C" {% if cv == 'en-AU-Neural2-C' %}selected{% endif %}>Neural2-C · Australian Female Alt</option>
+                <option value="en-AU-Neural2-D" {% if cv == 'en-AU-Neural2-D' %}selected{% endif %}>Neural2-D · Australian Male Alt</option>
+              </optgroup>
+              <optgroup label="🇮🇳 Indian">
+                <option value="en-IN-Neural2-A" {% if cv == 'en-IN-Neural2-A' %}selected{% endif %}>Neural2-A · Indian Female</option>
+                <option value="en-IN-Neural2-B" {% if cv == 'en-IN-Neural2-B' %}selected{% endif %}>Neural2-B · Indian Male</option>
+                <option value="en-IN-Neural2-D" {% if cv == 'en-IN-Neural2-D' %}selected{% endif %}>Neural2-D · Indian Female Alt</option>
+              </optgroup>
+            </select>
+            <button id="saveVoiceBtn" type="button"
+              class="px-3 py-1.5 bg-[#5B8DEF]/20 text-[#5B8DEF] hover:bg-[#5B8DEF]/35 rounded-lg text-xs font-bold transition-colors whitespace-nowrap">
+              Save
+            </button>
+          </div>
+          <p id="saveVoiceMsg" class="hidden text-[0.65rem] text-emerald-400 mt-1.5">✓ Voice saved — takes effect on next call</p>
+        </div>
 
         <!-- Chat Log -->
-        <div id="hostVoiceChatContainer" class="bg-[#0d0e14] rounded-2xl p-3 mb-4 overflow-y-auto border border-white/8 flex flex-col gap-2" style="height:280px;">
+        <div id="hostVoiceChatContainer" class="bg-[#0d0e14] rounded-2xl p-3 mb-4 overflow-y-auto border border-white/8 flex flex-col gap-2" style="height:240px;">
           <div class="text-center text-slate-600 m-auto text-xs">Press Call to start</div>
         </div>
 
@@ -940,7 +988,9 @@ document.addEventListener('click', function (event) {
     hostVoiceWs = new WebSocket(protocol + '//' + location.host + '/ws/voice-ai/live');
 
     hostVoiceWs.onopen = function() {
-      hostVoiceWs.send(JSON.stringify({ type: 'start', tenant_id: '{{ tenant.id }}' }));
+      var voicePicker = document.getElementById('inlineVoicePicker');
+      var selectedVoice = voicePicker ? voicePicker.value : '';
+      hostVoiceWs.send(JSON.stringify({ type: 'start', tenant_id: '{{ tenant.id }}', voice: selectedVoice }));
       try {
         hostAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
         if (hostAudioContext.state === 'suspended') hostAudioContext.resume().catch(function(){});
@@ -1042,6 +1092,37 @@ document.addEventListener('click', function (event) {
       muteBtn.textContent = hostIsMuted ? '🔇 Unmute' : '🔊 Mute';
       muteBtn.style.background = hostIsMuted ? 'linear-gradient(to right, #ef4444, #dc2626)' : '';
     });
+
+    // Save Voice button — AJAX POST to /api/voice/save-voice
+    var saveVoiceBtn = document.getElementById('saveVoiceBtn');
+    var saveVoiceMsg = document.getElementById('saveVoiceMsg');
+    if (saveVoiceBtn) {
+      saveVoiceBtn.addEventListener('click', function() {
+        var picker = document.getElementById('inlineVoicePicker');
+        if (!picker) return;
+        var voice = picker.value;
+        var csrf = document.getElementById('test-csrf') || document.querySelector('input[name="csrf_token"]');
+        saveVoiceBtn.textContent = 'Saving...';
+        saveVoiceBtn.disabled = true;
+        fetch('/api/voice/save-voice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf ? csrf.value : '' },
+          body: JSON.stringify({ voice: voice })
+        }).then(function(r) {
+          saveVoiceBtn.textContent = 'Save';
+          saveVoiceBtn.disabled = false;
+          if (r.ok) {
+            if (saveVoiceMsg) { saveVoiceMsg.classList.remove('hidden'); setTimeout(function() { saveVoiceMsg.classList.add('hidden'); }, 3000); }
+          } else {
+            saveVoiceBtn.textContent = 'Error';
+            setTimeout(function() { saveVoiceBtn.textContent = 'Save'; }, 2000);
+          }
+        }).catch(function() {
+          saveVoiceBtn.textContent = 'Save';
+          saveVoiceBtn.disabled = false;
+        });
+      });
+    }
   });
 })();
 </script>

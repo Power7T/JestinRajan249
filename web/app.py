@@ -9595,6 +9595,27 @@ async def voice_ai_voice_message(request: Request, audio: UploadFile = File(...)
         }, status_code=500)
 
 
+@app.post("/api/voice/save-voice")
+async def api_save_voice(request: Request, db: Session = Depends(get_db)):
+    """Save per-tenant Google TTS voice selection (called from inline voice picker)."""
+    try:
+        tenant = _require_auth(request, db)
+        validate_csrf_header(request)
+        data = await request.json()
+        voice = (data.get("voice") or "").strip()
+        if not voice:
+            return JSONResponse({"error": "No voice specified"}, status_code=400)
+        cfg = _get_or_create_config(tenant.id, db)
+        cfg.voice_google_tts_voice = voice
+        db.commit()
+        return JSONResponse({"ok": True, "voice": voice})
+    except HTTPException:
+        raise
+    except Exception as exc:
+        log.error(f"save-voice error: {exc}")
+        return JSONResponse({"error": str(exc)[:100]}, status_code=500)
+
+
 @app.post("/api/voice-ai/synthesize")
 async def voice_ai_synthesize(request: Request, db: Session = Depends(get_db)):
     """Synthesize text to speech (text-to-speech)"""
@@ -9752,14 +9773,17 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
             "faq": tenant_config_obj.faq if tenant_config_obj else "",
             "nearby_restaurants": tenant_config_obj.nearby_restaurants if tenant_config_obj else "",
         }
-        # Apply tenant's Google TTS voice preference (overrides system default if set)
-        tenant_google_voice = getattr(tenant_config_obj, "voice_google_tts_voice", None) if tenant_config_obj else None
+        # Apply Google TTS voice: init_data['voice'] (inline picker) > tenant DB > system default
+        session_voice = (init_data.get("voice") or "").strip()
+        tenant_google_voice = session_voice or (getattr(tenant_config_obj, "voice_google_tts_voice", None) if tenant_config_obj else None)
         if tenant_google_voice:
             VoiceAIService.GOOGLE_TTS_VOICE = tenant_google_voice
             # Auto-derive language code from voice name (e.g. "en-GB-Neural2-A" → "en-GB")
             parts = tenant_google_voice.split("-")
             if len(parts) >= 2:
                 VoiceAIService.GOOGLE_TTS_LANGUAGE = f"{parts[0]}-{parts[1]}"
+        if session_voice:
+            log.info(f"Session voice override: {session_voice}")
 
         # ElevenLabs voice: prefer tenant setting over system default
         voice_id = (
