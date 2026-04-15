@@ -9292,6 +9292,261 @@ def admin_api_health(request: Request, db: Session = Depends(get_db)):
         "predicted_monthly": predicted_monthly,
     })
 
+
+@app.get("/admin/api-status")
+async def admin_api_status(request: Request, db: Session = Depends(get_db)):
+    """Live health check for every external API the app uses."""
+    _require_admin(request, db)
+    sys_conf = load_system_config(db) or SystemConfig()
+    import time as _time
+    import urllib.request as _urllib_req
+    import urllib.error as _urllib_err
+    import httpx as _httpx
+
+    results = {}
+
+    def _no_key(name: str) -> dict:
+        return {"status": "unconfigured", "msg": "No API key configured", "ms": None}
+
+    def _ok(msg: str, ms: float) -> dict:
+        return {"status": "ok", "msg": msg, "ms": round(ms)}
+
+    def _err(msg: str, ms: float | None = None) -> dict:
+        return {"status": "error", "msg": msg, "ms": round(ms) if ms is not None else None}
+
+    # ── OpenRouter ────────────────────────────────────────────────────────────
+    try:
+        if sys_conf.openrouter_api_key_enc:
+            key = decrypt(sys_conf.openrouter_api_key_enc)
+            if not key:
+                results["openrouter"] = _err("Decryption failed")
+            else:
+                t0 = _time.monotonic()
+                req = _urllib_req.Request(
+                    "https://openrouter.ai/api/v1/models",
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                )
+                try:
+                    _urllib_req.urlopen(req, timeout=6)
+                    results["openrouter"] = _ok("Connected", (_time.monotonic() - t0) * 1000)
+                except _urllib_err.HTTPError as e:
+                    ms = (_time.monotonic() - t0) * 1000
+                    results["openrouter"] = _err(f"HTTP {e.code} — Invalid API key" if e.code in (401, 403) else f"HTTP {e.code}", ms)
+        else:
+            results["openrouter"] = _no_key("openrouter")
+    except Exception as e:
+        results["openrouter"] = _err(str(e)[:80])
+
+    # ── Deepgram ──────────────────────────────────────────────────────────────
+    try:
+        if sys_conf.deepgram_api_key_enc:
+            key = decrypt(sys_conf.deepgram_api_key_enc)
+            if not key:
+                results["deepgram"] = _err("Decryption failed")
+            else:
+                t0 = _time.monotonic()
+                req = _urllib_req.Request(
+                    "https://api.deepgram.com/v1/models",
+                    headers={"Authorization": f"Token {key}", "Content-Type": "application/json"},
+                )
+                try:
+                    _urllib_req.urlopen(req, timeout=6)
+                    results["deepgram"] = _ok("Connected", (_time.monotonic() - t0) * 1000)
+                except _urllib_err.HTTPError as e:
+                    ms = (_time.monotonic() - t0) * 1000
+                    results["deepgram"] = _err(f"Invalid API key" if e.code == 401 else f"HTTP {e.code}", ms)
+        else:
+            results["deepgram"] = _no_key("deepgram")
+    except Exception as e:
+        results["deepgram"] = _err(str(e)[:80])
+
+    # ── Google TTS ────────────────────────────────────────────────────────────
+    try:
+        if sys_conf.google_tts_api_key_enc:
+            key = decrypt(sys_conf.google_tts_api_key_enc)
+            if not key:
+                results["google_tts"] = _err("Decryption failed")
+            else:
+                lang = getattr(sys_conf, "voice_google_tts_language", None) or "en-US"
+                voice_name = getattr(sys_conf, "voice_google_tts_voice", None) or "en-US-Neural2-F"
+                t0 = _time.monotonic()
+                async with _httpx.AsyncClient(timeout=8) as client:
+                    resp = await client.post(
+                        f"https://texttospeech.googleapis.com/v1/text:synthesize?key={key}",
+                        json={"input": {"text": "OK"}, "voice": {"languageCode": lang, "name": voice_name}, "audioConfig": {"audioEncoding": "MP3"}},
+                    )
+                ms = (_time.monotonic() - t0) * 1000
+                if resp.status_code == 200:
+                    results["google_tts"] = _ok("Connected — synthesis OK", ms)
+                elif resp.status_code in (401, 403):
+                    results["google_tts"] = _err("Invalid or unauthorized API key", ms)
+                elif resp.status_code == 400:
+                    results["google_tts"] = _err(f"Bad request (check voice/language config): {resp.text[:60]}", ms)
+                else:
+                    results["google_tts"] = _err(f"HTTP {resp.status_code}", ms)
+        else:
+            results["google_tts"] = _no_key("google_tts")
+    except Exception as e:
+        results["google_tts"] = _err(str(e)[:80])
+
+    # ── ElevenLabs ────────────────────────────────────────────────────────────
+    try:
+        if sys_conf.elevenlabs_api_key_enc:
+            key = decrypt(sys_conf.elevenlabs_api_key_enc)
+            if not key:
+                results["elevenlabs"] = _err("Decryption failed")
+            else:
+                t0 = _time.monotonic()
+                async with _httpx.AsyncClient(timeout=8) as client:
+                    resp = await client.get("https://api.elevenlabs.io/v1/user", headers={"xi-api-key": key})
+                ms = (_time.monotonic() - t0) * 1000
+                if resp.status_code == 200:
+                    results["elevenlabs"] = _ok("Connected", ms)
+                elif resp.status_code in (401, 403):
+                    results["elevenlabs"] = _err("Invalid API key", ms)
+                else:
+                    results["elevenlabs"] = _err(f"HTTP {resp.status_code}", ms)
+        else:
+            results["elevenlabs"] = _no_key("elevenlabs")
+    except Exception as e:
+        results["elevenlabs"] = _err(str(e)[:80])
+
+    # ── Twilio (SMS) ──────────────────────────────────────────────────────────
+    try:
+        sid = sys_conf.twilio_account_sid
+        tok_enc = sys_conf.twilio_auth_token_enc
+        if sid and tok_enc:
+            tok = decrypt(tok_enc)
+            if not tok:
+                results["twilio_sms"] = _err("Decryption failed")
+            else:
+                import base64 as _b64
+                creds = _b64.b64encode(f"{sid}:{tok}".encode()).decode()
+                t0 = _time.monotonic()
+                req = _urllib_req.Request(
+                    f"https://api.twilio.com/2010-04-01/Accounts/{sid}.json",
+                    headers={"Authorization": f"Basic {creds}"},
+                )
+                try:
+                    _urllib_req.urlopen(req, timeout=6)
+                    results["twilio_sms"] = _ok("Connected", (_time.monotonic() - t0) * 1000)
+                except _urllib_err.HTTPError as e:
+                    ms = (_time.monotonic() - t0) * 1000
+                    results["twilio_sms"] = _err(f"Invalid credentials" if e.code in (401, 403) else f"HTTP {e.code}", ms)
+        else:
+            results["twilio_sms"] = _no_key("twilio_sms")
+    except Exception as e:
+        results["twilio_sms"] = _err(str(e)[:80])
+
+    # ── Twilio (Voice) ────────────────────────────────────────────────────────
+    try:
+        sid = getattr(sys_conf, "voice_twilio_account_sid", None)
+        tok_enc = getattr(sys_conf, "voice_twilio_auth_token_enc", None)
+        if sid and tok_enc:
+            tok = decrypt(tok_enc)
+            if not tok:
+                results["twilio_voice"] = _err("Decryption failed")
+            else:
+                import base64 as _b64
+                creds = _b64.b64encode(f"{sid}:{tok}".encode()).decode()
+                t0 = _time.monotonic()
+                req = _urllib_req.Request(
+                    f"https://api.twilio.com/2010-04-01/Accounts/{sid}.json",
+                    headers={"Authorization": f"Basic {creds}"},
+                )
+                try:
+                    _urllib_req.urlopen(req, timeout=6)
+                    results["twilio_voice"] = _ok("Connected", (_time.monotonic() - t0) * 1000)
+                except _urllib_err.HTTPError as e:
+                    ms = (_time.monotonic() - t0) * 1000
+                    results["twilio_voice"] = _err(f"Invalid credentials" if e.code in (401, 403) else f"HTTP {e.code}", ms)
+        else:
+            results["twilio_voice"] = _no_key("twilio_voice")
+    except Exception as e:
+        results["twilio_voice"] = _err(str(e)[:80])
+
+    # ── Google Maps ───────────────────────────────────────────────────────────
+    try:
+        if sys_conf.google_maps_api_key_enc:
+            key = decrypt(sys_conf.google_maps_api_key_enc)
+            if not key:
+                results["google_maps"] = _err("Decryption failed")
+            else:
+                t0 = _time.monotonic()
+                req = _urllib_req.Request(
+                    f"https://maps.googleapis.com/maps/api/geocode/json?address=test&key={key}"
+                )
+                try:
+                    import json as _json
+                    with _urllib_req.urlopen(req, timeout=6) as r:
+                        body = _json.loads(r.read())
+                    ms = (_time.monotonic() - t0) * 1000
+                    status = body.get("status", "")
+                    if status in ("OK", "ZERO_RESULTS"):
+                        results["google_maps"] = _ok("Connected", ms)
+                    elif status == "REQUEST_DENIED":
+                        results["google_maps"] = _err("API key denied — check billing/restrictions", ms)
+                    else:
+                        results["google_maps"] = _err(f"API status: {status}", ms)
+                except _urllib_err.HTTPError as e:
+                    ms = (_time.monotonic() - t0) * 1000
+                    results["google_maps"] = _err(f"HTTP {e.code}", ms)
+        else:
+            results["google_maps"] = _no_key("google_maps")
+    except Exception as e:
+        results["google_maps"] = _err(str(e)[:80])
+
+    # ── Cloudflare R2 ─────────────────────────────────────────────────────────
+    try:
+        acct = sys_conf.cloudflare_account_id
+        ak_enc = sys_conf.cloudflare_r2_access_key_enc
+        sk_enc = sys_conf.cloudflare_r2_secret_key_enc
+        bucket = sys_conf.cloudflare_r2_bucket
+        if acct and ak_enc and sk_enc and bucket:
+            ak = decrypt(ak_enc)
+            sk = decrypt(sk_enc)
+            if not ak or not sk:
+                results["cloudflare_r2"] = _err("Decryption failed")
+            else:
+                import hmac as _hmac, hashlib as _hashlib, datetime as _dt_mod
+                endpoint = f"https://{acct}.r2.cloudflarestorage.com"
+                now = _dt_mod.datetime.utcnow()
+                date_str = now.strftime("%Y%m%d")
+                amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+                host = f"{acct}.r2.cloudflarestorage.com"
+                canonical = f"GET\n/{bucket}\n\nhost:{host}\nx-amz-date:{amz_date}\n\nhost;x-amz-date\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                string_to_sign = f"AWS4-HMAC-SHA256\n{amz_date}\n{date_str}/auto/s3/aws4_request\n{_hashlib.sha256(canonical.encode()).hexdigest()}"
+                def _sign(k, msg):
+                    return _hmac.new(k, msg.encode(), _hashlib.sha256).digest()
+                signing_key = _sign(_sign(_sign(_sign(f"AWS4{sk}".encode(), date_str), "auto"), "s3"), "aws4_request")
+                sig = _hmac.new(signing_key, string_to_sign.encode(), _hashlib.sha256).hexdigest()
+                auth = f"AWS4-HMAC-SHA256 Credential={ak}/{date_str}/auto/s3/aws4_request,SignedHeaders=host;x-amz-date,Signature={sig}"
+                t0 = _time.monotonic()
+                req = _urllib_req.Request(
+                    f"{endpoint}/{bucket}",
+                    headers={"Host": host, "x-amz-date": amz_date, "Authorization": auth},
+                )
+                try:
+                    _urllib_req.urlopen(req, timeout=6)
+                    results["cloudflare_r2"] = _ok("Connected", (_time.monotonic() - t0) * 1000)
+                except _urllib_err.HTTPError as e:
+                    ms = (_time.monotonic() - t0) * 1000
+                    if e.code in (403, 401):
+                        results["cloudflare_r2"] = _err("Invalid credentials", ms)
+                    elif e.code == 200:
+                        results["cloudflare_r2"] = _ok("Connected", ms)
+                    else:
+                        # 404 / 405 still means credentials are valid
+                        results["cloudflare_r2"] = _ok(f"Connected (HTTP {e.code})", (_time.monotonic() - t0) * 1000)
+        else:
+            results["cloudflare_r2"] = _no_key("cloudflare_r2")
+    except Exception as e:
+        results["cloudflare_r2"] = _err(str(e)[:80])
+
+    results["timestamp"] = datetime.utcnow().isoformat()
+    return JSONResponse(results)
+
+
 @app.post("/admin/ai/save", response_class=HTMLResponse)
 def admin_ai_save(
     request: Request,

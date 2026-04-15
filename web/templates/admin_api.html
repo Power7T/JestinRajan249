@@ -17,6 +17,109 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sidebar) sidebar.classList.add('-translate-x-full');
     overlay.classList.add('hidden');
   });
+
+  // ── API Health Logic ──────────────────────────────────────────────────────
+  var API_META = {
+    openrouter:   { label: 'OpenRouter',        icon: 'hub',           desc: 'AI conversation engine & LLM routing' },
+    deepgram:     { label: 'Deepgram',           icon: 'mic',           desc: 'Speech-to-text (voice calls)' },
+    google_tts:   { label: 'Google Cloud TTS',  icon: 'record_voice_over', desc: 'Text-to-speech (voice calls)' },
+    elevenlabs:   { label: 'ElevenLabs',         icon: 'graphic_eq',   desc: 'Premium TTS voices (optional)' },
+    twilio_sms:   { label: 'Twilio SMS',         icon: 'sms',           desc: 'SMS messaging channel' },
+    twilio_voice: { label: 'Twilio Voice',       icon: 'phone_in_talk', desc: 'Inbound/outbound voice calls' },
+    google_maps:  { label: 'Google Maps',        icon: 'map',           desc: 'Geocoding & location context' },
+    cloudflare_r2:{ label: 'Cloudflare R2',      icon: 'cloud_upload',  desc: 'Audio & media file storage' },
+  };
+
+  function renderTile(key, data) {
+    var meta = API_META[key] || { label: key, icon: 'api', desc: '' };
+    var tile = document.getElementById('tile-' + key);
+    if (!tile) return;
+
+    var status = data.status; // 'ok' | 'error' | 'unconfigured'
+    var msg = data.msg || '';
+    var ms = data.ms != null ? data.ms + ' ms' : '—';
+
+    var dotCls, badgeCls, badgeText, badgeIcon;
+    if (status === 'ok') {
+      dotCls   = 'bg-[#27c93f] shadow-[0_0_8px_rgba(39,201,63,0.6)]';
+      badgeCls = 'bg-[#27c93f]/10 border border-[#27c93f]/30 text-[#27c93f]';
+      badgeText = 'Connected';
+      badgeIcon = 'check_circle';
+    } else if (status === 'unconfigured') {
+      dotCls   = 'bg-slate-600';
+      badgeCls = 'bg-slate-700/40 border border-slate-600/30 text-slate-400';
+      badgeText = 'Not configured';
+      badgeIcon = 'radio_button_unchecked';
+    } else {
+      dotCls   = 'bg-[#ff5f57] shadow-[0_0_8px_rgba(255,95,87,0.5)]';
+      badgeCls = 'bg-red-500/10 border border-red-500/30 text-red-400';
+      badgeText = 'Error';
+      badgeIcon = 'cancel';
+    }
+
+    tile.querySelector('.status-dot').className = 'status-dot w-2.5 h-2.5 rounded-full flex-shrink-0 ' + dotCls;
+    var badge = tile.querySelector('.status-badge');
+    badge.className = 'status-badge px-2 py-0.5 rounded text-[0.65rem] font-bold tracking-wider uppercase flex items-center gap-1 ' + badgeCls;
+    badge.innerHTML = '<span class="material-symbols-outlined text-[10px]">' + badgeIcon + '</span>' + badgeText;
+    tile.querySelector('.status-msg').textContent = msg;
+    tile.querySelector('.status-ms').textContent = ms;
+  }
+
+  function setAllLoading() {
+    Object.keys(API_META).forEach(function(key) {
+      var tile = document.getElementById('tile-' + key);
+      if (!tile) return;
+      tile.querySelector('.status-dot').className = 'status-dot w-2.5 h-2.5 rounded-full flex-shrink-0 bg-amber-400 animate-pulse';
+      tile.querySelector('.status-badge').innerHTML = '<span class="material-symbols-outlined text-[10px]">sync</span>Testing…';
+      tile.querySelector('.status-badge').className = 'status-badge px-2 py-0.5 rounded text-[0.65rem] font-bold tracking-wider uppercase flex items-center gap-1 bg-amber-400/10 border border-amber-400/30 text-amber-300';
+      tile.querySelector('.status-msg').textContent = 'Checking…';
+      tile.querySelector('.status-ms').textContent = '—';
+    });
+  }
+
+  var lastChecked = document.getElementById('last-checked');
+  var testBtn = document.getElementById('test-all-btn');
+  var testBtnText = document.getElementById('test-btn-text');
+  var summaryOk = document.getElementById('summary-ok');
+  var summaryErr = document.getElementById('summary-err');
+  var summaryUnconf = document.getElementById('summary-unconf');
+
+  function runTests() {
+    setAllLoading();
+    testBtn.disabled = true;
+    testBtnText.textContent = 'Testing…';
+    fetch('/admin/api-status', { credentials: 'same-origin' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var ok = 0, err = 0, unconf = 0;
+        Object.keys(API_META).forEach(function(key) {
+          var d = data[key];
+          if (!d) d = { status: 'unconfigured', msg: 'No data', ms: null };
+          renderTile(key, d);
+          if (d.status === 'ok') ok++;
+          else if (d.status === 'unconfigured') unconf++;
+          else err++;
+        });
+        if (summaryOk) summaryOk.textContent = ok;
+        if (summaryErr) summaryErr.textContent = err;
+        if (summaryUnconf) summaryUnconf.textContent = unconf;
+        if (lastChecked) {
+          var ts = data.timestamp ? new Date(data.timestamp + 'Z') : new Date();
+          lastChecked.textContent = 'Last checked: ' + ts.toLocaleTimeString();
+        }
+      })
+      .catch(function(e) {
+        if (lastChecked) lastChecked.textContent = 'Check failed: ' + e.message;
+      })
+      .finally(function() {
+        testBtn.disabled = false;
+        testBtnText.textContent = 'Test All Services';
+      });
+  }
+
+  testBtn.addEventListener('click', runTests);
+  // Auto-run on load
+  runTests();
 });
 </script>{% endblock %}
 {% endblock %}
@@ -52,52 +155,48 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 {%- block main_wrapper %}
 {%- block content %}
 <!-- Sidebar -->
-<!-- Mobile hamburger -->
 <button id="admin-mobile-menu-btn" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
   <span class="material-symbols-outlined">menu</span>
 </button>
-<!-- Sidebar overlay for mobile -->
 <div class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden" id="admin-sidebar-overlay"></div>
 <aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain">
   <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
-<span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
-</div>
-<span>HostAI</span>
-</a>
+    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
+      <span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
+    </div>
+    <span>HostAI</span>
+  </a>
   <nav class="flex-1 px-4 space-y-1">
     <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/dashboard">
-      <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
+      <span class="material-symbols-outlined">dashboard</span> Dashboard
     </a>
     <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/conversations">
-      <span class="material-symbols-outlined" data-icon="forum">forum</span> Conversations
+      <span class="material-symbols-outlined">forum</span> Conversations
     </a>
     <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/reservations">
-      <span class="material-symbols-outlined" data-icon="event_available">event_available</span> Reservations
+      <span class="material-symbols-outlined">event_available</span> Reservations
     </a>
     <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/activity">
-      <span class="material-symbols-outlined" data-icon="history">history</span> Activity
+      <span class="material-symbols-outlined">history</span> Activity
     </a>
     <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/analytics">
-      <span class="material-symbols-outlined" data-icon="analytics">analytics</span> Analytics
+      <span class="material-symbols-outlined">analytics</span> Analytics
     </a>
-    <a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
-<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
-                Voice AI
-            </a>
-      <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
-      <span class="material-symbols-outlined" data-icon="hub">hub</span> Workflow Center
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+      <span class="material-symbols-outlined">phone_in_talk</span> Voice AI
+    </a>
+    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/workflow">
+      <span class="material-symbols-outlined">hub</span> Workflow Center
     </a>
     <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 active:scale-[0.98]" href="/settings">
-      <span class="material-symbols-outlined" data-icon="settings">settings</span> Settings
+      <span class="material-symbols-outlined">settings</span> Settings
     </a>
     {% if is_admin(admin.email) %}
     <a class="flex items-center gap-3 px-6 py-3 text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold transition-all duration-200" href="/admin">
-      <span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span> Admin Panel
+      <span class="material-symbols-outlined">admin_panel_settings</span> Admin Panel
     </a>
     {% endif %}
   </nav>
-
   <div class="p-6 border-t border-white/5">
     <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
       <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
@@ -120,11 +219,36 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 <!-- Main -->
 <main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen relative">
   <div class="absolute -top-48 -right-48 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
-  
-  <div class="mb-10 pt-4">
-    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">API Health & Performance</h1>
-    <p class="text-slate-400 text-sm">OpenRouter proxy status and routing efficiency</p>
-    
+
+  <div class="mb-8 pt-4">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">API Health</h1>
+        <p class="text-slate-400 text-sm">Live status of every external service this app uses</p>
+      </div>
+      <button id="test-all-btn" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#5B8DEF] hover:bg-[#4a7ad4] text-white font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+        <span class="material-symbols-outlined text-base">refresh</span>
+        <span id="test-btn-text">Test All Services</span>
+      </button>
+    </div>
+
+    <!-- Summary row -->
+    <div class="flex flex-wrap items-center gap-4 mt-5">
+      <div class="flex items-center gap-2 text-sm font-semibold">
+        <span class="w-2 h-2 rounded-full bg-[#27c93f]"></span>
+        <span class="text-slate-300"><span id="summary-ok">—</span> connected</span>
+      </div>
+      <div class="flex items-center gap-2 text-sm font-semibold">
+        <span class="w-2 h-2 rounded-full bg-[#ff5f57]"></span>
+        <span class="text-slate-300"><span id="summary-err">—</span> errors</span>
+      </div>
+      <div class="flex items-center gap-2 text-sm font-semibold">
+        <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+        <span class="text-slate-300"><span id="summary-unconf">—</span> not configured</span>
+      </div>
+      <span id="last-checked" class="text-slate-500 text-xs ml-auto"></span>
+    </div>
+
     <!-- Admin Subnav -->
     <div class="flex items-center gap-6 mt-6 border-b border-white/10 overflow-x-auto pb-1 whitespace-nowrap">
       <a href="/admin" class="admin-tab">Overview</a>
@@ -136,122 +260,61 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 mb-8">
-    <!-- Top Level Stats -->
-    <div class="flex flex-col gap-6">
-      <div class="glass-card rounded-3xl p-6">
-        <h2 class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-4">System State</h2>
-        
-        <div class="flex flex-col gap-3 mb-6">
-          <div class="flex items-center gap-2 text-sm font-bold text-white">
-            <span class="w-2.5 h-2.5 rounded-full bg-[#27c93f] shadow-[0_0_8px_rgba(39,201,63,0.5)]"></span> OpenRouter (Primary)
-          </div>
-          <div class="flex items-center gap-2 text-sm font-bold text-white">
-            <span class="w-2.5 h-2.5 rounded-full bg-[#27c93f] shadow-[0_0_8px_rgba(39,201,63,0.5)]"></span> OpenRouter (Fallback)
-          </div>
-          <div class="flex items-center gap-2 text-sm font-bold text-white">
-            <span class="w-2.5 h-2.5 rounded-full bg-[#27c93f] shadow-[0_0_8px_rgba(39,201,63,0.5)]"></span> OpenRouter (Sentiment)
-          </div>
-        </div>
-        
-        <h2 class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-4 pt-4 border-t border-white/5">Cost Trends</h2>
-        
-        <div class="space-y-3">
-          <div class="flex justify-between items-center text-sm">
-            <span class="text-slate-400">Avg Cost / Draft</span>
-            <span class="text-[#27c93f] font-mono font-bold">${{ "%.4f"|format(avg_cost) }}</span>
-          </div>
-          <div class="flex justify-between items-center text-sm">
-            <span class="text-slate-400">Predicted Monthly</span>
-            <span class="text-white font-mono font-bold">${{ "%.2f"|format(predicted_monthly) }}</span>
-          </div>
-        </div>
-      </div>
-      
-      <div class="glass-card rounded-3xl p-6 border border-amber-500/20 bg-amber-500/5">
-        <h4 class="text-sm font-bold text-amber-500 flex items-center gap-2 mb-3">
-          <span class="material-symbols-outlined text-sm">warning</span> Live Alerts
-        </h4>
-        <ul class="text-xs text-slate-400 font-medium space-y-2 list-disc pl-4">
-          <li>Smart Routing is active. Fallbacks operating normally.</li>
-          <li>No latency spikes detected.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- Detailed Models -->
+  <!-- Cost summary strip -->
+  <div class="glass-card rounded-2xl p-5 mb-8 flex flex-wrap gap-8 items-center">
     <div>
-      <h2 class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-4">Model Status & Uptime</h2>
-      
-      <div class="space-y-4">
-        <!-- Claude 3.5 Sonnet -->
-        <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
-          <div class="absolute top-6 right-6">
-            <div class="px-2 py-0.5 rounded bg-[#27c93f]/10 border border-[#27c93f]/30 text-[#27c93f] text-[0.65rem] font-bold tracking-wider uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(39,201,63,0.2)]">
-              <span class="material-symbols-outlined text-[10px]">check_circle</span> 99.8% Uptime
-            </div>
-          </div>
-          
-          <h3 class="text-lg font-bold text-white mb-4">Claude 3.5 Sonnet (Primary)</h3>
-          
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <div class="text-[0.65rem] text-slate-500 font-bold uppercase tracking-wider mb-1">Latency avg</div>
-              <div class="text-sm font-bold text-white font-mono">~2.4s</div>
-            </div>
-            <div>
-              <div class="text-[0.65rem] text-slate-500 font-bold uppercase tracking-wider mb-1">Rate Limits</div>
-              <div class="text-sm font-bold text-[#27c93f] font-mono">0 Hits</div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Llama 3.1 70B -->
-        <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
-          <div class="absolute top-6 right-6">
-            <div class="px-2 py-0.5 rounded bg-[#27c93f]/10 border border-[#27c93f]/30 text-[#27c93f] text-[0.65rem] font-bold tracking-wider uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(39,201,63,0.2)]">
-              <span class="material-symbols-outlined text-[10px]">check_circle</span> 99.9% Uptime
-            </div>
-          </div>
-          
-          <h3 class="text-lg font-bold text-white mb-4">Llama 3.1 70B (Primary Fallback)</h3>
-          
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <div class="text-[0.65rem] text-slate-500 font-bold uppercase tracking-wider mb-1">Latency avg</div>
-              <div class="text-sm font-bold text-white font-mono">~0.8s</div>
-            </div>
-            <div>
-              <div class="text-[0.65rem] text-slate-500 font-bold uppercase tracking-wider mb-1">Routing</div>
-              <div class="text-sm font-bold text-[#27c93f] font-mono">Handling Routine QoS</div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- GPT-4o-Mini -->
-        <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
-          <div class="absolute top-6 right-6">
-            <div class="px-2 py-0.5 rounded bg-[#27c93f]/10 border border-[#27c93f]/30 text-[#27c93f] text-[0.65rem] font-bold tracking-wider uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(39,201,63,0.2)]">
-              <span class="material-symbols-outlined text-[10px]">check_circle</span> 100% Uptime
-            </div>
-          </div>
-          
-          <h3 class="text-lg font-bold text-white mb-4">GPT-4o-Mini (Sentiment Engine)</h3>
-          
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <div class="text-[0.65rem] text-slate-500 font-bold uppercase tracking-wider mb-1">Latency avg</div>
-              <div class="text-sm font-bold text-white font-mono">~0.3s</div>
-            </div>
-            <div>
-              <div class="text-[0.65rem] text-slate-500 font-bold uppercase tracking-wider mb-1">Routing</div>
-              <div class="text-sm font-bold text-[#27c93f] font-mono">Triage Operations</div>
-            </div>
-          </div>
-        </div>
+      <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Avg Cost / Request</div>
+      <div class="text-xl font-bold text-[#27c93f] font-mono">${{ "%.4f"|format(avg_cost) }}</div>
+    </div>
+    <div class="w-px h-8 bg-white/10"></div>
+    <div>
+      <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">30-Day Spend</div>
+      <div class="text-xl font-bold text-white font-mono">${{ "%.2f"|format(predicted_monthly) }}</div>
+    </div>
+  </div>
 
+  <!-- Service tiles grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-4">
+
+    {# Macro for a tile skeleton — JS fills in status at runtime #}
+    {% set apis = [
+      ('openrouter',    'hub',                'OpenRouter',         'AI conversation engine & LLM routing'),
+      ('deepgram',      'mic',                'Deepgram',           'Speech-to-text (voice calls)'),
+      ('google_tts',    'record_voice_over',  'Google Cloud TTS',   'Text-to-speech (voice calls)'),
+      ('elevenlabs',    'graphic_eq',         'ElevenLabs',         'Premium TTS voices (optional)'),
+      ('twilio_sms',    'sms',               'Twilio SMS',         'SMS messaging channel'),
+      ('twilio_voice',  'phone_in_talk',      'Twilio Voice',       'Inbound/outbound voice calls'),
+      ('google_maps',   'map',               'Google Maps',        'Geocoding & location context'),
+      ('cloudflare_r2', 'cloud_upload',       'Cloudflare R2',      'Audio & media file storage'),
+    ] %}
+
+    {% for key, icon, label, desc in apis %}
+    <div id="tile-{{ key }}" class="glass-card rounded-2xl p-5 relative overflow-hidden">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-[#aec6ff] text-xl">{{ icon }}</span>
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="status-dot w-2.5 h-2.5 rounded-full flex-shrink-0 bg-slate-600"></span>
+              <h3 class="text-sm font-bold text-white">{{ label }}</h3>
+            </div>
+            <p class="text-xs text-slate-500">{{ desc }}</p>
+          </div>
+        </div>
+        <div class="status-badge px-2 py-0.5 rounded text-[0.65rem] font-bold tracking-wider uppercase flex items-center gap-1 bg-slate-700/40 border border-slate-600/30 text-slate-400 flex-shrink-0">
+          <span class="material-symbols-outlined text-[10px]">radio_button_unchecked</span>—
+        </div>
+      </div>
+
+      <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between gap-4">
+        <p class="status-msg text-xs text-slate-400 leading-snug">Waiting for test…</p>
+        <span class="status-ms text-xs font-mono text-slate-600 flex-shrink-0">—</span>
       </div>
     </div>
+    {% endfor %}
+
   </div>
 </main>
 {%- endblock %}
