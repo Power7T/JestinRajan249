@@ -135,8 +135,12 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   function fmt$(v) {
-    if (!v) return '$0.00';
-    return v < 0.001 ? ('$' + v.toFixed(6)) : v < 1 ? ('$' + v.toFixed(4)) : ('$' + v.toFixed(2));
+    if (!v || v === 0) return '$0.00';
+    if (v < 0.000001) return '$' + v.toFixed(8);
+    if (v < 0.0001)   return '$' + v.toFixed(6);
+    if (v < 0.01)     return '$' + v.toFixed(5);
+    if (v < 1)        return '$' + v.toFixed(4);
+    return '$' + v.toFixed(2);
   }
   function fmtN(v) {
     return v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'K' : String(v||0);
@@ -331,12 +335,12 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   <div class="glass-card rounded-2xl p-5 mb-8 flex flex-wrap gap-8 items-center">
     <div>
       <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Avg Cost / Request</div>
-      <div class="text-xl font-bold text-[#27c93f] font-mono">${{ "%.4f"|format(avg_cost) }}</div>
+      <div class="text-xl font-bold text-[#27c93f] font-mono">{{ fmt_cost(avg_cost) }}</div>
     </div>
     <div class="w-px h-8 bg-white/10"></div>
     <div>
       <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">30-Day Spend (logged)</div>
-      <div id="strip-total-cost" class="text-xl font-bold text-white font-mono">${{ "%.2f"|format(predicted_monthly) }}</div>
+      <div id="strip-total-cost" class="text-xl font-bold text-white font-mono">{{ fmt_cost(predicted_monthly) }}</div>
     </div>
     <div class="w-px h-8 bg-white/10"></div>
     <div>

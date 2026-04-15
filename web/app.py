@@ -225,6 +225,27 @@ templates.env.globals["max"] = max
 templates.env.globals["min"] = min
 templates.env.filters["from_json"] = lambda s: json.loads(s) if s else []
 
+
+def _fmt_cost(v: float) -> str:
+    """Format a USD cost with enough decimal places to show real precision."""
+    if v is None:
+        return "$0.00"
+    v = float(v)
+    if v == 0:
+        return "$0.00"
+    if v < 0.000001:
+        return f"${v:.8f}"
+    if v < 0.0001:
+        return f"${v:.6f}"
+    if v < 0.01:
+        return f"${v:.5f}"
+    if v < 1:
+        return f"${v:.4f}"
+    return f"${v:.2f}"
+
+
+templates.env.globals["fmt_cost"] = _fmt_cost
+
 _APP_BASE_URL_RAW = os.getenv("APP_BASE_URL", "").strip().rstrip("/")
 if not _APP_BASE_URL_RAW or _APP_BASE_URL_RAW == "https://your-domain.com":
     if not _IS_DEV_ENV:
