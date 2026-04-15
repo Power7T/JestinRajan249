@@ -124,19 +124,23 @@ tailwind.config = {
 
   <div class="mb-6 flex items-center justify-between gap-4">
     <div class="inline-flex items-center gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
-      <a href="/voice-calls?tab=panel" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab != 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+      <a href="/voice-calls?tab=panel" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab == 'panel' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
         Voice AI Panel
+      </a>
+      <a href="/voice-calls?tab=test" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-1.5 {% if tab == 'test' %}bg-green-500/20 text-green-300{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+        <span class="material-symbols-outlined text-sm">phone_in_talk</span>
+        AI Test Call
       </a>
       <a href="/voice-calls?tab=settings#voice-ai-setup" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab == 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
         Voice AI Settings
       </a>
     </div>
     <div class="text-xs text-slate-500 hidden md:block">
-      Panel = call logs. Settings = Twilio and Voice configuration.
+      {% if tab == 'test' %}Test your Voice AI with your real property context{% elif tab == 'settings' %}Configure Twilio and Voice settings{% else %}Call logs and analytics{% endif %}
     </div>
   </div>
 
-  {% if tab != 'settings' and voice_calls_error %}
+  {% if tab == 'panel' and voice_calls_error %}
   <div class="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-5 py-4 text-sm text-amber-100">
     <div class="flex items-start gap-3">
       <span class="material-symbols-outlined text-amber-300">warning</span>
@@ -305,7 +309,140 @@ tailwind.config = {
   </div>
   {% endif %}
 
-  {% if tab != 'settings' %}
+  {% if tab == 'test' %}
+  <!-- ── AI Test Call Section ─────────────────────────────────────── -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+
+    <!-- Left: Call Widget -->
+    <div class="xl:col-span-1 flex flex-col gap-6">
+
+      <!-- Property Context Card -->
+      <div class="glass-card rounded-3xl p-5 border border-[#5B8DEF]/15">
+        <p class="text-[0.65rem] font-bold text-[#aec6ff] uppercase tracking-[0.3em] mb-3">Your Property Context</p>
+        <p class="text-xs text-slate-400 mb-3">The AI will use this info to answer guest questions. Fill in missing fields so your AI knows more.</p>
+        <div class="space-y-2">
+          {% set ctx_fields = [
+            ('property_city',     'Location',       cfg.property_city),
+            ('check_in_time',     'Check-in',       cfg.check_in_time),
+            ('check_out_time',    'Check-out',       cfg.check_out_time),
+            ('max_guests',        'Max Guests',      cfg.max_guests|string if cfg.max_guests else ''),
+            ('house_rules',       'House Rules',     cfg.house_rules),
+            ('parking_policy',    'Parking',         cfg.parking_policy),
+            ('pet_policy',        'Pet Policy',      cfg.pet_policy),
+            ('amenities',         'Amenities',       cfg.amenities),
+            ('faq',               'FAQ / Q&A',       cfg.faq),
+            ('nearby_restaurants','Nearby Places',   cfg.nearby_restaurants),
+          ] %}
+          {% for field_id, label, value in ctx_fields %}
+          <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl {% if value %}bg-white/5{% else %}bg-amber-400/5 border border-amber-400/20{% endif %}">
+            <span class="text-xs text-slate-400 font-medium">{{ label }}</span>
+            {% if value %}
+            <span class="text-xs text-emerald-400 font-semibold truncate max-w-[120px]" title="{{ value }}">✓ Set</span>
+            {% else %}
+            <a href="/voice-calls?tab=settings#voice-ai-setup" class="text-xs text-amber-400 font-semibold hover:text-amber-300 transition-colors whitespace-nowrap">+ Add</a>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Live Call Widget -->
+      <div class="glass-card rounded-3xl p-5 border border-green-500/15">
+        <p class="text-[0.65rem] font-bold text-green-400 uppercase tracking-[0.3em] mb-3">☎️ Live Test Call</p>
+        <p class="text-xs text-slate-400 mb-4">Speak as a guest — the AI answers using your actual property info. Any questions it can't answer appear as knowledge gaps below.</p>
+
+        <!-- Chat Log -->
+        <div id="hostVoiceChatContainer" class="bg-[#0d0e14] rounded-2xl p-3 mb-4 overflow-y-auto border border-white/8 flex flex-col gap-2" style="height:280px;">
+          <div class="text-center text-slate-600 m-auto text-xs">Press Call to start</div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex gap-2 mb-3">
+          <button id="hostCallBtn"
+            class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-br from-green-500 to-green-600 text-white font-bold rounded-xl hover:shadow-lg transition text-sm">
+            <span>📞</span><span id="hostCallBtnText">Call</span>
+          </button>
+          <button id="hostMuteBtn" disabled
+            class="px-4 py-3 bg-white/10 text-white font-bold rounded-xl transition text-sm disabled:opacity-40">
+            🔊 Mute
+          </button>
+        </div>
+        <div class="flex items-center justify-between text-xs text-slate-500">
+          <span id="hostVoiceStatus">Ready to call</span>
+          <span id="hostCallDuration">--:--</span>
+        </div>
+        <div id="hostPlaybackAlert" class="hidden mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100" role="status" aria-live="polite">
+          <p class="font-bold uppercase tracking-wider mb-0.5" id="hostPlaybackAlertTitle">Playback issue</p>
+          <p id="hostPlaybackAlertText"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Transcript + Knowledge Gaps -->
+    <div class="xl:col-span-2 flex flex-col gap-6">
+
+      <!-- Live Transcript -->
+      <div class="glass-card rounded-3xl p-5 border border-white/8">
+        <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-[0.3em] mb-4">Live Transcript</p>
+        <div class="space-y-3">
+          <div class="bg-[#0d0e14] rounded-xl p-3 border border-white/8">
+            <p class="text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest mb-1.5">You (guest simulation)</p>
+            <p class="text-sm text-white font-mono" id="hostUserTranscript">—</p>
+          </div>
+          <div class="bg-[#0d0e14] rounded-xl p-3 border border-[#5B8DEF]/20">
+            <p class="text-[0.6rem] font-bold text-[#5B8DEF] uppercase tracking-widest mb-1.5">Voice AI (your assistant)</p>
+            <p class="text-sm text-[#aec6ff] font-mono" id="hostAiTranscript">—</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Knowledge Gaps Panel -->
+      <div class="glass-card rounded-3xl p-5 border border-amber-400/15">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="text-[0.65rem] font-bold text-amber-300 uppercase tracking-[0.3em] mb-1">Knowledge Gaps</p>
+            <p class="text-xs text-slate-400">Questions the AI couldn't fully answer — fill these in to improve guest experience.</p>
+          </div>
+          <span id="gapCount" class="hidden px-2.5 py-1 bg-amber-400/20 text-amber-300 text-xs font-bold rounded-full">0 gaps</span>
+        </div>
+        <div id="gapList" class="space-y-2">
+          <div id="gapEmpty" class="text-xs text-slate-600 text-center py-6">
+            Start a call — gaps appear here when the AI can't answer a guest question.
+          </div>
+        </div>
+        {% set missing_fields = [] %}
+        {% if not cfg.house_rules %}{% set _ = missing_fields.append('house_rules') %}{% endif %}
+        {% if not cfg.parking_policy %}{% set _ = missing_fields.append('parking_policy') %}{% endif %}
+        {% if not cfg.pet_policy %}{% set _ = missing_fields.append('pet_policy') %}{% endif %}
+        {% if not cfg.faq %}{% set _ = missing_fields.append('faq') %}{% endif %}
+        {% if not cfg.nearby_restaurants %}{% set _ = missing_fields.append('nearby_restaurants') %}{% endif %}
+        {% if missing_fields %}
+        <div class="mt-4 pt-4 border-t border-white/5">
+          <p class="text-xs text-slate-500 mb-3 font-semibold">Pre-detected missing fields:</p>
+          <div class="flex flex-wrap gap-2">
+            {% for f in missing_fields %}
+            <a href="/voice-calls?tab=settings#voice-ai-setup"
+               class="px-3 py-1.5 rounded-lg bg-amber-400/10 border border-amber-400/25 text-amber-300 text-xs font-semibold hover:bg-amber-400/20 transition-colors">
+              + {{ f | replace('_', ' ') | title }}
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        <div class="mt-4 pt-4 border-t border-white/5 flex gap-3">
+          <a href="/settings" class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#5B8DEF]/20 text-[#5B8DEF] rounded-xl text-xs font-bold hover:bg-[#5B8DEF]/30 transition-colors">
+            <span class="material-symbols-outlined text-sm">settings</span>Property Settings
+          </a>
+          <a href="/voice-calls?tab=settings" class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white/5 text-slate-300 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors">
+            <span class="material-symbols-outlined text-sm">phone</span>Voice Settings
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if tab == 'panel' %}
   <!-- Stats Row -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="glass-card rounded-2xl p-5">
@@ -552,4 +689,274 @@ document.addEventListener('click', function (event) {
   if (!element || !navigator.clipboard) return;
   navigator.clipboard.writeText(element.value || element.textContent || '');
 });
+
+// ── Host AI Test Call Widget ──────────────────────────────────────────
+(function() {
+  var hostVoiceWs = null;
+  var hostVoiceStream = null;
+  var hostAudioContext = null;
+  var hostScriptProcessor = null;
+  var hostSourceNode = null;
+  var hostIsCallActive = false;
+  var hostIsMuted = false;
+  var hostCallStartTime = 0;
+  var hostAudioQueue = [];
+  var hostIsPlayingAudio = false;
+  var hostCurrentAudio = null;
+  var hostAudioIssue = null;
+  var hostGapCount = 0;
+  var hostWatchdog = null;
+  var hostWatchdogToken = 0;
+
+  function hStatus(msg) {
+    var el = document.getElementById('hostVoiceStatus');
+    if (el) el.textContent = msg;
+  }
+
+  function hAlert(kind, title, detail) {
+    var el = document.getElementById('hostPlaybackAlert');
+    var titleEl = document.getElementById('hostPlaybackAlertTitle');
+    var textEl = document.getElementById('hostPlaybackAlertText');
+    if (!el) return;
+    if (!title) { el.className = 'hidden mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100'; return; }
+    el.className = (kind === 'error'
+      ? 'mt-2 rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-xs text-rose-100'
+      : 'mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100');
+    if (titleEl) titleEl.textContent = title;
+    if (textEl) textEl.textContent = detail || '';
+  }
+
+  function hClearWatchdog() {
+    if (hostWatchdog) { clearTimeout(hostWatchdog); hostWatchdog = null; }
+    hostWatchdogToken++;
+  }
+
+  function hRevokeUrl(audio) {
+    if (audio && audio._url) { try { URL.revokeObjectURL(audio._url); } catch(e) {} audio._url = null; }
+  }
+
+  function hStopAudio() {
+    if (hostCurrentAudio) { hRevokeUrl(hostCurrentAudio); try { hostCurrentAudio.pause(); hostCurrentAudio.removeAttribute('src'); hostCurrentAudio.load(); } catch(e) {} hostCurrentAudio = null; }
+    hostAudioQueue = [];
+    hostIsPlayingAudio = false;
+  }
+
+  function hPlaybackIssue(kind, title, detail) {
+    hostAudioIssue = detail || title || 'issue';
+    hClearWatchdog();
+    hStopAudio();
+    hStatus(title || 'Playback issue');
+    hAlert(kind, title, detail);
+  }
+
+  function hPlayNext() {
+    if (!hostAudioQueue.length) { hostIsPlayingAudio = false; return; }
+    hostIsPlayingAudio = true;
+    var chunk = hostAudioQueue.shift();
+    var blob = new Blob([chunk], { type: 'audio/mpeg' });
+    var url = URL.createObjectURL(blob);
+    var audio = new Audio(url);
+    hostCurrentAudio = audio;
+    audio._url = url;
+    audio.onended = function() { hRevokeUrl(audio); hostCurrentAudio = null; hPlayNext(); };
+    audio.onerror = function() { hRevokeUrl(audio); hostCurrentAudio = null; hPlaybackIssue('error', 'Playback failed', 'Browser could not decode TTS audio.'); };
+    audio.play().catch(function(e) { hRevokeUrl(audio); hostCurrentAudio = null; hPlaybackIssue('error', 'Playback blocked', 'Browser blocked audio: ' + (e.message || 'unknown')); });
+  }
+
+  function hQueueAudio(bytes) {
+    if (hostAudioIssue) return;
+    hostAudioQueue.push(bytes);
+    if (!hostIsPlayingAudio) hPlayNext();
+  }
+
+  function hAddChatBubble(role, text) {
+    var container = document.getElementById('hostVoiceChatContainer');
+    if (!container) return;
+    // Remove placeholder
+    var placeholder = container.querySelector('.text-center.text-slate-600');
+    if (placeholder) placeholder.remove();
+    var div = document.createElement('div');
+    div.className = role === 'user'
+      ? 'self-end max-w-[85%] px-3 py-2 rounded-2xl rounded-br-sm bg-[#5B8DEF]/20 text-white text-xs'
+      : 'self-start max-w-[85%] px-3 py-2 rounded-2xl rounded-bl-sm bg-green-500/10 text-green-200 text-xs';
+    div.textContent = text;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function hAddGap(text) {
+    hostGapCount++;
+    var countEl = document.getElementById('gapCount');
+    var emptyEl = document.getElementById('gapEmpty');
+    var listEl = document.getElementById('gapList');
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (countEl) { countEl.textContent = hostGapCount + ' gap' + (hostGapCount !== 1 ? 's' : ''); countEl.classList.remove('hidden'); }
+    if (listEl) {
+      var item = document.createElement('div');
+      item.className = 'flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-400/8 border border-amber-400/20';
+      item.innerHTML = '<span class="text-amber-400 mt-0.5 flex-shrink-0">⚠</span>'
+        + '<div class="flex-1 min-w-0"><p class="text-xs text-amber-100">' + text.replace(/</g,'&lt;') + '</p>'
+        + '<a href="/settings" class="text-[0.65rem] text-[#5B8DEF] hover:underline mt-1 block">→ Add to Property Settings</a></div>';
+      listEl.appendChild(item);
+    }
+  }
+
+  function hEndCall() {
+    var btn = document.getElementById('hostCallBtn');
+    var muteBtn = document.getElementById('hostMuteBtn');
+    hostIsCallActive = false;
+    hClearWatchdog();
+    hStopAudio();
+    hostAudioIssue = null;
+    hostIsMuted = false;
+    if (hostScriptProcessor) { try { hostScriptProcessor.disconnect(); } catch(e) {} hostScriptProcessor = null; }
+    if (hostSourceNode) { try { hostSourceNode.disconnect(); } catch(e) {} hostSourceNode = null; }
+    if (hostAudioContext) { try { hostAudioContext.close(); } catch(e) {} hostAudioContext = null; }
+    if (hostVoiceStream) { hostVoiceStream.getTracks().forEach(function(t) { t.stop(); }); hostVoiceStream = null; }
+    if (hostVoiceWs) { hostVoiceWs.close(); hostVoiceWs = null; }
+    if (btn) { btn.style.background = ''; btn.innerHTML = '<span>📞</span><span id="hostCallBtnText">Call</span>'; }
+    if (muteBtn) { muteBtn.disabled = true; muteBtn.textContent = '🔊 Mute'; muteBtn.style.background = ''; }
+    hStatus('Call ended');
+    document.getElementById('hostCallDuration').textContent = '--:--';
+    document.getElementById('hostUserTranscript').textContent = '—';
+    document.getElementById('hostAiTranscript').textContent = '—';
+  }
+
+  async function hStartCall() {
+    var btn = document.getElementById('hostCallBtn');
+    var muteBtn = document.getElementById('hostMuteBtn');
+
+    var isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (!isSecure) { hStatus('HTTPS required for microphone'); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { hStatus('Browser microphone not supported'); return; }
+
+    hStatus('Connecting microphone...');
+    try {
+      hostVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (micErr) {
+      if (micErr.name === 'NotAllowedError') hStatus('Microphone blocked — allow in browser settings');
+      else if (micErr.name === 'NotFoundError') hStatus('No microphone found');
+      else hStatus('Mic error: ' + micErr.name);
+      return;
+    }
+
+    hStopAudio();
+    hostAudioIssue = null;
+    hostIsMuted = false;
+    hostIsCallActive = true;
+    hostCallStartTime = Date.now();
+    btn.style.background = 'linear-gradient(to right, #ef4444, #dc2626)';
+    btn.innerHTML = '<span>📵</span><span id="hostCallBtnText">End Call</span>';
+    muteBtn.disabled = false;
+    hStatus('Connecting to AI...');
+    hAlert(null);
+
+    var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    hostVoiceWs = new WebSocket(protocol + '//' + location.host + '/ws/voice-ai/live');
+
+    hostVoiceWs.onopen = function() {
+      hostVoiceWs.send(JSON.stringify({ type: 'start', tenant_id: '{{ tenant.id }}' }));
+      try {
+        hostAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        if (hostAudioContext.state === 'suspended') hostAudioContext.resume().catch(function(){});
+        hostSourceNode = hostAudioContext.createMediaStreamSource(hostVoiceStream);
+        hostScriptProcessor = hostAudioContext.createScriptProcessor(4096, 1, 1);
+        hostScriptProcessor.onaudioprocess = function(e) {
+          if (!hostIsCallActive || !hostVoiceWs || hostVoiceWs.readyState !== WebSocket.OPEN || hostIsMuted) return;
+          var f32 = e.inputBuffer.getChannelData(0);
+          var i16 = new Int16Array(f32.length);
+          for (var i = 0; i < f32.length; i++) { var s = Math.max(-1, Math.min(1, f32[i])); i16[i] = s < 0 ? s * 32768 : s * 32767; }
+          hostVoiceWs.send(i16.buffer);
+        };
+        hostSourceNode.connect(hostScriptProcessor);
+        hostScriptProcessor.connect(hostAudioContext.destination);
+        hStatus('Listening... (speak now)');
+      } catch(audioErr) {
+        hStatus('Audio capture error: ' + audioErr.message);
+        hEndCall();
+      }
+    };
+
+    hostVoiceWs.onmessage = function(event) {
+      try {
+        var data = JSON.parse(event.data);
+        if (data.type === 'interim') {
+          var el = document.getElementById('hostUserTranscript');
+          if (el) { el.textContent = data.text || ''; el.style.opacity = '0.6'; }
+        } else if (data.type === 'transcript') {
+          var el = document.getElementById('hostUserTranscript');
+          if (el) { el.textContent = data.text || '—'; el.style.opacity = '1'; }
+          hAddChatBubble('user', data.text || '');
+          hStatus('Thinking...');
+          hClearWatchdog();
+          var tok = hostWatchdogToken;
+          hostWatchdog = setTimeout(function() {
+            if (!hostIsCallActive || tok !== hostWatchdogToken) return;
+            hAlert('warning', 'No audio received', 'TTS audio did not arrive. Check Voice AI settings.');
+          }, 8000);
+        } else if (data.type === 'response') {
+          var el = document.getElementById('hostAiTranscript');
+          if (el) el.textContent = data.text || '—';
+          hStatus('Speaking...');
+        } else if (data.type === 'audio') {
+          hClearWatchdog();
+          if (!data.audio) return;
+          var bin = atob(data.audio);
+          var bytes = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          if (bytes.length) {
+            hQueueAudio(bytes);
+            hStatus('Listening... (speak now)');
+          }
+          // Add AI bubble from last known response text
+          var aiText = document.getElementById('hostAiTranscript');
+          if (aiText && aiText.textContent && aiText.textContent !== '—') {
+            hAddChatBubble('ai', aiText.textContent);
+            aiText.textContent = '—';
+          }
+        } else if (data.type === 'gap') {
+          hAddGap(data.text || 'Unknown question');
+        } else if (data.type === 'error') {
+          hClearWatchdog();
+          hStatus('Error: ' + (data.message || 'unknown'));
+          hAlert('error', 'AI Error', data.message || 'An error occurred.');
+        } else if (data.type === 'ready') {
+          hStatus('Connected — speak now');
+          hAlert(null);
+        }
+      } catch(e) { console.error('Host WS parse error:', e); }
+    };
+
+    hostVoiceWs.onerror = function(err) { hStatus('Connection error'); hAlert('error', 'Connection error', err.message || 'WebSocket failed'); };
+    hostVoiceWs.onclose = function() { hEndCall(); };
+
+    var timerInterval = setInterval(function() {
+      if (!hostIsCallActive) { clearInterval(timerInterval); return; }
+      var s = Math.floor((Date.now() - hostCallStartTime) / 1000);
+      var m = Math.floor(s / 60); s = s % 60;
+      var el = document.getElementById('hostCallDuration');
+      if (el) el.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }, 1000);
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var callBtn = document.getElementById('hostCallBtn');
+    var muteBtn = document.getElementById('hostMuteBtn');
+    if (!callBtn) return; // not on test tab
+
+    callBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (!hostIsCallActive) { hStartCall(); } else { hEndCall(); }
+    });
+
+    muteBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      hostIsMuted = !hostIsMuted;
+      if (hostVoiceStream) hostVoiceStream.getTracks().forEach(function(t) { t.enabled = !hostIsMuted; });
+      if (hostVoiceWs && hostVoiceWs.readyState === WebSocket.OPEN) hostVoiceWs.send(JSON.stringify({ type: 'mute', muted: hostIsMuted }));
+      muteBtn.textContent = hostIsMuted ? '🔇 Unmute' : '🔊 Mute';
+      muteBtn.style.background = hostIsMuted ? 'linear-gradient(to right, #ef4444, #dc2626)' : '';
+    });
+  });
+})();
 </script>

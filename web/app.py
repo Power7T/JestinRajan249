@@ -7002,7 +7002,7 @@ def voice_calls_page(request: Request,
     voice_calls_error = None
 
     tab_normalized = (tab or "").strip().lower()
-    if tab_normalized not in {"panel", "settings"}:
+    if tab_normalized not in {"panel", "settings", "test"}:
         tab_normalized = "panel"
 
     # Only load call-log tables when on the Panel tab. This keeps Settings usable
@@ -9807,11 +9807,11 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
                     try:
                         await websocket.send_json({"type": "transcript", "text": transcript})
 
-                        response, _, _ = await VoiceAIService.generate_response(
+                        response, _send_action, unanswered = await VoiceAIService.generate_response(
                             guest_message=transcript,
                             tenant_config=tenant_config,
                             conversation_history=conversation_history,
-                            guest_name="Admin Voice",
+                            guest_name="Host Voice",
                             guest_language="en"
                         )
                         log.info(f"LLM response: {str(response)[:120]}")
@@ -9825,6 +9825,10 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
                                 pass
 
                         await websocket.send_json({"type": "response", "text": response_text})
+
+                        # Emit knowledge gap if AI couldn't answer (host can fill in missing info)
+                        if unanswered and str(unanswered).strip():
+                            await websocket.send_json({"type": "gap", "text": str(unanswered).strip()})
 
                         conversation_history.append({"role": "user", "content": transcript})
                         conversation_history.append({"role": "assistant", "content": response_text})
