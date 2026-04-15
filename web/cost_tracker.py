@@ -30,6 +30,9 @@ COSTS = {
     "elevenlabs": {
         "synthesize": 0.0003,  # per character (roughly 15000 chars = $1)
     },
+    "google_tts": {
+        "synthesize": 0.000016,  # $16 per 1M chars (Neural2/WaveNet pricing)
+    },
     "twilio": {
         "voice_call": 0.0150,  # per minute, assume worst case
         "recording": 0.0050,   # per minute for recording storage

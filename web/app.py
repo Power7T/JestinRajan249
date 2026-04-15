@@ -12687,19 +12687,30 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
         voice_id = cfg.voice_elevenlabs_voice_id if cfg else None
         audio_bytes, audio_url = await VoiceAIService.synthesize_speech(ai_text, voice_id=voice_id)
 
-        # Log ElevenLabs cost (roughly $0.0003 per character)
-        elevenlabs_cost = estimate_cost(
-            "elevenlabs", "synthesize",
-            characters=len(ai_text)
-        )
-        log_api_usage(
-            db, voice_call.tenant_id, "elevenlabs", "synthesize",
-            cost_usd=elevenlabs_cost,
-            characters=len(ai_text),
-            call_id=call_id,
-            status="success" if audio_url else "failed"
-        )
-        increment_rate_limit(db, voice_call.tenant_id, "daily_cost", elevenlabs_cost)
+        # Log TTS cost under the correct provider
+        from web.integrations.voice import VoiceAIService as _VAS
+        _tts_provider = (_VAS.TTS_PROVIDER or "google").lower()
+        _char_count = len(ai_text)
+        if _tts_provider == "google":
+            # Google Neural2: $16 per 1M chars, WaveNet: $16/1M, Standard: $4/1M
+            _tts_cost = _char_count / 1_000_000 * 16.0
+            log_api_usage(
+                db, voice_call.tenant_id, "google_tts", "synthesize",
+                cost_usd=_tts_cost,
+                characters=_char_count,
+                call_id=call_id,
+                status="success" if audio_bytes else "failed",
+            )
+        else:
+            _tts_cost = estimate_cost("elevenlabs", "synthesize", characters=_char_count)
+            log_api_usage(
+                db, voice_call.tenant_id, "elevenlabs", "synthesize",
+                cost_usd=_tts_cost,
+                characters=_char_count,
+                call_id=call_id,
+                status="success" if audio_bytes else "failed",
+            )
+        increment_rate_limit(db, voice_call.tenant_id, "daily_cost", _tts_cost)
 
         # Update running confidence average
         prev_avg = voice_call.confidence_avg or confidence
