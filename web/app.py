@@ -9606,14 +9606,23 @@ async def api_save_voice(request: Request, db: Session = Depends(get_db)):
         if not voice:
             return JSONResponse({"error": "No voice specified"}, status_code=400)
         cfg = _get_or_create_config(tenant.id, db)
-        cfg.voice_google_tts_voice = voice
-        db.commit()
+        # Use raw SQL update as fallback in case ORM column mapping is behind migrations
+        try:
+            cfg.voice_google_tts_voice = voice
+            db.commit()
+        except Exception:
+            db.rollback()
+            db.execute(
+                text("UPDATE tenant_configs SET voice_google_tts_voice = :v WHERE tenant_id = :tid"),
+                {"v": voice, "tid": tenant.id}
+            )
+            db.commit()
         return JSONResponse({"ok": True, "voice": voice})
     except HTTPException:
         raise
     except Exception as exc:
         log.error(f"save-voice error: {exc}")
-        return JSONResponse({"error": str(exc)[:100]}, status_code=500)
+        return JSONResponse({"error": str(exc)[:120]}, status_code=500)
 
 
 @app.post("/api/voice-ai/synthesize")

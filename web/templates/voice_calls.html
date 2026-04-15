@@ -1321,6 +1321,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Read CSRF token directly from the cookie (httponly=False, so JS can access it).
+  // More reliable than reading from a hidden input which may be stale.
+  function getCSRFToken() {
+    var m = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
   // Save Voice button
   var saveVoiceBtn = document.getElementById('saveVoiceBtn');
   var saveVoiceMsg = document.getElementById('saveVoiceMsg');
@@ -1329,23 +1336,48 @@ document.addEventListener('DOMContentLoaded', function() {
       var picker = document.getElementById('inlineVoicePicker');
       if (!picker) return;
       var voice = picker.value;
-      var csrf = document.getElementById('test-csrf') || document.querySelector('input[name="csrf_token"]');
+      if (!voice) { console.warn('No voice selected'); return; }
+      var csrfToken = getCSRFToken();
+      console.log('Save voice:', voice, '| CSRF present:', !!csrfToken);
       saveVoiceBtn.textContent = 'Saving...';
       saveVoiceBtn.disabled = true;
       fetch('/api/voice/save-voice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf ? csrf.value : '' },
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ voice: voice })
       }).then(function(r) {
+        return r.json().then(function(data) { return { ok: r.ok, status: r.status, data: data }; });
+      }).then(function(res) {
         saveVoiceBtn.textContent = 'Save';
         saveVoiceBtn.disabled = false;
-        if (r.ok) {
-          if (saveVoiceMsg) { saveVoiceMsg.classList.remove('hidden'); setTimeout(function() { saveVoiceMsg.classList.add('hidden'); }, 3000); }
+        if (res.ok) {
+          if (saveVoiceMsg) {
+            saveVoiceMsg.textContent = '✓ Voice saved — takes effect on next call';
+            saveVoiceMsg.className = 'text-[0.65rem] text-emerald-400 mt-1.5';
+            saveVoiceMsg.classList.remove('hidden');
+            setTimeout(function() { saveVoiceMsg.classList.add('hidden'); }, 3000);
+          }
         } else {
-          saveVoiceBtn.textContent = 'Error';
-          setTimeout(function() { saveVoiceBtn.textContent = 'Save'; }, 2000);
+          console.error('Save voice failed:', res.status, res.data);
+          if (saveVoiceMsg) {
+            saveVoiceMsg.textContent = '✗ ' + (res.data && res.data.error ? res.data.error : 'Save failed (HTTP ' + res.status + ')');
+            saveVoiceMsg.className = 'text-[0.65rem] text-rose-400 mt-1.5';
+            saveVoiceMsg.classList.remove('hidden');
+            setTimeout(function() { saveVoiceMsg.classList.add('hidden'); }, 5000);
+          }
         }
-      }).catch(function() { saveVoiceBtn.textContent = 'Save'; saveVoiceBtn.disabled = false; });
+      }).catch(function(err) {
+        console.error('Save voice network error:', err);
+        saveVoiceBtn.textContent = 'Save';
+        saveVoiceBtn.disabled = false;
+        if (saveVoiceMsg) {
+          saveVoiceMsg.textContent = '✗ Network error — try again';
+          saveVoiceMsg.className = 'text-[0.65rem] text-rose-400 mt-1.5';
+          saveVoiceMsg.classList.remove('hidden');
+          setTimeout(function() { saveVoiceMsg.classList.add('hidden'); }, 4000);
+        }
+      });
     });
   }
 });
