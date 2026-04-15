@@ -4079,6 +4079,17 @@ async def voice_ai_settings_save(
     voice_post_call_summary: str = Form("false"),
     voice_scheduled_calls_enabled: str = Form("false"),
     sms_notify_number: str = Form(""),
+    # Property knowledge fields
+    property_city: str = Form(""),
+    check_in_time: str = Form(""),
+    check_out_time: str = Form(""),
+    max_guests: str = Form(""),
+    amenities: str = Form(""),
+    house_rules: str = Form(""),
+    parking_policy: str = Form(""),
+    pet_policy: str = Form(""),
+    nearby_restaurants: str = Form(""),
+    faq: str = Form(""),
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -4105,6 +4116,24 @@ async def voice_ai_settings_save(
         voice_scheduled_calls_enabled=voice_scheduled_calls_enabled,
         sms_notify_number=sms_notify_number,
     )
+    # Save property knowledge fields
+    cfg.property_city = property_city.strip() or None
+    cfg.check_in_time = check_in_time.strip() or None
+    cfg.check_out_time = check_out_time.strip() or None
+    if max_guests.strip():
+        try:
+            cfg.max_guests = int(max_guests.strip())
+        except ValueError:
+            pass
+    else:
+        cfg.max_guests = None
+    cfg.amenities = amenities.strip() or None
+    cfg.house_rules = house_rules.strip() or None
+    cfg.parking_policy = parking_policy.strip() or None
+    cfg.pet_policy = pet_policy.strip() or None
+    cfg.nearby_restaurants = nearby_restaurants.strip() or None
+    cfg.faq = faq.strip() or None
+
     db.add(ActivityLog(tenant_id=tenant_id, event_type="voice_ai_settings_saved", message="Voice AI settings updated"))
     db.commit()
     worker_manager.restart_worker(tenant_id)
