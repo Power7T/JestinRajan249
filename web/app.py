@@ -9298,6 +9298,25 @@ def admin_api_health(request: Request, db: Session = Depends(get_db)):
         monthly_cost = db.query(func.sum(APIUsageLog.cost_usd)).filter(
             APIUsageLog.created_at >= thirty_days_ago
         ).scalar() or 0.0
+        # For rows with zero cost but known tokens, compute on-the-fly
+        if monthly_cost == 0.0 and total_count > 0:
+            from web.classifier import _calc_model_cost as _cmc2
+            token_rows = db.query(APIUsageLog).filter(
+                APIUsageLog.cost_usd == 0.0,
+                APIUsageLog.input_tokens.isnot(None),
+                APIUsageLog.input_tokens > 0,
+                APIUsageLog.created_at >= thirty_days_ago,
+            ).all()
+            for row in token_rows:
+                model = row.operation.split(":", 1)[1] if ":" in (row.operation or "") else "openai/gpt-4o-mini"
+                row.cost_usd = _cmc2(model, row.input_tokens or 0, row.output_tokens or 0)
+            try:
+                db.commit()
+                monthly_cost = db.query(func.sum(APIUsageLog.cost_usd)).filter(
+                    APIUsageLog.created_at >= thirty_days_ago
+                ).scalar() or 0.0
+            except Exception:
+                db.rollback()
         # Calculate average cost per call (from all history)
         total_cost = db.query(func.sum(APIUsageLog.cost_usd)).scalar() or 0.0
         avg_cost = (total_cost / total_count) if total_count > 0 else 0.0
@@ -9432,55 +9451,52 @@ async def admin_api_status(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         results["elevenlabs"] = _err(str(e)[:80])
 
-    # ── Twilio (SMS) ──────────────────────────────────────────────────────────
+    # ── Twilio (SMS) — credentials live on TenantConfig, pick first configured ──
+    def _twilio_check(sid: str | None, tok_enc: str | None) -> dict:
+        if not sid or not tok_enc:
+            return _no_key("twilio")
+        tok = decrypt(tok_enc)
+        if not tok:
+            return _err("Decryption failed")
+        import base64 as _b64
+        creds = _b64.b64encode(f"{sid}:{tok}".encode()).decode()
+        t0 = _time.monotonic()
+        req = _urllib_req.Request(
+            f"https://api.twilio.com/2010-04-01/Accounts/{sid}.json",
+            headers={"Authorization": f"Basic {creds}"},
+        )
+        try:
+            _urllib_req.urlopen(req, timeout=6)
+            return _ok("Connected", (_time.monotonic() - t0) * 1000)
+        except _urllib_err.HTTPError as e:
+            ms = (_time.monotonic() - t0) * 1000
+            return _err("Invalid credentials" if e.code in (401, 403) else f"HTTP {e.code}", ms)
+
     try:
-        sid = sys_conf.twilio_account_sid
-        tok_enc = sys_conf.twilio_auth_token_enc
-        if sid and tok_enc:
-            tok = decrypt(tok_enc)
-            if not tok:
-                results["twilio_sms"] = _err("Decryption failed")
-            else:
-                import base64 as _b64
-                creds = _b64.b64encode(f"{sid}:{tok}".encode()).decode()
-                t0 = _time.monotonic()
-                req = _urllib_req.Request(
-                    f"https://api.twilio.com/2010-04-01/Accounts/{sid}.json",
-                    headers={"Authorization": f"Basic {creds}"},
-                )
-                try:
-                    _urllib_req.urlopen(req, timeout=6)
-                    results["twilio_sms"] = _ok("Connected", (_time.monotonic() - t0) * 1000)
-                except _urllib_err.HTTPError as e:
-                    ms = (_time.monotonic() - t0) * 1000
-                    results["twilio_sms"] = _err(f"Invalid credentials" if e.code in (401, 403) else f"HTTP {e.code}", ms)
+        # twilio_account_sid is on TenantConfig, not SystemConfig
+        sms_cfg = (
+            db.query(TenantConfig)
+            .filter(TenantConfig.twilio_account_sid.isnot(None),
+                    TenantConfig.twilio_auth_token_enc.isnot(None))
+            .first()
+        )
+        if sms_cfg:
+            results["twilio_sms"] = _twilio_check(sms_cfg.twilio_account_sid, sms_cfg.twilio_auth_token_enc)
         else:
             results["twilio_sms"] = _no_key("twilio_sms")
     except Exception as e:
         results["twilio_sms"] = _err(str(e)[:80])
 
-    # ── Twilio (Voice) ────────────────────────────────────────────────────────
+    # ── Twilio (Voice) — voice creds on TenantConfig too ─────────────────────
     try:
-        sid = getattr(sys_conf, "voice_twilio_account_sid", None)
-        tok_enc = getattr(sys_conf, "voice_twilio_auth_token_enc", None)
-        if sid and tok_enc:
-            tok = decrypt(tok_enc)
-            if not tok:
-                results["twilio_voice"] = _err("Decryption failed")
-            else:
-                import base64 as _b64
-                creds = _b64.b64encode(f"{sid}:{tok}".encode()).decode()
-                t0 = _time.monotonic()
-                req = _urllib_req.Request(
-                    f"https://api.twilio.com/2010-04-01/Accounts/{sid}.json",
-                    headers={"Authorization": f"Basic {creds}"},
-                )
-                try:
-                    _urllib_req.urlopen(req, timeout=6)
-                    results["twilio_voice"] = _ok("Connected", (_time.monotonic() - t0) * 1000)
-                except _urllib_err.HTTPError as e:
-                    ms = (_time.monotonic() - t0) * 1000
-                    results["twilio_voice"] = _err(f"Invalid credentials" if e.code in (401, 403) else f"HTTP {e.code}", ms)
+        voice_cfg = (
+            db.query(TenantConfig)
+            .filter(TenantConfig.voice_twilio_account_sid.isnot(None),
+                    TenantConfig.voice_twilio_auth_token_enc.isnot(None))
+            .first()
+        )
+        if voice_cfg:
+            results["twilio_voice"] = _twilio_check(voice_cfg.voice_twilio_account_sid, voice_cfg.voice_twilio_auth_token_enc)
         else:
             results["twilio_voice"] = _no_key("twilio_voice")
     except Exception as e:
@@ -9595,6 +9611,29 @@ def admin_api_usage_stats(request: Request, db: Session = Depends(get_db)):
     except Exception:
         rows = []
 
+    # ── Backfill cost_usd for rows logged before the cost fix ────────────────
+    try:
+        from web.classifier import _calc_model_cost as _cmc
+        zero_cost_rows = (
+            db.query(APIUsageLog)
+            .filter(
+                APIUsageLog.cost_usd == 0.0,
+                APIUsageLog.service == "openrouter",
+                APIUsageLog.input_tokens.isnot(None),
+                APIUsageLog.input_tokens > 0,
+            )
+            .limit(500)
+            .all()
+        )
+        if zero_cost_rows:
+            for row in zero_cost_rows:
+                # Extract model from operation e.g. "generate_draft:openai/gpt-4o-mini"
+                model = row.operation.split(":", 1)[1] if ":" in (row.operation or "") else "openai/gpt-4o-mini"
+                row.cost_usd = _cmc(model, row.input_tokens or 0, row.output_tokens or 0)
+            db.commit()
+    except Exception:
+        db.rollback()
+
     stats: dict = {}
     for r in rows:
         stats[r.service] = {
@@ -9605,6 +9644,23 @@ def admin_api_usage_stats(request: Request, db: Session = Depends(get_db)):
             "duration_s": round(float(r.duration_s or 0), 1),
             "characters": int(r.characters or 0),
         }
+
+    # Re-query cost after backfill so totals reflect updated rows
+    try:
+        updated_rows = (
+            db.query(
+                APIUsageLog.service,
+                _func.sum(APIUsageLog.cost_usd).label("cost"),
+            )
+            .filter(APIUsageLog.created_at >= cutoff)
+            .group_by(APIUsageLog.service)
+            .all()
+        )
+        for r in updated_rows:
+            if r.service in stats:
+                stats[r.service]["cost"] = round(float(r.cost or 0), 8)
+    except Exception:
+        pass
 
     # Also pull total across all services
     total_cost = sum(v["cost"] for v in stats.values())
