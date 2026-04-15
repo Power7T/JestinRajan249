@@ -241,8 +241,18 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 
     <div class="form-row">
       <div>
-        <label>Check-in time</label>
-        <div class="time-picker-wrap" id="tp-check-in"></div>
+        <label style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+          Check-in time
+          <label class="range-toggle-label" style="font-weight:400;font-size:0.8rem;color:var(--text-3);display:flex;align-items:center;gap:0.35rem;cursor:pointer;">
+            <input type="checkbox" id="check-in-range-toggle" style="cursor:pointer;">
+            flexible window
+          </label>
+        </label>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <div class="time-picker-wrap" id="tp-check-in" style="margin-bottom:0"></div>
+          <span id="check-in-range-sep" style="display:none;color:var(--text-3);font-size:0.85rem;flex-shrink:0">to</span>
+          <div class="time-picker-wrap" id="tp-check-in-end" style="margin-bottom:0;display:none"></div>
+        </div>
         <input type="hidden" name="check_in_time" id="check_in_time_val" value="{{ cfg.check_in_time or '' }}">
       </div>
       <div>
@@ -761,8 +771,79 @@ function buildTimePicker(wrapId, hiddenId, initialVal) {
   minSel.addEventListener('change', sync);
 }
 
-// Initialize check-in / check-out pickers
-buildTimePicker('tp-check-in',  'check_in_time_val',  '{{ cfg.check_in_time or "" }}');
+// Initialize check-in picker with optional flexible window range
+(function() {
+  const rawCheckin = '{{ cfg.check_in_time or "" }}';
+  const rangeMatch = rawCheckin.match(/^(\d{2}:\d{2})-(\d{2}:\d{2})$/);
+  const startVal = rangeMatch ? rangeMatch[1] : rawCheckin;
+  const endVal   = rangeMatch ? rangeMatch[2] : '';
+
+  buildTimePicker('tp-check-in', 'check_in_time_val', startVal);
+
+  // Hidden intermediate input for the range end time
+  const endHidden = document.createElement('input');
+  endHidden.type = 'hidden'; endHidden.id = 'check_in_end_val';
+  endHidden.value = endVal;
+  document.getElementById('tp-check-in-end').after(endHidden);
+
+  buildTimePicker('tp-check-in-end', 'check_in_end_val', endVal);
+
+  // Separate hidden for range-end (not submitted; only used for building composite)
+  // The submitted field is always check_in_time_val
+  function getStartOnly() {
+    const v = document.getElementById('check_in_time_val').value;
+    return v.includes('-') ? v.split('-')[0] : v;
+  }
+
+  function syncCheckinRange() {
+    const start = getStartOnly();
+    const end   = document.getElementById('check_in_end_val').value;
+    const toggle = document.getElementById('check-in-range-toggle');
+    if (toggle && toggle.checked && start && end && /^\d{2}:\d{2}$/.test(end)) {
+      document.getElementById('check_in_time_val').value = start + '-' + end;
+    }
+  }
+
+  // Sync when either picker changes (range mode)
+  document.getElementById('check_in_end_val').addEventListener('change', () => {
+    const toggle = document.getElementById('check-in-range-toggle');
+    if (toggle && toggle.checked) syncCheckinRange();
+  });
+  // Re-sync start when start picker changes in range mode
+  document.getElementById('check_in_time_val').addEventListener('change', () => {
+    const toggle = document.getElementById('check-in-range-toggle');
+    if (toggle && toggle.checked) {
+      // buildTimePicker already wrote the new start into check_in_time_val,
+      // but we need it as start-only before we recompose
+      const newStart = document.getElementById('check_in_time_val').value.split('-')[0];
+      document.getElementById('check_in_time_val').value = newStart;
+      syncCheckinRange();
+    }
+  });
+
+  // Toggle flexible window UI
+  const toggle = document.getElementById('check-in-range-toggle');
+  const sep    = document.getElementById('check-in-range-sep');
+  const endWrap = document.getElementById('tp-check-in-end');
+  function applyRangeMode(on) {
+    if (sep) sep.style.display    = on ? '' : 'none';
+    if (endWrap) endWrap.style.display = on ? '' : 'none';
+    if (!on) {
+      // Restore just the start time
+      const start = document.getElementById('check_in_time_val').value.split('-')[0];
+      document.getElementById('check_in_time_val').value = start;
+    } else {
+      syncCheckinRange();
+    }
+  }
+  if (toggle) {
+    if (rangeMatch) toggle.checked = true;
+    applyRangeMode(toggle.checked);
+    toggle.addEventListener('change', () => applyRangeMode(toggle.checked));
+  }
+})();
+
+// Initialize check-out picker
 buildTimePicker('tp-check-out', 'check_out_time_val', '{{ cfg.check_out_time or "" }}');
 
 // Initialize quiet hours pickers
