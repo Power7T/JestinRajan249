@@ -141,27 +141,37 @@ from web.cost_tracker import log_api_usage, estimate_cost
 
 
 def _log_tts_usage(db, tenant_id: str, text: str, audio_bytes: bytes, call_id: str | None = None) -> None:
-    """Log TTS usage under the correct provider (google_tts or elevenlabs) with character count."""
+    """Log TTS usage under the correct provider (google_tts or elevenlabs) with character count.
+    Always uses a fresh DB session so a dirty WebSocket/request session cannot cause failures."""
     try:
         from web.integrations.voice import VoiceAIService as _VAS
+        from web.db import SessionLocal
+        from uuid import uuid4 as _uuid4
         provider = (_VAS.TTS_PROVIDER or "google").lower()
         char_count = len(text)
         if provider == "google":
+            service = "google_tts"
             cost = char_count / 1_000_000 * 16.0  # Neural2: $16/1M chars
-            log_api_usage(
-                db, tenant_id, "google_tts", "synthesize",
-                cost_usd=cost, characters=char_count, call_id=call_id,
-                status="success" if audio_bytes else "failed",
-            )
         else:
+            service = "elevenlabs"
             cost = estimate_cost("elevenlabs", "synthesize", characters=char_count)
-            log_api_usage(
-                db, tenant_id, "elevenlabs", "synthesize",
-                cost_usd=cost, characters=char_count, call_id=call_id,
+        with SessionLocal() as fresh_db:
+            entry = APIUsageLog(
+                id=str(_uuid4()),
+                tenant_id=tenant_id,
+                call_id=call_id,
+                service=service,
+                operation="synthesize",
+                characters=char_count,
+                cost_usd=cost,
                 status="success" if audio_bytes else "failed",
+                created_at=datetime.now(timezone.utc),
             )
-    except Exception:
-        pass
+            fresh_db.add(entry)
+            fresh_db.commit()
+            log.debug("[TTS] Logged %s: %d chars, $%.6f", service, char_count, cost)
+    except Exception as exc:
+        log.warning("[TTS] Failed to log TTS usage: %s", exc)
 from web.timeout_handler import call_with_timeout, TimeoutConfig, FALLBACKS
 from web.call_consent import get_consent_prompt, handle_consent_response, should_record_call
 from web.feature_flags import is_feature_enabled
