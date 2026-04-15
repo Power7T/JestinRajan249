@@ -487,7 +487,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 
     <!-- Input row -->
     <div class="flex gap-3">
-      <textarea id="ai-chat-input" rows="2" placeholder="Type what a guest would say… (Ctrl+Enter to send)" class="compat-input !mb-0 flex-1 resize-none text-sm"></textarea>
+      <textarea id="ai-chat-input" rows="2" placeholder="Type what a guest would say… (Enter to send, Shift+Enter for newline)" class="compat-input !mb-0 flex-1 resize-none text-sm"></textarea>
       <button type="button" id="ai-chat-send-btn" class="px-5 py-2 bg-gradient-to-br from-emerald-500 to-emerald-700 text-white text-sm font-extrabold rounded-xl hover:shadow-[0_0_20px_rgba(74,222,128,0.3)] transition-all self-end whitespace-nowrap">Send ▶</button>
     </div>
     <div id="ai-chat-loading" class="hidden mt-3 text-xs text-slate-500 flex items-center gap-2">
@@ -756,7 +756,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 
   if (chatSend) chatSend.addEventListener('click', sendAiChat);
   if (chatInput) chatInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendAiChat();
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAiChat(); }
   });
   if (chatClear) chatClear.addEventListener('click', function() {
     if (chatHistory) {
