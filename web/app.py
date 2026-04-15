@@ -9695,6 +9695,11 @@ async def admin_voice_chat(request: Request, db: Session = Depends(get_db)):
 # Voice AI — Host Interface (Direct Chat Testing)
 # ---------------------------------------------------------------------------
 
+def _require_auth(request: Request, db: Session) -> "Tenant":
+    """Fetch and return the authenticated tenant, raising 401/redirect on failure."""
+    tenant_id = get_current_tenant_id(request)  # raises HTTPException(401) if not logged in
+    return _get_tenant(tenant_id, db)
+
 @app.get("/voice-ai-chat", response_class=HTMLResponse)
 def host_voice_chat_page(request: Request, db: Session = Depends(get_db)):
     """Host-facing voice AI chat interface for direct testing without phone calls"""

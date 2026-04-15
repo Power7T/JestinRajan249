@@ -1054,7 +1054,13 @@ function hEndCall() {
   var statusEl = document.getElementById('hostVoiceStatus');
   if (statusEl) { statusEl.textContent = 'Call ended'; statusEl.style.color = ''; }
   var durEl = document.getElementById('hostCallDuration');
-  if (durEl) durEl.textContent = '--:--';
+  if (durEl && hCallStartTime) {
+    var finalSecs = Math.floor((Date.now() - hCallStartTime) / 1000);
+    var fm = Math.floor(finalSecs / 60), fs = finalSecs % 60;
+    durEl.textContent = (fm < 10 ? '0' : '') + fm + ':' + (fs < 10 ? '0' : '') + fs;
+  } else if (durEl) {
+    durEl.textContent = '--:--';
+  }
   var userEl = document.getElementById('hostUserTranscript');
   if (userEl) { userEl.textContent = '—'; userEl.style.opacity = '1'; }
   var aiEl = document.getElementById('hostAiTranscript');
