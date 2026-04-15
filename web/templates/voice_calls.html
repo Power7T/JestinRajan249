@@ -824,307 +824,463 @@ document.addEventListener('click', function (event) {
   navigator.clipboard.writeText(element.value || element.textContent || '');
 });
 
-// ── Host AI Test Call Widget ──────────────────────────────────────────
-(function() {
-  var hostVoiceWs = null;
-  var hostVoiceStream = null;
-  var hostAudioContext = null;
-  var hostScriptProcessor = null;
-  var hostSourceNode = null;
-  var hostIsCallActive = false;
-  var hostIsMuted = false;
-  var hostCallStartTime = 0;
-  var hostAudioQueue = [];
-  var hostIsPlayingAudio = false;
-  var hostCurrentAudio = null;
-  var hostAudioIssue = null;
-  var hostGapCount = 0;
-  var hostWatchdog = null;
-  var hostWatchdogToken = 0;
+// ── Host AI Test Call Widget (exact port of admin voice AI logic) ────────────
+// State variables (mirrored from admin_voice_ai.html)
+var hVoiceWs = null;
+var hVoiceStream = null;
+var hAudioContext = null;
+var hScriptProcessor = null;
+var hSourceNode = null;
+var hIsCallActive = false;
+var hIsMuted = false;
+var hCallStartTime = 0;
+var hAudioQueue = [];
+var hIsPlayingAudio = false;
+var hCurrentAudio = null;
+var hCurrentAudioSource = null;
+var hAudioPlaybackIssue = null;
+var hAudioWatchdogTimer = null;
+var hAudioWatchdogToken = 0;
+var hGapCount = 0;
 
-  function hStatus(msg) {
-    var el = document.getElementById('hostVoiceStatus');
-    if (el) el.textContent = msg;
+function hSetStatus(message) {
+  var el = document.getElementById('hostVoiceStatus');
+  if (el) el.textContent = message;
+}
+
+function hSetPlaybackAlert(kind, title, detail) {
+  var alertEl = document.getElementById('hostPlaybackAlert');
+  var alertTitleEl = document.getElementById('hostPlaybackAlertTitle');
+  var alertTextEl = document.getElementById('hostPlaybackAlertText');
+  if (!alertEl || !alertTitleEl || !alertTextEl) return;
+  if (!title || !detail) {
+    alertEl.className = 'hidden mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100';
+    alertTitleEl.textContent = 'Playback issue';
+    alertTextEl.textContent = 'Audio playback warnings will appear here.';
+    return;
   }
+  alertEl.className = kind === 'warning'
+    ? 'mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100'
+    : 'mt-2 rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-xs text-rose-100';
+  alertTitleEl.textContent = title;
+  alertTextEl.textContent = detail;
+}
 
-  function hAlert(kind, title, detail) {
-    var el = document.getElementById('hostPlaybackAlert');
-    var titleEl = document.getElementById('hostPlaybackAlertTitle');
-    var textEl = document.getElementById('hostPlaybackAlertText');
-    if (!el) return;
-    if (!title) { el.className = 'hidden mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100'; return; }
-    el.className = (kind === 'error'
-      ? 'mt-2 rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-xs text-rose-100'
-      : 'mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100');
-    if (titleEl) titleEl.textContent = title;
-    if (textEl) textEl.textContent = detail || '';
+function hClearPlaybackAlert() { hSetPlaybackAlert(null, null, null); }
+
+function hClearWatchdog() {
+  if (hAudioWatchdogTimer) { clearTimeout(hAudioWatchdogTimer); hAudioWatchdogTimer = null; }
+  hAudioWatchdogToken += 1;
+}
+
+function hRevokeAudioUrl(audio) {
+  if (audio && audio._voiceObjectUrl) {
+    try { URL.revokeObjectURL(audio._voiceObjectUrl); } catch(e) {}
+    audio._voiceObjectUrl = null;
   }
+}
 
-  function hClearWatchdog() {
-    if (hostWatchdog) { clearTimeout(hostWatchdog); hostWatchdog = null; }
-    hostWatchdogToken++;
+function hStopCurrentAudio() {
+  if (hCurrentAudioSource) {
+    try { hCurrentAudioSource.stop(); } catch(e) {}
+    try { hCurrentAudioSource.disconnect(); } catch(e) {}
+    hCurrentAudioSource = null;
   }
+  if (!hCurrentAudio) return;
+  hRevokeAudioUrl(hCurrentAudio);
+  try { hCurrentAudio.pause(); hCurrentAudio.removeAttribute('src'); hCurrentAudio.load(); } catch(e) {}
+  hCurrentAudio = null;
+}
 
-  function hRevokeUrl(audio) {
-    if (audio && audio._url) { try { URL.revokeObjectURL(audio._url); } catch(e) {} audio._url = null; }
+function hResetAudioState() {
+  hClearWatchdog();
+  hAudioQueue = [];
+  hIsPlayingAudio = false;
+  hAudioPlaybackIssue = null;
+  hStopCurrentAudio();
+  hClearPlaybackAlert();
+}
+
+function hShowPlaybackIssue(kind, title, detail, statusMessage) {
+  hAudioPlaybackIssue = detail || title || 'Playback issue';
+  hClearWatchdog();
+  hAudioQueue = [];
+  hIsPlayingAudio = false;
+  hStopCurrentAudio();
+  hSetStatus(statusMessage || title || 'Voice playback issue');
+  hSetPlaybackAlert(kind, title || 'Playback issue', detail || 'Voice audio could not be played.');
+}
+
+function hScheduleWatchdog(responseText) {
+  hClearWatchdog();
+  var token = hAudioWatchdogToken;
+  var preview = (responseText || 'the latest response').trim().replace(/\s+/g, ' ');
+  if (preview.length > 80) preview = preview.slice(0, 77) + '...';
+  hAudioWatchdogTimer = setTimeout(function() {
+    if (!hIsCallActive || token !== hAudioWatchdogToken) return;
+    hShowPlaybackIssue(
+      'warning',
+      'No audio returned',
+      'The assistant replied, but no TTS audio arrived for "' + preview + '". Check Voice AI settings and restart the call.',
+      'No TTS audio received'
+    );
+  }, 8000);
+}
+
+function hPlayNextChunk() {
+  if (hAudioQueue.length === 0) { hIsPlayingAudio = false; return; }
+  hIsPlayingAudio = true;
+  var chunk = hAudioQueue.shift();
+  if (!chunk || !chunk.length) {
+    hShowPlaybackIssue('warning', 'Empty audio payload', 'An empty audio chunk was queued. Restart the call.', 'Server returned no audio');
+    return;
   }
-
-  function hStopAudio() {
-    if (hostCurrentAudio) { hRevokeUrl(hostCurrentAudio); try { hostCurrentAudio.pause(); hostCurrentAudio.removeAttribute('src'); hostCurrentAudio.load(); } catch(e) {} hostCurrentAudio = null; }
-    hostAudioQueue = [];
-    hostIsPlayingAudio = false;
+  var buffer = chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength);
+  if (!buffer.byteLength) {
+    hShowPlaybackIssue('warning', 'Empty audio payload', 'Empty MP3 buffer received. Check TTS settings.', 'Server returned no audio');
+    return;
   }
+  hPlayChunkWithAudioElement(new Uint8Array(buffer));
+}
 
-  function hPlaybackIssue(kind, title, detail) {
-    hostAudioIssue = detail || title || 'issue';
-    hClearWatchdog();
-    hStopAudio();
-    hStatus(title || 'Playback issue');
-    hAlert(kind, title, detail);
+function hPlayChunkWithAudioElement(chunk) {
+  var blob = new Blob([chunk], { type: 'audio/mpeg' });
+  var url = URL.createObjectURL(blob);
+  var audio = new Audio(url);
+  hCurrentAudio = audio;
+  audio._voiceObjectUrl = url;
+  audio.onended = function() { hRevokeAudioUrl(audio); hCurrentAudio = null; hPlayNextChunk(); };
+  audio.onerror = function() {
+    hRevokeAudioUrl(audio); hCurrentAudio = null;
+    hShowPlaybackIssue('error', 'Playback failed', 'Browser could not decode the TTS audio. Restart the call after checking codec and output device settings.', 'Audio playback failed');
+  };
+  audio.play().catch(function(e) {
+    hRevokeAudioUrl(audio); hCurrentAudio = null;
+    hShowPlaybackIssue('error', 'Playback blocked', 'Browser blocked audio playback: ' + (e && e.message ? e.message : 'unknown error') + '. End and restart the call to recover.', 'Audio playback was blocked');
+  });
+}
+
+function hQueueAudio(audioBytes) {
+  if (hAudioPlaybackIssue) return false;
+  if (!audioBytes || !audioBytes.length) {
+    hShowPlaybackIssue('warning', 'Empty audio payload', 'The server returned an empty audio payload. Check TTS settings and restart the call.', 'Server returned no audio');
+    return false;
   }
+  hAudioQueue.push(audioBytes);
+  if (!hIsPlayingAudio) hPlayNextChunk();
+  return true;
+}
 
-  function hPlayNext() {
-    if (!hostAudioQueue.length) { hostIsPlayingAudio = false; return; }
-    hostIsPlayingAudio = true;
-    var chunk = hostAudioQueue.shift();
-    var blob = new Blob([chunk], { type: 'audio/mpeg' });
-    var url = URL.createObjectURL(blob);
-    var audio = new Audio(url);
-    hostCurrentAudio = audio;
-    audio._url = url;
-    audio.onended = function() { hRevokeUrl(audio); hostCurrentAudio = null; hPlayNext(); };
-    audio.onerror = function() { hRevokeUrl(audio); hostCurrentAudio = null; hPlaybackIssue('error', 'Playback failed', 'Browser could not decode TTS audio.'); };
-    audio.play().catch(function(e) { hRevokeUrl(audio); hostCurrentAudio = null; hPlaybackIssue('error', 'Playback blocked', 'Browser blocked audio: ' + (e.message || 'unknown')); });
+function hAddChatBubble(role, text) {
+  var container = document.getElementById('hostVoiceChatContainer');
+  if (!container) return;
+  var placeholder = container.querySelector('.text-center.text-slate-600');
+  if (placeholder) placeholder.remove();
+  var div = document.createElement('div');
+  div.className = role === 'user'
+    ? 'self-end max-w-[85%] px-3 py-2 rounded-2xl rounded-br-sm bg-[#5B8DEF]/20 text-white text-xs'
+    : 'self-start max-w-[85%] px-3 py-2 rounded-2xl rounded-bl-sm bg-green-500/10 text-green-200 text-xs';
+  div.textContent = text;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function hAddGap(text) {
+  hGapCount++;
+  var countEl = document.getElementById('gapCount');
+  var emptyEl = document.getElementById('gapEmpty');
+  var listEl  = document.getElementById('gapList');
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (countEl) { countEl.textContent = hGapCount + ' gap' + (hGapCount !== 1 ? 's' : ''); countEl.classList.remove('hidden'); }
+  if (listEl) {
+    var item = document.createElement('div');
+    item.className = 'flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-400/8 border border-amber-400/20';
+    item.innerHTML = '<span class="text-amber-400 mt-0.5 flex-shrink-0">⚠</span>'
+      + '<div class="flex-1 min-w-0"><p class="text-xs text-amber-100">' + text.replace(/</g,'&lt;') + '</p>'
+      + '<a href="/voice-calls?tab=settings#property-knowledge" class="text-[0.65rem] text-[#5B8DEF] hover:underline mt-1 block">→ Fill in Voice AI Settings</a></div>';
+    listEl.appendChild(item);
   }
+}
 
-  function hQueueAudio(bytes) {
-    if (hostAudioIssue) return;
-    hostAudioQueue.push(bytes);
-    if (!hostIsPlayingAudio) hPlayNext();
-  }
+function hEndCall() {
+  var btn = document.getElementById('hostCallBtn');
+  var muteBtn = document.getElementById('hostMuteBtn');
 
-  function hAddChatBubble(role, text) {
-    var container = document.getElementById('hostVoiceChatContainer');
-    if (!container) return;
-    // Remove placeholder
-    var placeholder = container.querySelector('.text-center.text-slate-600');
-    if (placeholder) placeholder.remove();
-    var div = document.createElement('div');
-    div.className = role === 'user'
-      ? 'self-end max-w-[85%] px-3 py-2 rounded-2xl rounded-br-sm bg-[#5B8DEF]/20 text-white text-xs'
-      : 'self-start max-w-[85%] px-3 py-2 rounded-2xl rounded-bl-sm bg-green-500/10 text-green-200 text-xs';
-    div.textContent = text;
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-  }
+  hIsCallActive = false;
+  hClearWatchdog();
+  hResetAudioState();
+  hIsMuted = false;
 
-  function hAddGap(text) {
-    hostGapCount++;
-    var countEl = document.getElementById('gapCount');
-    var emptyEl = document.getElementById('gapEmpty');
-    var listEl = document.getElementById('gapList');
-    if (emptyEl) emptyEl.style.display = 'none';
-    if (countEl) { countEl.textContent = hostGapCount + ' gap' + (hostGapCount !== 1 ? 's' : ''); countEl.classList.remove('hidden'); }
-    if (listEl) {
-      var item = document.createElement('div');
-      item.className = 'flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-400/8 border border-amber-400/20';
-      item.innerHTML = '<span class="text-amber-400 mt-0.5 flex-shrink-0">⚠</span>'
-        + '<div class="flex-1 min-w-0"><p class="text-xs text-amber-100">' + text.replace(/</g,'&lt;') + '</p>'
-        + '<a href="/voice-calls?tab=settings#property-knowledge" class="text-[0.65rem] text-[#5B8DEF] hover:underline mt-1 block">→ Fill in Voice AI Settings</a></div>';
-      listEl.appendChild(item);
-    }
-  }
+  if (hScriptProcessor) { try { hScriptProcessor.disconnect(); } catch(e) {} hScriptProcessor = null; }
+  if (hSourceNode)      { try { hSourceNode.disconnect(); }      catch(e) {} hSourceNode = null; }
+  if (hAudioContext)    { try { hAudioContext.close(); }         catch(e) {} hAudioContext = null; }
+  if (hVoiceStream)     { hVoiceStream.getTracks().forEach(function(t) { t.stop(); }); hVoiceStream = null; }
+  if (hVoiceWs)         { hVoiceWs.close(); hVoiceWs = null; }
 
-  function hEndCall() {
-    var btn = document.getElementById('hostCallBtn');
-    var muteBtn = document.getElementById('hostMuteBtn');
-    hostIsCallActive = false;
-    hClearWatchdog();
-    hStopAudio();
-    hostAudioIssue = null;
-    hostIsMuted = false;
-    if (hostScriptProcessor) { try { hostScriptProcessor.disconnect(); } catch(e) {} hostScriptProcessor = null; }
-    if (hostSourceNode) { try { hostSourceNode.disconnect(); } catch(e) {} hostSourceNode = null; }
-    if (hostAudioContext) { try { hostAudioContext.close(); } catch(e) {} hostAudioContext = null; }
-    if (hostVoiceStream) { hostVoiceStream.getTracks().forEach(function(t) { t.stop(); }); hostVoiceStream = null; }
-    if (hostVoiceWs) { hostVoiceWs.close(); hostVoiceWs = null; }
-    if (btn) { btn.style.background = ''; btn.innerHTML = '<span>📞</span><span id="hostCallBtnText">Call</span>'; }
-    if (muteBtn) { muteBtn.disabled = true; muteBtn.textContent = '🔊 Mute'; muteBtn.style.background = ''; }
-    hStatus('Call ended');
-    document.getElementById('hostCallDuration').textContent = '--:--';
-    document.getElementById('hostUserTranscript').textContent = '—';
-    document.getElementById('hostAiTranscript').textContent = '—';
-  }
+  if (btn)     { btn.style.background = ''; btn.innerHTML = '<span>📞</span><span id="hostCallBtnText">Call</span>'; }
+  if (muteBtn) { muteBtn.disabled = true; muteBtn.textContent = '🔊 Mute'; muteBtn.style.background = ''; }
 
-  async function hStartCall() {
-    var btn = document.getElementById('hostCallBtn');
-    var muteBtn = document.getElementById('hostMuteBtn');
+  hSetStatus('Call ended');
+  var durEl = document.getElementById('hostCallDuration');
+  if (durEl) durEl.textContent = '--:--';
+  var userEl = document.getElementById('hostUserTranscript');
+  if (userEl) { userEl.textContent = '—'; userEl.style.opacity = '1'; }
+  var aiEl = document.getElementById('hostAiTranscript');
+  if (aiEl) aiEl.textContent = '—';
+}
 
-    var isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    if (!isSecure) { hStatus('HTTPS required for microphone'); return; }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { hStatus('Browser microphone not supported'); return; }
+window.hToggleVoiceCall = async function() {
+  var btn = document.getElementById('hostCallBtn');
+  var muteBtn = document.getElementById('hostMuteBtn');
 
-    hStatus('Connecting microphone...');
+  if (!btn) return;
+
+  if (!hIsCallActive) {
     try {
-      hostVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (micErr) {
-      if (micErr.name === 'NotAllowedError') hStatus('Microphone blocked — allow in browser settings');
-      else if (micErr.name === 'NotFoundError') hStatus('No microphone found');
-      else hStatus('Mic error: ' + micErr.name);
-      return;
-    }
-
-    hStopAudio();
-    hostAudioIssue = null;
-    hostIsMuted = false;
-    hostIsCallActive = true;
-    hostCallStartTime = Date.now();
-    btn.style.background = 'linear-gradient(to right, #ef4444, #dc2626)';
-    btn.innerHTML = '<span>📵</span><span id="hostCallBtnText">End Call</span>';
-    muteBtn.disabled = false;
-    hStatus('Connecting to AI...');
-    hAlert(null);
-
-    var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    hostVoiceWs = new WebSocket(protocol + '//' + location.host + '/ws/voice-ai/live');
-
-    hostVoiceWs.onopen = function() {
-      var voicePicker = document.getElementById('inlineVoicePicker');
-      var selectedVoice = voicePicker ? voicePicker.value : '';
-      hostVoiceWs.send(JSON.stringify({ type: 'start', tenant_id: '{{ tenant.id }}', voice: selectedVoice }));
-      try {
-        hostAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-        if (hostAudioContext.state === 'suspended') hostAudioContext.resume().catch(function(){});
-        hostSourceNode = hostAudioContext.createMediaStreamSource(hostVoiceStream);
-        hostScriptProcessor = hostAudioContext.createScriptProcessor(4096, 1, 1);
-        hostScriptProcessor.onaudioprocess = function(e) {
-          if (!hostIsCallActive || !hostVoiceWs || hostVoiceWs.readyState !== WebSocket.OPEN || hostIsMuted) return;
-          var f32 = e.inputBuffer.getChannelData(0);
-          var i16 = new Int16Array(f32.length);
-          for (var i = 0; i < f32.length; i++) { var s = Math.max(-1, Math.min(1, f32[i])); i16[i] = s < 0 ? s * 32768 : s * 32767; }
-          hostVoiceWs.send(i16.buffer);
-        };
-        hostSourceNode.connect(hostScriptProcessor);
-        hostScriptProcessor.connect(hostAudioContext.destination);
-        hStatus('Listening... (speak now)');
-      } catch(audioErr) {
-        hStatus('Audio capture error: ' + audioErr.message);
-        hEndCall();
+      // 1. HTTPS check
+      var isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      if (!isSecure) {
+        hSetStatus('❌ HTTPS required for microphone');
+        var userEl = document.getElementById('hostUserTranscript');
+        if (userEl) userEl.textContent = 'Microphone requires HTTPS. Open this page at https://' + location.host + location.pathname;
+        return;
       }
-    };
 
-    hostVoiceWs.onmessage = function(event) {
+      // 2. API availability check
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        hSetStatus('❌ Browser does not support microphone access');
+        var userEl = document.getElementById('hostUserTranscript');
+        if (userEl) userEl.textContent = 'Try Chrome, Firefox, or Edge browser.';
+        return;
+      }
+
+      hSetStatus('Connecting microphone...');
+
+      // 3. Get microphone
       try {
-        var data = JSON.parse(event.data);
-        if (data.type === 'interim') {
-          var el = document.getElementById('hostUserTranscript');
-          if (el) { el.textContent = data.text || ''; el.style.opacity = '0.6'; }
-        } else if (data.type === 'transcript') {
-          var el = document.getElementById('hostUserTranscript');
-          if (el) { el.textContent = data.text || '—'; el.style.opacity = '1'; }
-          hAddChatBubble('user', data.text || '');
-          hStatus('Thinking...');
-          hClearWatchdog();
-          var tok = hostWatchdogToken;
-          hostWatchdog = setTimeout(function() {
-            if (!hostIsCallActive || tok !== hostWatchdogToken) return;
-            hAlert('warning', 'No audio received', 'TTS audio did not arrive. Check Voice AI settings.');
-          }, 8000);
-        } else if (data.type === 'response') {
-          var el = document.getElementById('hostAiTranscript');
-          if (el) el.textContent = data.text || '—';
-          hStatus('Speaking...');
-        } else if (data.type === 'audio') {
-          hClearWatchdog();
-          if (!data.audio) return;
-          var bin = atob(data.audio);
-          var bytes = new Uint8Array(bin.length);
-          for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-          if (bytes.length) {
-            hQueueAudio(bytes);
-            hStatus('Listening... (speak now)');
-          }
-          // Add AI bubble from last known response text
-          var aiText = document.getElementById('hostAiTranscript');
-          if (aiText && aiText.textContent && aiText.textContent !== '—') {
-            hAddChatBubble('ai', aiText.textContent);
-            aiText.textContent = '—';
-          }
-        } else if (data.type === 'gap') {
-          hAddGap(data.text || 'Unknown question');
-        } else if (data.type === 'error') {
-          hClearWatchdog();
-          hStatus('Error: ' + (data.message || 'unknown'));
-          hAlert('error', 'AI Error', data.message || 'An error occurred.');
-        } else if (data.type === 'ready') {
-          hStatus('Connected — speak now');
-          hAlert(null);
+        hVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (micErr) {
+        console.error('getUserMedia failed:', micErr.name, micErr.message);
+        var userEl = document.getElementById('hostUserTranscript');
+        if (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError') {
+          hSetStatus('❌ Microphone blocked');
+          if (userEl) userEl.textContent = 'Click the 🔒 lock icon in address bar → Site settings → Microphone → Allow → Reload page.';
+        } else if (micErr.name === 'NotFoundError') {
+          hSetStatus('❌ No microphone found');
+          if (userEl) userEl.textContent = 'No microphone detected on this device.';
+        } else if (micErr.name === 'NotReadableError') {
+          hSetStatus('❌ Microphone in use by another app');
+          if (userEl) userEl.textContent = 'Close Zoom, Discord, Teams, or any other app using the mic, then try again.';
+        } else {
+          hSetStatus('❌ Mic error: ' + micErr.name);
+          if (userEl) userEl.textContent = micErr.message;
         }
-      } catch(e) { console.error('Host WS parse error:', e); }
-    };
+        hIsCallActive = false;
+        return;
+      }
 
-    hostVoiceWs.onerror = function(err) { hStatus('Connection error'); hAlert('error', 'Connection error', err.message || 'WebSocket failed'); };
-    hostVoiceWs.onclose = function() { hEndCall(); };
+      hResetAudioState();
+      hIsMuted = false;
+      hIsCallActive = true;
+      hCallStartTime = Date.now();
 
-    var timerInterval = setInterval(function() {
-      if (!hostIsCallActive) { clearInterval(timerInterval); return; }
-      var s = Math.floor((Date.now() - hostCallStartTime) / 1000);
-      var m = Math.floor(s / 60); s = s % 60;
-      var el = document.getElementById('hostCallDuration');
-      if (el) el.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-    }, 1000);
-  }
+      btn.style.background = 'linear-gradient(to right, #ef4444, #dc2626)';
+      btn.innerHTML = '<span>📵</span><span id="hostCallBtnText">End Call</span>';
+      muteBtn.disabled = false;
+      muteBtn.textContent = '🔊 Mute';
+      muteBtn.style.background = '';
+      hSetStatus('Connecting to AI...');
 
-  document.addEventListener('DOMContentLoaded', function() {
-    var callBtn = document.getElementById('hostCallBtn');
-    var muteBtn = document.getElementById('hostMuteBtn');
-    if (!callBtn) return; // not on test tab
+      var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      var wsUrl = protocol + '//' + window.location.host + '/ws/voice-ai/live';
+      console.log('Host: connecting to WebSocket:', wsUrl);
 
-    callBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      if (!hostIsCallActive) { hStartCall(); } else { hEndCall(); }
-    });
+      hVoiceWs = new WebSocket(wsUrl);
 
-    muteBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      hostIsMuted = !hostIsMuted;
-      if (hostVoiceStream) hostVoiceStream.getTracks().forEach(function(t) { t.enabled = !hostIsMuted; });
-      if (hostVoiceWs && hostVoiceWs.readyState === WebSocket.OPEN) hostVoiceWs.send(JSON.stringify({ type: 'mute', muted: hostIsMuted }));
-      muteBtn.textContent = hostIsMuted ? '🔇 Unmute' : '🔊 Mute';
-      muteBtn.style.background = hostIsMuted ? 'linear-gradient(to right, #ef4444, #dc2626)' : '';
-    });
+      hVoiceWs.onopen = function() {
+        console.log('Host: WebSocket connected');
+        var voicePicker = document.getElementById('inlineVoicePicker');
+        var selectedVoice = voicePicker ? voicePicker.value : '';
+        hVoiceWs.send(JSON.stringify({ type: 'start', tenant_id: '{{ tenant.id }}', voice: selectedVoice }));
 
-    // Save Voice button — AJAX POST to /api/voice/save-voice
-    var saveVoiceBtn = document.getElementById('saveVoiceBtn');
-    var saveVoiceMsg = document.getElementById('saveVoiceMsg');
-    if (saveVoiceBtn) {
-      saveVoiceBtn.addEventListener('click', function() {
-        var picker = document.getElementById('inlineVoicePicker');
-        if (!picker) return;
-        var voice = picker.value;
-        var csrf = document.getElementById('test-csrf') || document.querySelector('input[name="csrf_token"]');
-        saveVoiceBtn.textContent = 'Saving...';
-        saveVoiceBtn.disabled = true;
-        fetch('/api/voice/save-voice', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf ? csrf.value : '' },
-          body: JSON.stringify({ voice: voice })
-        }).then(function(r) {
-          saveVoiceBtn.textContent = 'Save';
-          saveVoiceBtn.disabled = false;
-          if (r.ok) {
-            if (saveVoiceMsg) { saveVoiceMsg.classList.remove('hidden'); setTimeout(function() { saveVoiceMsg.classList.add('hidden'); }, 3000); }
-          } else {
-            saveVoiceBtn.textContent = 'Error';
-            setTimeout(function() { saveVoiceBtn.textContent = 'Save'; }, 2000);
+        try {
+          hAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+          if (hAudioContext.state === 'suspended') {
+            hAudioContext.resume().catch(function(err) { console.warn('AudioContext resume failed:', err); });
           }
-        }).catch(function() {
-          saveVoiceBtn.textContent = 'Save';
-          saveVoiceBtn.disabled = false;
-        });
-      });
+          hSourceNode = hAudioContext.createMediaStreamSource(hVoiceStream);
+          hScriptProcessor = hAudioContext.createScriptProcessor(4096, 1, 1);
+          hScriptProcessor.onaudioprocess = function(e) {
+            if (!hIsCallActive || !hVoiceWs || hVoiceWs.readyState !== WebSocket.OPEN || hIsMuted) return;
+            var float32 = e.inputBuffer.getChannelData(0);
+            var int16 = new Int16Array(float32.length);
+            for (var i = 0; i < float32.length; i++) {
+              var s = Math.max(-1, Math.min(1, float32[i]));
+              int16[i] = s < 0 ? s * 32768 : s * 32767;
+            }
+            hVoiceWs.send(int16.buffer);
+          };
+          hSourceNode.connect(hScriptProcessor);
+          hScriptProcessor.connect(hAudioContext.destination);
+          hSetStatus('Listening... (speak now)');
+          console.log('Host: real-time PCM streaming started at 16kHz');
+        } catch (audioErr) {
+          console.error('Host: AudioContext error:', audioErr);
+          hSetStatus('❌ Audio capture error: ' + audioErr.message);
+          hEndCall();
+        }
+      };
+
+      hVoiceWs.onmessage = function(event) {
+        try {
+          var data = JSON.parse(event.data);
+          if (data.type === 'interim') {
+            var el = document.getElementById('hostUserTranscript');
+            if (el) { el.textContent = data.text || ''; el.style.opacity = '0.6'; }
+          } else if (data.type === 'transcript') {
+            var el = document.getElementById('hostUserTranscript');
+            if (el) { el.textContent = data.text || '—'; el.style.opacity = '1'; }
+            hAddChatBubble('user', data.text || '');
+            hSetStatus('Thinking...');
+            hScheduleWatchdog(data.text || '');
+          } else if (data.type === 'response') {
+            var el = document.getElementById('hostAiTranscript');
+            if (el) el.textContent = data.text || '—';
+            hSetStatus('Speaking...');
+            hScheduleWatchdog(data.text || '');
+          } else if (data.type === 'audio') {
+            hClearWatchdog();
+            if (!data.audio || !data.audio.trim()) {
+              hShowPlaybackIssue('warning', 'Empty audio payload', 'The server responded but the audio payload was empty. Check TTS settings.', 'Server returned no audio');
+              return;
+            }
+            var binaryString = atob(data.audio);
+            var bytes = new Uint8Array(binaryString.length);
+            for (var i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+            if (!bytes.length) {
+              hShowPlaybackIssue('warning', 'Empty audio payload', 'The browser received an empty MP3 buffer. Check TTS settings and restart the call.', 'Server returned no audio');
+              return;
+            }
+            if (hQueueAudio(bytes)) {
+              hSetStatus('Listening... (speak now)');
+              // Add AI bubble from last response text
+              var aiEl = document.getElementById('hostAiTranscript');
+              if (aiEl && aiEl.textContent && aiEl.textContent !== '—') {
+                hAddChatBubble('ai', aiEl.textContent);
+                aiEl.textContent = '—';
+              }
+            }
+          } else if (data.type === 'gap') {
+            hAddGap(data.text || 'Unknown question');
+          } else if (data.type === 'error') {
+            console.error('Host: server error:', data.message);
+            hClearWatchdog();
+            hSetStatus('❌ ' + (data.message || 'Error'));
+            hSetPlaybackAlert('error', 'Server error', data.message || 'An unknown voice error occurred.');
+          } else if (data.type === 'ready') {
+            hClearPlaybackAlert();
+            hSetStatus('Connected — speak now');
+          }
+        } catch(e) { console.error('Host: WS parse error:', e); }
+      };
+
+      hVoiceWs.onerror = function(err) {
+        console.error('Host: WebSocket error:', err);
+        hClearWatchdog();
+        hSetStatus('Connection error');
+        hSetPlaybackAlert('error', 'Connection error', err.message || 'Unknown websocket error');
+      };
+
+      hVoiceWs.onclose = function(e) {
+        console.log('Host: WebSocket closed:', e.code, e.reason);
+        hEndCall();
+      };
+
+      var timerInterval = setInterval(function() {
+        if (!hIsCallActive) { clearInterval(timerInterval); return; }
+        var elapsed = Math.floor((Date.now() - hCallStartTime) / 1000);
+        var mins = Math.floor(elapsed / 60);
+        var secs = elapsed % 60;
+        var el = document.getElementById('hostCallDuration');
+        if (el) el.textContent = (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs;
+      }, 1000);
+
+    } catch (err) {
+      console.error('Host: unexpected error in hToggleVoiceCall:', err);
+      hClearWatchdog();
+      hSetStatus('❌ Unexpected error: ' + err.message);
+      var userEl = document.getElementById('hostUserTranscript');
+      if (userEl) userEl.textContent = err.name + ': ' + err.message;
+      hIsCallActive = false;
+    }
+  } else {
+    console.log('Host: ending call');
+    hEndCall();
+  }
+};
+
+window.hMuteAudio = function() {
+  var btn = document.getElementById('hostMuteBtn');
+  if (!btn) return;
+  hIsMuted = !hIsMuted;
+  if (hVoiceStream) hVoiceStream.getTracks().forEach(function(t) { t.enabled = !hIsMuted; });
+  if (hVoiceWs && hVoiceWs.readyState === WebSocket.OPEN) hVoiceWs.send(JSON.stringify({ type: 'mute', muted: hIsMuted }));
+  if (hIsMuted) { btn.textContent = '🔇 Unmute'; btn.style.background = 'linear-gradient(to right, #ef4444, #dc2626)'; }
+  else          { btn.textContent = '🔊 Mute';   btn.style.background = ''; }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+  var callBtn = document.getElementById('hostCallBtn');
+  var muteBtn = document.getElementById('hostMuteBtn');
+  if (!callBtn) return; // not on test tab
+
+  console.log('Host: attaching call button handler');
+  callBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    callBtn.style.opacity = '0.7';
+    setTimeout(function() { callBtn.style.opacity = '1'; }, 100);
+    try {
+      window.hToggleVoiceCall();
+    } catch(err) {
+      console.error('Host: hToggleVoiceCall error:', err);
+      hSetStatus('❌ Error: ' + err.message);
     }
   });
-})();
+
+  if (muteBtn) {
+    muteBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      try { window.hMuteAudio(); } catch(err) { console.error('Host: hMuteAudio error:', err); }
+    });
+  }
+
+  // Save Voice button
+  var saveVoiceBtn = document.getElementById('saveVoiceBtn');
+  var saveVoiceMsg = document.getElementById('saveVoiceMsg');
+  if (saveVoiceBtn) {
+    saveVoiceBtn.addEventListener('click', function() {
+      var picker = document.getElementById('inlineVoicePicker');
+      if (!picker) return;
+      var voice = picker.value;
+      var csrf = document.getElementById('test-csrf') || document.querySelector('input[name="csrf_token"]');
+      saveVoiceBtn.textContent = 'Saving...';
+      saveVoiceBtn.disabled = true;
+      fetch('/api/voice/save-voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf ? csrf.value : '' },
+        body: JSON.stringify({ voice: voice })
+      }).then(function(r) {
+        saveVoiceBtn.textContent = 'Save';
+        saveVoiceBtn.disabled = false;
+        if (r.ok) {
+          if (saveVoiceMsg) { saveVoiceMsg.classList.remove('hidden'); setTimeout(function() { saveVoiceMsg.classList.add('hidden'); }, 3000); }
+        } else {
+          saveVoiceBtn.textContent = 'Error';
+          setTimeout(function() { saveVoiceBtn.textContent = 'Save'; }, 2000);
+        }
+      }).catch(function() { saveVoiceBtn.textContent = 'Save'; saveVoiceBtn.disabled = false; });
+    });
+  }
+});
 </script>
 {%- endblock %}
