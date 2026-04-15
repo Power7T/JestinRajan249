@@ -156,8 +156,10 @@ document.addEventListener('DOMContentLoaded', function() {
     var cost  = svc ? svc.cost  : 0;
     var detail = '';
     if (svc) {
-      if (svc.in_tokens || svc.out_tokens) {
-        detail = fmtN(svc.in_tokens) + '/' + fmtN(svc.out_tokens) + ' tok';
+      if (key === 'google_tts' || key === 'elevenlabs') {
+        if (svc.characters) detail = fmtN(svc.characters) + ' chars';
+      } else if (svc.in_tokens || svc.out_tokens) {
+        detail = fmtN(svc.in_tokens) + ' in / ' + fmtN(svc.out_tokens) + ' out tokens';
       } else if (svc.duration_s) {
         detail = Math.round(svc.duration_s) + 's audio';
       } else if (svc.characters) {

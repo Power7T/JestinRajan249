@@ -138,6 +138,30 @@ from web.phone_utils import normalize_phone, phones_match
 from web.idempotency import check_idempotency, store_idempotency_result
 from web.rate_limiter import check_rate_limit, increment_rate_limit
 from web.cost_tracker import log_api_usage, estimate_cost
+
+
+def _log_tts_usage(db, tenant_id: str, text: str, audio_bytes: bytes, call_id: str | None = None) -> None:
+    """Log TTS usage under the correct provider (google_tts or elevenlabs) with character count."""
+    try:
+        from web.integrations.voice import VoiceAIService as _VAS
+        provider = (_VAS.TTS_PROVIDER or "google").lower()
+        char_count = len(text)
+        if provider == "google":
+            cost = char_count / 1_000_000 * 16.0  # Neural2: $16/1M chars
+            log_api_usage(
+                db, tenant_id, "google_tts", "synthesize",
+                cost_usd=cost, characters=char_count, call_id=call_id,
+                status="success" if audio_bytes else "failed",
+            )
+        else:
+            cost = estimate_cost("elevenlabs", "synthesize", characters=char_count)
+            log_api_usage(
+                db, tenant_id, "elevenlabs", "synthesize",
+                cost_usd=cost, characters=char_count, call_id=call_id,
+                status="success" if audio_bytes else "failed",
+            )
+    except Exception:
+        pass
 from web.timeout_handler import call_with_timeout, TimeoutConfig, FALLBACKS
 from web.call_consent import get_consent_prompt, handle_consent_response, should_record_call
 from web.feature_flags import is_feature_enabled
@@ -9988,6 +10012,7 @@ async def voice_ai_voice_message(request: Request, audio: UploadFile = File(...)
         # Step 3: Synthesize response to audio
         voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
         audio_bytes_response, s3_url = await VoiceAIService.synthesize_speech(response_text, voice_id=voice_id)
+        _log_tts_usage(db, tenant.id, response_text, audio_bytes_response)
 
         return JSONResponse({
             "transcript": transcript,
@@ -10051,6 +10076,7 @@ async def voice_ai_synthesize(request: Request, db: Session = Depends(get_db)):
         voice_id = tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None
 
         audio_bytes, s3_url = await VoiceAIService.synthesize_speech(text, voice_id=voice_id)
+        _log_tts_usage(db, tenant.id, text, audio_bytes)
 
         return JSONResponse({
             "audio_url": s3_url
@@ -10324,6 +10350,7 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
                             import base64
                             await websocket.send_json({"type": "audio", "audio": base64.b64encode(audio_bytes).decode()})
                             log.info(f"Sent TTS audio: {len(audio_bytes)} bytes")
+                            _log_tts_usage(db, tenant.id, response_text, audio_bytes)
                         else:
                             log.warning("TTS returned no audio for live admin voice test (provider=%s)", VoiceAIService.TTS_PROVIDER)
                             await websocket.send_json({
@@ -12688,29 +12715,8 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
         audio_bytes, audio_url = await VoiceAIService.synthesize_speech(ai_text, voice_id=voice_id)
 
         # Log TTS cost under the correct provider
-        from web.integrations.voice import VoiceAIService as _VAS
-        _tts_provider = (_VAS.TTS_PROVIDER or "google").lower()
-        _char_count = len(ai_text)
-        if _tts_provider == "google":
-            # Google Neural2: $16 per 1M chars, WaveNet: $16/1M, Standard: $4/1M
-            _tts_cost = _char_count / 1_000_000 * 16.0
-            log_api_usage(
-                db, voice_call.tenant_id, "google_tts", "synthesize",
-                cost_usd=_tts_cost,
-                characters=_char_count,
-                call_id=call_id,
-                status="success" if audio_bytes else "failed",
-            )
-        else:
-            _tts_cost = estimate_cost("elevenlabs", "synthesize", characters=_char_count)
-            log_api_usage(
-                db, voice_call.tenant_id, "elevenlabs", "synthesize",
-                cost_usd=_tts_cost,
-                characters=_char_count,
-                call_id=call_id,
-                status="success" if audio_bytes else "failed",
-            )
-        increment_rate_limit(db, voice_call.tenant_id, "daily_cost", _tts_cost)
+        _log_tts_usage(db, voice_call.tenant_id, ai_text, audio_bytes, call_id=call_id)
+        increment_rate_limit(db, voice_call.tenant_id, "daily_cost", len(ai_text) / 1_000_000 * 16.0)
 
         # Update running confidence average
         prev_avg = voice_call.confidence_avg or confidence
