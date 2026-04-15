@@ -124,8 +124,9 @@ select.compat-input { appearance: auto; cursor: pointer; }
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 OpenRouter API Key</label>
-          <input type="password" name="openrouter_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.openrouter_api_key_enc else '' }}" placeholder="sk-or-v1-...">
-          <p class="text-xs text-slate-500">Leave blank or as ******** to keep current key</p>
+          {% if sys_conf.openrouter_api_key_enc %}<p class="text-xs text-emerald-400 mb-1">✓ API key configured — leave blank to keep it</p>{% endif %}
+          <input type="password" name="openrouter_api_key_enc" class="compat-input" value="" placeholder="{{ 'Enter new key to replace current' if sys_conf.openrouter_api_key_enc else 'sk-or-v1-...' }}">
+          <p class="text-xs text-slate-500">Leave blank to keep current key</p>
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Primary Model</label>
@@ -168,8 +169,9 @@ select.compat-input { appearance: auto; cursor: pointer; }
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 Deepgram API Key</label>
-          <input type="password" name="deepgram_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.deepgram_api_key_enc else '' }}" placeholder="Token ...">
-          <p class="text-xs text-slate-500">Leave blank or as ******** to keep current key</p>
+          {% if sys_conf.deepgram_api_key_enc %}<p class="text-xs text-emerald-400 mb-1">✓ API key configured — leave blank to keep it</p>{% endif %}
+          <input type="password" name="deepgram_api_key_enc" class="compat-input" value="" placeholder="{{ 'Enter new key to replace current' if sys_conf.deepgram_api_key_enc else 'Token ...' }}">
+          <p class="text-xs text-slate-500">Leave blank to keep current key</p>
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Model</label>
@@ -227,8 +229,11 @@ select.compat-input { appearance: auto; cursor: pointer; }
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 Google TTS API Key</label>
-            <input type="password" name="google_tts_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.google_tts_api_key_enc else '' }}" placeholder="AIza...">
-            <p class="text-xs text-slate-500 mt-1">Leave blank or ******** to keep current key</p>
+            {% if sys_conf.google_tts_api_key_enc %}
+            <p class="text-xs text-emerald-400 mb-1">✓ API key configured — leave field blank to keep it</p>
+            {% endif %}
+            <input type="password" name="google_tts_api_key_enc" class="compat-input" value="" placeholder="{{ 'Enter new key to replace current' if sys_conf.google_tts_api_key_enc else 'AIza...' }}">
+            <p class="text-xs text-slate-500 mt-1">Leave blank to keep current key</p>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Voice</label>
@@ -253,7 +258,10 @@ select.compat-input { appearance: auto; cursor: pointer; }
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Language Code</label>
-            <input type="text" name="voice_google_tts_language" class="compat-input" value="{{ sys_conf.voice_google_tts_language or 'en-US' }}" placeholder="en-US">
+            {% set _raw_lang = sys_conf.voice_google_tts_language or 'en-US' %}
+            {% set _lang_parts = _raw_lang.split('-') %}
+            {% set _lang_code = _lang_parts[0] + '-' + _lang_parts[1] if _lang_parts|length >= 2 else _raw_lang %}
+            <input type="text" name="voice_google_tts_language" class="compat-input" value="{{ _lang_code }}" placeholder="en-US">
             <p class="text-xs text-slate-500 mt-1">Must match your selected voice (auto-set when voice changes)</p>
           </div>
           <div>
@@ -272,8 +280,9 @@ select.compat-input { appearance: auto; cursor: pointer; }
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 ElevenLabs API Key</label>
-            <input type="password" name="elevenlabs_api_key_enc" class="compat-input" value="{{ '********' if sys_conf.elevenlabs_api_key_enc else '' }}" placeholder="sk_...">
-            <p class="text-xs text-slate-500">Leave blank or ******** to keep current key</p>
+            {% if sys_conf.elevenlabs_api_key_enc %}<p class="text-xs text-emerald-400 mb-1">✓ API key configured — leave blank to keep it</p>{% endif %}
+            <input type="password" name="elevenlabs_api_key_enc" class="compat-input" value="" placeholder="{{ 'Enter new key to replace current' if sys_conf.elevenlabs_api_key_enc else 'sk_...' }}">
+            <p class="text-xs text-slate-500">Leave blank to keep current key</p>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">AI Voice</label>
@@ -332,11 +341,13 @@ select.compat-input { appearance: auto; cursor: pointer; }
       </div>
       <div>
         <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 Access Key ID</label>
-        <input type="password" name="cloudflare_r2_access_key_enc" class="compat-input" value="{{ '********' if sys_conf.cloudflare_r2_access_key_enc else '' }}" placeholder="Access key...">
+        {% if sys_conf.cloudflare_r2_access_key_enc %}<p class="text-xs text-emerald-400 mb-1">✓ Configured — leave blank to keep</p>{% endif %}
+        <input type="password" name="cloudflare_r2_access_key_enc" class="compat-input" value="" placeholder="{{ 'Enter new key to replace' if sys_conf.cloudflare_r2_access_key_enc else 'Access key...' }}">
       </div>
       <div>
         <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">🔑 Secret Access Key</label>
-        <input type="password" name="cloudflare_r2_secret_key_enc" class="compat-input" value="{{ '********' if sys_conf.cloudflare_r2_secret_key_enc else '' }}" placeholder="Secret key...">
+        {% if sys_conf.cloudflare_r2_secret_key_enc %}<p class="text-xs text-emerald-400 mb-1">✓ Configured — leave blank to keep</p>{% endif %}
+        <input type="password" name="cloudflare_r2_secret_key_enc" class="compat-input" value="" placeholder="{{ 'Enter new key to replace' if sys_conf.cloudflare_r2_secret_key_enc else 'Secret key...' }}">
       </div>
       <div>
         <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Bucket Name</label>
@@ -572,13 +583,13 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Google TTS: auto-sync language code when voice changes
+  // e.g. "en-US-Neural2-F" → first two dash-parts → "en-US"
   var googleVoiceSelect = document.querySelector('select[name="voice_google_tts_voice"]');
   var googleLangInput = document.querySelector('input[name="voice_google_tts_language"]');
   if (googleVoiceSelect && googleLangInput) {
     googleVoiceSelect.addEventListener('change', function() {
-      var voice = googleVoiceSelect.value;
-      var lang = voice.substring(0, voice.lastIndexOf('-'));
-      if (lang) googleLangInput.value = lang;
+      var parts = googleVoiceSelect.value.split('-');
+      if (parts.length >= 2) googleLangInput.value = parts[0] + '-' + parts[1];
     });
   }
 

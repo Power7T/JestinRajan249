@@ -8967,7 +8967,9 @@ async def admin_voice_ai_save(
     if voice_google_tts_voice.strip():
         sys_conf.voice_google_tts_voice = voice_google_tts_voice.strip()
     if voice_google_tts_language.strip():
-        sys_conf.voice_google_tts_language = voice_google_tts_language.strip()
+        # Normalize to first two parts: "en-US-Neural2-F" or "en-US-Neural2" → "en-US"
+        lang_parts = voice_google_tts_language.strip().split('-')
+        sys_conf.voice_google_tts_language = '-'.join(lang_parts[:2]) if len(lang_parts) >= 2 else voice_google_tts_language.strip()
     try:
         if voice_google_tts_speaking_rate.strip():
             sys_conf.voice_google_tts_speaking_rate = float(voice_google_tts_speaking_rate.strip())
