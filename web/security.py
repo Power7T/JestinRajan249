@@ -294,8 +294,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         h["X-XSS-Protection"]         = "0"        # Deprecated; CSP handles this
         h["Referrer-Policy"]          = "strict-origin-when-cross-origin"
-        # Allow microphone only on voice AI admin page for live call testing
-        if request.url.path.startswith("/admin/voice-ai"):
+        # Allow microphone on admin voice AI page and host test call page
+        if request.url.path.startswith("/admin/voice-ai") or request.url.path.startswith("/voice-calls"):
             h["Permissions-Policy"] = "geolocation=(), microphone=(self), camera=()"
         else:
             h["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
