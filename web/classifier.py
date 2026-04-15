@@ -394,7 +394,7 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
         db.close()
 
 
-def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional[str] = None, property_context: str = "", tenant_id: Optional[str] = None) -> str:
+def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional[str] = None, property_context: str = "", tenant_id: Optional[str] = None, history: Optional[list] = None) -> str:
     """Generate draft via OpenRouter configured centrally by administrator."""
     from web.db import SessionLocal
     from web.models import APIUsageLog, TenantConfig
@@ -478,13 +478,14 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
                     model_to_use = sys_conf.fallback_model or "meta-llama/llama-3.3-70b-instruct"
 
                 try:
+                    _messages = [{"role": "system", "content": system}]
+                    if history:
+                        _messages.extend(history[-20:])  # keep last 20 turns max
+                    _messages.append({"role": "user", "content": user_content})
                     resp = client.chat.completions.create(
                         model=model_to_use,
                         max_tokens=max_tokens,
-                        messages=[
-                            {"role": "system", "content": system},
-                            {"role": "user", "content": user_content}
-                        ],
+                        messages=_messages,
                     )
                     content = resp.choices[0].message.content
                     if not content:

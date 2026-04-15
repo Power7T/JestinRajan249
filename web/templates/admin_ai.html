@@ -690,6 +690,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   var chatLoading = document.getElementById('ai-chat-loading');
   var chatError = document.getElementById('ai-chat-error');
   var hasMessages = false;
+  var _convHistory = [];  // [{role: 'user'|'assistant', content: str}]
 
   async function sendAiChat() {
     var msg = chatInput ? chatInput.value.trim() : '';
@@ -709,11 +710,14 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       var fd = new FormData();
       fd.append('guest_name', name);
       fd.append('message', msg);
+      fd.append('history', JSON.stringify(_convHistory));
       fd.append('csrf_token', _csrf);
       var resp = await fetch('/api/simulate/json', { method: 'POST', body: fd });
       var data = await resp.json();
       if (chatLoading) chatLoading.classList.add('hidden');
       if (data.ok) {
+        _convHistory.push({ role: 'user', content: msg });
+        _convHistory.push({ role: 'assistant', content: data.draft || '' });
         appendBubble('ai', 'AI Host', data.draft || '', data.msg_type, data.confidence);
       } else {
         if (chatError) { chatError.textContent = data.error || 'AI response failed'; chatError.classList.remove('hidden'); }
@@ -759,6 +763,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAiChat(); }
   });
   if (chatClear) chatClear.addEventListener('click', function() {
+    _convHistory = [];
     if (chatHistory) {
       chatHistory.innerHTML = '';
       hasMessages = false;

@@ -971,6 +971,7 @@ var _origSelectConversation = typeof selectConversation !== 'undefined' ? select
   var loadingEl = document.getElementById('tc-loading');
   var errorEl = document.getElementById('tc-error');
   var hasMsg = false;
+  var _convHistory = [];
 
   function openModal() { if (modal) { modal.style.display = 'flex'; if (inputEl) inputEl.focus(); } }
   function closeModal() { if (modal) modal.style.display = 'none'; }
@@ -1009,11 +1010,14 @@ var _origSelectConversation = typeof selectConversation !== 'undefined' ? select
       var fd = new FormData();
       fd.append('guest_name', name);
       fd.append('message', msg);
+      fd.append('history', JSON.stringify(_convHistory));
       fd.append('csrf_token', _csrf);
       var resp = await fetch('/api/simulate/json', { method: 'POST', body: fd });
       var data = await resp.json();
       if (loadingEl) loadingEl.style.display = 'none';
       if (data.ok) {
+        _convHistory.push({ role: 'user', content: msg });
+        _convHistory.push({ role: 'assistant', content: data.draft || '' });
         appendBubble('ai', 'AI Host', data.draft || '', data.msg_type, data.confidence);
       } else {
         if (errorEl) { errorEl.textContent = data.error || 'AI response failed'; errorEl.style.display = 'block'; }
@@ -1054,6 +1058,7 @@ var _origSelectConversation = typeof selectConversation !== 'undefined' ? select
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTestMsg(); }
   });
   if (clearBtn) clearBtn.addEventListener('click', function() {
+    _convHistory = [];
     if (chatEl) {
       chatEl.innerHTML = '';
       hasMsg = false;

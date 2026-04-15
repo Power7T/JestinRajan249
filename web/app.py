@@ -8020,10 +8020,12 @@ async def simulate_guest_json(
     request: Request,
     guest_name: str = Form("Demo Guest"),
     message: str = Form("Hi, what time is check-in?"),
+    history: str = Form(None),
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
     """Simulate guest message → return AI draft as JSON (for settings widget)."""
+    import json as _json
     try:
         tenant_id = get_current_tenant_id(request)
         validate_csrf(request, csrf_token)
@@ -8035,6 +8037,19 @@ async def simulate_guest_json(
         guest_name = (guest_name or "Demo Guest").strip()[:128]
         message = (message or "Hi, what time is check-in?").strip()[:2000]
 
+        history_list = None
+        if history:
+            try:
+                parsed = _json.loads(history)
+                if isinstance(parsed, list):
+                    history_list = [
+                        {"role": h["role"], "content": str(h["content"])[:1000]}
+                        for h in parsed
+                        if isinstance(h, dict) and h.get("role") in ("user", "assistant") and h.get("content")
+                    ][-20:]
+            except Exception:
+                pass
+
         msg_type, confidence, _ = classify_message_with_confidence(message)
         property_context = _property_context_for_reservation(None, cfg, db)
         draft_text = generate_draft(
@@ -8043,6 +8058,7 @@ async def simulate_guest_json(
             msg_type,
             property_context=property_context,
             tenant_id=tenant_id,
+            history=history_list,
         )
 
         try:
