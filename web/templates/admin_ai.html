@@ -459,6 +459,44 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     <button type="button" id="clear-chat-btn" class="mt-3 text-[0.65rem] text-slate-600 hover:text-slate-400 transition-colors">Clear chat</button>
   </div>
 
+  <!-- ── AI Host Chat Tester ──────────────────────────────────────── -->
+  <div class="glass-card rounded-3xl p-6 mb-8">
+    <div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-emerald-400">forum</span>
+        <div>
+          <h2 class="text-lg font-bold text-white">AI Host Chat Tester</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Simulate a guest message — uses the real AI pipeline (classify → draft), no messages sent</p>
+        </div>
+      </div>
+      <button type="button" id="ai-chat-clear-btn" class="text-[0.65rem] text-slate-600 hover:text-slate-400 transition-colors">Clear chat</button>
+    </div>
+
+    <div class="mb-4">
+      <label class="block text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Simulated Guest Name</label>
+      <input type="text" id="ai-chat-name" value="Alex" class="compat-input text-sm" style="max-width:220px">
+    </div>
+
+    <!-- Chat history -->
+    <div id="ai-chat-history" class="rounded-xl border border-white/5 bg-black/20 p-4 mb-4 min-h-[100px] max-h-[380px] overflow-y-auto">
+      <div id="ai-chat-placeholder" class="flex flex-col items-center justify-center py-8 text-center gap-2">
+        <span class="material-symbols-outlined text-3xl text-slate-700">chat_bubble_outline</span>
+        <p class="text-slate-600 text-sm">Type a guest message below to test how the AI responds</p>
+      </div>
+    </div>
+
+    <!-- Input row -->
+    <div class="flex gap-3">
+      <textarea id="ai-chat-input" rows="2" placeholder="Type what a guest would say… (Ctrl+Enter to send)" class="compat-input !mb-0 flex-1 resize-none text-sm"></textarea>
+      <button type="button" id="ai-chat-send-btn" class="px-5 py-2 bg-gradient-to-br from-emerald-500 to-emerald-700 text-white text-sm font-extrabold rounded-xl hover:shadow-[0_0_20px_rgba(74,222,128,0.3)] transition-all self-end whitespace-nowrap">Send ▶</button>
+    </div>
+    <div id="ai-chat-loading" class="hidden mt-3 text-xs text-slate-500 flex items-center gap-2">
+      <svg class="animate-spin w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+      AI is generating response…
+    </div>
+    <div id="ai-chat-error" class="hidden mt-3 px-4 py-3 bg-red-950/30 border border-red-500/20 rounded-xl text-xs text-red-400"></div>
+  </div>
+
 </main>
 
 <script nonce="{{ request.state.csp_nonce }}">
@@ -638,6 +676,100 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       container.appendChild(btn);
     });
   }
+})();
+</script>
+
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+  var _csrf = '{{ request.state.csrf_token }}';
+  var chatHistory = document.getElementById('ai-chat-history');
+  var chatPlaceholder = document.getElementById('ai-chat-placeholder');
+  var chatInput = document.getElementById('ai-chat-input');
+  var chatSend = document.getElementById('ai-chat-send-btn');
+  var chatClear = document.getElementById('ai-chat-clear-btn');
+  var chatLoading = document.getElementById('ai-chat-loading');
+  var chatError = document.getElementById('ai-chat-error');
+  var hasMessages = false;
+
+  async function sendAiChat() {
+    var msg = chatInput ? chatInput.value.trim() : '';
+    var name = (document.getElementById('ai-chat-name') || {}).value || 'Alex';
+    if (!msg) return;
+
+    if (!hasMessages && chatPlaceholder) {
+      chatPlaceholder.style.display = 'none';
+      hasMessages = true;
+    }
+    appendBubble('user', name, msg);
+    chatInput.value = '';
+    if (chatError) chatError.classList.add('hidden');
+    if (chatLoading) chatLoading.classList.remove('hidden');
+
+    try {
+      var fd = new FormData();
+      fd.append('guest_name', name);
+      fd.append('message', msg);
+      fd.append('csrf_token', _csrf);
+      var resp = await fetch('/api/simulate/json', { method: 'POST', body: fd });
+      var data = await resp.json();
+      if (chatLoading) chatLoading.classList.add('hidden');
+      if (data.ok) {
+        appendBubble('ai', 'AI Host', data.draft || '', data.msg_type, data.confidence);
+      } else {
+        if (chatError) { chatError.textContent = data.error || 'AI response failed'; chatError.classList.remove('hidden'); }
+      }
+    } catch (e) {
+      if (chatLoading) chatLoading.classList.add('hidden');
+      if (chatError) { chatError.textContent = 'Network error: ' + e.message; chatError.classList.remove('hidden'); }
+    }
+    if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight;
+  }
+
+  function appendBubble(role, name, text, msgType, confidence) {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;margin-bottom:10px;align-items:' + (role === 'user' ? 'flex-end' : 'flex-start');
+    var bubble = document.createElement('div');
+    bubble.style.cssText = 'max-width:80%;padding:10px 14px;border-radius:14px;font-size:0.85rem;line-height:1.55;white-space:pre-wrap;word-break:break-word;' + (role === 'user'
+      ? 'background:rgba(93,141,239,0.2);color:#e3e1eb;border-bottom-right-radius:4px;'
+      : 'background:rgba(74,222,128,0.08);color:#c3c6d4;border-bottom-left-radius:4px;border:1px solid rgba(74,222,128,0.15);');
+
+    var label = document.createElement('div');
+    label.style.cssText = 'font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;';
+    if (role === 'user') {
+      label.style.color = '#8d909e';
+      label.textContent = '👤 ' + name;
+    } else {
+      label.style.color = '#4ade80';
+      var badges = '🤖 AI Host';
+      if (msgType) badges += '&nbsp;&nbsp;<span style="background:rgba(251,191,36,0.15);color:#fbbf24;padding:1px 6px;border-radius:4px">' + msgType + '</span>';
+      if (confidence != null) badges += '&nbsp;&nbsp;<span style="background:rgba(74,222,128,0.1);color:#4ade80;padding:1px 6px;border-radius:4px">' + confidence + '% conf</span>';
+      label.innerHTML = badges;
+    }
+    bubble.appendChild(label);
+
+    var textNode = document.createElement('span');
+    textNode.textContent = text;
+    bubble.appendChild(textNode);
+    wrap.appendChild(bubble);
+    if (chatHistory) chatHistory.appendChild(wrap);
+  }
+
+  if (chatSend) chatSend.addEventListener('click', sendAiChat);
+  if (chatInput) chatInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendAiChat();
+  });
+  if (chatClear) chatClear.addEventListener('click', function() {
+    if (chatHistory) {
+      chatHistory.innerHTML = '';
+      hasMessages = false;
+      var ph = document.createElement('div');
+      ph.id = 'ai-chat-placeholder';
+      ph.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;gap:0.5rem;';
+      ph.innerHTML = '<span class="material-symbols-outlined" style="font-size:2rem;color:#374151">chat_bubble_outline</span><p style="color:#4b5563;font-size:0.875rem">Type a guest message below to test how the AI responds</p>';
+      chatHistory.appendChild(ph);
+      chatPlaceholder = ph;
+    }
+  });
 })();
 </script>
 
