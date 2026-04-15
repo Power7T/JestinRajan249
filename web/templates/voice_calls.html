@@ -436,6 +436,9 @@ tailwind.config = {
       <div class="glass-card rounded-3xl p-5 border border-green-500/15">
         <p class="text-[0.65rem] font-bold text-green-400 uppercase tracking-[0.3em] mb-3">☎️ Live Test Call</p>
 
+        <!-- Mic permission status banner -->
+        <div id="hostMicBanner" class="hidden mb-3 rounded-xl px-3 py-2.5 text-xs leading-snug" role="status"></div>
+
         <!-- Inline Voice Picker -->
         <div class="mb-4 p-3 rounded-2xl bg-white/5 border border-white/8">
           <label class="block text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest mb-2">AI Voice</label>
@@ -486,7 +489,7 @@ tailwind.config = {
 
         <!-- Chat Log -->
         <div id="hostVoiceChatContainer" class="bg-[#0d0e14] rounded-2xl p-3 mb-4 overflow-y-auto border border-white/8 flex flex-col gap-2" style="height:240px;">
-          <div class="text-center text-slate-600 m-auto text-xs">Press Call to start</div>
+          <div id="hostChatPlaceholder" class="text-center text-slate-600 m-auto text-xs">Press Call to start</div>
         </div>
 
         <!-- Controls -->
@@ -500,11 +503,11 @@ tailwind.config = {
             🔊 Mute
           </button>
         </div>
-        <div class="flex items-center justify-between text-xs text-slate-500">
-          <span id="hostVoiceStatus">Ready to call</span>
-          <span id="hostCallDuration">--:--</span>
+        <div class="flex items-center justify-between text-xs mb-1">
+          <span id="hostVoiceStatus" class="text-slate-500">Ready to call</span>
+          <span id="hostCallDuration" class="text-slate-500">--:--</span>
         </div>
-        <div id="hostPlaybackAlert" class="hidden mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100" role="status" aria-live="polite">
+        <div id="hostPlaybackAlert" class="hidden mt-1 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100" role="status" aria-live="polite">
           <p class="font-bold uppercase tracking-wider mb-0.5" id="hostPlaybackAlertTitle">Playback issue</p>
           <p id="hostPlaybackAlertText"></p>
         </div>
@@ -971,11 +974,39 @@ function hQueueAudio(audioBytes) {
   return true;
 }
 
+function hShowMicBanner(kind, html) {
+  var el = document.getElementById('hostMicBanner');
+  if (!el) return;
+  if (!kind) { el.className = 'hidden mb-3 rounded-xl px-3 py-2.5 text-xs leading-snug'; el.innerHTML = ''; return; }
+  el.className = kind === 'error'
+    ? 'mb-3 rounded-xl px-3 py-2.5 text-xs leading-snug bg-rose-500/15 border border-rose-400/30 text-rose-200'
+    : 'mb-3 rounded-xl px-3 py-2.5 text-xs leading-snug bg-amber-400/12 border border-amber-400/30 text-amber-200';
+  el.innerHTML = html;
+}
+
+function hShowChatError(title, body) {
+  var container = document.getElementById('hostVoiceChatContainer');
+  if (!container) return;
+  var placeholder = document.getElementById('hostChatPlaceholder');
+  if (placeholder) placeholder.remove();
+  // Remove any existing error card
+  var existing = container.querySelector('.h-err-card');
+  if (existing) existing.remove();
+  var div = document.createElement('div');
+  div.className = 'h-err-card m-auto w-full max-w-xs rounded-2xl bg-rose-500/10 border border-rose-400/25 p-4 text-center';
+  div.innerHTML = '<p class="text-rose-300 font-bold text-sm mb-1">' + title + '</p>'
+    + '<p class="text-rose-200 text-xs leading-relaxed">' + body + '</p>';
+  container.appendChild(div);
+}
+
 function hAddChatBubble(role, text) {
   var container = document.getElementById('hostVoiceChatContainer');
   if (!container) return;
-  var placeholder = container.querySelector('.text-center.text-slate-600');
+  var placeholder = document.getElementById('hostChatPlaceholder');
   if (placeholder) placeholder.remove();
+  // Remove error card if present
+  var errCard = container.querySelector('.h-err-card');
+  if (errCard) errCard.remove();
   var div = document.createElement('div');
   div.className = role === 'user'
     ? 'self-end max-w-[85%] px-3 py-2 rounded-2xl rounded-br-sm bg-[#5B8DEF]/20 text-white text-xs'
@@ -1020,7 +1051,8 @@ function hEndCall() {
   if (btn)     { btn.style.background = ''; btn.innerHTML = '<span>📞</span><span id="hostCallBtnText">Call</span>'; }
   if (muteBtn) { muteBtn.disabled = true; muteBtn.textContent = '🔊 Mute'; muteBtn.style.background = ''; }
 
-  hSetStatus('Call ended');
+  var statusEl = document.getElementById('hostVoiceStatus');
+  if (statusEl) { statusEl.textContent = 'Call ended'; statusEl.style.color = ''; }
   var durEl = document.getElementById('hostCallDuration');
   if (durEl) durEl.textContent = '--:--';
   var userEl = document.getElementById('hostUserTranscript');
@@ -1061,19 +1093,25 @@ window.hToggleVoiceCall = async function() {
         hVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       } catch (micErr) {
         console.error('getUserMedia failed:', micErr.name, micErr.message);
-        var userEl = document.getElementById('hostUserTranscript');
+        var statusEl = document.getElementById('hostVoiceStatus');
         if (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError') {
-          hSetStatus('❌ Microphone blocked');
-          if (userEl) userEl.textContent = 'Click the 🔒 lock icon in address bar → Site settings → Microphone → Allow → Reload page.';
+          if (statusEl) { statusEl.textContent = '🎙️ Microphone blocked'; statusEl.style.color = '#f87171'; }
+          hShowMicBanner('error',
+            '<strong>🎙️ Microphone access blocked.</strong><br>'
+            + 'Click the <strong>🔒 lock icon</strong> in your browser address bar → <strong>Site settings</strong> → <strong>Microphone</strong> → set to <strong>Allow</strong>, then reload this page.');
+          hShowChatError('Microphone Blocked',
+            'Click the 🔒 lock icon in your browser address bar → Site settings → Microphone → Allow → then reload this page.');
         } else if (micErr.name === 'NotFoundError') {
-          hSetStatus('❌ No microphone found');
-          if (userEl) userEl.textContent = 'No microphone detected on this device.';
+          if (statusEl) { statusEl.textContent = '❌ No microphone found'; statusEl.style.color = '#f87171'; }
+          hShowMicBanner('error', '<strong>❌ No microphone found.</strong> No microphone was detected on this device.');
+          hShowChatError('No Microphone', 'No microphone was detected on this device. Connect a mic and try again.');
         } else if (micErr.name === 'NotReadableError') {
-          hSetStatus('❌ Microphone in use by another app');
-          if (userEl) userEl.textContent = 'Close Zoom, Discord, Teams, or any other app using the mic, then try again.';
+          if (statusEl) { statusEl.textContent = '❌ Microphone in use'; statusEl.style.color = '#f87171'; }
+          hShowMicBanner('error', '<strong>❌ Microphone in use.</strong> Close Zoom, Discord, Teams, or any other app using the mic, then try again.');
+          hShowChatError('Microphone In Use', 'Another app (Zoom, Discord, Teams) is using your microphone. Close it and try again.');
         } else {
-          hSetStatus('❌ Mic error: ' + micErr.name);
-          if (userEl) userEl.textContent = micErr.message;
+          if (statusEl) { statusEl.textContent = '❌ Mic error: ' + micErr.name; statusEl.style.color = '#f87171'; }
+          hShowChatError('Microphone Error', micErr.name + ': ' + micErr.message);
         }
         hIsCallActive = false;
         return;
@@ -1083,6 +1121,13 @@ window.hToggleVoiceCall = async function() {
       hIsMuted = false;
       hIsCallActive = true;
       hCallStartTime = Date.now();
+
+      // Clear any previous mic error UI
+      hShowMicBanner(null);
+      var statusEl2 = document.getElementById('hostVoiceStatus');
+      if (statusEl2) statusEl2.style.color = '';
+      var errCard = document.querySelector('#hostVoiceChatContainer .h-err-card');
+      if (errCard) errCard.remove();
 
       btn.style.background = 'linear-gradient(to right, #ef4444, #dc2626)';
       btn.innerHTML = '<span>📵</span><span id="hostCallBtnText">End Call</span>';
@@ -1233,6 +1278,28 @@ document.addEventListener('DOMContentLoaded', function() {
   var callBtn = document.getElementById('hostCallBtn');
   var muteBtn = document.getElementById('hostMuteBtn');
   if (!callBtn) return; // not on test tab
+
+  // ── Proactive mic permission check ──────────────────────────────────
+  if (navigator.permissions) {
+    navigator.permissions.query({ name: 'microphone' }).then(function(result) {
+      function applyPermState(state) {
+        if (state === 'denied') {
+          hShowMicBanner('error',
+            '<strong>🎙️ Microphone access is blocked.</strong><br>'
+            + 'Click the <strong>🔒 lock icon</strong> in your browser address bar → <strong>Site settings</strong> → <strong>Microphone</strong> → set to <strong>Allow</strong>, then reload this page.');
+          var statusEl = document.getElementById('hostVoiceStatus');
+          if (statusEl) { statusEl.textContent = '🎙️ Microphone blocked — see above'; statusEl.style.color = '#f87171'; }
+        } else if (state === 'prompt') {
+          hShowMicBanner('warn',
+            '🎙️ <strong>Microphone permission needed.</strong> Click <strong>Call</strong> and then click <strong>Allow</strong> when your browser asks for microphone access.');
+        } else {
+          hShowMicBanner(null);
+        }
+      }
+      applyPermState(result.state);
+      result.onchange = function() { applyPermState(result.state); };
+    }).catch(function() { /* Permissions API not supported — ignore */ });
+  }
 
   console.log('Host: attaching call button handler');
   callBtn.addEventListener('click', function(e) {
