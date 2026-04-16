@@ -338,7 +338,20 @@ document.addEventListener('DOMContentLoaded', function() {
     </p>
     {% endif %}
 
-    {% if cfg.stripe_customer_id and is_active %}
+    {% if getattr(cfg, 'subscription_payment_method', 'stripe') == 'paypal' and getattr(cfg, 'paypal_subscription_id', None) and is_active %}
+    <div style="margin-top:0.75rem;margin-bottom:0.75rem">
+      <span class="channel-pill pill-meta">💳 PayPal</span>
+    </div>
+    <p style="font-size:0.75rem;color:var(--text-3);margin-top:0.5rem">
+      Managed through your PayPal account
+    </p>
+    {% elif cfg.stripe_customer_id and is_active %}
+    <div style="margin-top:0.75rem;margin-bottom:0.75rem">
+      <span class="channel-pill pill-meta">💳 Stripe</span>
+    </div>
+    {% endif %}
+
+    {% if cfg.stripe_customer_id and is_active and getattr(cfg, 'subscription_payment_method', 'stripe') != 'paypal' %}
     <form method="post" action="/billing/portal" style="margin-top:1rem">
       <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <button type="submit" class="btn btn-outline btn-sm">Manage / Cancel subscription</button>
@@ -352,39 +365,71 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <div style="display:flex;flex-direction:column;gap:0.5rem">
       {% if cfg.subscription_plan != 'baileys' %}
-      <form method="post" action="/billing/subscribe/baileys">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
-          🟢 Baileys (Local Bot) — $19/mo
-        </button>
-      </form>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+        <form method="post" action="/billing/subscribe/baileys">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <button type="submit" class="btn btn-outline" style="width:100%;text-align:left;font-size:0.76rem">
+            🟢 Baileys — $19/mo
+          </button>
+        </form>
+        <form method="post" action="/billing/paypal/subscribe/starter">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <button type="submit" class="btn btn-outline" style="width:100%;text-align:left;font-size:0.76rem" title="Subscribe via PayPal">
+            💳 PayPal — $19/mo
+          </button>
+        </form>
+      </div>
       {% endif %}
 
       {% if cfg.subscription_plan != 'meta_cloud' %}
-      <form method="post" action="/billing/subscribe/meta_cloud">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
-          💬 Meta Cloud API — $29/mo
-        </button>
-      </form>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+        <form method="post" action="/billing/subscribe/meta_cloud">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <button type="submit" class="btn btn-outline" style="width:100%;text-align:left;font-size:0.76rem">
+            💬 Meta Cloud API — $29/mo
+          </button>
+        </form>
+        <form method="post" action="/billing/paypal/subscribe/growth">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <button type="submit" class="btn btn-outline" style="width:100%;text-align:left;font-size:0.76rem" title="Subscribe via PayPal">
+            💳 PayPal — $29/mo
+          </button>
+        </form>
+      </div>
       {% endif %}
 
       {% if cfg.subscription_plan != 'sms' %}
-      <form method="post" action="/billing/subscribe/sms">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="btn btn-outline" style="width:100%;text-align:left">
-          📟 SMS / Twilio — $19/mo
-        </button>
-      </form>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+        <form method="post" action="/billing/subscribe/sms">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <button type="submit" class="btn btn-outline" style="width:100%;text-align:left;font-size:0.76rem">
+            📟 SMS / Twilio — $19/mo
+          </button>
+        </form>
+        <form method="post" action="/billing/paypal/subscribe/starter">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <button type="submit" class="btn btn-outline" style="width:100%;text-align:left;font-size:0.76rem" title="Subscribe via PayPal">
+            💳 PayPal — $19/mo
+          </button>
+        </form>
+      </div>
       {% endif %}
 
       {% if cfg.subscription_plan != 'pro' %}
-      <form method="post" action="/billing/subscribe/pro">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <button type="submit" class="btn btn-primary" style="width:100%;text-align:left">
-          ⭐ Pro (All Channels) — $49/mo
-        </button>
-      </form>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+        <form method="post" action="/billing/subscribe/pro">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <button type="submit" class="btn btn-primary" style="width:100%;text-align:left;font-size:0.76rem">
+            ⭐ Pro (All Channels) — $49/mo
+          </button>
+        </form>
+        <form method="post" action="/billing/paypal/subscribe/pro">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <button type="submit" class="btn btn-primary" style="width:100%;text-align:left;font-size:0.76rem" title="Subscribe via PayPal">
+            💳 PayPal Pro — $49/mo
+          </button>
+        </form>
+      </div>
       {% endif %}
     </div>
 

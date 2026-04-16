@@ -4493,6 +4493,136 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     return JSONResponse(result)
 
 
+# ---------------------------------------------------------------------------
+# PayPal Subscription Routes
+# ---------------------------------------------------------------------------
+
+@app.post("/billing/paypal/subscribe/{plan_key}")
+def paypal_subscribe(plan_key: str, request: Request,
+                     num_units: int = Form(1),
+                     csrf_token: str = Form(None),
+                     db: Session = Depends(get_db)):
+    """Create PayPal subscription and redirect to checkout."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    # Rate limit PayPal checkout creation
+    rate_limit(f"paypal_checkout:{tenant_id}", max_requests=5, window_seconds=60)
+
+    # Validate plan and units
+    plan = db.query(PlanConfig).filter_by(plan_key=plan_key, is_active=True).first()
+    if not plan:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+    if not (plan.min_units <= num_units <= plan.max_units):
+        raise HTTPException(status_code=400, detail=f"Plan requires {plan.min_units}-{plan.max_units} units")
+
+    _get_or_create_config(tenant_id, db)
+    try:
+        from web.paypal import create_subscription
+        approval_url = create_subscription(
+            tenant_id=tenant_id,
+            plan_key=plan_key,
+            num_units=num_units,
+            return_url=f"{APP_BASE_URL}/billing/paypal/return",
+            cancel_url=f"{APP_BASE_URL}/billing/paypal/cancel",
+            db=db,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        log.error("PayPal subscription error: %s", exc)
+        raise HTTPException(status_code=500, detail="Payment provider error")
+
+    return RedirectResponse(approval_url, status_code=302)
+
+
+@app.get("/billing/paypal/return", response_class=HTMLResponse)
+def paypal_return(request: Request, subscription_id: str = None,
+                  ba_token: str = None,
+                  db: Session = Depends(get_db)):
+    """PayPal redirects here after host approves subscription."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    # PayPal sends subscription_id after approval
+    if not subscription_id:
+        log.warning("PayPal return: no subscription_id provided")
+        return RedirectResponse("/billing?msg=error", status_code=302)
+
+    cfg = _get_or_create_config(tenant_id, db)
+    try:
+        from web.paypal import get_subscription
+        sub_data = get_subscription(subscription_id)
+        status = sub_data.get("status", "").upper()
+
+        # APPROVAL_PENDING → host approved but subscription not yet active
+        # ACTIVE → ready to charge
+        if status not in ("APPROVAL_PENDING", "ACTIVE"):
+            log.warning("PayPal subscription unexpected status: %s", status)
+            return RedirectResponse("/billing?msg=error", status_code=302)
+
+        # Store subscription details
+        cfg.paypal_subscription_id = subscription_id
+        cfg.subscription_payment_method = "paypal"
+
+        # Update plan from subscription data if available
+        plan_id = sub_data.get("plan_id", "")
+        if plan_id:
+            from web.paypal import PAYPAL_PLAN_IDS
+            for plan_key, paypal_plan_id in PAYPAL_PLAN_IDS.items():
+                if paypal_plan_id == plan_id:
+                    cfg.subscription_plan = plan_key
+                    break
+
+        if status == "ACTIVE":
+            cfg.subscription_status = "active"
+        else:
+            # APPROVAL_PENDING → will become ACTIVE after webhook
+            cfg.subscription_status = "trialing"
+
+        db.commit()
+
+        plan_name = PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, {}).get("name", cfg.subscription_plan)
+        msg = f"Success! Your {plan_name} plan via PayPal is activating."
+        return RedirectResponse(f"/billing?msg=success&text={msg}", status_code=302)
+
+    except HTTPException:
+        return RedirectResponse("/billing?msg=error", status_code=302)
+    except Exception as exc:
+        log.error("PayPal return processing error: %s", exc)
+        return RedirectResponse("/billing?msg=error", status_code=302)
+
+
+@app.get("/billing/paypal/cancel", response_class=HTMLResponse)
+def paypal_cancel(request: Request, db: Session = Depends(get_db)):
+    """User cancelled PayPal checkout."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    return RedirectResponse("/billing?msg=cancelled", status_code=302)
+
+
+@app.post("/billing/paypal/webhook")
+async def paypal_webhook(request: Request, db: Session = Depends(get_db)):
+    """Handle PayPal webhook events."""
+    try:
+        payload = await request.body()
+        from web.paypal import handle_paypal_webhook
+        result = handle_paypal_webhook(payload, dict(request.headers), db)
+        return JSONResponse(result)
+    except HTTPException as exc:
+        return JSONResponse({"status": "error"}, status_code=exc.status_code)
+    except Exception as exc:
+        log.error("PayPal webhook error: %s", exc)
+        return JSONResponse({"status": "error"}, status_code=500)
+
+
 @app.get("/api/plan-pricing")
 def api_plan_pricing(db: Session = Depends(get_db)):
     """Public JSON endpoint: current plan pricing and tiers."""
