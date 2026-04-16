@@ -303,6 +303,8 @@ class TenantConfig(Base):
     subscription_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     stripe_customer_id:      Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     stripe_subscription_id:  Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    paypal_subscription_id:  Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    subscription_payment_method: Mapped[str]      = mapped_column(String(16), default="stripe")
     num_units:               Mapped[int]           = mapped_column(Integer, default=1)  # units this tenant manages
 
     # Onboarding step 3: extra services (comma-separated, stored separately for re-population)
