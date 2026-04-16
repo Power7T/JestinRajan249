@@ -492,6 +492,9 @@ var currentAudioSource = null;
 var audioPlaybackIssue = null;
 var audioWatchdogTimer = null;
 var audioWatchdogToken = 0;
+var inactivityTimer = null;
+var lastActivityTime = 0;
+var INACTIVITY_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
 
 function setVoiceStatus(message) {
   var statusEl = document.getElementById('voiceStatus');
@@ -561,8 +564,33 @@ function stopCurrentAudio() {
   currentAudio = null;
 }
 
+function clearInactivityTimer() {
+  if (inactivityTimer) {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = null;
+  }
+}
+
+function resetInactivityTimer() {
+  clearInactivityTimer();
+  if (!isCallActive) return;
+  lastActivityTime = Date.now();
+  inactivityTimer = setTimeout(function() {
+    if (!isCallActive) return;
+    console.warn('Voice call inactive for 3 minutes — ending call');
+    setVoiceStatus('Call ended due to inactivity (3+ min no input)');
+    endCall();
+  }, INACTIVITY_TIMEOUT_MS);
+}
+
+function recordActivity() {
+  if (!isCallActive) return;
+  resetInactivityTimer();
+}
+
 function resetVoiceAudioState() {
   clearAudioWatchdog();
+  clearInactivityTimer();
   audioQueue = [];
   isPlayingAudio = false;
   audioPlaybackIssue = null;
@@ -713,6 +741,7 @@ window.toggleVoiceCall = async function() {
       isMuted = false;
       isCallActive = true;
       callStartTime = Date.now();
+      resetInactivityTimer();
 
       btn.style.background = 'linear-gradient(to right, #ef4444, #dc2626)';
       btn.innerHTML = '<span>📵</span><span id="callBtnText">End Call</span>';
@@ -755,6 +784,7 @@ window.toggleVoiceCall = async function() {
               int16[i] = s < 0 ? s * 32768 : s * 32767;
             }
             voiceWs.send(int16.buffer);
+            recordActivity();
           };
 
           sourceNode.connect(scriptProcessor);
@@ -775,19 +805,23 @@ window.toggleVoiceCall = async function() {
           var data = JSON.parse(event.data);
           if (data.type === 'interim') {
             // Show partial transcript in italic while user is still speaking
+            recordActivity();
             var el = document.getElementById('userTranscript');
             el.textContent = data.text || '';
             el.style.opacity = '0.6';
           } else if (data.type === 'transcript') {
+            recordActivity();
             var el = document.getElementById('userTranscript');
             el.textContent = data.text || '—';
             el.style.opacity = '1';
             statusEl.textContent = 'Thinking...';
           } else if (data.type === 'response') {
+            recordActivity();
             document.getElementById('aiTranscript').textContent = data.text || '—';
             statusEl.textContent = 'Speaking...';
             scheduleAudioWatchdog(data.text || '');
           } else if (data.type === 'audio') {
+            recordActivity();
             clearAudioWatchdog();
             if (!data.audio || !data.audio.trim()) {
               showVoicePlaybackIssue(
@@ -873,6 +907,7 @@ function endCall() {
 
   isCallActive = false;
   clearAudioWatchdog();
+  clearInactivityTimer();
   resetVoiceAudioState();
   isMuted = false;
 

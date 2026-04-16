@@ -10268,6 +10268,10 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
         transcript_queue: asyncio.Queue = asyncio.Queue()
         is_muted = False
 
+        # Inactivity timeout: close connection if no audio received for 3 minutes
+        INACTIVITY_TIMEOUT_SECONDS = 180  # 3 minutes
+        last_activity_time = time.time()
+
         # Build Deepgram streaming WebSocket URL
         dg_model = VoiceAIService.DEEPGRAM_MODEL or "nova-2"
         dg_url = (
@@ -10401,15 +10405,30 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
         # PCM audio → forward to Deepgram; text → handle mute/control
         while True:
             try:
-                msg = await websocket.receive()
+                # Check for inactivity timeout
+                elapsed_since_activity = time.time() - last_activity_time
+                if elapsed_since_activity > INACTIVITY_TIMEOUT_SECONDS:
+                    log.warning(f"Voice AI call inactive for {elapsed_since_activity:.0f}s (timeout: {INACTIVITY_TIMEOUT_SECONDS}s) — closing")
+                    await websocket.send_json({"type": "error", "message": "Call ended due to inactivity (3+ minutes without input)"})
+                    break
+
+                # Use a timeout on receive to periodically check inactivity
+                try:
+                    msg = await asyncio.wait_for(websocket.receive(), timeout=30.0)
+                except asyncio.TimeoutError:
+                    # Timeout is ok, we'll loop back and check inactivity again
+                    continue
+
                 if msg.get("type") == "websocket.disconnect":
                     break
                 raw_bytes = msg.get("bytes")
                 text_data = msg.get("text")
                 if raw_bytes:
+                    last_activity_time = time.time()
                     if not is_muted:
                         await dg_connection.send(raw_bytes)
                 elif text_data:
+                    last_activity_time = time.time()
                     try:
                         control = json.loads(text_data)
                         if control.get("type") == "mute":
