@@ -2,86 +2,121 @@
 {% set title_text = "Voice AI Chat Test" %}
 {% block title %}Voice AI Chat — HostAI{% endblock %}
 
+{% block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+tailwind.config = {
+  darkMode: "class",
+  theme: { extend: { colors: {
+    "primary": "#aec6ff","primary-container":"#5d8ef1","on-primary":"#002e6b",
+    "surface":"#121319","surface-container":"#1e1f26","surface-container-lowest":"#0d0e14",
+    "surface-container-high":"#292930","on-surface":"#e3e1eb","on-surface-variant":"#c3c6d4",
+    "outline":"#424752","outline-variant":"#34343b","error":"#ffb4ab","tertiary":"#ffb960",
+  }, fontFamily: { sans: ["Plus Jakarta Sans", "sans-serif"] } } }
+}
+</script>
+<style>
+body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3e1eb; }
+.glass-card { background:rgba(26,27,34,0.7); backdrop-filter:blur(24px); border:1px solid rgba(174,198,255,0.08); }
+.message-bubble { padding:0.85rem 1rem; border-radius:0.75rem; margin-bottom:0.75rem; max-width:80%; font-size:0.875rem; line-height:1.5; }
+.message-guest { background:#5B8DEF; margin-left:auto; color:white; border-bottom-right-radius:0.25rem; }
+.message-ai { background:#1e1f26; border:1px solid #424752; margin-right:auto; color:#e3e1eb; border-bottom-left-radius:0.25rem; }
+.chat-container { height:420px; overflow-y:auto; display:flex; flex-direction:column; scrollbar-width:thin; scrollbar-color:#424752 transparent; }
+.compat-input { width:100%; border-radius:0.5rem; border:1px solid rgba(66,71,82,0.4); background:#0d0e14; color:#e3e1eb; padding:0.6rem 0.8rem; font-size:0.875rem; transition:border-color 0.15s; outline:none; }
+.compat-input:focus { border-color:#5B8DEF; box-shadow:0 0 0 2px rgba(91,141,239,0.12); }
+.quick-btn { background:rgba(174,198,255,0.06); border:1px solid rgba(174,198,255,0.12); border-radius:0.5rem; padding:0.6rem 0.75rem; text-align:left; transition:all 0.15s; cursor:pointer; }
+.quick-btn:hover { background:rgba(174,198,255,0.12); border-color:rgba(174,198,255,0.25); }
+.stat-box { background:rgba(13,14,20,0.6); border:1px solid rgba(66,71,82,0.4); border-radius:0.5rem; padding:0.75rem 1rem; }
+@keyframes typing { 0%,60%,100% { transform:translateY(0); opacity:0.5; } 30% { transform:translateY(-4px); opacity:1; } }
+.typing-dot { width:6px; height:6px; border-radius:50%; background:#aec6ff; animation:typing 1.2s infinite; display:inline-block; margin:0 2px; }
+.typing-dot:nth-child(2) { animation-delay:0.2s; }
+.typing-dot:nth-child(3) { animation-delay:0.4s; }
+</style>
+{% endblock %}
+
 {% block main_wrapper %}
-<div class="min-h-screen bg-gray-50 py-8">
-  <div class="max-w-2xl mx-auto px-4">
-    <div class="bg-white rounded-lg shadow">
-      <!-- Header -->
-      <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-6 text-white">
-        <h1 class="text-3xl font-bold">Voice AI Chat Test</h1>
-        <p class="text-blue-100 mt-2">Direct conversation with your Voice AI — no phone call needed</p>
+<div class="min-h-screen bg-[#08090F] p-4 md:p-8">
+  <div class="max-w-2xl mx-auto">
+
+    <!-- Header -->
+    <div class="mb-6">
+      <a href="/admin/ai" class="inline-flex items-center gap-2 text-sm text-[#aec6ff] hover:text-white mb-4 transition-colors">
+        <span class="material-symbols-outlined text-base">arrow_back</span>
+        Back to AI Engine
+      </a>
+      <h1 class="text-3xl font-extrabold text-white mb-1">Voice AI Chat Test</h1>
+      <p class="text-slate-400 text-sm">Direct conversation with your Voice AI — no phone call needed</p>
+    </div>
+
+    <!-- Chat Card -->
+    <div class="glass-card rounded-2xl p-5 mb-4">
+      <!-- Chat Display -->
+      <div class="chat-container bg-[#0d0e14] border border-white/5 rounded-xl p-4 mb-5" id="chatContainer">
+        <div class="text-slate-500 text-center py-10 flex flex-col items-center gap-3">
+          <span class="material-symbols-outlined text-5xl opacity-30">forum</span>
+          <p class="text-sm">Start a conversation with your Voice AI</p>
+        </div>
       </div>
 
-      <div class="p-6 space-y-6">
-        <!-- Chat Display -->
-        <div class="bg-gray-100 rounded-lg p-4 h-96 overflow-y-auto border border-gray-200" id="chatContainer">
-          <div class="text-center text-gray-500 py-12">
-            <svg class="mx-auto h-12 w-12 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p>Start a conversation with your Voice AI</p>
-          </div>
+      <!-- Input Area -->
+      <div class="space-y-3">
+        <div class="flex gap-2">
+          <input
+            type="text"
+            id="messageInput"
+            class="compat-input flex-1"
+            placeholder="Ask your Voice AI anything..."
+            onkeypress="if(event.key==='Enter' && !event.shiftKey) sendMessage()"
+          />
+          <button
+            onclick="sendMessage()"
+            id="sendBtn"
+            class="px-5 py-2 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-[#002e6b] font-bold rounded-lg hover:shadow-[0_0_20px_rgba(174,198,255,0.25)] transition-all text-sm"
+          >
+            Send
+          </button>
         </div>
-
-        <!-- Input Area -->
-        <div class="space-y-4">
-          <div class="flex gap-2">
-            <input
-              type="text"
-              id="messageInput"
-              class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Ask your Voice AI anything..."
-              onkeypress="if(event.key==='Enter' && !event.shiftKey) sendMessage()"
-            />
-            <button
-              onclick="sendMessage()"
-              class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
-              id="sendBtn"
-            >
-              Send
-            </button>
-          </div>
-          <p class="text-xs text-gray-500">Press Enter or click Send to send your message</p>
-        </div>
-
-        <!-- Quick Test Prompts -->
-        <div class="border-t pt-6">
-          <h3 class="text-sm font-semibold text-gray-700 mb-3">Quick Test Prompts</h3>
-          <div class="grid grid-cols-2 gap-2">
-            <button onclick="setMessage('What is the WiFi password?')" class="p-2 text-left text-sm bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition">
-              <p class="font-medium text-blue-900">WiFi Password</p>
-              <p class="text-xs text-blue-700">Test basic question</p>
-            </button>
-            <button onclick="setMessage('When is check-in time?')" class="p-2 text-left text-sm bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition">
-              <p class="font-medium text-blue-900">Check-in Time</p>
-              <p class="text-xs text-blue-700">Test property info</p>
-            </button>
-            <button onclick="setMessage('What are the house rules?')" class="p-2 text-left text-sm bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition">
-              <p class="font-medium text-blue-900">House Rules</p>
-              <p class="text-xs text-blue-700">Test policy question</p>
-            </button>
-            <button onclick="setMessage('Is there parking?')" class="p-2 text-left text-sm bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition">
-              <p class="font-medium text-blue-900">Parking</p>
-              <p class="text-xs text-blue-700">Test amenity question</p>
-            </button>
-          </div>
-        </div>
-
-        <!-- Status -->
-        <div class="border-t pt-6">
-          <div class="grid grid-cols-2 gap-4">
-            <div class="bg-gray-50 p-3 rounded">
-              <p class="text-xs text-gray-600 font-semibold uppercase">Response Time</p>
-              <p class="text-lg font-mono text-blue-600 mt-1" id="responseTime">—</p>
-            </div>
-            <div class="bg-gray-50 p-3 rounded">
-              <p class="text-xs text-gray-600 font-semibold uppercase">Model</p>
-              <p class="text-sm font-mono text-blue-600 mt-1" id="modelUsed">{{ sys_conf.voice_llm_model or 'Not set' }}</p>
-            </div>
-          </div>
-        </div>
+        <p class="text-[11px] text-slate-500">Press Enter or click Send</p>
       </div>
     </div>
+
+    <!-- Quick Test Prompts -->
+    <div class="glass-card rounded-2xl p-5 mb-4">
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Quick Test Prompts</h3>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="setMessage('What is the WiFi password?')" class="quick-btn">
+          <p class="text-sm font-semibold text-[#aec6ff]">WiFi Password</p>
+          <p class="text-xs text-slate-500 mt-0.5">Test basic question</p>
+        </button>
+        <button onclick="setMessage('When is check-in time?')" class="quick-btn">
+          <p class="text-sm font-semibold text-[#aec6ff]">Check-in Time</p>
+          <p class="text-xs text-slate-500 mt-0.5">Test property info</p>
+        </button>
+        <button onclick="setMessage('What are the house rules?')" class="quick-btn">
+          <p class="text-sm font-semibold text-[#aec6ff]">House Rules</p>
+          <p class="text-xs text-slate-500 mt-0.5">Test policy question</p>
+        </button>
+        <button onclick="setMessage('Is there parking available?')" class="quick-btn">
+          <p class="text-sm font-semibold text-[#aec6ff]">Parking</p>
+          <p class="text-xs text-slate-500 mt-0.5">Test amenity question</p>
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 gap-3">
+      <div class="stat-box">
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Response Time</p>
+        <p class="text-lg font-mono text-[#aec6ff]" id="responseTime">—</p>
+      </div>
+      <div class="stat-box">
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Model</p>
+        <p class="text-sm font-mono text-[#aec6ff] truncate" id="modelUsed">{{ sys_conf.voice_llm_model or 'Not set' }}</p>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -95,23 +130,34 @@ function setMessage(text) {
 
 function addMessage(text, isGuest = true) {
   const container = document.getElementById('chatContainer');
-
-  // Remove empty state
-  if (container.children.length === 1 && container.children[0].textContent.includes('Start a conversation')) {
-    container.innerHTML = '';
-  }
+  const empty = container.querySelector('.text-slate-500');
+  if (empty) container.innerHTML = '';
 
   const bubble = document.createElement('div');
-  bubble.className = `p-3 rounded-lg mb-3 max-w-xs ${isGuest ? 'ml-auto bg-blue-600 text-white' : 'mr-auto bg-gray-200 text-gray-900'}`;
+  bubble.className = `message-bubble ${isGuest ? 'message-guest' : 'message-ai'}`;
   bubble.textContent = text;
   container.appendChild(bubble);
   container.scrollTop = container.scrollHeight;
 }
 
+function showTyping() {
+  const container = document.getElementById('chatContainer');
+  const el = document.createElement('div');
+  el.id = 'typingIndicator';
+  el.className = 'message-bubble message-ai flex items-center gap-1';
+  el.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
 async function sendMessage() {
   const input = document.getElementById('messageInput');
   const message = input.value.trim();
-
   if (!message) return;
 
   const sendBtn = document.getElementById('sendBtn');
@@ -121,38 +167,32 @@ async function sendMessage() {
   addMessage(message, true);
   conversationHistory.push({ role: 'user', text: message });
   input.value = '';
+  showTyping();
 
   const startTime = performance.now();
 
   try {
     const response = await fetch('/api/voice-ai/test-message', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Internal-Token': '{{ request.headers.get("X-Internal-Token", "") }}'
-      },
-      body: JSON.stringify({
-        message: message,
-        conversation_history: conversationHistory
-      })
+      headers: { 'Content-Type': 'application/json', 'X-Internal-Token': '{{ request.headers.get("X-Internal-Token", "") }}' },
+      body: JSON.stringify({ message, conversation_history: conversationHistory })
     });
 
-    const endTime = performance.now();
-    const responseTime = ((endTime - startTime) / 1000).toFixed(2);
-    document.getElementById('responseTime').textContent = responseTime + 's';
+    const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+    document.getElementById('responseTime').textContent = elapsed + 's';
+    hideTyping();
 
     if (response.ok) {
       const data = await response.json();
       addMessage(data.response, false);
       conversationHistory.push({ role: 'assistant', text: data.response });
-      if (data.model_used) {
-        document.getElementById('modelUsed').textContent = data.model_used;
-      }
+      if (data.model_used) document.getElementById('modelUsed').textContent = data.model_used;
     } else {
-      const error = await response.json();
-      addMessage(`Error: ${error.error || 'Failed to get response'}`, false);
+      const err = await response.json();
+      addMessage(`Error: ${err.error || 'Failed to get response'}`, false);
     }
   } catch (error) {
+    hideTyping();
     addMessage(`Error: ${error.message}`, false);
   } finally {
     sendBtn.disabled = false;
