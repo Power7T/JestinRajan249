@@ -9963,7 +9963,7 @@ async def admin_voice_chat(request: Request, db: Session = Depends(get_db)):
 
     try:
         # Import voice integration
-        from integrations.voice import VoiceAIService
+        from web.integrations.voice import VoiceAIService
 
         # Get tenant config (mock for testing)
         tenant_config = {
