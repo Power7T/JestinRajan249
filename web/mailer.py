@@ -1,21 +1,31 @@
 # © 2024 Jestin Rajan. All rights reserved.
 """
-Transactional email sender for:
-  - Email address verification
-  - Password reset
+Transactional email sender.
 
-Uses SMTP (works with any provider: Gmail, SendGrid, Mailgun, AWS SES, etc.)
-Configure via environment variables:
-  SMTP_HOST, SMTP_PORT (default 587), SMTP_USER, SMTP_PASS, SMTP_FROM
+Priority:
+  1. Resend API  (RESEND_API_KEY — works on Railway free tier, uses HTTPS/443)
+  2. SMTP        (SMTP_HOST/USER/PASS — Railway blocks port 587; use port 465 or Resend)
+
+To fix Railway "Network is unreachable" on SMTP:
+  Option A (recommended): Set RESEND_API_KEY in Railway env vars
+           Sign up free at https://resend.com — 3,000 emails/month free
+  Option B: Use SMTP_PORT=465 with an SSL-native provider (Mailgun, SES)
 """
 
+import json
 import logging
 import os
 import smtplib
+import ssl
+import urllib.request
+import urllib.error
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 log = logging.getLogger(__name__)
+
+# Resend API (preferred on Railway — uses HTTPS, no port blocking)
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 
 SMTP_HOST    = os.getenv("SMTP_HOST", "")
 SMTP_PORT    = int(os.getenv("SMTP_PORT", "587"))
@@ -40,37 +50,83 @@ APP_NAME     = "HostAI"
 
 
 def validate_smtp_config() -> bool:
-    """
-    Test SMTP credentials at startup. Logs a clear error if misconfigured.
-    Call this from app startup so you find out immediately, not on first email send.
-    Returns True if SMTP works, False if not configured or credentials fail.
-    """
+    """Check email is configured. Prefers Resend API, falls back to SMTP."""
+    if RESEND_API_KEY:
+        log.info("Email configured via Resend API")
+        return True
     if not SMTP_HOST or not SMTP_USER:
-        log.warning("SMTP not configured — email sending disabled (set SMTP_HOST, SMTP_USER, SMTP_PASS)")
+        log.warning(
+            "Email not configured — set RESEND_API_KEY (recommended on Railway) "
+            "or SMTP_HOST + SMTP_USER + SMTP_PASS"
+        )
         return False
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
+        if SMTP_PORT == 465:
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10, context=ctx) as server:
+                server.login(SMTP_USER, SMTP_PASS)
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+                server.ehlo()
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASS)
         log.info("SMTP connection verified: %s:%s as %s", SMTP_HOST, SMTP_PORT, SMTP_USER)
         return True
     except smtplib.SMTPAuthenticationError:
         log.error(
-            "SMTP authentication FAILED for %s@%s — email will not work. "
-            "Check SMTP_PASS (use an app password if 2FA is enabled).",
+            "SMTP authentication FAILED for %s@%s — use an app password if 2FA is enabled.",
             SMTP_USER, SMTP_HOST,
         )
         return False
     except Exception as exc:
-        log.warning("SMTP connection test failed (%s) — emails may not work: %s", SMTP_HOST, exc)
+        log.warning(
+            "SMTP connection test failed (%s:%s) — on Railway, use RESEND_API_KEY instead. Error: %s",
+            SMTP_HOST, SMTP_PORT, exc,
+        )
+        return False
+
+
+def _send_via_resend(to: str, subject: str, html: str) -> bool:
+    """Send via Resend API (HTTPS — works on Railway free tier)."""
+    payload = json.dumps({
+        "from": f"{APP_NAME} <{SMTP_FROM}>",
+        "to": [to],
+        "subject": subject,
+        "html": html,
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            if resp.status in (200, 201):
+                log.info("Email sent via Resend to %s: %s", to, subject)
+                return True
+            log.error("Resend API returned %s for %s", resp.status, to)
+            return False
+    except urllib.error.HTTPError as exc:
+        log.error("Resend API HTTP error %s sending to %s: %s", exc.code, to, exc.read()[:200])
+        return False
+    except Exception as exc:
+        log.error("Resend API error sending to %s: %s", to, exc)
         return False
 
 
 def _send(to: str, subject: str, html: str) -> bool:
-    """Send an HTML email. Returns True on success, False on failure."""
+    """Send an HTML email. Tries Resend API first, then SMTP."""
+    # Resend API (preferred — no port blocking issues on Railway)
+    if RESEND_API_KEY:
+        return _send_via_resend(to, subject, html)
+
+    # SMTP fallback
     if not SMTP_HOST or not SMTP_USER:
-        log.warning("SMTP not configured — cannot send email to %s (subject: %s)", to, subject)
+        log.warning("No email provider configured — cannot send to %s (subject: %s)", to, subject)
         return False
 
     msg = MIMEMultipart("alternative")
@@ -80,15 +136,21 @@ def _send(to: str, subject: str, html: str) -> bool:
     msg.attach(MIMEText(html, "html"))
 
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_FROM, [to], msg.as_string())
-        log.info("Email sent to %s: %s", to, subject)
+        if SMTP_PORT == 465:
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15, context=ctx) as server:
+                server.login(SMTP_USER, SMTP_PASS)
+                server.sendmail(SMTP_FROM, [to], msg.as_string())
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+                server.ehlo()
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASS)
+                server.sendmail(SMTP_FROM, [to], msg.as_string())
+        log.info("Email sent via SMTP to %s: %s", to, subject)
         return True
     except Exception as exc:
-        log.error("Failed to send email to %s: %s", to, exc)
+        log.error("SMTP failed sending to %s: %s", to, exc)
         return False
 
 

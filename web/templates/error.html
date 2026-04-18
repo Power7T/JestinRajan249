@@ -1,29 +1,112 @@
 {% extends "base.html" %}
-{% block title %}Error — HostAI{% endblock %}
+{% block title %}{{ title or "Error" }} — HostAI{% endblock %}
 {% block head %}
-<script src="https://cdn.tailwindcss.com?plugins=forms" nonce="{{ csp_nonce|default('') }}"></script>
+<script src="https://cdn.tailwindcss.com?plugins=forms" nonce="{{ request.state.csp_nonce }}"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<style>body{background:#08090F;font-family:'Plus Jakarta Sans',sans-serif;color:#e3e1eb;}</style>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<style>
+body{background:#08090F;font-family:'Plus Jakarta Sans',sans-serif;color:#e3e1eb;}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes glow{0%,100%{opacity:.4}50%{opacity:.8}}
+.float{animation:float 4s ease-in-out infinite}
+.glow{animation:glow 3s ease-in-out infinite}
+</style>
 {% endblock %}
 {% block content %}
-<div class="min-h-screen flex items-center justify-center px-4">
-  <div class="text-center max-w-md">
-    <div class="text-8xl font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] mb-4">
+<div class="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
+
+  <!-- Background glows -->
+  <div class="absolute inset-0 pointer-events-none">
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#5B8DEF]/5 rounded-full blur-3xl glow"></div>
+    {% if code == 404 %}
+    <div class="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-500/5 rounded-full blur-2xl glow" style="animation-delay:.8s"></div>
+    {% elif code == 403 %}
+    <div class="absolute bottom-1/4 right-1/4 w-64 h-64 bg-amber-500/5 rounded-full blur-2xl glow" style="animation-delay:.8s"></div>
+    {% elif code == 429 %}
+    <div class="absolute bottom-1/4 right-1/4 w-64 h-64 bg-orange-500/5 rounded-full blur-2xl glow" style="animation-delay:.8s"></div>
+    {% else %}
+    <div class="absolute bottom-1/4 right-1/4 w-64 h-64 bg-rose-500/5 rounded-full blur-2xl glow" style="animation-delay:.8s"></div>
+    {% endif %}
+  </div>
+
+  <div class="relative text-center max-w-lg w-full">
+
+    <!-- Logo -->
+    <a href="/" class="inline-block mb-10 text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#aec6ff] to-[#5B8DEF]">HostAI</a>
+
+    <!-- Floating icon -->
+    <div class="float mb-6 flex justify-center">
+      {% if code == 404 %}
+      <div class="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#1e1f26] to-[#0d0e14] border border-white/10 flex items-center justify-center shadow-2xl">
+        <span class="material-symbols-outlined text-5xl text-[#aec6ff]">search_off</span>
+      </div>
+      {% elif code == 403 %}
+      <div class="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#1e1f26] to-[#0d0e14] border border-white/10 flex items-center justify-center shadow-2xl">
+        <span class="material-symbols-outlined text-5xl text-amber-400">lock</span>
+      </div>
+      {% elif code == 429 %}
+      <div class="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#1e1f26] to-[#0d0e14] border border-white/10 flex items-center justify-center shadow-2xl">
+        <span class="material-symbols-outlined text-5xl text-orange-400">timer</span>
+      </div>
+      {% else %}
+      <div class="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#1e1f26] to-[#0d0e14] border border-white/10 flex items-center justify-center shadow-2xl">
+        <span class="material-symbols-outlined text-5xl text-rose-400">warning</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Error code -->
+    <div class="text-7xl font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] mb-3 leading-none">
       {{ code or 500 }}
     </div>
-    <h1 class="text-2xl font-extrabold text-white mb-3">{{ title or "Something went wrong" }}</h1>
-    <p class="text-slate-400 text-sm mb-8">{{ message or "An unexpected error occurred. Please try again." }}</p>
 
+    <!-- Title + message -->
+    <h1 class="text-2xl font-extrabold text-white mb-3">{{ title or "Something went wrong" }}</h1>
+    <p class="text-slate-400 text-sm leading-relaxed mb-8 max-w-sm mx-auto">{{ message or "An unexpected error occurred. Please try again or contact support if the problem persists." }}</p>
+
+    <!-- Debug detail (dev only) -->
     {% if debug_detail %}
-    <div class="mt-8 p-4 bg-red-950/20 border border-red-500/20 rounded-xl text-left overflow-x-auto max-w-full">
-        <h2 class="text-xs font-bold text-red-400 uppercase tracking-widest mb-2">Internal Error Details</h2>
-        <pre class="text-[10px] text-red-300/80 font-mono leading-relaxed">{{ debug_detail }}</pre>
+    <div class="mb-8 p-4 bg-rose-950/20 border border-rose-500/20 rounded-2xl text-left overflow-x-auto">
+      <p class="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-2">Error Detail</p>
+      <pre class="text-[10px] text-rose-300/80 font-mono leading-relaxed whitespace-pre-wrap">{{ debug_detail }}</pre>
     </div>
     {% endif %}
 
-    <div class="flex gap-3 justify-center mt-8">
-      <a href="/dashboard" class="px-6 py-3 rounded-xl font-bold text-sm text-[#002e6b]" style="background:linear-gradient(135deg,#5B8DEF,#aec6ff)">Go to Dashboard</a>
-      <button id="go-back-btn" class="px-6 py-3 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 font-bold text-sm transition-all">&larr; Go back</button>
+    <!-- Actions -->
+    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <a href="/dashboard"
+         class="px-6 py-3 rounded-xl font-bold text-sm text-[#002e6b] transition-all hover:scale-105"
+         style="background:linear-gradient(135deg,#5B8DEF,#aec6ff)">
+        <span class="material-symbols-outlined text-base align-middle mr-1">dashboard</span>
+        Go to Dashboard
+      </a>
+      <button id="go-back-btn"
+              class="px-6 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-sm transition-all">
+        <span class="material-symbols-outlined text-base align-middle mr-1">arrow_back</span>
+        Go Back
+      </button>
+      {% if code in (404, 500) %}
+      <a href="mailto:support@hostai.app"
+         class="px-6 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-sm transition-all">
+        <span class="material-symbols-outlined text-base align-middle mr-1">mail</span>
+        Contact Support
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- Helpful hints per code -->
+    <div class="mt-10 text-xs text-slate-600">
+      {% if code == 404 %}
+      Try the <a href="/dashboard" class="text-[#aec6ff] hover:text-white">Dashboard</a>,
+      <a href="/settings" class="text-[#aec6ff] hover:text-white">Settings</a>, or
+      <a href="/activity" class="text-[#aec6ff] hover:text-white">Activity Log</a>
+      {% elif code == 403 %}
+      You don't have permission to view this page. <a href="/login" class="text-[#aec6ff] hover:text-white">Log in</a> with the correct account.
+      {% elif code == 429 %}
+      Wait a moment before refreshing. Rate limits reset automatically.
+      {% else %}
+      If this keeps happening, <a href="mailto:support@hostai.app" class="text-[#aec6ff] hover:text-white">let us know</a>.
+      {% endif %}
     </div>
   </div>
 </div>
@@ -31,6 +114,9 @@
 {% block scripts %}
 <script nonce="{{ request.state.csp_nonce }}">
   var b = document.getElementById('go-back-btn');
-  if (b) b.addEventListener('click', function() { history.back(); });
+  if (b) b.addEventListener('click', function() {
+    if (window.history.length > 1) history.back();
+    else window.location.href = '/dashboard';
+  });
 </script>
 {% endblock %}

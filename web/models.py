@@ -358,7 +358,7 @@ class Property(Base):
     config: Mapped[Optional["PropertyConfig"]] = relationship("PropertyConfig", back_populates="property", uselist=False)
     escalated_messages: Mapped[list["EscalatedMessage"]] = relationship("EscalatedMessage", back_populates="property")
     message_logs: Mapped[list["MessageLog"]] = relationship("MessageLog", back_populates="property")
-    tenant: Mapped["Tenant"] = relationship("Tenant")
+    tenant: Mapped["Tenant"] = relationship("Tenant", overlaps="properties")
 
 
 # ---------------------------------------------------------------------------

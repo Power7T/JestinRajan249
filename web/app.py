@@ -1899,9 +1899,9 @@ def _serialize_conversation_messages(all_drafts: list[Draft]) -> list[dict]:
             try:
                 created_at = datetime.strptime(created_at.split(".")[0], "%Y-%m-%d %H:%M:%S")
             except Exception:
-                created_at = datetime.utcnow()
+                created_at = datetime.now(timezone.utc)
         elif not created_at:
-            created_at = datetime.utcnow()
+            created_at = datetime.now(timezone.utc)
 
         # Inbound message (guest message)
         messages.append({
@@ -9727,7 +9727,7 @@ async def admin_api_status(request: Request, db: Session = Depends(get_db)):
             else:
                 import hmac as _hmac, hashlib as _hashlib, datetime as _dt_mod
                 endpoint = f"https://{acct}.r2.cloudflarestorage.com"
-                now = _dt_mod.datetime.utcnow()
+                now = _dt_mod.datetime.now(timezone.utc)
                 date_str = now.strftime("%Y%m%d")
                 amz_date = now.strftime("%Y%m%dT%H%M%SZ")
                 host = f"{acct}.r2.cloudflarestorage.com"
@@ -9760,7 +9760,7 @@ async def admin_api_status(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         results["cloudflare_r2"] = _err(str(e)[:80])
 
-    results["timestamp"] = datetime.utcnow().isoformat()
+    results["timestamp"] = datetime.now(timezone.utc).isoformat()
     return JSONResponse(results)
 
 
@@ -9870,7 +9870,7 @@ def admin_api_usage_stats(request: Request, db: Session = Depends(get_db)):
         "total_calls":  total_calls,
         "daily":        daily,
         "period_days":  30,
-        "timestamp":    datetime.utcnow().isoformat(),
+        "timestamp":    datetime.now(timezone.utc).isoformat(),
     })
 
 
@@ -10637,7 +10637,7 @@ async def admin_test_voice_ai_connection(request: Request, db: Session = Depends
             "openrouter": None,
             "google_tts": None,
             "elevenlabs": None,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "schema_drift": bool(_voice_ai_critical_schema_missing(db)),
         }
 
@@ -11773,9 +11773,9 @@ def conversations_page(
                 # Basic string parsing fallback
                 d_created = datetime.strptime(d_created.split(".")[0], "%Y-%m-%d %H:%M:%S")
             except Exception:
-                d_created = datetime.utcnow()
+                d_created = datetime.now(timezone.utc)
         elif d_created is None:
-            d_created = datetime.utcnow()
+            d_created = datetime.now(timezone.utc)
             
         if key not in conversations:
             conversations[key] = {
@@ -13330,24 +13330,36 @@ def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
             "daily_limit": limit_usd,
         })
 
-    # Rate limit status
+    # Rate limit status — use SQL aggregation instead of loading all rows
+    from sqlalchemy import func as _func
     rate_limits = []
     all_limits = db.query(TenantRateLimit).all()
+    start_of_day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    current_hour = datetime.now(timezone.utc).hour
+
+    # Batch-fetch daily costs via SQL SUM per tenant
+    daily_cost_rows = db.query(
+        APIUsageLog.tenant_id,
+        _func.sum(APIUsageLog.cost_usd).label("total")
+    ).filter(
+        APIUsageLog.created_at >= start_of_day
+    ).group_by(APIUsageLog.tenant_id).all()
+    daily_cost_map = {row.tenant_id: float(row.total or 0) for row in daily_cost_rows}
+
     for limit in all_limits:
         t = db.query(Tenant).filter_by(id=limit.tenant_id).first()
-        # Get current usage
-        current_hour = datetime.now(timezone.utc).hour
-        hour_key = f"{limit.tenant_id}:voice_calls:{current_hour}"
-        counter = db.query(RateLimitCounter).filter_by(counter_id=hour_key).first()
-        calls_current = counter.count if counter else 0
 
-        daily_cost = 0
-        start_of_day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        daily_logs = db.query(APIUsageLog).filter(
-            APIUsageLog.tenant_id == limit.tenant_id,
-            APIUsageLog.created_at >= start_of_day
-        ).all()
-        daily_cost = sum(log.cost_usd for log in daily_logs)
+        # Voice calls this hour
+        hour_key = f"{limit.tenant_id}:voice_calls:{current_hour}"
+        vc_counter = db.query(RateLimitCounter).filter_by(counter_id=hour_key).first()
+        calls_current = vc_counter.count if vc_counter else 0
+
+        # External API calls this hour (from RateLimitCounter)
+        api_hour_key = f"{limit.tenant_id}:external_api:{current_hour}"
+        api_counter = db.query(RateLimitCounter).filter_by(counter_id=api_hour_key).first()
+        api_calls_current = api_counter.count if api_counter else 0
+
+        daily_cost = daily_cost_map.get(limit.tenant_id, 0.0)
 
         rate_limits.append({
             "tenant_name": _tenant_label(t, limit.tenant_id),
@@ -13355,8 +13367,8 @@ def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
             "calls_current": calls_current,
             "calls_usage_pct": min(100, (calls_current / max(limit.voice_calls_per_hour, 1)) * 100),
             "api_calls_per_hour": limit.external_api_calls_per_hour,
-            "api_calls_current": 0,  # TODO: track external API calls
-            "api_usage_pct": 0,
+            "api_calls_current": api_calls_current,
+            "api_usage_pct": min(100, (api_calls_current / max(limit.external_api_calls_per_hour, 1)) * 100),
             "daily_cost_current": daily_cost,
             "max_daily_cost": limit.max_daily_cost_usd,
         })
