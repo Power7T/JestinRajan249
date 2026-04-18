@@ -311,6 +311,7 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
     from web.db import SessionLocal
     from web.models import APIUsageLog
     from web.system_config_store import load_system_config
+    from web.rate_limiter import check_rate_limit
     import openai
 
     if not text.strip():
@@ -320,6 +321,14 @@ def analyze_sentiment_and_intent_llm(tenant_id: str, text: str) -> dict:
     try:
         sys_conf = load_system_config(db)
         if not sys_conf or not sys_conf.openrouter_api_key_enc or sys_conf.openrouter_api_key_enc == "********":
+            return fallback_analyze(text)
+
+        # Check daily cost rate limit before making the call (estimate ~200 input, 50 output tokens)
+        estimated_cost = _calc_model_cost("openai/gpt-4o-mini", 200, 50)
+        daily_cost_check = check_rate_limit(db, tenant_id, "daily_cost", cost_increment=estimated_cost)
+        if not daily_cost_check["allowed"]:
+            from web.cost_tracker import log_rate_limit_blocked
+            log_rate_limit_blocked(db, tenant_id, daily_cost_check["reason"])
             return fallback_analyze(text)
 
         # Decrypt the API key (was previously using raw encrypted value!)
@@ -450,6 +459,16 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
                     raise RuntimeError("Free tier daily AI call limit (10) reached. Upgrade to unlock unlimited drafts.")
                 if cfg.ai_calls_monthly >= 50:
                     raise RuntimeError("Free tier monthly AI call limit (50) reached. Upgrade to unlock unlimited drafts.")
+
+        # Check daily cost rate limit before making OpenRouter call
+        if tenant_id:
+            from web.rate_limiter import check_rate_limit
+            from web.cost_tracker import log_rate_limit_blocked
+            estimated_cost = _calc_model_cost("anthropic/claude-3.7-sonnet", 800, 300)
+            daily_cost_check = check_rate_limit(db, tenant_id, "daily_cost", cost_increment=estimated_cost)
+            if not daily_cost_check["allowed"]:
+                log_rate_limit_blocked(db, tenant_id, daily_cost_check["reason"])
+                return "[Message couldn't be processed due to service limits. Please try again later.]"
 
         # OpenRouter is globally configured by administrator
         if sys_conf and sys_conf.openrouter_api_key_enc:

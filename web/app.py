@@ -12613,11 +12613,20 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
         db.commit()
 
         # ── Step 1: Transcribe ────────────────────────────────────────────────
+        deepgram_cost = estimate_cost("deepgram", "transcribe", duration_seconds=60)
+        daily_cost_check = check_rate_limit(db, voice_call.tenant_id, "daily_cost", cost_increment=deepgram_cost)
+        if not daily_cost_check["allowed"]:
+            log.warning(f"[VOICE] Daily cost limit exceeded for {voice_call.tenant_id}: {daily_cost_check['reason']}")
+            from twilio.twiml.voice_response import VoiceResponse
+            r = VoiceResponse()
+            r.say("Sorry, this service is temporarily unavailable. Your host has been notified.")
+            r.hangup()
+            return Response(str(r), media_type="application/xml")
+
         guest_message, confidence = await VoiceAIService.transcribe_audio(recording_url)
         log.info(f"[VOICE] Transcribed: '{guest_message}' (conf={confidence:.2f})")
 
         # Log Deepgram cost (approximately 1 minute = $0.0043)
-        deepgram_cost = estimate_cost("deepgram", "transcribe", duration_seconds=60)
         log_api_usage(
             db, voice_call.tenant_id, "deepgram", "transcribe",
             cost_usd=deepgram_cost,
@@ -12821,16 +12830,7 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
                 log.info(f"[VOICE] Guest requested callback (default 1 hour)")
 
         # ── Step 3: Generate response ─────────────────────────────────────────
-        ai_text, send_action, unanswered_question = await VoiceAIService.generate_response(
-            guest_message,
-            tenant_config_dict,
-            voice_call.guest_messages,
-            guest_name=guest_name,
-            guest_language=voice_call.guest_language,
-        )
-        log.info(f"[VOICE] Response: '{ai_text[:80]}' | send={send_action} | gap={unanswered_question}")
-
-        # Estimate OpenAI cost (gpt-4o-mini with context)
+        # Estimate OpenAI cost before making the call (gpt-4o-mini with context)
         # Rough estimate: ~400 tokens input + 150 tokens output per call
         estimated_input_tokens = 400
         estimated_output_tokens = 150
@@ -12840,6 +12840,24 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
             output_tokens=estimated_output_tokens,
             model="gpt-4o-mini"
         )
+        daily_cost_check = check_rate_limit(db, voice_call.tenant_id, "daily_cost", cost_increment=openai_cost)
+        if not daily_cost_check["allowed"]:
+            log.warning(f"[VOICE] Daily cost limit exceeded for {voice_call.tenant_id}: {daily_cost_check['reason']}")
+            from twilio.twiml.voice_response import VoiceResponse
+            r = VoiceResponse()
+            r.say("Sorry, this service is temporarily unavailable. Your host has been notified.")
+            r.hangup()
+            return Response(str(r), media_type="application/xml")
+
+        ai_text, send_action, unanswered_question = await VoiceAIService.generate_response(
+            guest_message,
+            tenant_config_dict,
+            voice_call.guest_messages,
+            guest_name=guest_name,
+            guest_language=voice_call.guest_language,
+        )
+        log.info(f"[VOICE] Response: '{ai_text[:80]}' | send={send_action} | gap={unanswered_question}")
+
         log_api_usage(
             db, voice_call.tenant_id, "openai", "generate_response",
             cost_usd=openai_cost,
@@ -12887,11 +12905,28 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
 
         # ── Step 6: Synthesize AI reply to audio ─────────────────────────────
         voice_id = cfg.voice_elevenlabs_voice_id if cfg else None
+
+        # Estimate TTS cost before synthesis
+        tts_provider = (VoiceAIService.TTS_PROVIDER or "google").lower()
+        if tts_provider == "google":
+            tts_cost = len(ai_text) / 1_000_000 * 16.0
+        else:
+            tts_cost = estimate_cost("elevenlabs", "synthesize", characters=len(ai_text))
+
+        daily_cost_check = check_rate_limit(db, voice_call.tenant_id, "daily_cost", cost_increment=tts_cost)
+        if not daily_cost_check["allowed"]:
+            log.warning(f"[VOICE] Daily cost limit exceeded for {voice_call.tenant_id}: {daily_cost_check['reason']}")
+            from twilio.twiml.voice_response import VoiceResponse
+            r = VoiceResponse()
+            r.say("Sorry, this service is temporarily unavailable. Your host has been notified.")
+            r.hangup()
+            return Response(str(r), media_type="application/xml")
+
         audio_bytes, audio_url = await VoiceAIService.synthesize_speech(ai_text, voice_id=voice_id)
 
         # Log TTS cost under the correct provider
         _log_tts_usage(db, voice_call.tenant_id, ai_text, audio_bytes, call_id=call_id)
-        increment_rate_limit(db, voice_call.tenant_id, "daily_cost", len(ai_text) / 1_000_000 * 16.0)
+        increment_rate_limit(db, voice_call.tenant_id, "daily_cost", tts_cost)
 
         # Update running confidence average
         prev_avg = voice_call.confidence_avg or confidence

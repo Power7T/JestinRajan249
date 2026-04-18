@@ -83,6 +83,27 @@ def log_api_usage(
         db.rollback()
 
 
+def log_rate_limit_blocked(db: Session, tenant_id: str, reason: str) -> None:
+    """Log when a rate limit blocks an API call."""
+    try:
+        usage_log = APIUsageLog(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            service="rate_limiter",
+            operation="blocked",
+            cost_usd=0.0,
+            status="blocked",
+            error_message=reason,
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(usage_log)
+        db.commit()
+        log.warning(f"[RATE_LIMIT] {tenant_id}: {reason}")
+    except Exception as e:
+        log.error(f"[COST] Error logging rate limit block: {e}")
+        db.rollback()
+
+
 def estimate_cost(
     service: str,
     operation: str,
