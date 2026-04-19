@@ -455,10 +455,24 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 
     <label>Frequently asked questions & answers</label>
     <p class="help-text" style="margin-bottom:0.4rem">Write each Q&A on its own lines. The AI will reference these exactly.</p>
-    <textarea name="faq" rows="8" placeholder="Q: What is the WiFi password?&#10;A: [add your answer]&#10;&#10;Q: Is there parking?&#10;A: [add your answer]&#10;&#10;Q: Where do I find the key?&#10;A: [add your answer]">{{ cfg.faq or '' }}</textarea>
+    {% set faq_prefill %}{% if not cfg.faq %}Q: What is the WiFi password?
+A: [add your WiFi name and password]
+
+Q: What is the check-in time?
+A: {% if cfg.check_in_time %}Check-in is from {{ cfg.check_in_time }}.{% else %}[add your check-in time]{% endif %}
+
+Q: What is the check-out time?
+A: {% if cfg.check_out_time %}Please check out by {{ cfg.check_out_time }}.{% else %}[add your check-out time]{% endif %}
+
+Q: Is there parking available?
+A: [describe parking situation]
+
+Q: Where do I find the key / how do I get in?
+A: [describe your check-in process]{% endif %}{% endset %}
+    <textarea name="faq" rows="10">{{ cfg.faq or faq_prefill }}</textarea>
 
     <label style="margin-top:0.5rem">Emergency contacts</label>
-    <textarea name="emergency_contacts" rows="3" placeholder="Local contact: [name and phone]&#10;Nearest hospital: [name and address]&#10;Emergency services: [number]">{{ '' }}</textarea>
+    <textarea name="emergency_contacts" rows="3" placeholder="Local contact: [name and phone]&#10;Nearest hospital: [name and address]&#10;Emergency services: 911 / 999 / 112">{{ cfg.emergency_contacts or '' }}</textarea>
     <p class="help-text">Will be included in the AI context for emergencies.</p>
 
     <label>Special AI instructions (optional)</label>
@@ -466,17 +480,19 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
       Anything you always want the AI to do or avoid. Examples: tone, upsells, what to mention.
     </p>
     <textarea name="custom_instructions" rows="4" placeholder="Mention the unit name when giving directions.&#10;Escalate refund requests to the host.&#10;Match the guest's tone and keep answers concise.">{{ cfg.custom_instructions or '' }}</textarea>
-    <div class="help-text" style="margin-top:0.5rem;line-height:1.8">
-      Guests can use the bot for WiFi, check-in, check-out, parking, directions, food, local recommendations, late arrival, extra towels, and issue reporting.
-      When you later map a guest phone number to a reservation and room / unit / property number, HostAI uses that stay context automatically in WhatsApp and SMS replies.
-    </div>
 
-    <label style="margin-top:0.5rem">Email for urgent alerts (human handoff)</label>
-    <input type="email" name="escalation_email" value="{{ cfg.escalation_email or tenant.email }}" placeholder="{{ tenant.email }}">
-    <p class="help-text">
-      When a guest message contains legal threats, medical emergencies, or extreme frustration,
-      HostAI will email you here immediately with the full message.
-    </p>
+    <div class="form-row" style="margin-top:1rem">
+      <div>
+        <label>Email for urgent alerts (human handoff)</label>
+        <input type="email" name="escalation_email" value="{{ cfg.escalation_email or tenant.email }}" placeholder="{{ tenant.email }}">
+        <p class="help-text">HostAI emails you here for legal threats, emergencies, or extreme frustration.</p>
+      </div>
+      <div>
+        <label>Your mobile number (optional)</label>
+        <input type="tel" name="phone" value="{{ tenant.phone or '' }}" placeholder="+1 555 000 0000">
+        <p class="help-text">For SMS alerts when email is missed. Can be added later in Settings.</p>
+      </div>
+    </div>
 
     <div class="step-nav">
       <a href="/onboarding?step=3" style="color:var(--text-3);font-size:0.85rem">← Back</a>
@@ -954,6 +970,100 @@ document.addEventListener('click', (e) => {
         }
     }
 });
+
+// ── Airbnb import: auto-scroll + pulse after success ─────────
+(function patchImportListing() {
+  const origImport = window.importListing;
+  window.importListing = function() {
+    const urlEl = document.getElementById('listing-url');
+    if (!urlEl) return origImport && origImport();
+    const url = urlEl.value.trim();
+    const stat = document.getElementById('import-status');
+    const spinner = document.getElementById('import-spinner');
+    if (!url) { if (stat) stat.textContent = 'Paste your Airbnb listing URL first.'; return; }
+    if (stat) { stat.style.color = '#856404'; stat.textContent = ''; }
+    if (spinner) spinner.style.display = 'block';
+    fetch('/onboarding/import-listing', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url, csrf_token: '{{ request.state.csrf_token }}'})
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (spinner) spinner.style.display = 'none';
+      if (d.error) { if(stat){stat.style.color='#721c24';stat.textContent='✗ '+d.error;} return; }
+      if (stat) { stat.style.color='#155724'; stat.textContent='✓ Imported! Review the pre-filled fields below.'; }
+      if (d.property_names) { const el=document.getElementById('f-property-names'); if(el) el.value=d.property_names; }
+      if (d.property_type)  { const el=document.getElementById('f-property-type');  if(el) el.value=d.property_type; }
+      if (d.property_city)  { const el=document.getElementById('f-property-city');  if(el) el.value=d.property_city; }
+      if (d.max_guests)     { const el=document.getElementById('f-max-guests');     if(el) el.value=d.max_guests; }
+      // Scroll to first form field and pulse it
+      const firstField = document.getElementById('f-property-names');
+      if (firstField) {
+        firstField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstField.style.transition = 'box-shadow 0.3s';
+        firstField.style.boxShadow = '0 0 0 3px rgba(91,141,239,0.4)';
+        setTimeout(() => { firstField.style.boxShadow = ''; }, 2000);
+      }
+    })
+    .catch(() => {
+      if (spinner) spinner.style.display = 'none';
+      if (stat) { stat.style.color='#721c24'; stat.textContent='✗ Could not reach that URL. Please fill in manually.'; }
+    });
+  };
+})();
+
+// ── localStorage auto-save ────────────────────────────────────
+(function autoSave() {
+  const step = '{{ step }}';
+  const key = `hostai_onboard_step_${step}`;
+
+  // Restore saved values on page load
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) || '{}');
+    Object.entries(saved).forEach(([name, val]) => {
+      const els = document.querySelectorAll(`[name="${name}"]`);
+      els.forEach(el => {
+        if (el.type === 'checkbox') {
+          el.checked = Array.isArray(val) ? val.includes(el.value) : val === el.value;
+        } else if (el.tagName === 'SELECT' || el.tagName === 'TEXTAREA' || el.type === 'text' || el.type === 'email' || el.type === 'tel' || el.type === 'number') {
+          if (!el.value) el.value = Array.isArray(val) ? val[0] : val;
+        }
+      });
+    });
+  } catch(e) {}
+
+  // Save on every change
+  function saveAll() {
+    try {
+      const form = document.querySelector('form[method="post"]');
+      if (!form) return;
+      const data = {};
+      form.querySelectorAll('input:not([type=hidden]):not([type=submit]), select, textarea').forEach(el => {
+        if (!el.name || el.name === 'csrf_token') return;
+        if (el.type === 'checkbox') {
+          if (!data[el.name]) data[el.name] = [];
+          if (el.checked) data[el.name].push(el.value);
+        } else if (el.type === 'password' || el.type === 'file') {
+          // never store passwords or files
+        } else {
+          data[el.name] = el.value;
+        }
+      });
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch(e) {}
+  }
+
+  document.addEventListener('input', saveAll);
+  document.addEventListener('change', saveAll);
+
+  // Clear this step's save on successful submit
+  document.querySelectorAll('form[method="post"]').forEach(form => {
+    form.addEventListener('submit', () => {
+      try { localStorage.removeItem(key); } catch(e) {}
+    });
+  });
+})();
 </script>
 </div>
 {% endblock %}

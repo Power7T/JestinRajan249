@@ -246,15 +246,38 @@ body {
 {% endif %}
 
 {% if cfg and not cfg.onboarding_complete %}
-<!-- Setup Progress Soft Gate Widget -->
-<div class="glass-card mb-12 p-6 rounded-2xl border-l-[6px] border-[#5B8DEF] bg-[#1a1b22]/80 flex items-center justify-between">
-  <div>
-    <h3 class="text-white font-bold text-lg mb-1">Your HostAI setup is incomplete</h3>
-    <p class="text-slate-400 text-sm">To start receiving AI drafts and automations, you need to finish connecting your property data.</p>
+<!-- Setup Progress Banner -->
+{% set steps_done = onboarding_step|default(0) %}
+{% set steps_left = 5 - steps_done %}
+<div class="glass-card mb-8 p-5 rounded-2xl border border-[#5B8DEF]/30 bg-[#1a1b22]/80">
+  <div class="flex items-center justify-between gap-4 flex-wrap">
+    <div class="flex items-start gap-4">
+      <div class="w-10 h-10 rounded-xl bg-[#5B8DEF]/15 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-[#5B8DEF] text-xl">checklist</span>
+      </div>
+      <div>
+        <h3 class="text-white font-bold text-base mb-0.5">
+          Setup {{ steps_done }}/5 complete
+          {%- if steps_done == 0 %} — just started{% elif steps_done >= 4 %} — almost there!{% endif %}
+        </h3>
+        <p class="text-slate-400 text-sm">
+          {% if steps_done == 0 %}Start connecting your property so HostAI can answer guest messages.
+          {% elif steps_done == 4 %}One step left — connect your email and calendar to go live.
+          {% else %}{{ steps_left }} step{{ 's' if steps_left != 1 else '' }} left — finish setup to start receiving AI drafts.{% endif %}
+        </p>
+        <!-- Progress dots -->
+        <div class="flex items-center gap-1.5 mt-2">
+          {% for i in range(1, 6) %}
+          <div class="h-1.5 w-8 rounded-full {% if i <= steps_done %}bg-[#5B8DEF]{% else %}bg-white/10{% endif %} transition-all"></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <a href="/onboarding?step={{ [steps_done + 1, 5]|min }}"
+       class="bg-gradient-to-r from-[#5B8DEF] to-[#aec6ff] text-[#002e6b] font-bold px-5 py-2.5 rounded-xl text-sm shadow-[0_4px_16px_rgba(91,141,239,0.3)] hover:scale-105 transition-all whitespace-nowrap inline-flex flex-shrink-0 items-center gap-2">
+      Continue step {{ [steps_done + 1, 5]|min }} →
+    </a>
   </div>
-  <a href="/onboarding" class="bg-gradient-to-r from-[#5B8DEF] to-[#aec6ff] text-[#002e6b] font-bold px-6 py-3 rounded-xl text-sm shadow-[0_4px_16px_rgba(91,141,239,0.3)] hover:scale-105 transition-all whitespace-nowrap hidden sm:inline-flex flex-shrink-0 items-center gap-2">
-    Resume Setup →
-  </a>
 </div>
 {% endif %}
 <!-- KPI Row -->

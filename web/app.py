@@ -291,6 +291,8 @@ if not _APP_BASE_URL_RAW or _APP_BASE_URL_RAW == "https://your-domain.com":
     _APP_BASE_URL_RAW = _APP_BASE_URL_RAW or "http://localhost:8000"
 APP_BASE_URL = _APP_BASE_URL_RAW
 INBOUND_EMAIL_DOMAIN = os.getenv("INBOUND_EMAIL_DOMAIN", "inbound.hostai.local").strip().lower()
+GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
 
 # ---------------------------------------------------------------------------
 # App lifecycle
@@ -1533,7 +1535,7 @@ def signup_post(
     last_name:  str = Form(...),
     email:      str = Form(...),
     country:    str = Form(...),
-    phone:      str = Form(...),
+    phone:      str = Form(""),
     password:   str = Form(...),
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
@@ -1625,6 +1627,108 @@ def resend_verification(
         db.commit()
         send_verification_email(tenant.email, ver_token)
     return RedirectResponse("/dashboard", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Google OAuth
+# ---------------------------------------------------------------------------
+@app.get("/auth/google")
+def google_oauth_start(request: Request):
+    """Redirect to Google's OAuth consent screen."""
+    if not GOOGLE_CLIENT_ID:
+        return RedirectResponse("/signup?error=google_not_configured", status_code=302)
+    state = secrets.token_urlsafe(20)
+    from urllib.parse import urlencode
+    params = urlencode({
+        "client_id":    GOOGLE_CLIENT_ID,
+        "redirect_uri": f"{APP_BASE_URL}/auth/google/callback",
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "offline",
+        "prompt": "select_account",
+    })
+    resp = RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{params}", status_code=302)
+    is_secure = is_request_secure(request)
+    resp.set_cookie("_g_state", _store_token(state), httponly=True,
+                    samesite="lax", secure=is_secure, max_age=300)
+    return resp
+
+
+@app.get("/auth/google/callback")
+def google_oauth_callback(
+    request: Request,
+    code: str = "",
+    state: str = "",
+    error: str = "",
+    db: Session = Depends(get_db),
+):
+    """Handle Google OAuth callback — create or log in user."""
+    if error:
+        return RedirectResponse(f"/signup?error=google_{error}", status_code=302)
+
+    stored = request.cookies.get("_g_state", "")
+    if not state or not stored or not hmac.compare_digest(_store_token(state), stored):
+        return RedirectResponse("/signup?error=oauth_state", status_code=302)
+
+    # Exchange code for tokens
+    try:
+        token_resp = requests.post("https://oauth2.googleapis.com/token", data={
+            "client_id":     GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "redirect_uri":  f"{APP_BASE_URL}/auth/google/callback",
+            "code":          code,
+            "grant_type":    "authorization_code",
+        }, timeout=10)
+        token_resp.raise_for_status()
+        tokens = token_resp.json()
+    except Exception as exc:
+        log.error("Google token exchange failed: %s", exc)
+        return RedirectResponse("/signup?error=google_token", status_code=302)
+
+    # Fetch user info
+    try:
+        ui_resp = requests.get("https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {tokens['access_token']}"}, timeout=10)
+        ui_resp.raise_for_status()
+        info = ui_resp.json()
+    except Exception as exc:
+        log.error("Google userinfo fetch failed: %s", exc)
+        return RedirectResponse("/signup?error=google_userinfo", status_code=302)
+
+    email = (info.get("email") or "").lower().strip()
+    if not email:
+        return RedirectResponse("/signup?error=no_email", status_code=302)
+
+    tenant = db.query(Tenant).filter_by(email=email).first()
+    is_new = tenant is None
+    if is_new:
+        tenant = Tenant(
+            first_name=info.get("given_name", "").strip() or email.split("@")[0],
+            last_name=info.get("family_name", "").strip(),
+            email=email,
+            country="",
+            phone="",
+            password_hash=hash_password(secrets.token_urlsafe(32)),
+            email_verified=True,
+        )
+        db.add(tenant)
+        db.commit()
+        db.refresh(tenant)
+        db.add(TenantConfig(tenant_id=tenant.id))
+        db.commit()
+
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant.id).first()
+    redirect_to = "/onboarding" if (is_new or not (cfg and cfg.onboarding_complete)) else "/dashboard"
+
+    from web.auth import TOKEN_HOURS
+    token = create_token(tenant.id, tenant_session_version(tenant))
+    is_secure = is_request_secure(request)
+    resp = RedirectResponse(redirect_to, status_code=302)
+    resp.set_cookie("session", token, httponly=True, samesite="strict",
+                    secure=is_secure, max_age=TOKEN_HOURS * 3600)
+    resp.delete_cookie("_g_state")
+    return resp
 
 
 @app.get("/forgot-password", response_class=HTMLResponse)
@@ -2248,6 +2352,7 @@ def dashboard(request: Request,
         "today":         today,
         "setup_alerts":  _get_setup_alerts(cfg, tenant, all_reservations),
         "ctx_map":       ctx_map,
+        "onboarding_step": cfg.onboarding_step if cfg else 0,
     })
     if show_tour:
         response.delete_cookie("show_tour")
@@ -3276,6 +3381,7 @@ async def onboarding_post(
     emergency_contacts:  str = Form(""),
     custom_instructions: str = Form(""),
     escalation_email:    str = Form(""),
+    phone:               str = Form(""),
     # Step 5 fields
     ical_urls:           str = Form(""),
     email_ingest_mode:   str = Form("imap"),
@@ -3355,6 +3461,8 @@ async def onboarding_post(
             cfg.faq                 = combined_faq or cfg.faq
             cfg.custom_instructions = custom_instructions.strip() or cfg.custom_instructions
             cfg.escalation_email    = escalation_email.strip() or cfg.escalation_email
+            if phone.strip() and not tenant.phone:
+                tenant.phone = phone.strip()
 
         elif step == 5:
             cfg.email_ingest_mode = email_ingest_mode.strip() or cfg.email_ingest_mode or "imap"
