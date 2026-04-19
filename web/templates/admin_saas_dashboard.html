@@ -356,24 +356,6 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 
 <script nonce="{{ request.state.csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
-  // Sidebar toggle
-  var mobileBtn = document.getElementById('admin-mobile-menu-btn');
-  var sidebarToggle = document.getElementById('sidebar-toggle');
-  var overlay = document.getElementById('admin-sidebar-overlay');
-  var sidebar = document.getElementById('admin-sidebar');
-  function toggleSidebar() {
-    sidebar.classList.toggle('-translate-x-full');
-    overlay.classList.toggle('hidden');
-  }
-  if (mobileBtn) mobileBtn.addEventListener('click', toggleSidebar);
-  if (sidebarToggle) sidebarToggle.addEventListener('click', function() {
-    sidebar.classList.toggle('-translate-x-full');
-  });
-  if (overlay) overlay.addEventListener('click', function() {
-    sidebar.classList.add('-translate-x-full');
-    overlay.classList.add('hidden');
-  });
-
   // Tab buttons
   ['costs','limits','flags','logs'].forEach(function(tab) {
     var btn = document.getElementById('tabbtn-' + tab);

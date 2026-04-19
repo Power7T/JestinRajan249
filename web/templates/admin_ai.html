@@ -437,25 +437,6 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   var activeModel = document.querySelector('.model-tab.active')?.dataset.model || '';
   var csrfToken = '{{ request.state.csrf_token }}';
 
-  // Sidebar toggle
-  document.addEventListener('DOMContentLoaded', function() {
-    var mobileBtn = document.getElementById('admin-mobile-menu-btn');
-    var sidebarToggle = document.getElementById('sidebar-toggle');
-    var overlay = document.getElementById('admin-sidebar-overlay');
-    var sidebar = document.getElementById('admin-sidebar');
-    if (mobileBtn) mobileBtn.addEventListener('click', function() {
-      if (sidebar) sidebar.classList.toggle('-translate-x-full');
-      if (overlay) overlay.classList.toggle('hidden');
-    });
-    if (sidebarToggle) sidebarToggle.addEventListener('click', function() {
-      if (sidebar) sidebar.classList.toggle('-translate-x-full');
-    });
-    if (overlay) overlay.addEventListener('click', function() {
-      if (sidebar) sidebar.classList.add('-translate-x-full');
-      overlay.classList.add('hidden');
-    });
-  });
-
   // Configured model tabs
   document.querySelectorAll('.model-tab').forEach(function(btn) {
     btn.addEventListener('click', function() {

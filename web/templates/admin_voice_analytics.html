@@ -1,24 +1,6 @@
 {% extends "base.html" %}
 {% set tenant = admin %}
-{% block title %}Voice Analytics — HostAI Admin{% block scripts %}<script nonce="{{ request.state.csp_nonce }}">
-document.addEventListener('DOMContentLoaded', function() {
-  var mobileBtn = document.getElementById('admin-mobile-menu-btn');
-  var sidebarToggle = document.getElementById('sidebar-toggle');
-  var overlay = document.getElementById('admin-sidebar-overlay');
-  var sidebar = document.getElementById('admin-sidebar');
-  if (mobileBtn) mobileBtn.addEventListener('click', function() {
-    sidebar.classList.toggle('-translate-x-full');
-    if (overlay) overlay.classList.toggle('hidden');
-  });
-  if (sidebarToggle) sidebarToggle.addEventListener('click', function() {
-    if (sidebar) sidebar.classList.toggle('-translate-x-full');
-  });
-  if (overlay) overlay.addEventListener('click', function() {
-    if (sidebar) sidebar.classList.add('-translate-x-full');
-    overlay.classList.add('hidden');
-  });
-});
-</script>{% endblock %}
+{% block title %}Voice Analytics — HostAI Admin
 {% endblock %}
 
 {% block head %}
