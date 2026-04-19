@@ -12,6 +12,9 @@
 </a>
 <nav class="flex-1 px-4 space-y-0.5 pb-4">
 {% set p = request.url.path %}
+<div class="pt-1 pb-1 px-6">
+  <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Core</p>
+</div>
 <a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/dashboard">
 <span class="material-symbols-outlined text-[1.15rem]">dashboard</span><span class="text-sm">Dashboard</span>
 </a>
@@ -21,13 +24,22 @@
 <a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/reservations">
 <span class="material-symbols-outlined text-[1.15rem]">event_available</span><span class="text-sm">Reservations</span>
 </a>
-<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/activity">
-<span class="material-symbols-outlined text-[1.15rem]">history</span><span class="text-sm">Activity</span>
-</a>
 <a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/guest-contacts' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/guest-contacts">
 <span class="material-symbols-outlined text-[1.15rem]">contacts</span><span class="text-sm">Guest Contacts</span>
 </a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/properties' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/properties">
+<span class="material-symbols-outlined text-[1.15rem]">home_work</span><span class="text-sm">Properties</span>
+</a>
 
+<div class="pt-3 pb-1 px-6">
+  <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Insights</p>
+</div>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/activity">
+<span class="material-symbols-outlined text-[1.15rem]">history</span><span class="text-sm">Activity</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/automations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/automations">
+<span class="material-symbols-outlined text-[1.15rem]">bolt</span><span class="text-sm">Automations</span>
+</a>
 <div class="pt-3 pb-1 px-6">
   <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Analytics</p>
 </div>
@@ -41,26 +53,35 @@
 <div class="pt-3 pb-1 px-6">
   <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Channels</p>
 </div>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/communications' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/communications">
+<span class="material-symbols-outlined text-[1.15rem]">chat</span><span class="text-sm">Communications</span>
+</a>
 <a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p in ['/voice-calls', '/voice-calls/gaps'] %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/voice-calls">
 <span class="material-symbols-outlined text-[1.15rem]">phone_in_talk</span><span class="text-sm">Voice AI</span>
 </a>
 {% if p == '/voice-calls/gaps' or p == '/voice-calls' %}
 <a class="flex items-center gap-3 pl-12 pr-6 py-2 rounded-xl {% if p == '/voice-calls/gaps' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-500 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 text-xs" href="/voice-calls/gaps">
-<span class="material-symbols-outlined text-[1rem]">psychology_alt</span>Knowledge Gaps
+<span class="material-symbols-outlined text-[1rem]">psychology_alt</span>Unanswered Questions
 </a>
 {% endif %}
 
 <div class="pt-3 pb-1 px-6">
   <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Operations</p>
 </div>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/integrations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/integrations">
+<span class="material-symbols-outlined text-[1.15rem]">sync_alt</span><span class="text-sm">Integrations</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/team' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/team">
+<span class="material-symbols-outlined text-[1.15rem]">groups</span><span class="text-sm">Team & Access</span>
+</a>
 <a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/workflow">
-<span class="material-symbols-outlined text-[1.15rem]">hub</span><span class="text-sm">Workflow</span>
+<span class="material-symbols-outlined text-[1.15rem]">account_tree</span><span class="text-sm">Workflow</span>
 </a>
 <a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/ops">
-<span class="material-symbols-outlined text-[1.15rem]">assignment</span><span class="text-sm">Ops Queue</span>
+<span class="material-symbols-outlined text-[1.15rem]">checklist</span><span class="text-sm">Tasks</span>
 </a>
 <a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/mission-control' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/mission-control">
-<span class="material-symbols-outlined text-[1.15rem]">military_tech</span><span class="text-sm">Mission Control</span>
+<span class="material-symbols-outlined text-[1.15rem]">speed</span><span class="text-sm">Overview</span>
 </a>
 <a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/vendors/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/vendors/workflow">
 <span class="material-symbols-outlined text-[1.15rem]">handyman</span><span class="text-sm">Vendors</span>

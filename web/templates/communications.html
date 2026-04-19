@@ -1,0 +1,216 @@
+{% extends "workspace_shell.html" %}
+
+{% block page_title %}Communications{% endblock %}
+{% block page_heading %}Communications{% endblock %}
+{% block page_subtitle %}WhatsApp and SMS setup live here now. Voice AI keeps its own dedicated page, but the guest messaging channels that feed your inbox are surfaced here directly.{% endblock %}
+
+{% block workspace_content %}
+<div class="metric-grid">
+  <div class="metric-card">
+    <div class="metric-value">{% if cfg.wa_mode == 'meta_cloud' %}Cloud{% elif cfg.wa_mode == 'twilio' %}Twilio{% else %}None{% endif %}</div>
+    <div class="metric-label">WhatsApp mode</div>
+    <div class="metric-note">The app auto-selects Twilio WhatsApp when a sender is configured, otherwise Meta Cloud when a phone ID and token exist.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{% if cfg.sms_mode == 'twilio' %}Ready{% else %}Off{% endif %}</div>
+    <div class="metric-label">SMS status</div>
+    <div class="metric-note">Twilio SMS uses the same account credentials and its own inbound webhook.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">Voice AI</div>
+    <div class="metric-label">Separate page</div>
+    <div class="metric-note">Voice routing, live call settings, and speech providers remain on the dedicated Voice AI page.</div>
+  </div>
+</div>
+
+<form method="post" action="/communications">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+  <section class="form-section" id="meta-cloud">
+    <h2>WhatsApp Cloud API</h2>
+    <div class="chip-row mb-4">
+      <span class="chip {% if cfg.whatsapp_token_enc %}good{% else %}warn{% endif %}">Access token</span>
+      <span class="chip {% if cfg.whatsapp_phone_id %}good{% else %}warn{% endif %}">Phone ID</span>
+      <span class="chip {% if cfg.whatsapp_number %}good{% else %}warn{% endif %}">Business number</span>
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label>WhatsApp number</label>
+        <input type="text" name="whatsapp_number" value="{{ cfg.whatsapp_number or '' }}" placeholder="+15550001234">
+      </div>
+      <div>
+        <label>Phone ID</label>
+        <input type="text" name="whatsapp_phone_id" value="{{ cfg.whatsapp_phone_id or '' }}" placeholder="123456789">
+      </div>
+    </div>
+
+    <label>Access token</label>
+    <input type="password" name="whatsapp_token" placeholder="Leave blank to keep the current token">
+    <p class="help-text">Blank keeps the current encrypted token. Enter a new value to rotate credentials.</p>
+
+    <label>Webhook verify token</label>
+    <input type="text" name="whatsapp_verify_token" value="{{ cfg.whatsapp_verify_token or '' }}" placeholder="your_verify_token">
+
+    <div class="form-row">
+      <div>
+        <label>Inbound webhook URL</label>
+        <input id="wa-webhook-url" type="text" readonly value="{{ app_base_url }}/whatsapp/webhook/{{ tenant.id }}">
+      </div>
+      <div class="flex items-end">
+        <button type="button" class="btn btn-outline" data-copy-target="wa-webhook-url">Copy webhook</button>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label>Send test WhatsApp</label>
+        <input id="wa-test-phone" type="text" placeholder="+1 415 555 0100">
+      </div>
+      <div class="flex items-end gap-3">
+        <button type="button" id="send-test-wa-btn" class="btn btn-outline">Send test</button>
+        <span id="wa-test-result" class="help-text" style="margin:0"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="form-section" id="sms">
+    <h2>SMS via Twilio</h2>
+    <div class="chip-row mb-4">
+      <span class="chip {% if cfg.twilio_account_sid %}good{% else %}warn{% endif %}">Account SID</span>
+      <span class="chip {% if cfg.twilio_auth_token_enc %}good{% else %}warn{% endif %}">Auth token</span>
+      <span class="chip {% if cfg.twilio_from_number %}good{% else %}warn{% endif %}">From number</span>
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label>Twilio account SID</label>
+        <input type="text" name="twilio_account_sid" value="{{ cfg.twilio_account_sid or '' }}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+      </div>
+      <div>
+        <label>From number</label>
+        <input type="text" name="twilio_from_number" value="{{ cfg.twilio_from_number or '' }}" placeholder="+15550001234">
+      </div>
+    </div>
+
+    <label>Auth token</label>
+    <input type="password" name="twilio_auth_token" placeholder="Leave blank to keep the current token">
+    <p class="help-text">Blank keeps the current encrypted token. Enter a new value only when you rotate credentials.</p>
+
+    <div class="form-row">
+      <div>
+        <label>Notify number</label>
+        <input type="text" name="sms_notify_number" value="{{ cfg.sms_notify_number or '' }}" placeholder="+15550001234">
+      </div>
+      <div>
+        <label>Inbound webhook URL</label>
+        <input id="sms-webhook-url" type="text" readonly value="{{ app_base_url }}/sms/webhook/{{ tenant.id }}">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="flex items-end">
+        <button type="button" class="btn btn-outline" data-copy-target="sms-webhook-url">Copy SMS webhook</button>
+      </div>
+      <div class="flex items-end gap-3">
+        <input id="sms-test-phone" type="text" placeholder="+1 415 555 0100">
+        <button type="button" id="send-test-sms-btn" class="btn btn-outline">Send test SMS</button>
+      </div>
+    </div>
+    <div id="sms-test-result" class="help-text"></div>
+  </section>
+
+  <section class="form-section" id="twilio-whatsapp">
+    <h2>WhatsApp via Twilio</h2>
+    <p class="help-text">If you add a Twilio WhatsApp sender number here and your Twilio SMS credentials are valid, the app will switch WhatsApp routing to Twilio automatically.</p>
+
+    <div class="form-row">
+      <div>
+        <label>WhatsApp sender number</label>
+        <input type="text" name="twilio_whatsapp_number" value="{{ cfg.twilio_whatsapp_number or '' }}" placeholder="+14155238886">
+      </div>
+      <div>
+        <label>Twilio inbound WhatsApp webhook</label>
+        <input id="twilio-wa-webhook-url" type="text" readonly value="{{ app_base_url }}/whatsapp/twilio/inbound/{{ tenant.id }}">
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+      <button type="button" class="btn btn-outline" data-copy-target="twilio-wa-webhook-url">Copy Twilio WhatsApp webhook</button>
+      <span class="chip {% if cfg.wa_mode == 'twilio' %}good{% else %}warn{% endif %}">
+        {% if cfg.wa_mode == 'twilio' %}Twilio WhatsApp active{% else %}Inactive{% endif %}
+      </span>
+    </div>
+  </section>
+
+  <div class="form-section">
+    <h2>Voice AI</h2>
+    <p class="help-text">Voice call routing and speech providers stay on their own page to avoid mixing guest channels with call orchestration.</p>
+    <a href="{{ voice_settings_url }}" class="btn btn-outline">Open Voice AI settings</a>
+  </div>
+
+  <div class="flex flex-wrap gap-3">
+    <button type="submit" class="btn btn-primary">Save communications</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+  function setInlineResult(targetId, message, ok) {
+    var target = document.getElementById(targetId);
+    if (!target) return;
+    target.textContent = message;
+    target.style.color = ok ? '#4ade80' : '#f87171';
+  }
+
+  async function sendTestMessage(endpoint, fieldId, resultId) {
+    var phoneField = document.getElementById(fieldId);
+    if (!phoneField || !phoneField.value.trim()) {
+      setInlineResult(resultId, 'Enter a phone number first.', false);
+      return;
+    }
+    setInlineResult(resultId, 'Sending...', true);
+    var fd = new FormData();
+    fd.append('to_phone', phoneField.value.trim());
+    fd.append('csrf_token', {{ request.state.csrf_token | tojson }});
+    try {
+      var resp = await fetch(endpoint, { method: 'POST', body: fd });
+      var data = await resp.json();
+      setInlineResult(resultId, data.message || data.error || 'No response', !!data.ok);
+    } catch (error) {
+      setInlineResult(resultId, 'Request failed: ' + error.message, false);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-copy-target]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var input = document.getElementById(button.getAttribute('data-copy-target'));
+        if (!input) return;
+        input.select();
+        document.execCommand('copy');
+        var previous = button.textContent;
+        button.textContent = 'Copied';
+        setTimeout(function () {
+          button.textContent = previous;
+        }, 1200);
+      });
+    });
+
+    var testWAButton = document.getElementById('send-test-wa-btn');
+    if (testWAButton) {
+      testWAButton.addEventListener('click', function () {
+        sendTestMessage('/api/test-whatsapp', 'wa-test-phone', 'wa-test-result');
+      });
+    }
+
+    var testSMSButton = document.getElementById('send-test-sms-btn');
+    if (testSMSButton) {
+      testSMSButton.addEventListener('click', function () {
+        sendTestMessage('/api/test-sms', 'sms-test-phone', 'sms-test-result');
+      });
+    }
+  });
+</script>
+{% endblock %}

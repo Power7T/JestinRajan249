@@ -1,0 +1,419 @@
+{%- extends "base.html" %}
+{%- block title %}{% block page_title %}Workspace{% endblock %} — HostAI{%- endblock %}
+
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          primary: "#aec6ff",
+          surface: "#121319",
+          "surface-container": "#1e1f26",
+          "surface-container-lowest": "#0d0e14",
+          "on-surface": "#e3e1eb",
+          "on-surface-variant": "#c3c6d4",
+        },
+        fontFamily: {
+          sans: ["Plus Jakarta Sans", "sans-serif"],
+        },
+      },
+    },
+  }
+</script>
+<style>
+  body {
+    background: #08090F;
+    color: #e3e1eb;
+    font-family: "Plus Jakarta Sans", sans-serif;
+  }
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+  }
+  .workspace-layer {
+    --bg-0: #08090F;
+    --bg-1: #121319;
+    --bg-2: #1a1b22;
+    --bg-3: #1e1f26;
+    --bg-4: #292930;
+    --text-1: #e3e1eb;
+    --text-2: #c3c6d4;
+    --text-3: #8d909e;
+    --border: rgba(66, 71, 82, 0.45);
+    --border-strong: rgba(174, 198, 255, 0.18);
+    --accent: #5B8DEF;
+    --accent-soft: rgba(91, 141, 239, 0.14);
+    --success: #27c93f;
+    --warning: #ffbd2e;
+    --danger: #ffb4ab;
+  }
+  .workspace-layer .card,
+  .workspace-layer .form-section {
+    background: rgba(26, 27, 34, 0.74);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(174, 198, 255, 0.08);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .workspace-layer h2 {
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: 0.75rem;
+  }
+  .workspace-layer h3 {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-2);
+    margin-bottom: 0.45rem;
+  }
+  .workspace-layer label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-3);
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .workspace-layer input:not([type=checkbox]):not([type=submit]):not([type=hidden]),
+  .workspace-layer select,
+  .workspace-layer textarea {
+    width: 100%;
+    background: #0d0e14;
+    border: 1px solid rgba(66, 71, 82, 0.4);
+    border-radius: 0.7rem;
+    padding: 0.7rem 0.9rem;
+    color: var(--text-1);
+    font-size: 0.86rem;
+    margin-bottom: 0.95rem;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .workspace-layer input:focus,
+  .workspace-layer select:focus,
+  .workspace-layer textarea:focus {
+    border-color: var(--accent);
+  }
+  .workspace-layer textarea {
+    min-height: 4rem;
+    resize: vertical;
+  }
+  .workspace-layer .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 0.7rem;
+    padding: 0.62rem 1rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+  }
+  .workspace-layer .btn-primary {
+    background: linear-gradient(135deg, #5B8DEF, #aec6ff);
+    color: #002e6b;
+  }
+  .workspace-layer .btn-outline {
+    background: transparent;
+    color: #aec6ff;
+    border: 1px solid rgba(174, 198, 255, 0.2);
+  }
+  .workspace-layer .btn-outline:hover {
+    background: rgba(174, 198, 255, 0.08);
+  }
+  .workspace-layer .btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.76rem;
+  }
+  .workspace-layer .help-text {
+    color: var(--text-3);
+    font-size: 0.78rem;
+    margin-top: -0.45rem;
+    margin-bottom: 0.85rem;
+  }
+  .workspace-layer .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .workspace-layer .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1.5rem;
+  }
+  .workspace-layer .metric-card {
+    background: rgba(13, 14, 20, 0.78);
+    border: 1px solid rgba(174, 198, 255, 0.08);
+    border-radius: 0.95rem;
+    padding: 1rem;
+  }
+  .workspace-layer .metric-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #aec6ff;
+    line-height: 1;
+    margin-bottom: 0.35rem;
+  }
+  .workspace-layer .metric-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+    font-weight: 700;
+  }
+  .workspace-layer .metric-note {
+    margin-top: 0.35rem;
+    font-size: 0.77rem;
+    color: var(--text-3);
+    line-height: 1.55;
+  }
+  .workspace-layer .rail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+  }
+  .workspace-layer .rail-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.72rem 0.95rem;
+    border-radius: 999px;
+    border: 1px solid rgba(174, 198, 255, 0.12);
+    background: rgba(255, 255, 255, 0.03);
+    color: #9ca3af;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .workspace-layer .rail-link:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .workspace-layer .rail-link.active {
+    color: #aec6ff;
+    background: rgba(91, 141, 239, 0.12);
+    border-color: rgba(91, 141, 239, 0.35);
+  }
+  .workspace-layer .workspace-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+  .workspace-layer .hub-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    background: rgba(26, 27, 34, 0.74);
+    border: 1px solid rgba(174, 198, 255, 0.08);
+    border-radius: 1rem;
+    padding: 1.2rem;
+  }
+  .workspace-layer .hub-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .workspace-layer .hub-card-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--text-1);
+  }
+  .workspace-layer .hub-card-copy {
+    color: var(--text-3);
+    font-size: 0.82rem;
+    line-height: 1.6;
+  }
+  .workspace-layer .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .workspace-layer .chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(174, 198, 255, 0.08);
+    color: #aec6ff;
+    border: 1px solid rgba(174, 198, 255, 0.12);
+  }
+  .workspace-layer .chip.good {
+    background: rgba(39, 201, 63, 0.12);
+    border-color: rgba(39, 201, 63, 0.22);
+    color: #27c93f;
+  }
+  .workspace-layer .chip.warn {
+    background: rgba(255, 189, 46, 0.12);
+    border-color: rgba(255, 189, 46, 0.22);
+    color: #ffbd2e;
+  }
+  .workspace-layer .chip.bad {
+    background: rgba(255, 180, 171, 0.12);
+    border-color: rgba(255, 180, 171, 0.22);
+    color: #ffb4ab;
+  }
+  .workspace-layer .alert-success,
+  .workspace-layer .alert-danger {
+    border-radius: 0.9rem;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+  }
+  .workspace-layer .alert-success {
+    background: rgba(39, 201, 63, 0.1);
+    border: 1px solid rgba(39, 201, 63, 0.3);
+    color: #27c93f;
+  }
+  .workspace-layer .alert-danger {
+    background: rgba(255, 180, 171, 0.1);
+    border: 1px solid rgba(255, 180, 171, 0.3);
+    color: #ffb4ab;
+  }
+  .workspace-layer table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+  }
+  .workspace-layer th {
+    text-align: left;
+    color: var(--text-3);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgba(66, 71, 82, 0.3);
+  }
+  .workspace-layer td {
+    padding: 0.58rem 0.75rem;
+    border-bottom: 1px solid rgba(66, 71, 82, 0.14);
+    color: var(--text-2);
+    vertical-align: middle;
+  }
+  @media (max-width: 900px) {
+    .workspace-layer .form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<button id="workspace-mobile-menu-btn" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+  <span class="material-symbols-outlined">menu</span>
+</button>
+<div id="workspace-sidebar-overlay" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+{% include "_sidebar.html" %}
+
+<main class="flex-1 md:ml-[260px] relative">
+  <header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-4 md:px-8 h-16 font-medium text-sm">
+    <div class="flex items-center flex-1 max-w-md">
+      <div class="relative w-full">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+        <input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search your workspace..." type="text"/>
+      </div>
+    </div>
+    <div class="flex items-center gap-6">
+      <button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+        <span class="material-symbols-outlined">notifications</span>
+        <span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface"></span>
+      </button>
+      <div class="h-8 w-px bg-white/10"></div>
+      <div class="relative" id="workspace-account-menu-wrapper">
+        <button id="workspace-account-menu-btn" class="flex items-center gap-3 cursor-pointer group hover:opacity-80 transition-opacity bg-transparent border-none">
+          <span class="text-slate-200 group-hover:text-white transition-colors text-sm font-medium">{{ tenant.first_name or 'Account' }}</span>
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+            {{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+          </div>
+        </button>
+        <div id="workspace-account-dropdown" class="hidden absolute right-0 top-full mt-2 w-48 bg-[#1a1b22] border border-white/10 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+          <a href="/settings" class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+            <span class="material-symbols-outlined text-base">settings</span>Settings
+          </a>
+          <div class="border-t border-white/10 my-1"></div>
+          <form method="post" action="/logout">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors">
+              <span class="material-symbols-outlined text-base">logout</span>Sign Out
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="workspace-layer pt-24 pb-16 px-4 md:px-10 max-w-6xl mx-auto">
+    <div class="mb-8">
+      <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">{% block page_heading %}Workspace{% endblock %}</h1>
+      <p class="text-slate-400">{% block page_subtitle %}Manage the setup that runs your host operations.{% endblock %}</p>
+    </div>
+
+    {% if saved_message %}
+    <div class="alert-success">{{ saved_message }}</div>
+    {% endif %}
+    {% if error_message %}
+    <div class="alert-danger">{{ error_message }}</div>
+    {% endif %}
+
+    <div class="rail">
+      <a href="/settings" class="rail-link {% if page_key == 'settings' %}active{% endif %}"><span class="material-symbols-outlined text-base">settings</span>Settings</a>
+      <a href="/properties" class="rail-link {% if page_key == 'properties' %}active{% endif %}"><span class="material-symbols-outlined text-base">home_work</span>Properties</a>
+      <a href="/communications" class="rail-link {% if page_key == 'communications' %}active{% endif %}"><span class="material-symbols-outlined text-base">hub</span>Communications</a>
+      <a href="/automations" class="rail-link {% if page_key == 'automations' %}active{% endif %}"><span class="material-symbols-outlined text-base">bolt</span>Automations</a>
+      <a href="/integrations" class="rail-link {% if page_key == 'integrations' %}active{% endif %}"><span class="material-symbols-outlined text-base">sync_alt</span>Integrations</a>
+      <a href="/team" class="rail-link {% if page_key == 'team' %}active{% endif %}"><span class="material-symbols-outlined text-base">groups</span>Team & Access</a>
+    </div>
+
+    {% block workspace_content %}{% endblock %}
+  </div>
+</main>
+
+<script nonce="{{ request.state.csp_nonce }}">
+  document.addEventListener('DOMContentLoaded', function () {
+    var menuBtn = document.getElementById('workspace-mobile-menu-btn');
+    var overlay = document.getElementById('workspace-sidebar-overlay');
+    var sidebar = document.getElementById('sidebar');
+    if (menuBtn && overlay && sidebar) {
+      menuBtn.addEventListener('click', function () {
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+      });
+      overlay.addEventListener('click', function () {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+      });
+    }
+
+    var accountBtn = document.getElementById('workspace-account-menu-btn');
+    var accountDropdown = document.getElementById('workspace-account-dropdown');
+    if (accountBtn && accountDropdown) {
+      accountBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        accountDropdown.classList.toggle('hidden');
+      });
+      document.addEventListener('click', function () {
+        accountDropdown.classList.add('hidden');
+      });
+    }
+  });
+</script>
+{% block workspace_scripts %}{% endblock %}
+{%- endblock %}
+{%- endblock %}

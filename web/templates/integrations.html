@@ -1,0 +1,170 @@
+{% extends "workspace_shell.html" %}
+
+{% block page_title %}Integrations{% endblock %}
+{% block page_heading %}Integrations{% endblock %}
+{% block page_subtitle %}Imports and external systems now live on their own page so sync setup, credentials, and health checks stay operational instead of getting lost in general settings.{% endblock %}
+
+{% block workspace_content %}
+<div class="metric-grid">
+  <div class="metric-card">
+    <div class="metric-value">{% if cfg.ical_urls %}Live{% else %}Off{% endif %}</div>
+    <div class="metric-label">Calendar import</div>
+    <div class="metric-note">Airbnb iCal imports drive arrival timing and check-in automation.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{{ pms_integrations|length }}</div>
+    <div class="metric-label">Active PMS connections</div>
+    <div class="metric-note">Guesty, Hostaway, Lodgify, or a generic REST integration can be managed here.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{% if pms_integrations|length %}Syncing{% else %}Manual{% endif %}</div>
+    <div class="metric-label">Reservation source</div>
+    <div class="metric-note">Use PMS when possible; keep iCal as a lighter fallback when you only need stay timing.</div>
+  </div>
+</div>
+
+<section class="form-section" id="calendar-imports">
+  <h2>Calendar imports</h2>
+  <form method="post" action="/integrations/imports">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <label>Airbnb iCal URL(s)</label>
+    <textarea name="ical_urls" placeholder="https://www.airbnb.com/calendar/ical/...ics&#10;One per line or comma-separated">{{ cfg.ical_urls or '' }}</textarea>
+    <p class="help-text">Airbnb → Calendar → Availability settings → Export calendar → copy the .ics link.</p>
+    <button type="submit" class="btn btn-primary">Save calendar imports</button>
+  </form>
+</section>
+
+<section class="form-section" id="pms">
+  <h2>PMS integration</h2>
+  <p class="help-text">Connect your PMS so HostAI can work from the same booking and inbox source as your operations team.</p>
+
+  {% if pms_integrations %}
+  <table style="margin-bottom:1rem;">
+    <thead>
+      <tr><th>PMS</th><th>Status</th><th>Last synced</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for integration in pms_integrations %}
+      <tr>
+        <td style="text-transform:capitalize;font-weight:700;">{{ integration.pms_type }}</td>
+        <td><span class="chip good">Active</span></td>
+        <td>{{ integration.last_synced_at.strftime('%b %d, %H:%M UTC') if integration.last_synced_at else 'Not yet synced' }}</td>
+        <td><button type="button" class="btn btn-outline btn-sm delete-pms-btn" data-id="{{ integration.id }}" data-type="{{ integration.pms_type }}">Remove</button></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form id="pmsForm" method="post" action="/integrations/pms">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+    <label>PMS system</label>
+    <select name="pms_type" id="pmsType">
+      <option value="">— Select your PMS —</option>
+      <option value="guesty">Guesty</option>
+      <option value="hostaway">Hostaway</option>
+      <option value="lodgify">Lodgify</option>
+      <option value="generic">Other (Generic REST API)</option>
+    </select>
+
+    <div id="fields-guesty" class="pms-fields" style="display:none;">
+      <p class="help-text">Enter <code>client_id|||client_secret</code> from the Guesty developer portal.</p>
+      <label>Client ID <code>|||</code> Client secret</label>
+      <input type="password" name="api_key" placeholder="client_id|||client_secret" autocomplete="new-password">
+    </div>
+
+    <div id="fields-hostaway" class="pms-fields" style="display:none;">
+      <p class="help-text">Enter <code>client_id|||client_secret</code> from the Hostaway developer portal.</p>
+      <label>Client ID <code>|||</code> Client secret</label>
+      <input type="password" name="api_key" placeholder="client_id|||client_secret" autocomplete="new-password">
+    </div>
+
+    <div id="fields-lodgify" class="pms-fields" style="display:none;">
+      <p class="help-text">Use the Lodgify API key from Account Settings → API.</p>
+      <label>API key</label>
+      <input type="password" name="api_key" placeholder="Your Lodgify API key" autocomplete="new-password">
+    </div>
+
+    <div id="fields-generic" class="pms-fields" style="display:none;">
+      <p class="help-text">For other PMS systems, provide an API token and the JSON mapping HostAI should use.</p>
+      <label>API key / auth token</label>
+      <input type="password" name="api_key" placeholder="Your API key or bearer token" autocomplete="new-password">
+      <label>Base URL</label>
+      <input type="text" name="base_url" placeholder="https://api.yourpms.com">
+      <label>JSON configuration</label>
+      <textarea name="account_id" rows="6" placeholder='{
+  "inbox_url": "/messages",
+  "send_url": "/messages/{reservation_id}",
+  "reservations_url": "/reservations",
+  "auth_header": "X-Api-Key"
+}'></textarea>
+    </div>
+
+    <div class="flex flex-wrap gap-3 items-center">
+      <button type="button" class="btn btn-outline" id="test-pms-btn">Test connection</button>
+      <button type="submit" class="btn btn-primary" id="pmsSaveBtn" disabled>Save PMS</button>
+      <span id="pmsTestResult" class="help-text" style="margin:0;"></span>
+    </div>
+  </form>
+</section>
+{% endblock %}
+
+{% block workspace_scripts %}
+<script nonce="{{ request.state.csp_nonce }}">
+  function updatePMSFields() {
+    var type = document.getElementById('pmsType').value;
+    document.querySelectorAll('.pms-fields').forEach(function (element) {
+      element.style.display = 'none';
+    });
+    if (type) {
+      var active = document.getElementById('fields-' + type);
+      if (active) active.style.display = 'block';
+    }
+    document.getElementById('pmsSaveBtn').disabled = !type;
+    document.getElementById('pmsTestResult').textContent = '';
+  }
+
+  async function testPMS() {
+    var form = document.getElementById('pmsForm');
+    var data = new FormData(form);
+    var result = document.getElementById('pmsTestResult');
+    result.textContent = 'Testing...';
+    result.style.color = '#9ca3af';
+    try {
+      var response = await fetch('/api/pms/test', { method: 'POST', body: data });
+      var json = await response.json();
+      result.textContent = json.message;
+      result.style.color = json.ok ? '#4ade80' : '#f87171';
+      if (json.ok) document.getElementById('pmsSaveBtn').disabled = false;
+    } catch (error) {
+      result.textContent = 'Network error — try again';
+      result.style.color = '#f87171';
+    }
+  }
+
+  async function deletePMS(id, type) {
+    var response = await fetch('/integrations/pms/' + id, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-Token': {{ request.state.csrf_token | tojson }},
+      },
+    });
+    var json = await response.json();
+    if (!json.ok) return;
+    window.location.reload();
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var typeSelect = document.getElementById('pmsType');
+    if (typeSelect) typeSelect.addEventListener('change', updatePMSFields);
+    var testButton = document.getElementById('test-pms-btn');
+    if (testButton) testButton.addEventListener('click', testPMS);
+    document.querySelectorAll('.delete-pms-btn').forEach(function (button) {
+      button.addEventListener('click', function () {
+        deletePMS(button.getAttribute('data-id'), button.getAttribute('data-type'));
+      });
+    });
+  });
+</script>
+{% endblock %}

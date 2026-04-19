@@ -109,10 +109,6 @@ body {
 </form>
 </div>
 <div class="flex items-center gap-6">
-<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
-<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
-<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
-</button>
 <div class="h-8 w-px bg-white/10"></div>
 <div class="relative" id="account-menu-wrapper">
   <button id="account-menu-btn" class="flex items-center gap-3 cursor-pointer group hover:opacity-80 transition-opacity bg-transparent border-none">
@@ -187,8 +183,8 @@ body {
 
 {% if cfg and not cfg.onboarding_complete %}
 <!-- Setup Progress Banner -->
-{% set steps_done = onboarding_step|default(0) %}
-{% set steps_left = 5 - steps_done %}
+{% set raw_step = onboarding_step|default(0) %}
+{% set steps_done = 1 if raw_step >= 1 else 0 %}
 <div class="glass-card mb-8 p-5 rounded-2xl border border-[#5B8DEF]/30 bg-[#1a1b22]/80">
   <div class="flex items-center justify-between gap-4 flex-wrap">
     <div class="flex items-start gap-4">
@@ -197,25 +193,23 @@ body {
       </div>
       <div>
         <h3 class="text-white font-bold text-base mb-0.5">
-          Setup {{ steps_done }}/5 complete
-          {%- if steps_done == 0 %} — just started{% elif steps_done >= 4 %} — almost there!{% endif %}
+          Setup {{ steps_done }}/2 complete
+          {%- if steps_done == 0 %} — let's get started{% else %} — almost there!{% endif %}
         </h3>
         <p class="text-slate-400 text-sm">
-          {% if steps_done == 0 %}Start connecting your property so HostAI can answer guest messages.
-          {% elif steps_done == 4 %}One step left — connect your email and calendar to go live.
-          {% else %}{{ steps_left }} step{{ 's' if steps_left != 1 else '' }} left — finish setup to start receiving AI drafts.{% endif %}
+          {% if steps_done == 0 %}Name your property so HostAI can answer guest messages.
+          {% else %}One step left — paste your Airbnb iCal link to go live.{% endif %}
         </p>
-        <!-- Progress dots -->
         <div class="flex items-center gap-1.5 mt-2">
-          {% for i in range(1, 6) %}
+          {% for i in range(1, 3) %}
           <div class="h-1.5 w-8 rounded-full {% if i <= steps_done %}bg-[#5B8DEF]{% else %}bg-white/10{% endif %} transition-all"></div>
           {% endfor %}
         </div>
       </div>
     </div>
-    <a href="/onboarding?step={{ [steps_done + 1, 5]|min }}"
+    <a href="/onboarding?step={{ 5 if raw_step >= 1 else 1 }}"
        class="bg-gradient-to-r from-[#5B8DEF] to-[#aec6ff] text-[#002e6b] font-bold px-5 py-2.5 rounded-xl text-sm shadow-[0_4px_16px_rgba(91,141,239,0.3)] hover:scale-105 transition-all whitespace-nowrap inline-flex flex-shrink-0 items-center gap-2">
-      Continue step {{ [steps_done + 1, 5]|min }} →
+      {% if steps_done == 0 %}Start setup →{% else %}Connect calendar →{% endif %}
     </a>
   </div>
 </div>
@@ -257,7 +251,7 @@ body {
 <span class="material-symbols-outlined text-8xl" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
 </div>
 <div class="flex items-center justify-between relative z-10">
-<span class="text-slate-400 text-xs font-bold uppercase tracking-wider">AI Streak</span>
+<span class="text-slate-400 text-xs font-bold uppercase tracking-wider">Consecutive Approvals</span>
 <span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
 </div>
 <div class="flex items-baseline gap-2 relative z-10">
@@ -277,7 +271,7 @@ body {
 <span class="text-xl font-bold text-secondary-fixed-dim">{{ kpis.drafts.approval_rate if kpis else '—' }}%</span>
 </div>
 <div class="px-8 py-6 flex flex-col gap-1">
-<span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">Context Coverage</span>
+<span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">AI Knowledge</span>
 <span class="text-xl font-bold text-primary">{{ kpis.reservations.context_completion_rate if kpis else '—' }}%</span>
 </div>
 <div class="px-8 py-6 flex flex-col gap-1 flex-1 text-right border-none">
@@ -328,11 +322,13 @@ body {
     </div>
     <div>
       <h3 class="font-bold text-lg text-white">{{ draft.guest_name }}</h3>
-      <p class="text-slate-400 text-sm">{{ draft.property_name_snapshot or (draft.reservation.listing_name if draft.reservation else '—') }} &bull; {{ draft.source }}</p>
+      {% set _src_labels = {'whatsapp': 'WhatsApp', 'sms': 'SMS', 'email': 'Email', 'airbnb': 'Airbnb', 'calendar': 'Calendar'} %}
+<p class="text-slate-400 text-sm">{{ draft.property_name_snapshot or (draft.reservation.listing_name if draft.reservation else '—') }} &bull; {{ _src_labels.get(draft.source, draft.source | replace('_',' ') | title) }}</p>
     </div>
   </div>
   <div class="text-right">
-    <span class="bg-primary/10 text-primary px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-widest mb-2 block">{{ draft.msg_type }}</span>
+    {% set _type_labels = {'checkin': 'Check-in', 'checkout': 'Check-out', 'general': 'Message', 'escalation': 'Urgent', 'calendar': 'Calendar', 'maintenance': 'Maintenance', 'review': 'Review'} %}
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-widest mb-2 block">{{ _type_labels.get(draft.msg_type, draft.msg_type | replace('_',' ') | title) }}</span>
     {% if draft.confidence is not none %}
     <div class="flex items-center gap-1 text-secondary-fixed-dim justify-end">
       <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
@@ -460,17 +456,13 @@ body {
 </div>
 </div>
 </div>
-<button id="expand-kb-btn" class="w-full mt-8 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm transition-all border border-white/5">
-                        Expand Knowledge Base
-                    </button>
+<a href="/settings" class="w-full mt-8 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm transition-all border border-white/5 flex items-center justify-center">
+  Add property details →
+</a>
 </div>
 </div>
 </div>
 </main>
-<!-- Floating Action Button -->
-<button class="fixed bottom-8 right-8 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-container text-on-primary-container shadow-[0_8px_32px_rgba(93,142,241,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 group">
-<span class="material-symbols-outlined text-3xl group-hover:rotate-90 transition-transform duration-300" style="font-variation-settings: 'wght' 400;">add</span>
-</button>
 {%- endblock %}
 {%- endblock %}
 {% block scripts %}
@@ -713,7 +705,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Expand Knowledge Base
   var kbBtn = document.getElementById('expand-kb-btn');
   if (kbBtn) kbBtn.addEventListener('click', function() {
-    window.location.href = '/settings#knowledge-base';
+    window.location.href = '/properties#knowledge-base';
   });
 
   // Setup alerts: hide dismissed ones, collapse extras beyond 3

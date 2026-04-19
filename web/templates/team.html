@@ -1,0 +1,101 @@
+{% extends "workspace_shell.html" %}
+
+{% block page_title %}Team & Access{% endblock %}
+{% block page_heading %}Team & Access{% endblock %}
+{% block page_subtitle %}Operator roles, contact ownership, and property scope live here now so access decisions don’t get buried inside workflow configuration.{% endblock %}
+
+{% block workspace_content %}
+<div class="metric-grid">
+  <div class="metric-card">
+    <div class="metric-value">{{ team_members|length }}</div>
+    <div class="metric-label">Team members</div>
+    <div class="metric-note">People who can own issues, guest escalations, or operational workflows.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{{ vendors|length }}</div>
+    <div class="metric-label">Vendor partners</div>
+    <div class="metric-note">Vendor dispatch now stays visible on its own page and isn’t hidden behind settings tabs.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{% if team_members|length %}Scoped{% else %}Unset{% endif %}</div>
+    <div class="metric-label">Access scope</div>
+    <div class="metric-note">Property scope keeps responsibilities explicit when multiple listings share one workspace.</div>
+  </div>
+</div>
+
+<section class="form-section" id="directory">
+  <h2>Team directory</h2>
+  <p class="help-text">Track who handles owner escalations, desk coverage, maintenance coordination, and cleaning operations.</p>
+
+  {% if team_members %}
+  <table style="margin-bottom:1rem;">
+    <thead>
+      <tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Property scope</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for member in team_members %}
+      <tr>
+        <td>{{ member.display_name }}</td>
+        <td>{{ member.role|replace('_', ' ') }}</td>
+        <td>{{ member.email or '—' }}</td>
+        <td>{{ member.phone or '—' }}</td>
+        <td>{{ member.property_scope or 'All properties' }}</td>
+        <td>
+          <form method="post" action="/team/{{ member.id }}/delete">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="btn btn-outline btn-sm">Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form method="post" action="/team">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div class="form-row">
+      <div>
+        <label>Name</label>
+        <input type="text" name="display_name" placeholder="Operations manager" required>
+      </div>
+      <div>
+        <label>Role</label>
+        <select name="role">
+          <option value="owner">Owner</option>
+          <option value="manager" selected>Manager</option>
+          <option value="front_desk">Front desk</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="cleaner">Cleaner</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label>Email</label>
+        <input type="email" name="email" placeholder="ops@example.com">
+      </div>
+      <div>
+        <label>Phone</label>
+        <input type="text" name="phone" placeholder="+1 555 000 0000">
+      </div>
+    </div>
+
+    <label>Property scope</label>
+    <input type="text" name="property_scope" placeholder="Beach House, City Flat">
+    <p class="help-text">Leave blank to give visibility across all properties. Use scope to keep issue routing clean when multiple properties share one workspace.</p>
+
+    <button type="submit" class="btn btn-primary">Add team member</button>
+  </form>
+</section>
+
+<section class="form-section">
+  <h2>Related operational ownership</h2>
+  <p class="help-text">Vendor coordination stays visible in the sidebar and has its own page now, so access and routing are not hidden behind general settings.</p>
+  <div class="flex flex-wrap gap-3">
+    <a href="/vendors/workflow#directory" class="btn btn-outline">Open vendor directory</a>
+    <a href="/ops" class="btn btn-outline">Open Tasks</a>
+  </div>
+</section>
+{% endblock %}

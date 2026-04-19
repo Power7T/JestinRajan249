@@ -15,6 +15,13 @@ document.addEventListener('DOMContentLoaded', function() {
       overlay.classList.add('hidden');
     });
   }
+  document.querySelectorAll('.toggle-vendor-edit').forEach(function(button) {
+    button.addEventListener('click', function() {
+      var id = button.getAttribute('data-id');
+      var row = document.getElementById('vendor-edit-' + id);
+      if (row) row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+    });
+  });
 });
 </script>{% endblock %}
 {% endblock %}
@@ -154,9 +161,93 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     <p style="font-size:1.5rem;margin-bottom:0.5rem">🔧</p>
     <h3 style="margin-bottom:0.5rem">No vendors added yet</h3>
     <p style="margin-bottom:1.25rem">Add cleaners, technicians, and service partners so guest issues get routed automatically.</p>
-    <a href="/settings?_tab=general#vendors" class="btn btn-primary btn-sm">Add vendors in Settings →</a>
+    <a href="#directory" class="btn btn-primary btn-sm">Add vendor now ↓</a>
   </div>
   {% endif %}
+</div>
+
+<div class="card" id="directory" style="margin-bottom:1rem">
+  <h2>Vendor directory</h2>
+  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1rem">
+    Keep your working vendor list visible here so dispatch and contact maintenance stay on the same page.
+  </p>
+
+  {% if vendors %}
+  <table style="margin-bottom:1rem">
+    <thead>
+      <tr><th>Category</th><th>Name</th><th>Phone</th><th>Notes</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for vendor in vendors %}
+      <tr id="vendor-row-{{ vendor.id }}">
+        <td>{{ vendor.category|replace('_', ' ') }}</td>
+        <td>{{ vendor.name }}</td>
+        <td>{{ vendor.phone }}</td>
+        <td style="color:var(--text-3);font-size:0.8rem">{{ vendor.notes or '' }}</td>
+        <td style="white-space:nowrap">
+          <button type="button" class="btn btn-outline btn-sm toggle-vendor-edit" data-id="{{ vendor.id }}">Edit</button>
+          <form method="post" action="/vendors/{{ vendor.id }}/delete" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="btn btn-outline btn-sm">Remove</button>
+          </form>
+        </td>
+      </tr>
+      <tr id="vendor-edit-{{ vendor.id }}" style="display:none;background:var(--bg-2)">
+        <td colspan="5" style="padding:0.75rem">
+          <form method="post" action="/vendors/{{ vendor.id }}/edit" style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <div>
+              <label style="font-size:0.78rem">Name</label>
+              <input type="text" name="name" value="{{ vendor.name }}" style="width:140px;margin-bottom:0" required>
+            </div>
+            <div>
+              <label style="font-size:0.78rem">Phone</label>
+              <input type="text" name="phone" value="{{ vendor.phone }}" style="width:140px;margin-bottom:0" required>
+            </div>
+            <div>
+              <label style="font-size:0.78rem">Notes</label>
+              <input type="text" name="notes" value="{{ vendor.notes or '' }}" style="width:180px;margin-bottom:0">
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+            <button type="button" class="btn btn-outline btn-sm toggle-vendor-edit" data-id="{{ vendor.id }}">Cancel</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form method="post" action="/vendors/add">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div class="form-row">
+      <div>
+        <label>Category</label>
+        <select name="category">
+          <option value="cleaners">Cleaners</option>
+          <option value="ac_technicians">AC Technicians</option>
+          <option value="plumbers">Plumbers</option>
+          <option value="electricians">Electricians</option>
+          <option value="locksmiths">Locksmiths</option>
+        </select>
+      </div>
+      <div>
+        <label>Name</label>
+        <input type="text" name="name" placeholder="Maria Lopez" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Phone (WhatsApp)</label>
+        <input type="text" name="phone" placeholder="+1 555 000 0000" required>
+      </div>
+      <div>
+        <label>Notes</label>
+        <input type="text" name="notes" placeholder="Available 8am–6pm">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-outline">Add vendor</button>
+  </form>
 </div>
 
 <div class="card" style="margin-bottom:1rem">

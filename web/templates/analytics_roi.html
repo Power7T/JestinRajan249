@@ -114,7 +114,7 @@ tailwind.config = {
         </div>
         {% else %}
         <p class="text-slate-400 text-sm">No ratings yet</p>
-        <a href="/settings?_tab=general#guest-engagement" class="text-xs text-[#aec6ff] hover:underline mt-1 inline-block">Enable Satisfaction Pulse in Settings →</a>
+        <a href="/automations#preferences" class="text-xs text-[#aec6ff] hover:underline mt-1 inline-block">Enable Satisfaction Pulse →</a>
         {% endif %}
       </div>
 
@@ -127,7 +127,7 @@ tailwind.config = {
         <p class="text-3xl font-extrabold {% if total_upsell_revenue > 0 %}text-[#ffb960]{% else %}text-white{% endif %}">${{ "%.0f"|format(total_upsell_revenue) }}</p>
         <p class="text-slate-400 text-xs mt-1">{{ total_upsell_accepted }} offer{{ 's' if total_upsell_accepted != 1 else '' }} accepted</p>
         {% if total_upsell_revenue == 0 %}
-        <a href="/settings?_tab=general#upsell" class="text-xs text-[#aec6ff] hover:underline mt-2 inline-block">Enable Upsell Engine in Settings →</a>
+        <a href="/automations#preferences" class="text-xs text-[#aec6ff] hover:underline mt-2 inline-block">Enable Upsell Engine →</a>
         {% endif %}
       </div>
 

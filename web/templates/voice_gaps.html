@@ -1,5 +1,5 @@
 {%- extends "base.html" %}
-{%- block title %}Knowledge Gaps — HostAI{%- endblock %}
+{%- block title %}Unanswered Questions — HostAI{%- endblock %}
 
 {%- block head %}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
@@ -62,7 +62,7 @@ tailwind.config = {
           <span class="material-symbols-outlined text-sm">arrow_back</span>Voice AI
         </a>
       </div>
-      <h1 class="text-4xl font-extrabold text-white tracking-tight mb-1">Knowledge Gaps</h1>
+      <h1 class="text-4xl font-extrabold text-white tracking-tight mb-1">Unanswered Questions</h1>
       <p class="text-slate-400 text-sm">Questions guests asked that the AI couldn't answer. Answer once — AI learns forever.</p>
     </div>
     {% if open_gaps %}

@@ -1,0 +1,176 @@
+{% extends "workspace_shell.html" %}
+
+{% block page_title %}Properties{% endblock %}
+{% block page_heading %}Properties{% endblock %}
+{% block page_subtitle %}Property profile, stay rules, guest guide, uploads, and the context your AI uses to answer like an operator instead of a generic chatbot.{% endblock %}
+
+{% block workspace_content %}
+<div class="metric-grid">
+  <div class="metric-card">
+    <div class="metric-value">{{ property_count or 0 }}</div>
+    <div class="metric-label">Properties named</div>
+    <div class="metric-note">Comma-separated property names drive personalization across conversations and arrivals.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{% if cfg.house_rules or cfg.faq %}Ready{% else %}Thin{% endif %}</div>
+    <div class="metric-label">Knowledge base</div>
+    <div class="metric-note">House rules, FAQ, and instructions power the answers the AI gives guests.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{% if cfg.check_in_time and cfg.check_out_time %}Set{% else %}Missing{% endif %}</div>
+    <div class="metric-label">Check-in windows</div>
+    <div class="metric-note">Arrival and checkout times are critical for routine guest questions and voice calls.</div>
+  </div>
+</div>
+
+<form method="post" action="/properties">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+  <section class="form-section" id="property-profile">
+    <h2>Property profile</h2>
+    <label>Property name(s)</label>
+    <input type="text" name="property_names" value="{{ cfg.property_names or '' }}" placeholder="Beach House, City Flat">
+    <p class="help-text">If you manage multiple listings, separate them with commas.</p>
+
+    <div class="form-row">
+      <div>
+        <label>Property city</label>
+        <input type="text" name="property_city" value="{{ cfg.property_city or '' }}" placeholder="Goa">
+      </div>
+      <div>
+        <label>Property type</label>
+        <input type="text" name="property_type" value="{{ cfg.property_type or '' }}" placeholder="Villa / Apartment / Hotel">
+      </div>
+    </div>
+
+    <label>Google Maps link</label>
+    <input type="url" name="google_maps_url" value="{{ cfg.google_maps_url or '' }}" placeholder="https://maps.google.com/?q=...">
+    <p class="help-text">Used for directions, nearby place answers, and auto-filling local recommendations.</p>
+
+    <div class="form-row">
+      <div>
+        <label>Check-in time</label>
+        <input type="time" name="check_in_time" value="{{ cfg.check_in_time or '' }}">
+      </div>
+      <div>
+        <label>Check-out time</label>
+        <input type="time" name="check_out_time" value="{{ cfg.check_out_time or '' }}">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label>Max guests</label>
+        <input type="number" min="1" name="max_guests" value="{{ cfg.max_guests or '' }}" placeholder="4">
+      </div>
+      <div>
+        <label>Quiet hours</label>
+        <input type="text" name="quiet_hours" value="{{ cfg.quiet_hours or '' }}" placeholder="22:00 to 08:00">
+      </div>
+    </div>
+  </section>
+
+  <section class="form-section" id="stay-policies">
+    <h2>Stay policies</h2>
+    <p class="help-text">These are the policy rails the assistant should never contradict.</p>
+
+    <label>Pet policy</label>
+    <textarea name="pet_policy" placeholder="Describe whether pets are allowed and any fee or size limit.">{{ cfg.pet_policy or '' }}</textarea>
+
+    <label>Refund policy</label>
+    <textarea name="refund_policy" placeholder="Describe when refunds are allowed and when they are not.">{{ cfg.refund_policy or '' }}</textarea>
+
+    <div class="form-row">
+      <div>
+        <label>Early check-in policy</label>
+        <textarea name="early_checkin_policy" placeholder="Describe when early check-in is possible.">{{ cfg.early_checkin_policy or '' }}</textarea>
+      </div>
+      <div>
+        <label>Early check-in fee</label>
+        <input type="text" name="early_checkin_fee" value="{{ cfg.early_checkin_fee or '' }}" placeholder="$25">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label>Late checkout policy</label>
+        <textarea name="late_checkout_policy" placeholder="Describe when late checkout is possible.">{{ cfg.late_checkout_policy or '' }}</textarea>
+      </div>
+      <div>
+        <label>Late checkout fee</label>
+        <input type="text" name="late_checkout_fee" value="{{ cfg.late_checkout_fee or '' }}" placeholder="$30">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label>Parking policy</label>
+        <textarea name="parking_policy" placeholder="Describe parking availability, location, and restrictions.">{{ cfg.parking_policy or '' }}</textarea>
+      </div>
+      <div>
+        <label>Smoking policy</label>
+        <textarea name="smoking_policy" placeholder="Describe where smoking is or is not allowed.">{{ cfg.smoking_policy or '' }}</textarea>
+      </div>
+    </div>
+  </section>
+
+  <section class="form-section" id="knowledge-base">
+    <h2>Guest guide and AI context</h2>
+    <label>House rules</label>
+    <textarea name="house_rules" placeholder="List the rules guests need to follow during the stay.">{{ cfg.house_rules or '' }}</textarea>
+
+    <label>Amenities</label>
+    <textarea name="amenities" placeholder="List the amenities available to guests.">{{ cfg.amenities or '' }}</textarea>
+
+    <label>Nearby recommendations</label>
+    <textarea name="nearby_restaurants" placeholder="Restaurants, cafes, markets, and nearby points of interest.">{{ cfg.nearby_restaurants or '' }}</textarea>
+
+    <label>FAQ / guest guide</label>
+    <textarea name="faq" placeholder="Questions guests ask most often and the answers you want HostAI to use.">{{ cfg.faq or '' }}</textarea>
+
+    <label>Custom instructions for HostAI</label>
+    <textarea name="custom_instructions" placeholder="Tone, escalation, response rules, and any property-specific operating principles.">{{ cfg.custom_instructions or '' }}</textarea>
+  </section>
+
+  <section class="form-section" id="guest-messaging">
+    <h2>Guest messaging</h2>
+    <label>Custom welcome message</label>
+    <textarea name="guest_welcome_template" placeholder="Hi {guest_name}! Welcome to {property_name}.">{{ cfg.guest_welcome_template or '' }}</textarea>
+    <p class="help-text">Supported placeholders: <code>{guest_name}</code>, <code>{property_name}</code>, <code>{room}</code>.</p>
+
+    <label>Escalation email</label>
+    <input type="email" name="escalation_email" value="{{ cfg.escalation_email or '' }}" placeholder="you@yourdomain.com">
+    <p class="help-text">Urgent guest issues and exception handoffs go here.</p>
+  </section>
+
+  <div class="flex flex-wrap gap-3 mb-8">
+    <button type="submit" class="btn btn-primary">Save property setup</button>
+  </div>
+</form>
+
+<section class="form-section">
+  <h2>Property context uploads</h2>
+  <p class="help-text">Upload PDFs to extract and populate structured context without pasting large documents by hand.</p>
+
+  <div class="workspace-grid">
+    <div class="card">
+      <h3>House rules PDF</h3>
+      <p class="help-text">{% if cfg.house_rules %}{{ cfg.house_rules|length }} characters currently stored.{% else %}No house rules PDF uploaded yet.{% endif %}</p>
+      <form method="post" action="/properties/upload-house-rules#knowledge-base" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="file" name="rules_pdf" accept=".pdf">
+        <button type="submit" class="btn btn-outline">Upload house rules</button>
+      </form>
+    </div>
+    <div class="card">
+      <h3>FAQ / guest info PDF</h3>
+      <p class="help-text">{% if cfg.faq %}{{ cfg.faq|length }} characters currently stored.{% else %}No FAQ PDF uploaded yet.{% endif %}</p>
+      <form method="post" action="/properties/upload-faq#knowledge-base" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="file" name="faq_pdf" accept=".pdf">
+        <button type="submit" class="btn btn-outline">Upload FAQ</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
