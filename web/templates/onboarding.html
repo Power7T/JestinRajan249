@@ -133,7 +133,7 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 </div>
   <div class="wizard-header">
   <h1>Set up your HostAI</h1>
-  <p>Takes about 5 minutes. Skip anything — you can always update it later in Settings.</p>
+  <p>Takes under 5 minutes. Skip any step — use the <strong style="color:var(--accent-2)">Quick start</strong> button below to finish in 30 seconds.</p>
 </div>
 
 <!-- Progress bar -->
@@ -182,21 +182,44 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 ────────────────────────────────────────────────────────── -->
 {% if step == 1 %}
 <div class="card">
-  <h2>Step 1 — About your property</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem">
+    <h2 style="margin:0">Step 1 — About your property</h2>
+    <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min</span>
+  </div>
   <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
     This information is given to the AI so it can answer guest questions accurately.
   </p>
 
-  <div class="card" style="background:var(--bg-2);border:1px solid var(--border-2);margin-bottom:1.25rem">
-    <h3 style="margin-bottom:0.45rem">Fastest path</h3>
-    <p style="font-size:0.84rem;color:var(--text-2);line-height:1.7;margin-bottom:0.75rem">
-      If you want the easiest setup, only fill in property name and city. HostAI will apply recommended defaults for house rules, FAQ, escalation handling, and starter automation rules.
-    </p>
-    <div class="chip-row" style="margin-top:0">
-      <span class="chip">Starter automation</span>
-      <span class="chip">Owner role added</span>
-      <span class="chip">You can refine later</span>
+  <!-- Quick-start CTA — PROMOTED TO TOP (was buried at bottom) -->
+  <form method="post" action="/onboarding/quick-start" style="margin-bottom:1.25rem">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div class="card" style="background:linear-gradient(135deg,rgba(91,141,239,0.08),rgba(174,198,255,0.04));border:1px solid rgba(174,198,255,0.25);margin-bottom:0;padding:1.25rem">
+      <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
+            <span style="font-size:1.1rem">⚡</span>
+            <h3 style="margin:0;font-size:1rem">Fastest path — use recommended defaults</h3>
+          </div>
+          <p style="font-size:0.83rem;color:var(--text-2);line-height:1.6;margin-bottom:0.75rem">
+            Skip the form. HostAI will use sensible defaults for rules, FAQ, escalation, and automations. Fill in property name below (optional), or just click through.
+          </p>
+          <div class="chip-row" style="margin:0">
+            <span class="chip">Starter automation</span>
+            <span class="chip">Owner role added</span>
+            <span class="chip">Refine anytime later</span>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="white-space:nowrap;align-self:center">
+          Quick start →
+        </button>
+      </div>
     </div>
+  </form>
+
+  <div style="display:flex;align-items:center;gap:0.75rem;margin:1.5rem 0 1rem">
+    <div style="flex:1;height:1px;background:var(--border)"></div>
+    <span style="font-size:0.72rem;color:var(--text-3);font-weight:600;letter-spacing:0.08em;text-transform:uppercase">Or fill in details</span>
+    <div style="flex:1;height:1px;background:var(--border)"></div>
   </div>
 
   <!-- Optional: Airbnb listing import -->
@@ -266,16 +289,8 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
     <input type="number" name="max_guests" id="f-max-guests" value="{{ cfg.max_guests or '' }}" placeholder="6" min="1" max="100" style="max-width:120px">
 
     <div class="step-nav">
-      <button type="submit"
-              class="btn btn-outline"
-              formaction="/onboarding/quick-start"
-              formmethod="post">
-        Use recommended quick start
-      </button>
-      <div style="display:flex;gap:0.75rem;align-items:center">
-        <a href="/dashboard" class="skip-link">Skip for now</a>
-        <button type="submit" class="btn btn-primary">Continue →</button>
-      </div>
+      <a href="/dashboard" class="skip-link">Skip for now</a>
+      <button type="submit" class="btn btn-primary">Continue →</button>
     </div>
   </form>
 </div>
@@ -286,7 +301,10 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 ────────────────────────────────────────────────────────── -->
 {% if step == 2 %}
 <div class="card">
-  <h2>Step 2 — House rules & amenities</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem">
+    <h2 style="margin:0">Step 2 — House rules & amenities</h2>
+    <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min</span>
+  </div>
   <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
     The AI uses these to answer rule-related questions and set guest expectations correctly.
   </p>
@@ -351,36 +369,24 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 ────────────────────────────────────────────────────────── -->
 {% if step == 3 %}
 <div class="card">
-  <h2>Step 3 — Local guide & extras</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem">
+    <h2 style="margin:0">Step 3 — Local guide & extras</h2>
+    <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min · optional</span>
+  </div>
   <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
-    If you have a restaurant or breakfast service, paste or upload your menu — the AI will
-    describe it to guests accurately when asked.
+    Most vacation-rental hosts can skip this entirely. Fill it in only if guests ask about local recommendations, on-site food, or extra services you offer.
   </p>
 
   <form method="post" action="/onboarding" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <input type="hidden" name="step" value="3">
 
-    <label>Food menu / restaurant (optional)</label>
-    <p class="help-text" style="margin-bottom:0.4rem">Paste menu text directly, or upload a PDF — we'll extract the text automatically.</p>
-    <textarea name="food_menu" rows="6" placeholder="Breakfast (7am–10am):&#10;• Continental buffet — €12/person&#10;• Eggs Benedict — €14&#10;&#10;Dinner (6pm–10pm):&#10;• Grilled salmon — €24&#10;• Pasta al pomodoro — €16">{{ cfg.food_menu or '' }}</textarea>
-
-    <label>Or upload a menu PDF</label>
-    <input type="file" name="menu_pdf" accept="application/pdf" style="margin-bottom:1rem">
-    <p class="help-text">Max 5 MB. Text will be extracted and stored.</p>
-
-    <label>Breakfast included?</label>
-    <select name="breakfast_included">
-      <option value="">— not applicable —</option>
-      <option value="Yes, included in price">Yes, included in price</option>
-      <option value="Yes, available for €X/person extra">Yes, available for a fee</option>
-      <option value="No breakfast service">No breakfast service</option>
-    </select>
-
-    <label>Nearby restaurant recommendations (optional)</label>
+    <!-- Most useful for all hosts: nearby recommendations -->
+    <label>Nearby restaurant & spot recommendations</label>
+    <p class="help-text" style="margin-bottom:0.4rem">What do you tell guests when they ask "where should we eat?" — one per line.</p>
     <textarea name="nearby_restaurants" rows="4" placeholder="La Piazza — 5 min walk, Italian, great pizza&#10;The Rooftop Bar — 3 min walk, cocktails &amp; small plates&#10;Morning Brew Café — 2 min walk, best coffee in town">{{ cfg.nearby_restaurants or '' }}</textarea>
 
-    <label>Other services available</label>
+    <label style="margin-bottom:0.5rem">Extra services you offer</label>
     <div class="amenity-grid">
       {% set saved_services = (cfg.extra_services or '').split(',') if cfg.extra_services else [] %}
       {% for s in ["Airport transfer","Bike rental","Car rental","Laundry service","Room service","Concierge","Tours","Grocery delivery","Baby equipment"] %}
@@ -390,6 +396,34 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
       </label>
       {% endfor %}
     </div>
+
+    <!-- Restaurant / breakfast section — collapsed by default, for B&B / hotel hosts only -->
+    <details style="margin-top:1.25rem;background:rgba(13,14,20,0.4);border:1px solid var(--border);border-radius:0.5rem;padding:0.75rem 1rem">
+      <summary style="color:var(--accent-2);font-size:0.88rem;font-weight:600;list-style:none">
+        <span style="display:inline-flex;align-items:center;gap:0.4rem">
+          <span style="opacity:0.7">🍳</span>
+          I offer on-site food service (B&B / hotel / restaurant)
+          <span style="font-size:0.72rem;color:var(--text-3);font-weight:400;margin-left:0.35rem">— click to expand</span>
+        </span>
+      </summary>
+      <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border)">
+        <label>Food menu</label>
+        <p class="help-text" style="margin-bottom:0.4rem">Paste menu text, or upload a PDF — we'll extract the text automatically.</p>
+        <textarea name="food_menu" rows="5" placeholder="Breakfast (7am–10am):&#10;• Continental buffet — €12/person&#10;• Eggs Benedict — €14">{{ cfg.food_menu or '' }}</textarea>
+
+        <label>Or upload a menu PDF</label>
+        <input type="file" name="menu_pdf" accept="application/pdf" style="margin-bottom:1rem">
+        <p class="help-text">Max 5 MB.</p>
+
+        <label>Breakfast included?</label>
+        <select name="breakfast_included">
+          <option value="">— not applicable —</option>
+          <option value="Yes, included in price">Yes, included in price</option>
+          <option value="Yes, available for a fee">Yes, available for a fee</option>
+          <option value="No breakfast service">No breakfast service</option>
+        </select>
+      </div>
+    </details>
 
     <div class="step-nav">
       <a href="/onboarding?step=2" style="color:var(--text-3);font-size:0.85rem">← Back</a>
@@ -407,7 +441,10 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 ────────────────────────────────────────────────────────── -->
 {% if step == 4 %}
 <div class="card">
-  <h2>Step 4 — Replies & custom instructions</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem">
+    <h2 style="margin:0">Step 4 — Replies & custom instructions</h2>
+    <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min</span>
+  </div>
   <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
     Give the AI answers to your most common questions and any special instructions.
   </p>
@@ -457,19 +494,22 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 ────────────────────────────────────────────────────────── -->
 {% if step == 5 %}
 <div class="card">
-  <h2>Step 5 — Connect reservations and channels</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem">
+    <h2 style="margin:0">Step 5 — Connect reservations & email</h2>
+    <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~2 min · last step</span>
+  </div>
   <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
-    Preferred setup: forward Airbnb guest emails to your private HostAI inbox below. IMAP remains available as a fallback if you want direct mailbox polling.
+    Two things left: forward Airbnb guest emails to HostAI, and paste your Airbnb calendar link. That's it — AI is already ready.
   </p>
 
-  <div class="card" style="margin-bottom:1rem">
-    <h3 style="margin-bottom:0.45rem">Do only these 3 things</h3>
+  <div class="card" style="margin-bottom:1rem;background:var(--bg-2);border:1px solid var(--border-2)">
+    <h3 style="margin-bottom:0.75rem;font-size:0.95rem">Two steps to go live</h3>
     <div class="stepper">
-      <div class="step done">
+      <div class="step {% if inbound_email_address %}done{% else %}warn{% endif %}">
         <div class="num">1</div>
         <div class="body">
-          <h4>Copy your forwarding address</h4>
-          <p>Forward Airbnb guest emails there. This is the recommended path and avoids mailbox-password setup.</p>
+          <h4>Forward Airbnb guest emails to HostAI</h4>
+          <p>Copy your private forwarding address below and add an auto-forward rule in Gmail/Outlook. No password needed.</p>
         </div>
       </div>
       <div class="step {% if cfg.ical_urls %}done{% else %}warn{% endif %}">
@@ -479,14 +519,11 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
           <p>This gives HostAI stay timing so arrival, stay, and checkout messages use the right reservation context.</p>
         </div>
       </div>
-      <div class="step done">
-        <div class="num">✓</div>
-        <div class="body">
-          <h4>AI engine managed centrally</h4>
-          <p>The administrator manages the AI infrastructure (OpenRouter) for all hosts. Your property is ready to use HostAI.</p>
-        </div>
-      </div>
     </div>
+    <p style="font-size:0.76rem;color:var(--text-3);margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:0.35rem">
+      <span style="color:#27c93f">✓</span>
+      AI reply engine is already configured — managed centrally, no key needed.
+    </p>
   </div>
 
   <form method="post" action="/onboarding">
