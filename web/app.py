@@ -8828,6 +8828,14 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
         "approval_rate": round(approved_d / total_d * 100, 1) if total_d else 0,
     }
 
+    # Per-tenant pending draft counts
+    pending_by_tenant = {}
+    for d in drafts_30d:
+        if d.status == "pending":
+            pending_by_tenant[d.tenant_id] = pending_by_tenant.get(d.tenant_id, 0) + 1
+    for row in tenant_rows:
+        row["pending_drafts"] = pending_by_tenant.get(row["tenant"].id, 0)
+
     # Response time analytics per tenant (last 30 days)
     response_time_by_tenant = {}
     for row in tenant_rows:
@@ -8868,6 +8876,47 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
         "response_time_by_tenant": response_time_by_tenant,
         "churn_signals": churn_signals,
         "now":           now_utc,
+    })
+
+
+@app.get("/admin/tenants", response_class=HTMLResponse)
+def admin_tenants_list(
+    request: Request,
+    db: Session = Depends(get_db),
+    q: str = "",
+    plan: str = "",
+    status: str = "",
+):
+    """Searchable tenant listing page."""
+    admin = _require_admin(request, db)
+    query = db.query(Tenant, TenantConfig).outerjoin(TenantConfig, TenantConfig.tenant_id == Tenant.id)
+    if q:
+        query = query.filter(Tenant.email.ilike(f"%{q}%"))
+    tenants_raw = query.order_by(Tenant.created_at.desc()).all()
+
+    rows = []
+    for t, cfg in tenants_raw:
+        plan_val = (cfg.subscription_plan if cfg else "free") or "free"
+        sub_status = (cfg.subscription_status if cfg else "") or "—"
+        if plan and plan_val.lower() != plan.lower():
+            continue
+        if status and sub_status.lower() != status.lower():
+            continue
+        rows.append({
+            "tenant": t,
+            "plan": plan_val.title(),
+            "sub_status": sub_status,
+            "onboarding_step": cfg.onboarding_step if cfg else 0,
+        })
+
+    return templates.TemplateResponse("admin_tenants_list.html", {
+        "request": request,
+        "admin": admin,
+        "rows": rows,
+        "q": q,
+        "plan_filter": plan,
+        "status_filter": status,
+        "total": len(rows),
     })
 
 
@@ -9064,6 +9113,57 @@ def admin_unimpersonate(
     if admin or impersonated_id:
         db.commit()
     return resp
+
+
+@app.get("/admin/tenants/{tid}/nudge", response_class=HTMLResponse)
+def admin_nudge_tenant(tid: str, request: Request, db: Session = Depends(get_db)):
+    """Send a re-engagement nudge email to a churning tenant."""
+    admin = _require_admin(request, db)
+    tenant = db.query(Tenant).filter_by(id=tid).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    try:
+        from services.email_service import send_email
+        send_email(
+            to=tenant.email,
+            subject="We miss you on HostAI!",
+            body=(
+                f"Hi {tenant.first_name or 'there'},\n\n"
+                "We noticed you haven't been active on HostAI recently. "
+                "Your AI assistant is ready to help handle guest messages whenever you need it.\n\n"
+                "Log in to see what's waiting for you: https://app.hostai.com/dashboard\n\n"
+                "If you have any questions, just reply to this email.\n\n"
+                "— The HostAI Team"
+            ),
+        )
+    except Exception:
+        pass
+    db.add(ActivityLog(
+        tenant_id=tid,
+        event_type="admin_nudge_sent",
+        message=f"Re-engagement nudge sent by admin {admin.email}",
+    ))
+    db.commit()
+    return RedirectResponse("/admin", status_code=303)
+
+
+@app.post("/admin/tenants/{tid}/mark-contacted")
+def admin_mark_contacted(
+    tid: str,
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Mark a churning tenant as contacted so they leave the churn signals list."""
+    admin = _require_admin(request, db)
+    validate_csrf(request, csrf_token)
+    db.add(ActivityLog(
+        tenant_id=tid,
+        event_type="admin_mark_contacted",
+        message=f"Marked as contacted by admin {admin.email}",
+    ))
+    db.commit()
+    return RedirectResponse("/admin", status_code=303)
 
 
 @app.get("/admin/system", response_class=HTMLResponse)
@@ -9380,17 +9480,22 @@ def admin_host_profitability(request: Request, db: Session = Depends(get_db)):
     hosts = []
     for cfg, tenant in configs:
         plan_key = cfg.subscription_plan.lower()
+        is_paying = cfg.subscription_status in ("active", "trialing")
 
-        # Revenue calculation based on new unit-based pricing
-        if plan_key == "starter":
-            base_revenue = 20.0
-            per_unit_revenue = 10.0
-        elif plan_key == "growth":
-            base_revenue = 30.0
-            per_unit_revenue = 9.0
-        elif plan_key == "pro":
-            base_revenue = 50.0
-            per_unit_revenue = 8.0
+        # Revenue only counts for active/trialing subscriptions
+        if is_paying:
+            if plan_key == "starter":
+                base_revenue = 20.0
+                per_unit_revenue = 10.0
+            elif plan_key == "growth":
+                base_revenue = 30.0
+                per_unit_revenue = 9.0
+            elif plan_key == "pro":
+                base_revenue = 50.0
+                per_unit_revenue = 8.0
+            else:
+                base_revenue = 0.0
+                per_unit_revenue = 0.0
         else:
             base_revenue = 0.0
             per_unit_revenue = 0.0
@@ -9420,6 +9525,7 @@ def admin_host_profitability(request: Request, db: Session = Depends(get_db)):
             "profit": profit,
             "margin_pct": margin_pct,
             "messages_30d": msg_count,
+            "sub_status": cfg.subscription_status or "free",
             "status": "✅ Profitable" if profit > 0 else "⚠️ Loss",
         })
 
@@ -13509,6 +13615,34 @@ def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
             "recent_logs": recent_logs,
         }
     )
+
+
+@app.post("/admin/saas-dashboard/seed-flags")
+def admin_seed_feature_flags(request: Request, db: Session = Depends(get_db)):
+    """Seed default feature flags into the database."""
+    _require_admin(request, db)
+    defaults = [
+        ("voice_ai_enabled", True, 100, "Enable Voice AI phone answering for tenants"),
+        ("upsell_engine", False, 0, "AI-powered upsell offers sent to guests mid-stay"),
+        ("satisfaction_pulse", False, 0, "Post-checkout guest satisfaction survey"),
+        ("bulk_csv_import", True, 100, "Allow hosts to bulk-import reservations via CSV"),
+        ("auto_send_drafts", False, 0, "Auto-send AI drafts without host approval"),
+        ("multilingual_ai", True, 100, "Auto-detect and reply in guest language"),
+    ]
+    created = 0
+    for flag_name, enabled, rollout, description in defaults:
+        existing = db.query(FeatureFlag).filter_by(flag_name=flag_name).first()
+        if not existing:
+            db.add(FeatureFlag(
+                flag_name=flag_name,
+                enabled=enabled,
+                rollout_percentage=rollout,
+                description=description,
+            ))
+            created += 1
+    db.commit()
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse("/admin/saas-dashboard#flags", status_code=303)
 
 
 # ---------------------------------------------------------------------------

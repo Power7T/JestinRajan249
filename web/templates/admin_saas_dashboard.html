@@ -37,69 +37,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
 
 {%- block main_wrapper %}
 {%- block content %}
-<!-- Sidebar -->
-<!-- Mobile hamburger -->
-<button id="admin-mobile-menu-btn" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
-  <span class="material-symbols-outlined">menu</span>
-</button>
-<div class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden" id="admin-sidebar-overlay"></div>
-<aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
-  <a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-7 hover:opacity-80 transition-opacity">
-<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center">
-<span class="material-symbols-outlined text-[#002e6b] text-lg" style="font-variation-settings:'FILL' 1">bolt</span>
-</div>
-<span>HostAI</span>
-</a>
-  <nav class="flex-1 px-4 space-y-1">
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200" href="/dashboard">
-      <span class="material-symbols-outlined">dashboard</span> Dashboard
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200" href="/conversations">
-      <span class="material-symbols-outlined">forum</span> Conversations
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200" href="/reservations">
-      <span class="material-symbols-outlined">event_available</span> Reservations
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200" href="/activity">
-      <span class="material-symbols-outlined">history</span> Activity
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200" href="/analytics">
-      <span class="material-symbols-outlined">analytics</span> Analytics
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200" href="/voice-calls">
-      <span class="material-symbols-outlined">phone_in_talk</span> Voice AI
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200" href="/workflow">
-      <span class="material-symbols-outlined">hub</span> Workflow Center
-    </a>
-    <a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200" href="/settings">
-      <span class="material-symbols-outlined">settings</span> Settings
-    </a>
-    {% if is_admin(admin.email) %}
-    <a class="flex items-center gap-3 px-6 py-3 text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold transition-all duration-200" href="/admin">
-      <span class="material-symbols-outlined">admin_panel_settings</span> Admin Panel
-    </a>
-    {% endif %}
-  </nav>
-
-  <div class="p-6 border-t border-white/5">
-    <div class="flex items-center gap-3 mb-4 px-2 py-3 rounded-xl bg-white/5">
-      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
-        {{ (admin.name or admin.email or 'H')[0]|upper }}
-      </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-white text-sm font-bold truncate">{{ admin.name or admin.email.split('@')[0]|title }}</p>
-        <p class="text-slate-500 text-xs truncate">Admin Account</p>
-      </div>
-    </div>
-    <form method="post" action="/logout">
-      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-      <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-red-400 transition-colors text-xs font-bold uppercase tracking-widest py-2">
-        <span class="material-symbols-outlined text-sm">logout</span>Sign Out
-      </button>
-    </form>
-  </div>
-</aside>
+{% include "_admin_sidebar.html" %}
 
 <!-- Main -->
 <main class="md:ml-[260px] pt-[80px] pb-12 px-4 md:px-8 min-h-screen relative">
@@ -186,7 +124,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
             <tbody class="divide-y divide-white/5">
               {% for tenant in top_tenants_today %}
               <tr>
-                <td class="py-4 font-bold text-slate-200 truncate max-w-[120px]">{{ tenant.first_name or tenant.email }}</td>
+                <td class="py-4 font-bold text-slate-200 truncate max-w-[120px]">{{ tenant.name }}</td>
                 <td class="py-4 text-slate-200">${{ tenant.cost_today | round(2) }}</td>
                 <td class="py-4">
                   {% set pct = (tenant.cost_today / max(tenant.daily_limit, 1)) * 100 %}
@@ -198,6 +136,8 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
                   </div>
                 </td>
               </tr>
+              {% else %}
+              <tr><td colspan="3" class="py-8 text-center text-slate-600 text-sm">No API usage recorded today</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -315,6 +255,14 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
                 </button>
               </td>
             </tr>
+            {% else %}
+            <tr><td colspan="5" class="py-10 text-center">
+              <p class="text-slate-500 text-sm mb-3">No feature flags in database.</p>
+              <form method="post" action="/admin/saas-dashboard/seed-flags" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+                <button type="submit" class="px-4 py-2 bg-[#5B8DEF]/10 hover:bg-[#5B8DEF]/20 text-[#aec6ff] font-bold text-xs rounded-xl border border-[#5B8DEF]/20 transition-all">Seed Default Flags</button>
+              </form>
+            </td></tr>
             {% endfor %}
           </tbody>
         </table>

@@ -1,0 +1,91 @@
+<!-- Admin sidebar — included in all admin templates -->
+<button id="sidebar-hamburger" onclick="document.getElementById('admin-sidebar').classList.toggle('-translate-x-full');document.getElementById('admin-sidebar-bg-overlay').classList.toggle('hidden')" class="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-[#08090F]/80 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white transition-all">
+  <span class="material-symbols-outlined">menu</span>
+</button>
+<div id="admin-sidebar-bg-overlay" onclick="document.getElementById('admin-sidebar').classList.add('-translate-x-full');this.classList.add('hidden')" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden md:hidden"></div>
+<aside id="admin-sidebar" class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 flex flex-col overflow-y-auto overscroll-contain -translate-x-full md:translate-x-0 transition-transform duration-300">
+{% set p = request.url.path %}
+<a href="/admin" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity flex-shrink-0">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-xl" style="font-variation-settings:'FILL' 1">admin_panel_settings</span>
+</div>
+<span>Admin</span>
+</a>
+<nav class="flex-1 px-4 space-y-0.5 pb-4">
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/admin' %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin">
+<span class="material-symbols-outlined text-[1.15rem]">dashboard</span><span class="text-sm">Overview</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/admin/tenants' or p.startswith('/admin/tenants/') %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/tenants">
+<span class="material-symbols-outlined text-[1.15rem]">groups</span><span class="text-sm">Tenants</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/admin/system' %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/system">
+<span class="material-symbols-outlined text-[1.15rem]">monitor_heart</span><span class="text-sm">System Health</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p in ['/admin/ai', '/admin/voice-chat'] %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/ai">
+<span class="material-symbols-outlined text-[1.15rem]">psychology</span><span class="text-sm">AI Engine</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p in ['/admin/voice-ai', '/admin/voice-ai-backend'] %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/voice-ai">
+<span class="material-symbols-outlined text-[1.15rem]">phone_in_talk</span><span class="text-sm">Voice AI</span>
+</a>
+
+<div class="pt-3 pb-1 px-6">
+  <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Business</p>
+</div>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/admin/costs' %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/costs">
+<span class="material-symbols-outlined text-[1.15rem]">attach_money</span><span class="text-sm">Profitability</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/admin/host-profitability' %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/host-profitability">
+<span class="material-symbols-outlined text-[1.15rem]">trending_up</span><span class="text-sm">Host Profitability</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/admin/saas-dashboard' %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/saas-dashboard">
+<span class="material-symbols-outlined text-[1.15rem]">bar_chart</span><span class="text-sm">SaaS Dashboard</span>
+</a>
+
+<div class="pt-3 pb-1 px-6">
+  <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Analytics</p>
+</div>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/admin/health_api' %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/health_api">
+<span class="material-symbols-outlined text-[1.15rem]">api</span><span class="text-sm">API Health</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/admin/voice-analytics' %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/voice-analytics">
+<span class="material-symbols-outlined text-[1.15rem]">analytics</span><span class="text-sm">Voice Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/admin/voice-routing' %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/voice-routing">
+<span class="material-symbols-outlined text-[1.15rem]">route</span><span class="text-sm">Voice Routing</span>
+</a>
+
+<div class="pt-3 pb-1 px-6">
+  <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Pricing</p>
+</div>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/admin/pricing' %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/pricing">
+<span class="material-symbols-outlined text-[1.15rem]">sell</span><span class="text-sm">Pricing</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/admin/voice-pricing' %}text-rose-400 bg-rose-400/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/admin/voice-pricing">
+<span class="material-symbols-outlined text-[1.15rem]">record_voice_over</span><span class="text-sm">Voice Pricing</span>
+</a>
+
+<div class="pt-3 pb-1 px-6">
+  <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Account</p>
+</div>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200" href="/dashboard">
+<span class="material-symbols-outlined text-[1.15rem]">arrow_back</span><span class="text-sm">Back to App</span>
+</a>
+</nav>
+<div class="flex-shrink-0 p-5 border-t border-white/5">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-9 h-9 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+{{ (admin.name or admin.email or 'A')[0]|upper }}
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-white font-semibold text-sm truncate">{{ admin.name or admin.email.split('@')[0]|title }}</p>
+<p class="text-rose-400 text-xs font-bold">Admin</p>
+</div>
+</div>
+<form method="post" action="/logout">
+<input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+<button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-500 hover:text-red-400 transition-colors text-xs font-semibold uppercase tracking-widest py-1">
+<span class="material-symbols-outlined text-sm">logout</span>Sign Out
+</button>
+</form>
+</div>
+</aside>
