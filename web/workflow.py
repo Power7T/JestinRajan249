@@ -612,14 +612,14 @@ def build_activation_checklist(
             "label": "Escalation contact set",
             "complete": bool(escalation_email),
             "detail": "Serious guest issues have a human handoff path.",
-            "cta": "/settings",
+            "cta": "/properties#guest-messaging",
         },
         {
             "key": "channels",
             "label": "Guest chat channels connected",
             "complete": bool(wa_mode != "none" or sms_mode != "none"),
             "detail": "At least one outbound guest channel is configured.",
-            "cta": "/settings",
+            "cta": "/communications",
         },
     ]
     return items

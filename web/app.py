@@ -57,7 +57,7 @@ from contextlib import asynccontextmanager
 import contextvars
 from uuid import uuid4
 from datetime import datetime, timezone, timedelta, date as date_type
-from typing import Optional
+from typing import Optional, Any
 from urllib.parse import urlsplit, urlunsplit
 import urllib.request
 import urllib.error
@@ -780,6 +780,84 @@ def _get_or_create_config(tenant_id: str, db: Session) -> TenantConfig:
     if not cfg:
         raise RuntimeError(f"Could not load tenant config for {tenant_id}")
     return cfg
+
+
+def _workspace_context(
+    request: Request,
+    db: Session,
+    tenant_id: str,
+    *,
+    page_key: str,
+    saved_message: str | None = None,
+    error_message: str | None = None,
+) -> dict[str, Any]:
+    tenant = _get_tenant(tenant_id, db)
+    cfg = _get_or_create_config(tenant_id, db)
+    vendors = db.query(Vendor).filter_by(tenant_id=tenant_id).order_by(Vendor.category, Vendor.name).all()
+    pms_integrations = db.query(PMSIntegration).filter_by(
+        tenant_id=tenant_id, is_active=True
+    ).order_by(PMSIntegration.created_at).all()
+    automation_rules = (
+        db.query(AutomationRule)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(AutomationRule.priority.asc(), AutomationRule.created_at.asc())
+        .all()
+    )
+    team_members = (
+        db.query(TeamMember)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(TeamMember.role.asc(), TeamMember.display_name.asc())
+        .all()
+    )
+    reservations = db.query(Reservation).filter_by(tenant_id=tenant_id).all()
+    return {
+        "request": request,
+        "tenant": tenant,
+        "cfg": cfg,
+        "vendors": vendors,
+        "pms_integrations": pms_integrations,
+        "automation_rules": automation_rules,
+        "team_members": team_members,
+        "saved": bool(saved_message),
+        "saved_message": saved_message,
+        "error_message": error_message,
+        "page_key": page_key,
+        "plan_info": PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, PLAN_INFO[PLAN_FREE]),
+        "has_meta_cloud": tenant_has_channel(cfg, PLAN_META_CLOUD),
+        "has_sms": tenant_has_channel(cfg, PLAN_SMS),
+        "app_base_url": APP_BASE_URL,
+        "activation_checklist": build_activation_checklist(cfg, reservations=reservations),
+        "property_count": len([name for name in (cfg.property_names or "").split(",") if name.strip()]) or (1 if (cfg.property_names or "").strip() else 0),
+        "channel_ready": bool((cfg.wa_mode or "none") != "none" or (cfg.sms_mode or "none") != "none"),
+        "voice_settings_url": "/voice-calls?tab=settings#voice-ai-setup",
+    }
+
+
+def _maybe_refresh_nearby_places(
+    cfg: TenantConfig,
+    tenant_id: str,
+    *,
+    previous_maps_url: str | None,
+    db: Session,
+) -> None:
+    new_maps_url = (cfg.google_maps_url or "").strip()
+    old_maps_url = (previous_maps_url or "").strip()
+    if not new_maps_url or new_maps_url == old_maps_url:
+        return
+    try:
+        sys_conf = load_system_config(db)
+        gmaps_key = None
+        if sys_conf and sys_conf.google_maps_api_key_enc:
+            gmaps_key = decrypt(sys_conf.google_maps_api_key_enc) or sys_conf.google_maps_api_key_enc
+        if gmaps_key:
+            fetched = _fetch_nearby_places(new_maps_url, gmaps_key)
+            if fetched:
+                cfg.nearby_restaurants = fetched
+                log.info("[%s] Auto-fetched nearby places from Maps URL", tenant_id)
+        else:
+            log.info("[%s] Google Maps API key not configured — skipping nearby fetch", tenant_id)
+    except Exception as _exc:
+        log.warning("[%s] Failed to fetch nearby places: %s", tenant_id, _exc)
 
 
 # ---------------------------------------------------------------------------
@@ -1781,7 +1859,7 @@ def send_team_invite(member_id: int, request: Request,
     inviter_name = tenant.email if tenant else "Your manager"
     send_team_invite(member.email, invite_url, inviter_name, property_name)
 
-    return RedirectResponse("/settings?msg=invite_sent&tab=team", status_code=302)
+    return RedirectResponse("/team?saved=1#directory", status_code=302)
 
 
 @app.get("/invite/{token}", response_class=HTMLResponse)
@@ -2345,8 +2423,8 @@ def _get_setup_alerts(cfg, tenant, reservations: list) -> list[dict]:
             "icon": "home",
             "message": "No property name set — the AI can't personalise any messages.",
             "cta": "Add property name",
-            "link": "/settings#property-name",
-            "tab": "general",
+            "link": "/properties#property-profile",
+            "tab": "properties",
         })
 
     # 2. WhatsApp not configured
@@ -2357,8 +2435,8 @@ def _get_setup_alerts(cfg, tenant, reservations: list) -> list[dict]:
             "icon": "chat",
             "message": "WhatsApp is not connected — guests can't receive any automated replies.",
             "cta": "Connect WhatsApp",
-            "link": "/settings#wa-setup",
-            "tab": "channels",
+            "link": "/communications#meta-cloud",
+            "tab": "communications",
         })
 
     # 3. Knowledge base empty (house rules + FAQ both blank)
@@ -2369,8 +2447,8 @@ def _get_setup_alerts(cfg, tenant, reservations: list) -> list[dict]:
             "icon": "menu_book",
             "message": "House rules and FAQ are empty — the AI will give generic answers without your property info.",
             "cta": "Fill Knowledge Base",
-            "link": "/settings#knowledge-base",
-            "tab": "general",
+            "link": "/properties#knowledge-base",
+            "tab": "properties",
         })
 
     # 4. No check-in / check-out times
@@ -2380,8 +2458,8 @@ def _get_setup_alerts(cfg, tenant, reservations: list) -> list[dict]:
             "icon": "schedule",
             "message": "Check-in / check-out times are not set — guests asking about arrival or departure will get vague answers.",
             "cta": "Set times",
-            "link": "/settings#checkin-times",
-            "tab": "general",
+            "link": "/properties#property-profile",
+            "tab": "properties",
         })
 
     # 5. No escalation email
@@ -2391,8 +2469,8 @@ def _get_setup_alerts(cfg, tenant, reservations: list) -> list[dict]:
             "icon": "mail",
             "message": "No escalation email set — urgent guest issues won't be forwarded anywhere.",
             "cta": "Set escalation email",
-            "link": "/settings#escalation",
-            "tab": "general",
+            "link": "/properties#guest-messaging",
+            "tab": "properties",
         })
 
     # 6. No reservations imported
@@ -2413,8 +2491,8 @@ def _get_setup_alerts(cfg, tenant, reservations: list) -> list[dict]:
             "icon": "waving_hand",
             "message": "No custom welcome message — a default greeting will be sent when guests check in.",
             "cta": "Set welcome message",
-            "link": "/settings#welcome-msg",
-            "tab": "general",
+            "link": "/properties#guest-messaging",
+            "tab": "properties",
         })
 
     return alerts
@@ -3622,44 +3700,281 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
         return _redirect_login()
 
     try:
-        tenant  = _get_tenant(tenant_id, db)
-        cfg     = _get_or_create_config(tenant_id, db)
+        context = _workspace_context(
+            request,
+            db,
+            tenant_id,
+            page_key="settings",
+            error_message="Account deletion failed." if request.query_params.get("error") == "DeletionFailed" else None,
+        )
     except Exception:
         db.rollback()
         raise
-    
-    vendors = db.query(Vendor).filter_by(tenant_id=tenant_id).order_by(Vendor.category, Vendor.name).all()
-    pms_integrations = db.query(PMSIntegration).filter_by(
-        tenant_id=tenant_id, is_active=True
-    ).order_by(PMSIntegration.created_at).all()
-    automation_rules = (
-        db.query(AutomationRule)
-        .filter_by(tenant_id=tenant_id)
-        .order_by(AutomationRule.priority.asc(), AutomationRule.created_at.asc())
-        .all()
+    return templates.TemplateResponse("settings.html", context)
+
+
+@app.get("/properties", response_class=HTMLResponse)
+def properties_page(request: Request, db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    saved_message = "Properties updated." if request.query_params.get("saved") else None
+    if request.query_params.get("saved") == "faq":
+        saved_message = "FAQ upload saved."
+    elif request.query_params.get("saved") == "rules":
+        saved_message = "House rules upload saved."
+
+    return templates.TemplateResponse(
+        "properties.html",
+        _workspace_context(
+            request,
+            db,
+            tenant_id,
+            page_key="properties",
+            saved_message=saved_message,
+            error_message="Uploaded PDF exceeded the size limit." if request.query_params.get("error") == "file_too_large" else None,
+        ),
     )
-    team_members = (
-        db.query(TeamMember)
-        .filter_by(tenant_id=tenant_id)
-        .order_by(TeamMember.role.asc(), TeamMember.display_name.asc())
-        .all()
+
+
+@app.post("/properties")
+async def properties_save(
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"properties:{tenant_id}", max_requests=30, window_seconds=3600)
+
+    cfg = _get_or_create_config(tenant_id, db)
+    previous_maps_url = cfg.google_maps_url
+    form_data = await request.form()
+
+    text_fields = (
+        "property_names",
+        "property_type",
+        "property_city",
+        "check_in_time",
+        "check_out_time",
+        "house_rules",
+        "pet_policy",
+        "refund_policy",
+        "early_checkin_policy",
+        "early_checkin_fee",
+        "late_checkout_policy",
+        "late_checkout_fee",
+        "parking_policy",
+        "smoking_policy",
+        "quiet_hours",
+        "amenities",
+        "food_menu",
+        "nearby_restaurants",
+        "google_maps_url",
+        "faq",
+        "custom_instructions",
+        "escalation_email",
+        "guest_welcome_template",
     )
-    reservations = db.query(Reservation).filter_by(tenant_id=tenant_id).all()
-    return templates.TemplateResponse("settings.html", {
-        "request":          request,
-        "tenant":           tenant,
-        "cfg":              cfg,
-        "vendors":          vendors,
-        "pms_integrations": pms_integrations,
-        "automation_rules": automation_rules,
-        "team_members":     team_members,
-        "saved":            False,
-        "plan_info": PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, PLAN_INFO[PLAN_FREE]),
-        "has_meta_cloud": tenant_has_channel(cfg, PLAN_META_CLOUD),
-        "has_sms":        tenant_has_channel(cfg, PLAN_SMS),
-        "app_base_url":   APP_BASE_URL,
-        "activation_checklist": build_activation_checklist(cfg, reservations=reservations),
-    })
+    for field in text_fields:
+        raw_value = form_data.get(field, "")
+        cleaned = str(raw_value).strip()
+        setattr(cfg, field, cleaned or None)
+
+    max_guests = str(form_data.get("max_guests", "")).strip()
+    cfg.max_guests = int(max_guests) if max_guests.isdigit() else None
+
+    _maybe_refresh_nearby_places(cfg, tenant_id, previous_maps_url=previous_maps_url, db=db)
+
+    db.add(ActivityLog(tenant_id=tenant_id, event_type="properties_saved", message="Property settings updated"))
+    db.commit()
+    worker_manager.restart_worker(tenant_id)
+    return RedirectResponse("/properties?saved=1", status_code=303)
+
+
+@app.get("/communications", response_class=HTMLResponse)
+def communications_page(request: Request, db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+
+    saved_message = "Communications updated." if request.query_params.get("saved") else None
+    return templates.TemplateResponse(
+        "communications.html",
+        _workspace_context(
+            request,
+            db,
+            tenant_id,
+            page_key="communications",
+            saved_message=saved_message,
+        ),
+    )
+
+
+@app.post("/communications")
+async def communications_save(
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"communications:{tenant_id}", max_requests=30, window_seconds=3600)
+
+    cfg = _get_or_create_config(tenant_id, db)
+    form_data = await request.form()
+
+    cfg.whatsapp_number = str(form_data.get("whatsapp_number", "")).strip() or None
+    cfg.whatsapp_phone_id = str(form_data.get("whatsapp_phone_id", "")).strip() or None
+    verify_token = str(form_data.get("whatsapp_verify_token", "")).strip()
+    cfg.whatsapp_verify_token = verify_token or None
+    whatsapp_token = str(form_data.get("whatsapp_token", "")).strip()
+    if whatsapp_token:
+        cfg.whatsapp_token_enc = encrypt(whatsapp_token)
+
+    cfg.twilio_account_sid = str(form_data.get("twilio_account_sid", "")).strip() or None
+    cfg.twilio_from_number = str(form_data.get("twilio_from_number", "")).strip() or None
+    cfg.twilio_whatsapp_number = str(form_data.get("twilio_whatsapp_number", "")).strip() or None
+    cfg.sms_notify_number = str(form_data.get("sms_notify_number", "")).strip() or None
+    twilio_auth_token = str(form_data.get("twilio_auth_token", "")).strip()
+    if twilio_auth_token:
+        cfg.twilio_auth_token_enc = encrypt(twilio_auth_token)
+
+    if cfg.twilio_account_sid and cfg.twilio_auth_token_enc and cfg.twilio_from_number:
+        cfg.sms_mode = "twilio"
+    else:
+        cfg.sms_mode = "none"
+
+    if cfg.twilio_whatsapp_number and cfg.twilio_account_sid and cfg.twilio_auth_token_enc:
+        cfg.wa_mode = "twilio"
+    elif cfg.whatsapp_phone_id and cfg.whatsapp_token_enc:
+        cfg.wa_mode = "meta_cloud"
+    else:
+        cfg.wa_mode = "none"
+
+    db.add(ActivityLog(tenant_id=tenant_id, event_type="communications_saved", message="Communication channels updated"))
+    db.commit()
+    worker_manager.restart_worker(tenant_id)
+    return RedirectResponse("/communications?saved=1", status_code=303)
+
+
+@app.get("/automations", response_class=HTMLResponse)
+def automations_page(request: Request, db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    saved_message = "Automation preferences updated." if request.query_params.get("saved") else None
+    return templates.TemplateResponse(
+        "automations.html",
+        _workspace_context(
+            request,
+            db,
+            tenant_id,
+            page_key="automations",
+            saved_message=saved_message,
+        ),
+    )
+
+
+@app.post("/automations/preferences")
+async def automations_preferences_save(
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"automations:{tenant_id}", max_requests=30, window_seconds=3600)
+
+    cfg = _get_or_create_config(tenant_id, db)
+    form_data = await request.form()
+    cfg.satisfaction_pulse_enabled = form_data.get("satisfaction_pulse_enabled") == "true"
+    cfg.review_request_enabled = form_data.get("review_request_enabled") == "true"
+    cfg.upsell_enabled = form_data.get("upsell_enabled") == "true"
+    cfg.review_request_url = str(form_data.get("review_request_url", "")).strip()[:512] or None
+
+    db.add(ActivityLog(tenant_id=tenant_id, event_type="automation_preferences_saved", message="Automation preferences updated"))
+    db.commit()
+    worker_manager.restart_worker(tenant_id)
+    return RedirectResponse("/automations?saved=1#preferences", status_code=303)
+
+
+@app.get("/integrations", response_class=HTMLResponse)
+def integrations_page(request: Request, db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    saved = request.query_params.get("saved", "")
+    saved_message = None
+    if saved == "imports":
+        saved_message = "Calendar imports updated."
+    elif saved == "pms":
+        saved_message = "PMS integration updated."
+    return templates.TemplateResponse(
+        "integrations.html",
+        _workspace_context(
+            request,
+            db,
+            tenant_id,
+            page_key="integrations",
+            saved_message=saved_message,
+        ),
+    )
+
+
+@app.post("/integrations/imports")
+async def integrations_imports_save(
+    request: Request,
+    ical_urls: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"integrations:{tenant_id}", max_requests=30, window_seconds=3600)
+
+    cfg = _get_or_create_config(tenant_id, db)
+    cfg.ical_urls = ical_urls.strip() or None
+    db.add(ActivityLog(tenant_id=tenant_id, event_type="imports_saved", message="Calendar imports updated"))
+    db.commit()
+    worker_manager.restart_worker(tenant_id)
+    return RedirectResponse("/integrations?saved=imports#calendar-imports", status_code=303)
+
+
+@app.get("/team", response_class=HTMLResponse)
+def team_page(request: Request, db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    saved_message = "Team updated." if request.query_params.get("saved") else None
+    return templates.TemplateResponse(
+        "team.html",
+        _workspace_context(
+            request,
+            db,
+            tenant_id,
+            page_key="team",
+            saved_message=saved_message,
+        ),
+    )
 
 
 def _save_voice_ai_settings(
@@ -3773,6 +4088,7 @@ async def settings_save(
 
     cfg = _get_or_create_config(tenant_id, db)
     tenant = _get_tenant(tenant_id, db)
+    previous_maps_url = cfg.google_maps_url
 
     # Core settings
     cfg.property_names = property_names.strip()
@@ -3812,23 +4128,7 @@ async def settings_save(
     if max_g.isdigit():
         cfg.max_guests = int(max_g)
 
-    # Auto-fetch nearby places when Google Maps URL is saved
-    new_maps_url = str(form_data.get("google_maps_url", "")).strip()
-    if new_maps_url and new_maps_url != (cfg.google_maps_url or ""):
-        try:
-            sys_conf = load_system_config(db)
-            gmaps_key = None
-            if sys_conf and sys_conf.google_maps_api_key_enc:
-                gmaps_key = decrypt(sys_conf.google_maps_api_key_enc) or sys_conf.google_maps_api_key_enc
-            if gmaps_key:
-                fetched = _fetch_nearby_places(new_maps_url, gmaps_key)
-                if fetched:
-                    cfg.nearby_restaurants = fetched
-                    log.info("[%s] Auto-fetched nearby places from Maps URL", tenant_id)
-            else:
-                log.info("[%s] Google Maps API key not configured — skipping nearby fetch", tenant_id)
-        except Exception as _exc:
-            log.warning("[%s] Failed to fetch nearby places: %s", tenant_id, _exc)
+    _maybe_refresh_nearby_places(cfg, tenant_id, previous_maps_url=previous_maps_url, db=db)
 
     # WhatsApp Meta Cloud
     cfg.whatsapp_number   = whatsapp_number.strip() or None
@@ -3895,11 +4195,16 @@ async def settings_save(
         "automation_rules": automation_rules,
         "team_members":     team_members,
         "saved":            True,
+        "saved_message":    "Settings saved — AI workers restarted with new configuration.",
+        "page_key":         "settings",
         "plan_info": PLAN_INFO.get(cfg.subscription_plan or PLAN_FREE, PLAN_INFO[PLAN_FREE]),
         "has_meta_cloud": tenant_has_channel(cfg, PLAN_META_CLOUD),
         "has_sms":        tenant_has_channel(cfg, PLAN_SMS),
         "app_base_url":   APP_BASE_URL,
         "activation_checklist": build_activation_checklist(cfg, reservations=reservations),
+        "property_count": len([name for name in (cfg.property_names or "").split(",") if name.strip()]) or (1 if (cfg.property_names or "").strip() else 0),
+        "channel_ready": bool((cfg.wa_mode or "none") != "none" or (cfg.sms_mode or "none") != "none"),
+        "voice_settings_url": "/voice-calls?tab=settings#voice-ai-setup",
     })
 
 
@@ -4067,6 +4372,7 @@ async def voice_ai_settings_save(
     return RedirectResponse(url="/voice-calls?tab=settings&saved=1#voice-ai-setup", status_code=303)
 
 
+@app.post("/automations/rules")
 @app.post("/settings/automation")
 def automation_rule_add(
     request: Request,
@@ -4112,9 +4418,10 @@ def automation_rule_add(
         message=f"Automation rule added: {rule.name}",
     ))
     db.commit()
-    return RedirectResponse("/settings#workflow", status_code=302)
+    return RedirectResponse("/automations#rules", status_code=302)
 
 
+@app.post("/automations/rules/{rule_id}/delete")
 @app.post("/settings/automation/{rule_id}/delete")
 def automation_rule_delete(
     rule_id: int,
@@ -4131,9 +4438,10 @@ def automation_rule_delete(
     if rule:
         db.delete(rule)
         db.commit()
-    return RedirectResponse("/settings#workflow", status_code=302)
+    return RedirectResponse("/automations#rules", status_code=302)
 
 
+@app.post("/team")
 @app.post("/settings/team")
 def team_member_add(
     request: Request,
@@ -4167,9 +4475,10 @@ def team_member_add(
         message=f"Team member added: {member.display_name} ({member.role})",
     ))
     db.commit()
-    return RedirectResponse("/settings#workflow", status_code=302)
+    return RedirectResponse("/team?saved=1#directory", status_code=302)
 
 
+@app.post("/team/{member_id}/delete")
 @app.post("/settings/team/{member_id}/delete")
 def team_member_delete(
     member_id: int,
@@ -4187,7 +4496,7 @@ def team_member_delete(
     if member:
         db.delete(member)
         db.commit()
-    return RedirectResponse("/settings#workflow", status_code=302)
+    return RedirectResponse("/team?saved=1#directory", status_code=302)
 
 
 @app.post("/vendors/add")
@@ -4202,7 +4511,8 @@ def vendor_add(request: Request, category: str = Form(...), name: str = Form(...
     validate_csrf(request, csrf_token)
     db.add(Vendor(tenant_id=tenant_id, category=category, name=name, phone=phone, notes=notes or None))
     db.commit()
-    return RedirectResponse("/settings#vendors", status_code=302)
+    target = request.headers.get("referer") or "/vendors/workflow#directory"
+    return RedirectResponse(target, status_code=302)
 
 
 @app.post("/vendors/{vendor_id}/delete")
@@ -4218,7 +4528,8 @@ def vendor_delete(vendor_id: int, request: Request,
     if v:
         db.delete(v)
         db.commit()
-    return RedirectResponse("/settings#vendors", status_code=302)
+    target = request.headers.get("referer") or "/vendors/workflow#directory"
+    return RedirectResponse(target, status_code=302)
 
 
 # ---------------------------------------------------------------------------
@@ -7600,6 +7911,7 @@ async def sse_drafts(request: Request, db: Session = Depends(get_db)):
 # PMS Integration routes
 # ---------------------------------------------------------------------------
 
+@app.post("/integrations/pms")
 @app.post("/settings/pms")
 async def pms_settings_save(
     request:    Request,
@@ -7651,7 +7963,7 @@ async def pms_settings_save(
     # Restart workers so PMS thread picks up the new config
     worker_manager.restart_worker(tenant_id)
 
-    return RedirectResponse("/settings?saved=pms", status_code=302)
+    return RedirectResponse("/integrations?saved=pms#pms", status_code=302)
 
 
 @app.post("/api/pms/test")
@@ -7690,6 +8002,7 @@ async def pms_test_connection(
         return JSONResponse({"ok": False, "message": str(exc)})
 
 
+@app.delete("/integrations/pms/{integration_id}")
 @app.delete("/settings/pms/{integration_id}")
 async def pms_delete(
     integration_id: int,
@@ -11273,6 +11586,7 @@ def reservations_export_csv(
 # Settings: FAQ and House Rules PDF upload
 # ---------------------------------------------------------------------------
 
+@app.post("/properties/upload-faq")
 @app.post("/settings/upload-faq")
 async def upload_faq_pdf(
     request: Request,
@@ -11295,7 +11609,7 @@ async def upload_faq_pdf(
             import pdfplumber
             pdf_bytes = await faq_pdf.read(10 * 1024 * 1024 + 1)
             if len(pdf_bytes) > 10 * 1024 * 1024:
-                return RedirectResponse("/settings?error=file_too_large", status_code=302)
+                return RedirectResponse("/properties?error=file_too_large#knowledge-base", status_code=302)
             with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
                 text = "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
             if text:
@@ -11309,9 +11623,10 @@ async def upload_faq_pdf(
         except Exception as exc:
             log.warning("[%s] FAQ PDF extraction failed: %s", tenant_id, exc)
 
-    return RedirectResponse("/settings?saved=faq", status_code=302)
+    return RedirectResponse("/properties?saved=faq#knowledge-base", status_code=302)
 
 
+@app.post("/properties/upload-house-rules")
 @app.post("/settings/upload-house-rules")
 async def upload_house_rules_pdf(
     request: Request,
@@ -11334,7 +11649,7 @@ async def upload_house_rules_pdf(
             import pdfplumber
             pdf_bytes = await rules_pdf.read(10 * 1024 * 1024 + 1)
             if len(pdf_bytes) > 10 * 1024 * 1024:
-                return RedirectResponse("/settings?error=file_too_large", status_code=302)
+                return RedirectResponse("/properties?error=file_too_large#knowledge-base", status_code=302)
             with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
                 text = "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
             if text:
@@ -11348,7 +11663,7 @@ async def upload_house_rules_pdf(
         except Exception as exc:
             log.warning("[%s] House rules PDF extraction failed: %s", tenant_id, exc)
 
-    return RedirectResponse("/settings?saved=rules", status_code=302)
+    return RedirectResponse("/properties?saved=rules#knowledge-base", status_code=302)
 
 
 # ---------------------------------------------------------------------------
@@ -11378,7 +11693,8 @@ def vendor_edit(
         v.phone = phone.strip() or v.phone
         v.notes = notes.strip() or None
         db.commit()
-    return RedirectResponse("/settings#vendors", status_code=302)
+    target = request.headers.get("referer") or "/vendors/workflow#directory"
+    return RedirectResponse(target, status_code=302)
 
 
 # ---------------------------------------------------------------------------
