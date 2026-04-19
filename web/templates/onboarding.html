@@ -463,77 +463,17 @@ A: [describe your check-in process]{% endif %}{% endset %}
       </button>
     </div>
 
-    <!-- Email / IMAP -->
+    <!-- Email forwarding -->
     <div class="form-section">
       <h2>Email intake</h2>
-      <label>How HostAI should receive guest emails</label>
-      <select name="email_ingest_mode">
-        <option value="forwarding" {% if (cfg.email_ingest_mode or 'imap') == 'forwarding' %}selected{% endif %}>Forward Airbnb emails to HostAI (recommended)</option>
-        <option value="imap" {% if (cfg.email_ingest_mode or 'imap') == 'imap' %}selected{% endif %}>Connect my mailbox with IMAP / SMTP</option>
-      </select>
       <label>Your private HostAI forwarding address</label>
       <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem">
         <input type="text" readonly value="{{ inbound_email_address }}" id="inbound-forward-address" style="font-family:monospace;margin-bottom:0">
         <button type="button" class="btn btn-outline btn-sm copy-btn" data-target="inbound-forward-address">Copy</button>
       </div>
-      <p class="help-text" style="margin-bottom:1rem">
-        Add an auto-forward rule in Gmail or Outlook that sends Airbnb guest emails here. No inbox password needed.
+      <p class="help-text" style="margin-bottom:0">
+        Add an auto-forward rule in Gmail or Outlook that sends Airbnb guest emails here. No password needed.
       </p>
-
-      <details>
-        <summary>Advanced fallback: connect mailbox with IMAP / SMTP</summary>
-        <div class="accordion-body">
-          <div class="form-row">
-            <div>
-              <label>IMAP host</label>
-              <input type="text" name="imap_host" value="{{ cfg.imap_host or '' }}" placeholder="imap.gmail.com">
-            </div>
-            <div>
-              <label>SMTP host</label>
-              <input type="text" name="smtp_host" value="{{ cfg.smtp_host or '' }}" placeholder="smtp.gmail.com">
-            </div>
-          </div>
-          <label>Email address</label>
-          <input type="email" name="email_address" value="{{ cfg.email_address or '' }}" placeholder="yourhost@gmail.com">
-          <label>App password <span style="color:var(--text-3);font-weight:400">(leave blank to keep existing)</span></label>
-          <input type="password" name="email_password" id="email-password" placeholder="xxxx xxxx xxxx xxxx">
-          <details>
-            <summary>How to create a Gmail App Password</summary>
-            <div class="accordion-body">
-              <ol>
-                <li>Go to <a href="https://myaccount.google.com" target="_blank">myaccount.google.com</a></li>
-                <li>Click <strong>Security</strong> in the left menu</li>
-                <li>Scroll to <strong>How you sign in to Google</strong> and click <strong>2-Step Verification</strong> (must be ON)</li>
-                <li>Scroll to the bottom and click <strong>App passwords</strong></li>
-                <li>Choose app: <em>Mail</em>, device: <em>Other</em> → type "HostAI" → click <strong>Generate</strong></li>
-                <li>Copy the 16-character password and paste it above</li>
-              </ol>
-              <p style="margin-top:0.5rem">Not using Gmail? Use your provider's equivalent app password or IMAP credentials.</p>
-            </div>
-          </details>
-          <div id="email-test-area"></div>
-          <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:1rem"
-                  hx-post="/test/imap"
-                  hx-include="[name='imap_host'],[name='email_address'],[name='email_password']"
-                  hx-target="#email-test-area"
-                  hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'>
-            Test email connection
-          </button>
-
-          <details style="margin-top:0.5rem">
-            <summary style="cursor:pointer;font-size:0.85rem;color:var(--text-3)">Having trouble? Connection troubleshooting tips →</summary>
-            <div class="accordion-body" style="margin-top:0.75rem">
-              <ul style="padding-left:1.25rem;font-size:0.85rem;line-height:1.8">
-                <li><strong>Gmail:</strong> Enable IMAP in Gmail Settings → See All Settings → Forwarding and POP/IMAP → IMAP Access → Enable IMAP</li>
-                <li><strong>2FA enabled:</strong> Use an App Password instead of your regular password (see instructions above)</li>
-                <li><strong>Outlook/Office 365:</strong> May require enabling IMAP in Outlook settings or using an App Password if legacy auth is disabled</li>
-                <li><strong>"Less secure app" error:</strong> Use an App Password — regular password login via IMAP may be blocked</li>
-                <li><strong>Connection timeout:</strong> Check that the IMAP host is correct (e.g., imap.gmail.com, outlook.office365.com)</li>
-              </ul>
-            </div>
-          </details>
-        </div>
-      </details>
     </div>
 
     <div class="form-section">
