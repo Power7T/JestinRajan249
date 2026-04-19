@@ -3311,7 +3311,7 @@ async def onboarding_post(
     _ensure_effortless_defaults(tenant, cfg, db)
     db.commit()
 
-    next_step = step + 1
+    next_step = 5 if step == 1 else step + 1
     if next_step > _ONBOARDING_STEPS:
         # Onboarding complete
         cfg.onboarding_complete = True

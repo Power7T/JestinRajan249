@@ -11,8 +11,6 @@ h1,h2,h3{color:#e3e1eb;}
 .card,.form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem;}
 label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em;}
 input:not([type=checkbox]):not([type=submit]):not([type=hidden]),select,textarea{width:100%;background:#0d0e14 !important;border:1px solid rgba(66,71,82,0.4) !important;border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb !important;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s;}
-input[type=file]::file-selector-button{background:rgba(174,198,255,0.1);color:#aec6ff;border:1px solid rgba(174,198,255,0.2);border-radius:0.35rem;padding:0.4rem 0.8rem;font-weight:600;cursor:pointer;margin-right:1rem;transition:background 0.15s;}
-input[type=file]{padding:0.4rem;background:rgba(0,0,0,0.2) !important;}
 input:focus,select:focus,textarea:focus{border-color:#5B8DEF;}
 textarea{min-height:4rem;resize:vertical;}
 .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1.1rem;border-radius:0.5rem;font-size:0.84rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none;}
@@ -25,12 +23,9 @@ textarea{min-height:4rem;resize:vertical;}
 .alert-error{background:rgba(255,180,171,0.1);border:1px solid rgba(255,180,171,0.3);color:#ffb4ab;border-radius:0.5rem;padding:0.65rem 1rem;margin-bottom:1rem;font-size:0.84rem;}
 .chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);}
 .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2);}
-.chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2);}
 .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin:0.3rem 0;}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
-input[type=checkbox]{width:1.25rem;height:1.25rem;display:inline-block;margin-bottom:0;margin-right:0.5rem;border-radius:0.25rem;accent-color:var(--accent);}
-details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
-.stepper{display:flex;flex-direction:column;gap:1.25rem}.step{display:flex;gap:1rem;align-items:flex-start;position:relative}.step::before{content:"";position:absolute;left:13px;top:28px;bottom:-1.25rem;width:2px;background:rgba(174,198,255,0.1);z-index:0}.step:last-child::before{display:none}.step.done::before{background:rgba(39,201,63,0.3)}.step.warn::before{background:rgba(255,189,46,0.3)}.num{width:28px;height:28px;border-radius:50%;background:#0d0e14;border:1px solid rgba(174,198,255,0.2);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;color:#aec6ff;flex-shrink:0;z-index:1}.step.done .num{background:rgba(39,201,63,0.1);border-color:rgba(39,201,63,0.4);color:#27c93f}.step.warn .num{background:rgba(255,189,46,0.1);border-color:rgba(255,189,46,0.4);color:#ffbd2e}.step .body h4{font-size:0.95rem;font-weight:700;color:#e3e1eb;margin-bottom:0.25rem;margin-top:2px;}.step .body p{font-size:0.84rem;color:#8d909e;line-height:1.6;margin:0}
+.skip-link{font-size:0.8rem;color:var(--text-3);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:inherit;transition:color var(--t);}
+.skip-link:hover{color:var(--text-2);}
 /* Wizard chrome */
 .wizard-header{text-align:center;margin-bottom:2rem;}
 .wizard-header h1{font-size:1.65rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.4rem;}
@@ -40,437 +35,142 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 .step-dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;border:2px solid var(--border-2);background:var(--bg-3);color:var(--text-3);flex-shrink:0;transition:all 0.3s ease;}
 .step-dot.done{background:var(--success-bg);border-color:var(--success-border);color:var(--success);}
 .step-dot.active{background:linear-gradient(135deg,var(--accent),#2B5FC8);border-color:var(--accent);color:#060911;font-weight:700;box-shadow:0 0 16px var(--accent-glow);}
-.step-line{flex:1;max-width:60px;height:2px;background:var(--border);transition:background 0.3s;}
+.step-line{flex:1;max-width:80px;height:2px;background:var(--border);transition:background 0.3s;}
 .step-line.done{background:var(--success);}
 /* Step labels */
 .step-labels{display:flex;justify-content:center;gap:0;margin-bottom:2rem;}
 .step-label{width:80px;text-align:center;font-size:0.67rem;color:var(--text-3);font-weight:500;}
 .step-label.active{color:var(--accent-2);font-weight:700;}
 .step-label.done{color:var(--success);}
-/* Amenity checkboxes */
-.amenity-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:0.5rem;margin-bottom:1rem;}
-.amenity-item{display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-2);cursor:pointer;}
-.amenity-item input[type=checkbox]{width:auto;margin:0;}
 /* Step nav */
 .step-nav{display:flex;justify-content:space-between;align-items:center;margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);}
-.skip-link{font-size:0.8rem;color:var(--text-3);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:inherit;transition:color var(--t);}
-.skip-link:hover{color:var(--text-2);}
-/* Custom AM/PM time picker */
-.time-picker-wrap{display:flex;align-items:center;gap:0.35rem;margin-bottom:0.85rem;}
-.time-picker-wrap select{width:auto !important;margin-bottom:0 !important;min-width:0;padding:0.55rem 0.45rem;}
-.ampm-toggle{display:flex;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;overflow:hidden;flex-shrink:0;}
-.ampm-btn{background:transparent;border:none;color:#8d909e;font-size:0.78rem;font-weight:700;padding:0.45rem 0.65rem;cursor:pointer;transition:all 0.15s;font-family:inherit;line-height:1;}
-.ampm-btn.active{background:var(--accent);color:#002e6b;}
-.tp-sep{color:var(--text-3);font-weight:700;font-size:0.9rem;flex-shrink:0;}
+/* Stepper */
+.stepper{display:flex;flex-direction:column;gap:1.25rem}.step{display:flex;gap:1rem;align-items:flex-start;position:relative}.step::before{content:"";position:absolute;left:13px;top:28px;bottom:-1.25rem;width:2px;background:rgba(174,198,255,0.1);z-index:0}.step:last-child::before{display:none}.step.done::before{background:rgba(39,201,63,0.3)}.step.warn::before{background:rgba(255,189,46,0.3)}.num{width:28px;height:28px;border-radius:50%;background:#0d0e14;border:1px solid rgba(174,198,255,0.2);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;color:#aec6ff;flex-shrink:0;z-index:1}.step.done .num{background:rgba(39,201,63,0.1);border-color:rgba(39,201,63,0.4);color:#27c93f}.step.warn .num{background:rgba(255,189,46,0.1);border-color:rgba(255,189,46,0.4);color:#ffbd2e}.step .body h4{font-size:0.95rem;font-weight:700;color:#e3e1eb;margin-bottom:0.25rem;margin-top:2px;}.step .body p{font-size:0.84rem;color:#8d909e;line-height:1.6;margin:0}
+details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto px-4 pt-12 pb-20">
+<div class="max-w-2xl mx-auto px-4 pt-12 pb-20">
   <div class="flex items-center gap-3 mb-8">
-  <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">H</div>
-  <span class="text-xl font-extrabold text-white">HostAI Setup</span>
-</div>
+    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">H</div>
+    <span class="text-xl font-extrabold text-white">HostAI Setup</span>
+  </div>
+
   <div class="wizard-header">
-  <h1>Set up your HostAI</h1>
-  <p>Takes under 5 minutes — or click <strong style="color:var(--accent-2)">Quick start</strong> on step 1 to finish in 30 seconds.</p>
-</div>
+    <h1>Get live in 2 steps</h1>
+    <p>Takes under 2 minutes. Refine AI quality anytime in Settings.</p>
+  </div>
 
-<!-- Progress bar -->
-<div class="progress-bar">
-  <div class="step-dot {% if step > 1 %}done{% elif step == 1 %}active{% endif %}">{% if step > 1 %}✓{% else %}1{% endif %}</div>
-  <div class="step-line {% if step > 1 %}done{% endif %}"></div>
-  <div class="step-dot {% if step > 2 %}done{% elif step == 2 %}active{% endif %}">{% if step > 2 %}✓{% else %}2{% endif %}</div>
-  <div class="step-line {% if step > 2 %}done{% endif %}"></div>
-  <div class="step-dot {% if step > 3 %}done{% elif step == 3 %}active{% endif %}">{% if step > 3 %}✓{% else %}3{% endif %}</div>
-  <div class="step-line {% if step > 3 %}done{% endif %}"></div>
-  <div class="step-dot {% if step > 4 %}done{% elif step == 4 %}active{% endif %}">{% if step > 4 %}✓{% else %}4{% endif %}</div>
-  <div class="step-line {% if step > 4 %}done{% endif %}"></div>
-  <div class="step-dot {% if step == 5 %}active{% endif %}">5</div>
-</div>
-<div class="step-labels">
-  <div class="step-label {% if step == 1 %}active{% elif step > 1 %}done{% endif %}">Property</div>
-  <div style="width:60px"></div>
-  <div class="step-label {% if step == 2 %}active{% elif step > 2 %}done{% endif %}">Policies</div>
-  <div style="width:60px"></div>
-  <div class="step-label {% if step == 3 %}active{% elif step > 3 %}done{% endif %}">Guide</div>
-  <div style="width:60px"></div>
-  <div class="step-label {% if step == 4 %}active{% elif step > 4 %}done{% endif %}">Replies</div>
-  <div style="width:60px"></div>
-  <div class="step-label {% if step == 5 %}active{% endif %}">Go Live</div>
-</div>
+  <!-- Progress bar — 2 steps -->
+  <div class="progress-bar">
+    <div class="step-dot {% if step > 1 %}done{% elif step == 1 %}active{% endif %}">{% if step > 1 %}✓{% else %}1{% endif %}</div>
+    <div class="step-line {% if step > 1 %}done{% endif %}"></div>
+    <div class="step-dot {% if step == 5 %}active{% endif %}">2</div>
+  </div>
+  <div class="step-labels">
+    <div class="step-label {% if step == 1 %}active{% elif step > 1 %}done{% endif %}">Property</div>
+    <div style="width:80px"></div>
+    <div class="step-label {% if step == 5 %}active{% endif %}">Go Live</div>
+  </div>
 
-{% if saved %}
-<div class="alert alert-success">Saved! Continuing to the next step…</div>
-{% endif %}
+  {% if saved %}
+  <div class="alert alert-success">Saved!</div>
+  {% endif %}
 
 <!-- ─────────────────────────────────────────────────────────
-     STEP 1 — Property Basics
+     STEP 1 — Property name
 ────────────────────────────────────────────────────────── -->
 {% if step == 1 %}
 <div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem">
-    <h2 style="margin:0">Step 1 — About your property</h2>
-    <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min</span>
-  </div>
+  <h2 style="margin-bottom:1.5rem">Step 1 — Name your property</h2>
+
   <!-- Quick-start CTA -->
-  <form method="post" action="/onboarding/quick-start" style="margin-bottom:1.25rem">
+  <form method="post" action="/onboarding/quick-start" style="margin-bottom:1.5rem">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <div class="card" style="background:linear-gradient(135deg,rgba(91,141,239,0.08),rgba(174,198,255,0.04));border:1px solid rgba(174,198,255,0.25);margin-bottom:0;padding:1.25rem">
-      <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
-        <div style="flex:1;min-width:220px">
-          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
-            <span style="font-size:1.1rem">⚡</span>
-            <h3 style="margin:0;font-size:1rem">Fastest path — use recommended defaults</h3>
-          </div>
-          <p style="font-size:0.83rem;color:var(--text-2);line-height:1.6;margin-bottom:0.75rem">
-            Skip the form — HostAI uses sensible defaults for everything. Fill in your property name (optional) or just click through.
-          </p>
-          <div class="chip-row" style="margin:0">
-            <span class="chip">Starter automation</span>
-            <span class="chip">Owner role added</span>
-            <span class="chip">Refine anytime later</span>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primary" style="white-space:nowrap;align-self:center">
-          Quick start →
-        </button>
+    <div style="background:linear-gradient(135deg,rgba(91,141,239,0.1),rgba(174,198,255,0.05));border:1px solid rgba(174,198,255,0.25);border-radius:0.75rem;padding:1.25rem">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
+        <span style="font-size:1.1rem">⚡</span>
+        <h3 style="margin:0;font-size:1rem">Skip — use recommended defaults</h3>
       </div>
+      <p style="font-size:0.83rem;color:var(--text-2);margin-bottom:1rem;line-height:1.5">
+        No form needed. HostAI applies sensible defaults and you can fill in details later.
+      </p>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;font-size:0.95rem;padding:0.65rem">
+        Quick start — skip to calendar →
+      </button>
     </div>
   </form>
 
-  <div style="display:flex;align-items:center;gap:0.75rem;margin:1.5rem 0 1rem">
+  <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.25rem">
     <div style="flex:1;height:1px;background:var(--border)"></div>
-    <span style="font-size:0.72rem;color:var(--text-3);font-weight:600;letter-spacing:0.08em;text-transform:uppercase">Or fill in details</span>
+    <span style="font-size:0.72rem;color:var(--text-3);font-weight:600;letter-spacing:0.08em;text-transform:uppercase">Or enter your property name</span>
     <div style="flex:1;height:1px;background:var(--border)"></div>
-  </div>
-
-  <!-- Optional: Airbnb listing import -->
-  <div style="background:var(--bg-2);border:1px solid var(--border-2);border-radius:8px;padding:1rem;margin-bottom:1.5rem">
-    <p style="font-size:0.85rem;font-weight:600;margin-bottom:0.5rem">Auto-import from Airbnb (optional)</p>
-    <p style="font-size:0.8rem;color:var(--text-2);margin-bottom:0.75rem">Paste your Airbnb listing URL to pre-fill the form automatically.</p>
-    <div style="display:flex;gap:0.5rem">
-      <input type="text" id="listing-url" placeholder="https://www.airbnb.com/rooms/12345678" style="margin:0;flex:1">
-      <button type="button" class="btn btn-outline" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem"
-              id="import-listing-btn">Import</button>
-    </div>
-    <div id="import-spinner" style="display:none;font-size:0.8rem;color:var(--text-3);margin-top:6px">
-      <span style="animation:spin 1s linear infinite;display:inline-block">⟳</span>
-      Fetching listing details...
-    </div>
-    <p id="import-status" style="font-size:0.78rem;margin-top:4px;min-height:1.2em"></p>
   </div>
 
   <form method="post" action="/onboarding">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <input type="hidden" name="step" value="1">
 
-    <div class="form-row">
-      <div>
-        <label>Property name(s)</label>
-        <input type="text" name="property_names" id="f-property-names" value="{{ cfg.property_names or '' }}" placeholder="Beach House, City Flat">
-        <p class="help-text">Comma-separated if multiple.</p>
-      </div>
-      <div>
-        <label>Property type</label>
-        <select name="property_type" id="f-property-type">
-          <option value="">— select —</option>
-          {% for t in ["Apartment","Villa","House","B&B","Hotel room","Cabin","Studio","Penthouse","Other"] %}
-          <option value="{{ t }}" {% if cfg.property_type == t %}selected{% endif %}>{{ t }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    </div>
+    <label>Property name</label>
+    <input type="text" name="property_names" value="{{ cfg.property_names or '' }}" placeholder="Beach House, City Flat" style="font-size:1rem">
+    <p class="help-text">What HostAI calls your property in guest conversations. You can change this anytime.</p>
 
-    <label>City / Neighbourhood</label>
-    <input type="text" name="property_city" id="f-property-city" value="{{ cfg.property_city or '' }}" placeholder="Miami Beach, FL">
-
-    <div class="form-row">
-      <div>
-        <label style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-          Check-in time
-          <label class="range-toggle-label" style="font-weight:400;font-size:0.8rem;color:var(--text-3);display:flex;align-items:center;gap:0.35rem;cursor:pointer;">
-            <input type="checkbox" id="check-in-range-toggle" style="cursor:pointer;">
-            flexible window
-          </label>
-        </label>
-        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-          <div class="time-picker-wrap" id="tp-check-in" style="margin-bottom:0"></div>
-          <span id="check-in-range-sep" style="display:none;color:var(--text-3);font-size:0.85rem;flex-shrink:0">to</span>
-          <div class="time-picker-wrap" id="tp-check-in-end" style="margin-bottom:0;display:none"></div>
-        </div>
-        <input type="hidden" name="check_in_time" id="check_in_time_val" value="{{ cfg.check_in_time or '' }}">
-      </div>
-      <div>
-        <label>Check-out time</label>
-        <div class="time-picker-wrap" id="tp-check-out"></div>
-        <input type="hidden" name="check_out_time" id="check_out_time_val" value="{{ cfg.check_out_time or '' }}">
-      </div>
-    </div>
-
-    <label>Max guests</label>
-    <input type="number" name="max_guests" id="f-max-guests" value="{{ cfg.max_guests or '' }}" placeholder="6" min="1" max="100" style="max-width:120px">
-
-    <div class="step-nav">
-      <a href="/dashboard" class="skip-link">Skip for now</a>
-      <button type="submit" class="btn btn-primary">Continue →</button>
+    <div class="step-nav" style="border-top:none;padding-top:0;margin-top:0.5rem">
+      <a href="/dashboard" class="skip-link">Skip to Dashboard</a>
+      <button type="submit" class="btn btn-primary" style="font-size:0.95rem;padding:0.55rem 1.5rem">Continue →</button>
     </div>
   </form>
 </div>
 {% endif %}
 
 <!-- ─────────────────────────────────────────────────────────
-     STEP 2 — House Rules & Amenities
-────────────────────────────────────────────────────────── -->
-{% if step == 2 %}
-<div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem">
-    <h2 style="margin:0">Step 2 — House rules & amenities</h2>
-    <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min</span>
-  </div>
-
-  <form method="post" action="/onboarding">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <input type="hidden" name="step" value="2">
-
-    <label>House rules</label>
-    <p class="help-text" style="margin-bottom:0.5rem">Paste from your Airbnb listing, or write them out.</p>
-    <textarea name="house_rules" rows="6" placeholder="No parties or events&#10;No smoking inside&#10;No pets&#10;Quiet hours 10pm–8am&#10;Check-out by 11:00 AM">{{ cfg.house_rules or '' }}</textarea>
-
-    <label style="margin-bottom:0.5rem">Amenities available</label>
-    <div class="amenity-grid">
-      {% set amenity_list = (cfg.amenities or '').split(',') | map('trim') | list %}
-      {% for a in ["WiFi","Pool","Hot tub","Kitchen","BBQ","Parking","EV charging","AC","Heating","Gym","Beach access","Bikes","Washer/Dryer","Dishwasher","Smart TV","Board games","Baby crib","Work desk","Iron","Hair dryer"] %}
-      <label class="amenity-item">
-        <input type="checkbox" name="amenities" value="{{ a }}" {% if a in amenity_list %}checked{% endif %}>
-        {{ a }}
-      </label>
-      {% endfor %}
-    </div>
-
-    <div class="form-row" style="margin-top:1rem">
-      <div>
-        <label>Quiet hours</label>
-        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;">
-          <div class="time-picker-wrap" id="tp-q-start" style="margin-bottom:0;"></div>
-          <span style="color:var(--text-3);font-size:0.85rem;flex-shrink:0">to</span>
-          <div class="time-picker-wrap" id="tp-q-end" style="margin-bottom:0;"></div>
-          <input type="hidden" id="q-start" value="">
-          <input type="hidden" id="q-end" value="">
-          <input type="hidden" name="quiet_hours" id="quiet-hours-val" data-initial="{{ cfg.quiet_hours or '' }}" value="{{ cfg.quiet_hours or '' }}">
-        </div>
-      </div>
-      <div>
-        <label>Pet policy</label>
-        <select name="pet_policy">
-          <option value="">— not specified —</option>
-          <option value="No pets allowed">No pets allowed</option>
-          <option value="Pets allowed (with fee)">Pets allowed (with fee)</option>
-          <option value="Pets allowed (free)">Pets allowed (free)</option>
-          <option value="Small pets only">Small pets only</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="step-nav">
-      <a href="/onboarding?step=1" style="color:var(--text-3);font-size:0.85rem">← Back</a>
-      <div style="display:flex;gap:0.75rem;align-items:center">
-        <button type="submit" name="skip" value="1" class="skip-link">Skip this step</button>
-        <button type="submit" class="btn btn-primary">Continue →</button>
-      </div>
-    </div>
-  </form>
-</div>
-{% endif %}
-
-<!-- ─────────────────────────────────────────────────────────
-     STEP 3 — Local Guide & Extras
-────────────────────────────────────────────────────────── -->
-{% if step == 3 %}
-<div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem">
-    <h2 style="margin:0">Step 3 — Local guide & extras</h2>
-    <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min · optional</span>
-  </div>
-  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">Optional — skip if you don't offer local recommendations or extra services.</p>
-
-  <form method="post" action="/onboarding" enctype="multipart/form-data">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <input type="hidden" name="step" value="3">
-
-    <!-- Most useful for all hosts: nearby recommendations -->
-    <label>Nearby restaurant & spot recommendations</label>
-    <p class="help-text" style="margin-bottom:0.4rem">What do you tell guests when they ask "where should we eat?" — one per line.</p>
-    <textarea name="nearby_restaurants" rows="4" placeholder="La Piazza — 5 min walk, Italian, great pizza&#10;The Rooftop Bar — 3 min walk, cocktails &amp; small plates&#10;Morning Brew Café — 2 min walk, best coffee in town">{{ cfg.nearby_restaurants or '' }}</textarea>
-
-    <label style="margin-bottom:0.5rem">Extra services you offer</label>
-    <div class="amenity-grid">
-      {% set saved_services = (cfg.extra_services or '').split(',') if cfg.extra_services else [] %}
-      {% for s in ["Airport transfer","Bike rental","Car rental","Laundry service","Room service","Concierge","Tours","Grocery delivery","Baby equipment"] %}
-      <label class="amenity-item">
-        <input type="checkbox" name="extra_services" value="{{ s }}" {% if s in saved_services %}checked{% endif %}>
-        {{ s }}
-      </label>
-      {% endfor %}
-    </div>
-
-    <!-- Restaurant / breakfast section — collapsed by default, for B&B / hotel hosts only -->
-    <details style="margin-top:1.25rem;background:rgba(13,14,20,0.4);border:1px solid var(--border);border-radius:0.5rem;padding:0.75rem 1rem">
-      <summary style="color:var(--accent-2);font-size:0.88rem;font-weight:600;list-style:none">
-        <span style="display:inline-flex;align-items:center;gap:0.4rem">
-          <span style="opacity:0.7">🍳</span>
-          I offer on-site food service (B&B / hotel / restaurant)
-        </span>
-      </summary>
-      <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border)">
-        <label>Food menu</label>
-        <p class="help-text" style="margin-bottom:0.4rem">Paste menu text, or upload a PDF — we'll extract the text automatically.</p>
-        <textarea name="food_menu" rows="5" placeholder="Breakfast (7am–10am):&#10;• Continental buffet — €12/person&#10;• Eggs Benedict — €14">{{ cfg.food_menu or '' }}</textarea>
-
-        <label>Or upload a menu PDF</label>
-        <input type="file" name="menu_pdf" accept="application/pdf" style="margin-bottom:1rem">
-        <p class="help-text">Max 5 MB.</p>
-
-        <label>Breakfast included?</label>
-        <select name="breakfast_included">
-          <option value="">— not applicable —</option>
-          <option value="Yes, included in price">Yes, included in price</option>
-          <option value="Yes, available for a fee">Yes, available for a fee</option>
-          <option value="No breakfast service">No breakfast service</option>
-        </select>
-      </div>
-    </details>
-
-    <div class="step-nav">
-      <a href="/onboarding?step=2" style="color:var(--text-3);font-size:0.85rem">← Back</a>
-      <div style="display:flex;gap:0.75rem;align-items:center">
-        <button type="submit" name="skip" value="1" class="skip-link">Skip this step</button>
-        <button type="submit" class="btn btn-primary">Continue →</button>
-      </div>
-    </div>
-  </form>
-</div>
-{% endif %}
-
-<!-- ─────────────────────────────────────────────────────────
-     STEP 4 — Replies & Instructions
-────────────────────────────────────────────────────────── -->
-{% if step == 4 %}
-<div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem">
-    <h2 style="margin:0">Step 4 — Replies & custom instructions</h2>
-    <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min</span>
-  </div>
-
-  <form method="post" action="/onboarding">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <input type="hidden" name="step" value="4">
-
-    <label>Frequently asked questions & answers</label>
-    <p class="help-text" style="margin-bottom:0.4rem">Q&A pairs — the AI will reference these verbatim.</p>
-    {% set faq_prefill %}{% if not cfg.faq %}Q: What is the WiFi password?
-A: [add your WiFi name and password]
-
-Q: What is the check-in time?
-A: {% if cfg.check_in_time %}Check-in is from {{ cfg.check_in_time }}.{% else %}[add your check-in time]{% endif %}
-
-Q: What is the check-out time?
-A: {% if cfg.check_out_time %}Please check out by {{ cfg.check_out_time }}.{% else %}[add your check-out time]{% endif %}
-
-Q: Is there parking available?
-A: [describe parking situation]
-
-Q: Where do I find the key / how do I get in?
-A: [describe your check-in process]{% endif %}{% endset %}
-    <textarea name="faq" rows="10">{{ cfg.faq or faq_prefill }}</textarea>
-
-    <label style="margin-top:0.5rem">Emergency contacts</label>
-    <textarea name="emergency_contacts" rows="3" placeholder="Local contact: [name and phone]&#10;Nearest hospital: [name and address]&#10;Emergency services: 911 / 999 / 112">{{ cfg.emergency_contacts or '' }}</textarea>
-    <p class="help-text">Will be included in the AI context for emergencies.</p>
-
-    <label>Special AI instructions (optional)</label>
-    <p class="help-text" style="margin-bottom:0.4rem">
-      Anything you always want the AI to do or avoid. Examples: tone, upsells, what to mention.
-    </p>
-    <textarea name="custom_instructions" rows="4" placeholder="Mention the unit name when giving directions.&#10;Escalate refund requests to the host.&#10;Match the guest's tone and keep answers concise.">{{ cfg.custom_instructions or '' }}</textarea>
-
-    <div class="form-row" style="margin-top:1rem">
-      <div>
-        <label>Email for urgent alerts (human handoff)</label>
-        <input type="email" name="escalation_email" value="{{ cfg.escalation_email or tenant.email }}" placeholder="{{ tenant.email }}">
-        <p class="help-text">HostAI emails you here for legal threats, emergencies, or extreme frustration.</p>
-      </div>
-      <div>
-        <label>Your mobile number (optional)</label>
-        <input type="tel" name="phone" value="{{ tenant.phone or '' }}" placeholder="+1 555 000 0000">
-        <p class="help-text">For SMS alerts when email is missed. Can be added later in Settings.</p>
-      </div>
-    </div>
-
-    <div class="step-nav">
-      <a href="/onboarding?step=3" style="color:var(--text-3);font-size:0.85rem">← Back</a>
-      <div style="display:flex;gap:0.75rem;align-items:center">
-        <button type="submit" name="skip" value="1" class="skip-link">Skip this step</button>
-        <button type="submit" class="btn btn-primary">Continue →</button>
-      </div>
-    </div>
-  </form>
-</div>
-{% endif %}
-
-<!-- ─────────────────────────────────────────────────────────
-     STEP 5 — Go Live
+     STEP 5 (shown as Step 2) — Go Live / Calendar
 ────────────────────────────────────────────────────────── -->
 {% if step == 5 %}
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem">
-    <h2 style="margin:0">Step 5 — Connect your calendar</h2>
-    <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min · last step</span>
+    <h2 style="margin:0">Step 2 — Connect your calendar</h2>
+    <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">last step</span>
   </div>
   <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
-    Paste your Airbnb iCal link so HostAI knows your reservations. That's it — AI is already configured.
+    Paste your Airbnb iCal link so HostAI knows your reservations. That's it — you're live.
   </p>
 
   <form method="post" action="/onboarding">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <input type="hidden" name="step" value="5">
 
-    <!-- Airbnb iCal -->
-    <div class="form-section">
-      <h2>Calendar (Airbnb iCal)</h2>
-      <label>Airbnb iCal URL(s)</label>
-      <textarea name="ical_urls" rows="3" placeholder="https://www.airbnb.com/calendar/ical/...ics&#10;One per line or comma-separated">{{ cfg.ical_urls or '' }}</textarea>
-      <details>
-        <summary>How to find your iCal URL</summary>
-        <div class="accordion-body">
-          <ol>
-            <li>Go to <strong>airbnb.com</strong> and open your listing</li>
-            <li>Click <strong>Calendar</strong> in the top menu</li>
-            <li>Click <strong>Availability settings</strong></li>
-            <li>Scroll down and click <strong>Export Calendar</strong></li>
-            <li>Copy the <code>.ics</code> link and paste it above</li>
-          </ol>
-        </div>
-      </details>
-      <!-- iCal test -->
-      <div id="ical-test-area"></div>
-      <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:1rem"
-              hx-post="/test/ical"
-              hx-include="[name='ical_urls']"
-              hx-target="#ical-test-area"
-              hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'>
-        Test calendar URL
-      </button>
-    </div>
+    <label>Airbnb iCal URL</label>
+    <textarea name="ical_urls" rows="2" placeholder="https://www.airbnb.com/calendar/ical/...ics">{{ cfg.ical_urls or '' }}</textarea>
+    <p class="help-text" style="margin-top:-0.5rem">Paste one URL per line if you have multiple properties.</p>
 
-    <div class="form-section">
-      <h2>Activation checklist</h2>
+    <details style="margin-bottom:1rem">
+      <summary>How to find your iCal URL</summary>
+      <div style="padding:0.75rem 0 0.25rem;color:var(--text-2);font-size:0.84rem;line-height:1.8">
+        Airbnb → your listing → <strong>Calendar</strong> → <strong>Availability settings</strong> → scroll down → <strong>Export Calendar</strong> → copy the <code>.ics</code> link.
+      </div>
+    </details>
+
+    <!-- iCal test -->
+    <div id="ical-test-area" style="margin-bottom:0.75rem"></div>
+    <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:1.5rem"
+            hx-post="/test/ical"
+            hx-include="[name='ical_urls']"
+            hx-target="#ical-test-area"
+            hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'>
+      Test calendar URL
+    </button>
+
+    <!-- Activation checklist -->
+    <div class="form-section" style="margin-bottom:1.5rem">
+      <h3 style="margin-bottom:1rem;font-size:0.9rem;color:var(--text-2);text-transform:uppercase;letter-spacing:0.06em;font-weight:700">Checklist before going live</h3>
       <div class="stepper">
         <div class="step {% if cfg.property_names %}done{% else %}warn{% endif %}">
           <div class="num">{% if cfg.property_names %}✓{% else %}1{% endif %}</div>
           <div class="body">
-            <h4>Property info added</h4>
-            <p>Name, house rules, FAQ, check-in/out times — steps 1–4.</p>
+            <h4>Property name set</h4>
+            <p>{% if cfg.property_names %}{{ cfg.property_names }}{% else %}Not set — go back to step 1 or add in Settings.{% endif %}</p>
           </div>
         </div>
         <div class="step {% if cfg.ical_urls %}done{% else %}warn{% endif %}">
@@ -491,7 +191,7 @@ A: [describe your check-in process]{% endif %}{% endset %}
     </div>
 
     <div class="step-nav">
-      <a href="/onboarding?step=4" style="color:var(--text-3);font-size:0.85rem">← Back</a>
+      <a href="/onboarding?step=1" style="color:var(--text-3);font-size:0.85rem">← Back</a>
       <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
         <a href="/dashboard" class="skip-link">Skip to Dashboard</a>
         <button type="submit" class="btn btn-primary" style="font-size:1rem;padding:10px 28px">
@@ -504,304 +204,58 @@ A: [describe your check-in process]{% endif %}{% endset %}
 {% endif %}
 
 <!-- ─────────────────────────────────────────────────────────
-     COMPLETE — Simulate a Guest
+     COMPLETE
 ────────────────────────────────────────────────────────── -->
 {% if step == 6 %}
-<div class="card" style="text-align:center;padding:4rem 2rem;max-width:600px;margin:0 auto;">
+<div class="card" style="text-align:center;padding:4rem 2rem;max-width:560px;margin:0 auto;">
   <div style="font-size:4rem;margin-bottom:1.5rem">🎉</div>
-  <h2 style="font-size:1.8rem;margin-bottom:1rem;color:#FFF;letter-spacing:-0.5px;">HostAI is live!</h2>
-  <p style="color:#8d909e;margin-bottom:2.5rem;font-size:1.05rem;line-height:1.6;max-width:400px;margin-left:auto;margin-right:auto;">
-    Your property is successfully configured. You are ready to start routing messages and generating drafts.
+  <h2 style="font-size:1.8rem;margin-bottom:1rem;color:#FFF;letter-spacing:-0.5px;">You're live!</h2>
+  <p style="color:#8d909e;margin-bottom:2.5rem;font-size:1.05rem;line-height:1.6;max-width:380px;margin-left:auto;margin-right:auto;">
+    HostAI is active for your property. Head to the dashboard to see incoming messages and drafts.
   </p>
-  <div style="display:flex;gap:1.5rem;justify-content:center;align-items:center;">
-    <a href="/dashboard" class="btn btn-primary" style="font-size:1.1rem;padding:14px 36px;border-radius:0.75rem;box-shadow:0 8px 24px rgba(91,141,239,0.25);">
-      Go to Dashboard →
-    </a>
-  </div>
-  <div style="margin-top:2rem">
-    <a href="/settings" class="btn btn-outline btn-sm" style="border:none;color:var(--text-3);background:transparent;">
-      Review full settings
+  <a href="/dashboard" class="btn btn-primary" style="font-size:1.1rem;padding:14px 36px;border-radius:0.75rem;box-shadow:0 8px 24px rgba(91,141,239,0.25);">
+    Go to Dashboard →
+  </a>
+  <div style="margin-top:1.5rem">
+    <a href="/settings" style="font-size:0.83rem;color:var(--text-3);">
+      Add house rules, FAQ, and more in Settings →
     </a>
   </div>
 </div>
 {% endif %}
 
 <script nonce="{{ request.state.csp_nonce }}">
-// ─── Custom AM/PM Time Picker ───────────────────────────────────────────────
-function parseToH24(val) {
-  if (!val) return { h: 0, m: 0 };
-  if (val.toUpperCase().includes('M')) {
-    let isPM = val.toUpperCase().includes('PM');
-    let parts = val.replace(/[^0-9:]/g, '').split(':');
-    let h = parseInt(parts[0]) || 0;
-    let m = parseInt(parts[1]) || 0;
-    if (isPM && h < 12) h += 12;
-    if (!isPM && h === 12) h = 0;
-    return { h, m };
-  }
-  let parts = val.split(':');
-  return { h: parseInt(parts[0]) || 0, m: parseInt(parts[1]) || 0 };
-}
-
-function buildTimePicker(wrapId, hiddenId, initialVal) {
-  const wrap = document.getElementById(wrapId);
-  const hidden = document.getElementById(hiddenId);
-  if (!wrap || !hidden) return;
-
-  let { h: h24, m } = parseToH24(initialVal || hidden.value || '');
-  let ampm = h24 >= 12 ? 'PM' : 'AM';
-  let h12 = h24 % 12 || 12;
-
-  let hourSel = document.createElement('select');
-  hourSel.className = 'tp-hour';
-  for (let i = 1; i <= 12; i++) {
-    let opt = document.createElement('option');
-    opt.value = i; opt.textContent = i.toString().padStart(2, '0');
-    if (i === h12) opt.selected = true;
-    hourSel.appendChild(opt);
-  }
-
-  let sep = document.createElement('span');
-  sep.className = 'tp-sep'; sep.textContent = ':';
-
-  let minSel = document.createElement('select');
-  minSel.className = 'tp-min';
-  for (let i = 0; i < 60; i++) {
-    let opt = document.createElement('option');
-    opt.value = i; opt.textContent = i.toString().padStart(2, '0');
-    if (i === m) opt.selected = true;
-    minSel.appendChild(opt);
-  }
-
-  let toggle = document.createElement('div');
-  toggle.className = 'ampm-toggle';
-  ['AM', 'PM'].forEach(p => {
-    let btn = document.createElement('button');
-    btn.type = 'button'; btn.className = 'ampm-btn' + (p === ampm ? ' active' : '');
-    btn.dataset.val = p; btn.textContent = p;
-    btn.addEventListener('click', () => {
-      toggle.querySelectorAll('.ampm-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      sync();
-    });
-    toggle.appendChild(btn);
-  });
-
-  wrap.appendChild(hourSel); wrap.appendChild(sep);
-  wrap.appendChild(minSel); wrap.appendChild(toggle);
-
-  function sync() {
-    let hr = parseInt(hourSel.value);
-    let mn = parseInt(minSel.value);
-    let ap = toggle.querySelector('.ampm-btn.active').dataset.val;
-    let h = hr % 12 + (ap === 'PM' ? 12 : 0);
-    hidden.value = h.toString().padStart(2, '0') + ':' + mn.toString().padStart(2, '0');
-    hidden.dispatchEvent(new Event('change'));
-  }
-
-  // Set initial hidden value
-  if (initialVal || hidden.value) {
-    hidden.value = h24.toString().padStart(2, '0') + ':' + m.toString().padStart(2, '0');
-  }
-  hourSel.addEventListener('change', sync);
-  minSel.addEventListener('change', sync);
-}
-
-// Initialize check-in picker with optional flexible window range
-(function() {
-  const rawCheckin = '{{ cfg.check_in_time or "" }}';
-  const rangeMatch = rawCheckin.match(/^(\d{2}:\d{2})-(\d{2}:\d{2})$/);
-  const startVal = rangeMatch ? rangeMatch[1] : rawCheckin;
-  const endVal   = rangeMatch ? rangeMatch[2] : '';
-
-  buildTimePicker('tp-check-in', 'check_in_time_val', startVal);
-
-  // Hidden intermediate input for the range end time
-  const endHidden = document.createElement('input');
-  endHidden.type = 'hidden'; endHidden.id = 'check_in_end_val';
-  endHidden.value = endVal;
-  document.getElementById('tp-check-in-end').after(endHidden);
-
-  buildTimePicker('tp-check-in-end', 'check_in_end_val', endVal);
-
-  // Separate hidden for range-end (not submitted; only used for building composite)
-  // The submitted field is always check_in_time_val
-  function getStartOnly() {
-    const v = document.getElementById('check_in_time_val').value;
-    return v.includes('-') ? v.split('-')[0] : v;
-  }
-
-  function syncCheckinRange() {
-    const start = getStartOnly();
-    const end   = document.getElementById('check_in_end_val').value;
-    const toggle = document.getElementById('check-in-range-toggle');
-    if (toggle && toggle.checked && start && end && /^\d{2}:\d{2}$/.test(end)) {
-      document.getElementById('check_in_time_val').value = start + '-' + end;
-    }
-  }
-
-  // Sync when either picker changes (range mode)
-  document.getElementById('check_in_end_val').addEventListener('change', () => {
-    const toggle = document.getElementById('check-in-range-toggle');
-    if (toggle && toggle.checked) syncCheckinRange();
-  });
-  // Re-sync start when start picker changes in range mode
-  document.getElementById('check_in_time_val').addEventListener('change', () => {
-    const toggle = document.getElementById('check-in-range-toggle');
-    if (toggle && toggle.checked) {
-      // buildTimePicker already wrote the new start into check_in_time_val,
-      // but we need it as start-only before we recompose
-      const newStart = document.getElementById('check_in_time_val').value.split('-')[0];
-      document.getElementById('check_in_time_val').value = newStart;
-      syncCheckinRange();
-    }
-  });
-
-  // Toggle flexible window UI
-  const toggle = document.getElementById('check-in-range-toggle');
-  const sep    = document.getElementById('check-in-range-sep');
-  const endWrap = document.getElementById('tp-check-in-end');
-  function applyRangeMode(on) {
-    if (sep) sep.style.display    = on ? '' : 'none';
-    if (endWrap) endWrap.style.display = on ? '' : 'none';
-    if (!on) {
-      // Restore just the start time
-      const start = document.getElementById('check_in_time_val').value.split('-')[0];
-      document.getElementById('check_in_time_val').value = start;
-    } else {
-      syncCheckinRange();
-    }
-  }
-  if (toggle) {
-    if (rangeMatch) toggle.checked = true;
-    applyRangeMode(toggle.checked);
-    toggle.addEventListener('change', () => applyRangeMode(toggle.checked));
-  }
-})();
-
-// Initialize check-out picker
-buildTimePicker('tp-check-out', 'check_out_time_val', '{{ cfg.check_out_time or "" }}');
-
-// Initialize quiet hours pickers
-const qVal = document.getElementById('quiet-hours-val');
-let qRaw = (qVal && qVal.getAttribute('data-initial')) || '';
-let qParts = qRaw.split(/ to | - | – /i);
-buildTimePicker('tp-q-start', 'q-start', qParts[0] || '');
-buildTimePicker('tp-q-end',   'q-end',   qParts[1] || '');
-
-// Sync quiet hours composite hidden input
-['q-start', 'q-end'].forEach(id => {
-  let el = document.getElementById(id);
-  if (el) el.addEventListener('change', () => {
-    const s = document.getElementById('q-start').value;
-    const e = document.getElementById('q-end').value;
-    if (s && e) qVal.value = s + ' to ' + e;
-    else if (s) qVal.value = s + ' onwards';
-    else qVal.value = '';
-  });
-});
-
-// ── Airbnb listing import ────────────────────────────────────
-function importListing() {
-  const urlEl = document.getElementById('listing-url');
-  if (!urlEl) return;
-  const url = urlEl.value.trim();
-  const stat = document.getElementById('import-status');
-  const spinner = document.getElementById('import-spinner');
-  if (!url) { if (stat) stat.textContent = 'Paste your Airbnb listing URL first.'; return; }
-  if (stat) { stat.style.color = '#856404'; stat.textContent = ''; }
-  if (spinner) spinner.style.display = 'block';
-  fetch('/onboarding/import-listing', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({url, csrf_token: '{{ request.state.csrf_token }}'})
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (spinner) spinner.style.display = 'none';
-    if (d.error) { if(stat){stat.style.color='#721c24';stat.textContent='✗ '+d.error;} return; }
-    if (stat) { stat.style.color='#155724'; stat.textContent='✓ Imported! Review the pre-filled fields below.'; }
-    if (d.property_names) { const el=document.getElementById('f-property-names'); if(el) el.value=d.property_names; }
-    if (d.property_type)  { const el=document.getElementById('f-property-type');  if(el) el.value=d.property_type; }
-    if (d.property_city)  { const el=document.getElementById('f-property-city');  if(el) el.value=d.property_city; }
-    if (d.max_guests)     { const el=document.getElementById('f-max-guests');     if(el) el.value=d.max_guests; }
-    const firstField = document.getElementById('f-property-names');
-    if (firstField) {
-      firstField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      firstField.style.transition = 'box-shadow 0.3s';
-      firstField.style.boxShadow = '0 0 0 3px rgba(91,141,239,0.4)';
-      setTimeout(() => { firstField.style.boxShadow = ''; }, 2000);
-    }
-  })
-  .catch(() => {
-    if (spinner) spinner.style.display = 'none';
-    if (stat) { stat.style.color='#721c24'; stat.textContent='✗ Could not reach that URL. Please fill in manually.'; }
-  });
-}
-
-// ── Event Listeners ──────────────────────────────────────────
-document.addEventListener('click', (e) => {
-  if (e.target.id === 'import-listing-btn') importListing();
-  if (e.target.classList.contains('copy-btn')) {
-    const el = document.getElementById(e.target.getAttribute('data-target'));
-    if (el) {
-      navigator.clipboard.writeText(el.value);
-      const old = e.target.textContent;
-      e.target.textContent = 'Copied!';
-      setTimeout(() => e.target.textContent = old, 1500);
-    }
-  }
-});
-
-// ── localStorage auto-save ────────────────────────────────────
+// ── localStorage auto-save for step 1 ────────────────────────────────────────
 (function autoSave() {
   const step = '{{ step }}';
   const key = `hostai_onboard_step_${step}`;
-
-  // Restore saved values on page load
   try {
     const saved = JSON.parse(localStorage.getItem(key) || '{}');
     Object.entries(saved).forEach(([name, val]) => {
       const els = document.querySelectorAll(`[name="${name}"]`);
       els.forEach(el => {
-        if (el.type === 'checkbox') {
-          el.checked = Array.isArray(val) ? val.includes(el.value) : val === el.value;
-        } else if (el.tagName === 'SELECT' || el.tagName === 'TEXTAREA' || el.type === 'text' || el.type === 'email' || el.type === 'tel' || el.type === 'number') {
+        if (el.tagName === 'TEXTAREA' || el.type === 'text') {
           if (!el.value) el.value = Array.isArray(val) ? val[0] : val;
         }
       });
     });
   } catch(e) {}
 
-  // Save on every change
   function saveAll() {
     try {
       const form = document.querySelector('form[method="post"]');
       if (!form) return;
       const data = {};
-      form.querySelectorAll('input:not([type=hidden]):not([type=submit]), select, textarea').forEach(el => {
+      form.querySelectorAll('input:not([type=hidden]):not([type=submit]), textarea').forEach(el => {
         if (!el.name || el.name === 'csrf_token') return;
-        if (el.type === 'checkbox') {
-          if (!data[el.name]) data[el.name] = [];
-          if (el.checked) data[el.name].push(el.value);
-        } else if (el.type === 'password' || el.type === 'file') {
-          // never store passwords or files
-        } else {
-          data[el.name] = el.value;
-        }
+        data[el.name] = el.value;
       });
       localStorage.setItem(key, JSON.stringify(data));
     } catch(e) {}
   }
-
   document.addEventListener('input', saveAll);
-  document.addEventListener('change', saveAll);
-
-  // Clear this step's save on successful submit
   document.querySelectorAll('form[method="post"]').forEach(form => {
-    form.addEventListener('submit', () => {
-      try { localStorage.removeItem(key); } catch(e) {}
-    });
+    form.addEventListener('submit', () => { try { localStorage.removeItem(key); } catch(e) {} });
   });
 })();
 </script>
