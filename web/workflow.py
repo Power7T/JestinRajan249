@@ -559,8 +559,6 @@ def derive_dashboard_kpis(
 def build_activation_checklist(
     config: Any,
     reservations: Iterable[Any] = (),
-    inbound_email_address: str = "",
-    inbound_webhook_url: str = "",
 ) -> list[dict[str, Any]]:
     """
     Build a step-by-step activation checklist for the onboarding/dashboard UX.
@@ -570,7 +568,6 @@ def build_activation_checklist(
     house_rules = _text(config, "house_rules").strip()
     faq = _text(config, "faq").strip()
     custom_instructions = _text(config, "custom_instructions").strip()
-    email_ingest_mode = _text(config, "email_ingest_mode").strip().lower()
     ical_urls = _text(config, "ical_urls").strip()
     escalation_email = _text(config, "escalation_email").strip()
     wa_mode = _text(config, "wa_mode").strip().lower()
@@ -609,13 +606,6 @@ def build_activation_checklist(
             "complete": bool(reservations_with_context),
             "detail": "A reservation has both a guest phone and room/unit value.",
             "cta": "/reservations",
-        },
-        {
-            "key": "email_intake",
-            "label": "Email forwarding ready",
-            "complete": email_ingest_mode == "forwarding" and bool(inbound_email_address) and bool(inbound_webhook_url),
-            "detail": "Inbound email webhook and forwarding alias are ready.",
-            "cta": "/settings",
         },
         {
             "key": "escalation",

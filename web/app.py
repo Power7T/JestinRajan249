@@ -782,35 +782,6 @@ def _get_or_create_config(tenant_id: str, db: Session) -> TenantConfig:
     return cfg
 
 
-def _slug_email_alias(seed: str) -> str:
-    alias = re.sub(r"[^a-z0-9]+", "-", (seed or "").lower()).strip("-")
-    return alias[:24] or "host"
-
-
-def _ensure_inbound_email_alias(tenant: Tenant, cfg: TenantConfig, db: Session) -> str:
-    alias = (cfg.inbound_email_alias or "").strip().lower()
-    if alias:
-        return alias
-
-    base = _slug_email_alias((tenant.email or "").split("@")[0])
-    suffix = (tenant.id or secrets.token_hex(4)).replace("-", "")[:6]
-    candidate = f"{base}-{suffix}"
-    counter = 1
-    while db.query(TenantConfig).filter(
-        TenantConfig.inbound_email_alias == candidate,
-        TenantConfig.tenant_id != tenant.id,
-    ).first():
-        candidate = f"{base}-{suffix}{counter}"
-        counter += 1
-    cfg.inbound_email_alias = candidate
-    return candidate
-
-
-def _tenant_inbound_email_address(cfg: TenantConfig) -> str:
-    alias = (cfg.inbound_email_alias or "").strip().lower()
-    return f"{alias}@{INBOUND_EMAIL_DOMAIN}" if alias else ""
-
-
 # ---------------------------------------------------------------------------
 # Security Utilities (CRITICAL/HIGH severity fixes)
 # ---------------------------------------------------------------------------
@@ -886,97 +857,6 @@ def _extract_recipient_alias(recipient: str) -> str:
         address = address.split("<", 1)[1].split(">", 1)[0]
     local = address.split("@", 1)[0]
     return local.split("+", 1)[0]
-
-def _inbound_replay_guard(key: str, ttl_seconds: int) -> bool:
-    """Prevent replay of inbound webhooks when Redis is available."""
-    from web.redis_client import get_redis
-
-    require_raw = os.getenv("INBOUND_PARSE_REQUIRE_REPLAY", "").strip().lower()
-    require = require_raw in {"1", "true", "yes", "on"} or (not require_raw and not _IS_DEV_ENV)
-
-    r = get_redis()
-    if r is None:
-        if require:
-            log.warning("Inbound replay guard requires Redis; rejecting webhook")
-            return False
-        return True
-
-    try:
-        digest = hashlib.sha256(key.encode()).hexdigest()
-        stored = r.set(f"inbound:replay:{digest}", "1", nx=True, ex=ttl_seconds)
-        if not stored:
-            log.warning("Inbound webhook replay detected")
-            return False
-        return True
-    except Exception as exc:
-        if require:
-            log.warning("Inbound replay guard failed: %s", exc)
-            return False
-        return True
-
-
-def _verify_inbound_email_webhook(request: Request, payload: dict, raw_body: bytes) -> bool:
-    provider = os.getenv("INBOUND_PARSE_PROVIDER", "").strip().lower()
-    secret = os.getenv("INBOUND_PARSE_WEBHOOK_SECRET", "").strip()
-
-    if secret:
-        supplied = request.headers.get("X-Inbound-Webhook-Secret", "").strip()
-        if not supplied and _IS_DEV_ENV:
-            supplied = (
-                request.query_params.get("token", "").strip()
-                or str(payload.get("token", "")).strip()
-            )
-        if not supplied:
-            return False
-        if not secrets.compare_digest(supplied, secret):
-            return False
-    elif not _IS_DEV_ENV and provider not in {"mailgun", "postmark"}:
-        log.error("Inbound webhook requires INBOUND_PARSE_WEBHOOK_SECRET or provider signature in production")
-        return False
-
-    max_age = int(os.getenv("INBOUND_PARSE_MAX_AGE", "300"))
-
-    if provider == "mailgun":
-        signing_key = os.getenv("MAILGUN_SIGNING_KEY", "").strip()
-        if not signing_key:
-            return _IS_DEV_ENV
-        timestamp = str(payload.get("timestamp", "")).strip()
-        token = str(payload.get("token", "")).strip()
-        signature = str(payload.get("signature", "")).strip()
-        if not (timestamp and token and signature):
-            return False
-        try:
-            if abs(time.time() - int(timestamp)) > max_age:
-                log.warning("Mailgun webhook timestamp outside tolerance")
-                return False
-        except ValueError:
-            return False
-        expected = hmac.new(signing_key.encode(), f"{timestamp}{token}".encode(), hashlib.sha256).hexdigest()
-        if not secrets.compare_digest(signature, expected):
-            return False
-        if not _inbound_replay_guard(f"mailgun:{timestamp}:{token}:{signature}", max_age):
-            return False
-
-    elif provider == "postmark":
-        signing_key = os.getenv("POSTMARK_INBOUND_SECRET", "").strip()
-        signature = request.headers.get("X-Postmark-Signature", "").strip()
-        if not signing_key:
-            return _IS_DEV_ENV
-        if not signature:
-            return False
-        expected = base64.b64encode(hmac.new(signing_key.encode(), raw_body, hashlib.sha256).digest()).decode()
-        if not secrets.compare_digest(signature, expected):
-            return False
-        replay_key = (
-            signature
-            or _payload_header(payload, "Message-Id", "Message-ID")
-            or _payload_value(payload, "message-id", "Message-ID")
-        )
-        if replay_key and not _inbound_replay_guard(f"postmark:{replay_key}", max_age):
-            return False
-
-    return True
-
 
 def _payload_value(payload: dict, *keys: str) -> str:
     for key in keys:
@@ -2205,8 +2085,6 @@ def dashboard(request: Request,
         activation_checklist = build_activation_checklist(
             cfg,
             reservations=filtered_reservations or all_reservations,
-            inbound_email_address=_tenant_inbound_email_address(cfg),
-            inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
         )
     except Exception as exc:
         db.rollback()
@@ -2705,27 +2583,7 @@ def _execute_draft(
     send_ok = False
     failure_reason = "No configured delivery path for draft"
 
-    if draft.source == "email" and draft.reply_to and cfg and cfg.email_address:
-        try:
-            from web.email_worker import _send_smtp_reply, EmailConfig
-            ecfg = EmailConfig(
-                tenant_id=tenant_id,
-                imap_host=cfg.imap_host or "",
-                imap_port=cfg.imap_port,
-                smtp_host=cfg.smtp_host or "",
-                smtp_port=cfg.smtp_port,
-                email_address=cfg.email_address,
-                email_password=decrypt(cfg.email_password_enc or ""),
-            )
-            _send_smtp_reply(ecfg, draft.reply_to,
-                             f"Re: Airbnb message from {draft.guest_name}", final_text)
-            log.info("[%s] Email reply sent to %s", tenant_id, draft.reply_to)
-            send_ok = True
-        except Exception as exc:
-            log.error("[%s] SMTP send failed: %s", tenant_id, exc)
-            failure_reason = f"SMTP send failed: {exc}"
-
-    elif draft.source == "whatsapp" and draft.reply_to and cfg:
+    if draft.source == "whatsapp" and draft.reply_to and cfg:
         guest_phone = draft.reply_to
         if cfg.wa_mode == "twilio":
             from web.sms_sender import send_whatsapp_twilio
@@ -3206,8 +3064,6 @@ def _recommended_custom_instructions() -> str:
 
 
 def _ensure_effortless_defaults(tenant: Tenant, cfg: TenantConfig, db: Session) -> None:
-    if not cfg.email_ingest_mode or cfg.email_ingest_mode == "imap":
-        cfg.email_ingest_mode = "forwarding"
     if not cfg.check_in_time:
         cfg.check_in_time = "3:00 PM"
     if not cfg.check_out_time:
@@ -3280,9 +3136,6 @@ def onboarding_get(request: Request, step: int = None, db: Session = Depends(get
         return _redirect_login()
     tenant = _get_tenant(tenant_id, db)
     cfg    = _get_or_create_config(tenant_id, db)
-    if not cfg.inbound_email_alias:
-        _ensure_inbound_email_alias(tenant, cfg, db)
-        db.commit()
     if cfg.onboarding_complete and step is None:
         return RedirectResponse("/dashboard", status_code=302)
     current_step = step if step is not None else max(cfg.onboarding_step + 1, 1)
@@ -3294,13 +3147,7 @@ def onboarding_get(request: Request, step: int = None, db: Session = Depends(get
         "cfg":     cfg,
         "step":    current_step,
         "saved":   False,
-        "inbound_email_address": _tenant_inbound_email_address(cfg),
-        "activation_checklist": build_activation_checklist(
-            cfg,
-            reservations=reservations,
-            inbound_email_address=_tenant_inbound_email_address(cfg),
-            inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
-        ),
+        "activation_checklist": build_activation_checklist(cfg, reservations=reservations),
     })
 
 
@@ -3322,7 +3169,6 @@ def onboarding_quick_start(
 
     tenant = _get_tenant(tenant_id, db)
     cfg = _get_or_create_config(tenant_id, db)
-    _ensure_inbound_email_alias(tenant, cfg, db)
 
     if property_names.strip():
         cfg.property_names = property_names.strip()
@@ -3384,11 +3230,6 @@ async def onboarding_post(
     phone:               str = Form(""),
     # Step 5 fields
     ical_urls:           str = Form(""),
-    email_ingest_mode:   str = Form("imap"),
-    imap_host:           str = Form(""),
-    smtp_host:           str = Form(""),
-    email_address:       str = Form(""),
-    email_password:      str = Form(""),
 ):
     try:
         tenant_id = get_current_tenant_id(request)
@@ -3398,7 +3239,6 @@ async def onboarding_post(
 
     tenant = _get_tenant(tenant_id, db)
     cfg    = _get_or_create_config(tenant_id, db)
-    _ensure_inbound_email_alias(tenant, cfg, db)
 
     if not skip:
         if step == 1:
@@ -3465,13 +3305,7 @@ async def onboarding_post(
                 tenant.phone = phone.strip()
 
         elif step == 5:
-            cfg.email_ingest_mode = email_ingest_mode.strip() or cfg.email_ingest_mode or "imap"
-            cfg.ical_urls     = ical_urls.strip() or cfg.ical_urls
-            cfg.imap_host     = imap_host.strip() or cfg.imap_host
-            cfg.smtp_host     = smtp_host.strip() or cfg.smtp_host
-            cfg.email_address = email_address.strip() or cfg.email_address
-            if email_password.strip():
-                cfg.email_password_enc = encrypt(email_password.strip())
+            cfg.ical_urls = ical_urls.strip() or cfg.ical_urls
 
     cfg.onboarding_step = step
     _ensure_effortless_defaults(tenant, cfg, db)
@@ -3711,45 +3545,6 @@ async def import_listing(request: Request, db: Session = Depends(get_db)):
 # Connection testing endpoints (HTMX inline)
 # ---------------------------------------------------------------------------
 
-@app.post("/test/imap", response_class=HTMLResponse)
-async def test_imap(
-    request:       Request,
-    imap_host:     str = Form(""),
-    email_address: str = Form(""),
-    email_password: str = Form(""),
-    csrf_token:    str = Form(None),
-    db: Session = Depends(get_db),
-):
-    try:
-        tenant_id = get_current_tenant_id(request)
-    except HTTPException:
-        return HTMLResponse('<p class="test-result test-fail">Not logged in.</p>')
-    validate_csrf(request, csrf_token)
-
-    if not imap_host or not email_address or not email_password:
-        # If password blank, try existing encrypted password
-        cfg = _get_or_create_config(tenant_id, db)
-        email_password = email_password or decrypt(cfg.email_password_enc or "")
-        imap_host      = imap_host or cfg.imap_host or ""
-        email_address  = email_address or cfg.email_address or ""
-
-    if not all([imap_host, email_address, email_password]):
-        return HTMLResponse('<p class="test-result test-fail">Fill in host, email and password first.</p>')
-
-    try:
-        import imapclient
-        safe_host = ensure_public_hostname(imap_host)
-        c = imapclient.IMAPClient(safe_host, port=993, ssl=True, timeout=10)
-        c.login(email_address, email_password)
-        c.select_folder("INBOX")
-        c.logout()
-        return HTMLResponse('<p class="test-result test-ok">✓ Connected to email successfully</p>')
-    except Exception as exc:
-        msg = str(exc)
-        hint = " — try an App Password" if "authentication" in msg.lower() else ""
-        return HTMLResponse(f'<p class="test-result test-fail">✗ {msg[:120]}{hint}</p>')
-
-
 @app.post("/test/anthropic", response_class=HTMLResponse)
 async def test_anthropic(
     request:       Request,
@@ -3840,9 +3635,6 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
         db.rollback()
         raise
     
-    if not cfg.inbound_email_alias:
-        _ensure_inbound_email_alias(tenant, cfg, db)
-        db.commit()
     vendors = db.query(Vendor).filter_by(tenant_id=tenant_id).order_by(Vendor.category, Vendor.name).all()
     pms_integrations = db.query(PMSIntegration).filter_by(
         tenant_id=tenant_id, is_active=True
@@ -3873,14 +3665,7 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
         "has_meta_cloud": tenant_has_channel(cfg, PLAN_META_CLOUD),
         "has_sms":        tenant_has_channel(cfg, PLAN_SMS),
         "app_base_url":   APP_BASE_URL,
-        "inbound_email_address": _tenant_inbound_email_address(cfg),
-        "inbound_webhook_url": f"{APP_BASE_URL}/email/inbound",
-        "activation_checklist": build_activation_checklist(
-            cfg,
-            reservations=reservations,
-            inbound_email_address=_tenant_inbound_email_address(cfg),
-            inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
-        ),
+        "activation_checklist": build_activation_checklist(cfg, reservations=reservations),
     })
 
 
@@ -3969,11 +3754,6 @@ async def settings_save(
     request:        Request,
     property_names:        str = Form(""),
     ical_urls:             str = Form(""),
-    email_ingest_mode:     str = Form("imap"),
-    imap_host:             str = Form(""),
-    smtp_host:             str = Form(""),
-    email_address:         str = Form(""),
-    email_password:        str = Form(""),
     # WhatsApp Meta Cloud
     wa_mode:               str = Form("none"),
     whatsapp_number:       str = Form(""),
@@ -4000,17 +3780,10 @@ async def settings_save(
 
     cfg = _get_or_create_config(tenant_id, db)
     tenant = _get_tenant(tenant_id, db)
-    _ensure_inbound_email_alias(tenant, cfg, db)
 
     # Core settings
     cfg.property_names = property_names.strip()
     cfg.ical_urls      = ical_urls.strip()
-    cfg.email_ingest_mode = email_ingest_mode.strip() or cfg.email_ingest_mode or "imap"
-    cfg.imap_host      = imap_host.strip() or None
-    cfg.smtp_host      = smtp_host.strip() or None
-    cfg.email_address  = email_address.strip() or None
-    if email_password.strip():
-        cfg.email_password_enc = encrypt(email_password.strip())
 
     # Extended property context fields (editable from Settings after onboarding)
     form_data = await request.form()
@@ -4133,14 +3906,7 @@ async def settings_save(
         "has_meta_cloud": tenant_has_channel(cfg, PLAN_META_CLOUD),
         "has_sms":        tenant_has_channel(cfg, PLAN_SMS),
         "app_base_url":   APP_BASE_URL,
-        "inbound_email_address": _tenant_inbound_email_address(cfg),
-        "inbound_webhook_url": f"{APP_BASE_URL}/email/inbound",
-        "activation_checklist": build_activation_checklist(
-            cfg,
-            reservations=reservations,
-            inbound_email_address=_tenant_inbound_email_address(cfg),
-            inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
-        ),
+        "activation_checklist": build_activation_checklist(cfg, reservations=reservations),
     })
 
 
@@ -5055,80 +4821,6 @@ async def twilio_whatsapp_inbound(tenant_id: str, request: Request, db: Session 
         _handle_inbound_wa(tenant_id, msg["from"], msg["text"], db)
 
     return HTMLResponse("<Response/>")
-
-
-@app.post("/email/inbound")
-async def inbound_email_webhook(request: Request, db: Session = Depends(get_db)):
-    """
-    Generic inbound email webhook for forwarding + parse providers.
-    Expected fields are flexible enough for Mailgun/Postmark/SendGrid style payloads.
-    """
-    content_type = request.headers.get("content-type", "").lower()
-    rate_limit(f"inbound-email:{client_ip(request)}", max_requests=120, window_seconds=60)
-    raw_body = await request.body()
-    if "application/json" in content_type:
-        try:
-            payload = json.loads(raw_body.decode("utf-8") or "{}")
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid JSON payload")
-    else:
-        payload = dict(await request.form())
-    if not _verify_inbound_email_webhook(request, payload, raw_body):
-        raise HTTPException(status_code=403, detail="Invalid inbound email webhook authentication")
-
-    recipient = _payload_value(
-        payload,
-        "recipient",
-        "to",
-        "To",
-        "envelope[to]",
-        "original_recipient",
-    )
-    alias = _extract_recipient_alias(recipient)
-    if not alias:
-        raise HTTPException(status_code=400, detail="Recipient address missing")
-
-    cfg = db.query(TenantConfig).filter_by(inbound_email_alias=alias).first()
-    if not cfg:
-        raise HTTPException(status_code=404, detail="Inbound email route not found")
-
-    subject = _payload_value(payload, "subject", "Subject")
-    sender = _payload_value(payload, "sender", "from", "From") or _payload_header(payload, "From")
-    reply_to = (
-        _payload_value(payload, "reply_to", "Reply-To", "reply-to")
-        or _payload_header(payload, "Reply-To", "reply-to")
-        or sender
-    )
-    text_body = _payload_value(payload, "stripped-text", "body-plain", "text", "body_plain", "body")
-    html_body = _payload_value(payload, "stripped-html", "body-html", "html", "body_html")
-    message_id = (
-        _payload_value(payload, "Message-Id", "message-id", "message_id", "Message-ID")
-        or _payload_header(payload, "Message-Id", "Message-ID")
-    )
-    dedupe_key = message_id.strip() or hashlib.sha256(
-        f"{recipient}|{sender}|{subject}|{text_body[:500]}".encode()
-    ).hexdigest()
-    email_uid = f"inbound:{dedupe_key}"
-    if db.query(ProcessedEmail).filter_by(tenant_id=cfg.tenant_id, email_uid=email_uid).first():
-        return JSONResponse({"status": "duplicate"})
-
-    from web.email_worker import parse_structured_email, process_parsed_email_with_config
-
-    parsed = parse_structured_email(subject, sender, reply_to, text_body, html_body)
-    if not parsed:
-        return JSONResponse({"status": "ignored"})
-    if not process_parsed_email_with_config(cfg, parsed, subject or "Forwarded Airbnb message", db_session=db):
-        raise HTTPException(status_code=422, detail="Tenant email processing is not ready")
-
-    cfg.last_inbound_email_at = datetime.now(timezone.utc)
-    db.add(ProcessedEmail(tenant_id=cfg.tenant_id, email_uid=email_uid))
-    db.add(ActivityLog(
-        tenant_id=cfg.tenant_id,
-        event_type="email_forward_received",
-        message=f"Forwarded inbound email received for {recipient}",
-    ))
-    db.commit()
-    return JSONResponse({"status": "ok", "tenant_id": cfg.tenant_id})
 
 
 # ---------------------------------------------------------------------------
@@ -7460,12 +7152,7 @@ def workflow_center(request: Request,
         .all()
     )
     kpis = derive_dashboard_kpis(drafts, reservations, now=now)
-    checklist = build_activation_checklist(
-        cfg,
-        reservations=reservations,
-        inbound_email_address=_tenant_inbound_email_address(cfg),
-        inbound_webhook_url=f"{APP_BASE_URL}/email/inbound",
-    )
+    checklist = build_activation_checklist(cfg, reservations=reservations)
     exceptions = surface_exception_queue(drafts, reservations, now=now, stale_minutes=60, limit=12)
     return templates.TemplateResponse(
         "workflow_center.html",
@@ -8730,8 +8417,7 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
             # Query only columns that definitely exist
             result = db.execute(sa.text("""
                 SELECT id, tenant_id, subscription_plan, subscription_status,
-                       onboarding_complete, onboarding_step, imap_host,
-                       email_address FROM tenant_configs
+                       onboarding_complete, onboarding_step FROM tenant_configs
             """))
             for row in result:
                 configs[row.tenant_id] = type('Config', (), {
@@ -8739,8 +8425,6 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
                     'subscription_status': row.subscription_status,
                     'onboarding_complete': row.onboarding_complete,
                     'onboarding_step': row.onboarding_step,
-                    'imap_host': row.imap_host,
-                    'email_address': row.email_address,
                 })()
         except Exception as e2:
             db.rollback()
@@ -8765,7 +8449,7 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
         onboarding_step     = cfg.onboarding_step     if cfg else 0
 
         ws         = worker_manager.worker_status(t.id)
-        email_conf = bool(cfg and cfg.imap_host and cfg.email_address)
+        email_conf = False
         worker_dead = email_conf and not ws["email_running"]
 
         last_log = (
@@ -9179,7 +8863,7 @@ def admin_system(request: Request, db: Session = Depends(get_db)):
     for t in tenants:
         cfg          = configs.get(t.id)
         ws           = worker_manager.worker_status(t.id)
-        email_conf   = bool(cfg and cfg.imap_host and cfg.email_address)
+        email_conf   = False
         cal_conf     = bool(cfg and cfg.ical_urls)
         any_dead     = (email_conf and not ws["email_running"]) or (cal_conf and not ws["cal_running"])
 

@@ -161,14 +161,6 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           <span class="text-sm font-bold text-slate-400">City</span>
           <span class="text-sm font-medium text-slate-300">{{ cfg.property_city }}</span>
         </div>{% endif %}
-        {% if cfg.email_address %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
-          <span class="text-sm font-bold text-slate-400">Email (IMAP)</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.email_address }}</span>
-        </div>{% endif %}
-        {% if cfg.imap_host %}<div class="flex justify-between items-center pb-3 border-b border-white/5">
-          <span class="text-sm font-bold text-slate-400">IMAP host</span>
-          <span class="text-sm font-medium text-slate-300">{{ cfg.imap_host }}</span>
-        </div>{% endif %}
         <div class="flex justify-between items-center pb-3 border-b border-white/5">
           <span class="text-sm font-bold text-slate-400">WhatsApp mode</span>
           <span class="text-sm font-medium text-slate-300">{{ cfg.wa_mode }}</span>

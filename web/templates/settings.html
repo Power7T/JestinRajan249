@@ -402,57 +402,6 @@
     <p class="help-text">Airbnb → Calendar → Availability settings → Export Calendar → copy .ics link</p>
   </div>
 
-  <!-- ── Email ────────────────────────────────────────────────────── -->
-  <div class="form-section" data-section="email">
-    <h2>Email intake</h2>
-    <label>How HostAI should receive guest emails</label>
-    <select name="email_ingest_mode">
-      <option value="forwarding" {% if (cfg.email_ingest_mode or 'imap') == 'forwarding' %}selected{% endif %}>Forward Airbnb emails to HostAI (recommended)</option>
-      <option value="imap" {% if (cfg.email_ingest_mode or 'imap') == 'imap' %}selected{% endif %}>Connect mailbox with IMAP / SMTP</option>
-    </select>
-    <label>Your private HostAI forwarding address</label>
-    <div class="copy-box">
-      <input type="text" readonly value="{{ inbound_email_address }}" id="inbound-forward-address">
-      <button type="button" class="btn btn-outline copy-btn" data-target="inbound-forward-address">Copy</button>
-    </div>
-    <p class="help-text">
-      Recommended: create an auto-forward rule for Airbnb guest emails to this address. HostAI will receive them through the inbound email webhook at <code>{{ inbound_webhook_url }}</code>.
-    </p>
-
-    <details>
-      <summary>Advanced fallback: connect mailbox with IMAP / SMTP</summary>
-      <div class="accordion-body">
-        <div class="form-row">
-          <div>
-            <label>IMAP host</label>
-            <input type="text" name="imap_host" value="{{ cfg.imap_host or '' }}" placeholder="imap.gmail.com">
-          </div>
-          <div>
-            <label>SMTP host</label>
-            <input type="text" name="smtp_host" value="{{ cfg.smtp_host or '' }}" placeholder="smtp.gmail.com">
-          </div>
-        </div>
-        <label>Email address</label>
-        <input type="email" name="email_address" value="{{ cfg.email_address or '' }}" placeholder="yourhost@gmail.com">
-        <label>
-          <span style="display:inline-flex;align-items:center;gap:0.3rem">
-            App password <span style="color:var(--text-3);font-weight:400">(leave blank to keep existing)</span>
-            <div class="tooltip-container">
-              <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#8d909e">
-                <span style="font-size:0.75rem">ⓘ</span>
-              </button>
-              <div class="tooltip-content">Google requires app-specific passwords for third-party apps (regular password won't work). Get it at: myaccount.google.com/apppasswords</div>
-            </div>
-          </span>
-        </label>
-        <input type="password" name="email_password" placeholder="xxxx xxxx xxxx xxxx">
-        <p class="help-text">
-          Gmail: <a href="https://myaccount.google.com/apppasswords" target="_blank">Create an App Password</a> →
-          Google Account → Security → App Passwords.
-        </p>
-      </div>
-    </details>
-  </div>
   <!-- Hidden mode fields -->
   <input type="hidden" name="wa_mode" value="meta_cloud">
   <input type="hidden" name="sms_mode" value="twilio">

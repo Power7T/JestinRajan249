@@ -228,17 +228,6 @@ class TenantConfig(Base):
     onboarding_complete: Mapped[bool] = mapped_column(Boolean, default=False)
     onboarding_step:     Mapped[int]  = mapped_column(Integer, default=0)
 
-    # Email / IMAP / SMTP (password stored AES-encrypted)
-    imap_host:         Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    imap_port:         Mapped[int]           = mapped_column(Integer, default=993)
-    smtp_host:         Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    smtp_port:         Mapped[int]           = mapped_column(Integer, default=587)
-    email_address:     Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    email_password_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # encrypted
-    email_ingest_mode: Mapped[str]           = mapped_column(String(32), default="imap")
-    inbound_email_alias: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
-    last_inbound_email_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-
     # Claude API key (AES-encrypted)
     anthropic_api_key_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
