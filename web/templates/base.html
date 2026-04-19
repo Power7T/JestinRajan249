@@ -376,13 +376,19 @@
 {% endif %}
 
 {% if tenant is defined and tenant and not tenant.email_verified %}
-<div class="banner-verify">
-  ⚠️ Please verify your email address to ensure uninterrupted service.
-  <form method="post" action="/resend-verification" style="display:inline;margin-left:0.5rem">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <button type="submit">Resend verification email</button>
-  </form>
+<div class="banner-verify" id="verify-email-banner" style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem">
+  <span>⚠️ Please verify your email address to ensure uninterrupted service.</span>
+  <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0">
+    <form method="post" action="/resend-verification" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit">Resend verification email</button>
+    </form>
+    <button onclick="document.getElementById('verify-email-banner').style.display='none';sessionStorage.setItem('verifyBannerDismissed','1')" style="background:none;border:none;cursor:pointer;color:inherit;font-size:1.1rem;opacity:0.7;padding:0 0.25rem" title="Dismiss">✕</button>
+  </div>
 </div>
+<script nonce="{{ request.state.csp_nonce }}">
+if(sessionStorage.getItem('verifyBannerDismissed')==='1'){var b=document.getElementById('verify-email-banner');if(b)b.style.display='none';}
+</script>
 {% endif %}
 
 {% block main_wrapper %}
