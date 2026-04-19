@@ -11,8 +11,8 @@ h1,h2,h3{color:#e3e1eb;}
 .card,.form-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem;}
 label{display:block;font-size:0.75rem;font-weight:600;color:#8d909e;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.06em;}
 input:not([type=checkbox]):not([type=submit]):not([type=hidden]),select,textarea{width:100%;background:#0d0e14 !important;border:1px solid rgba(66,71,82,0.4) !important;border-radius:0.5rem;padding:0.55rem 0.8rem;color:#e3e1eb !important;font-size:0.84rem;margin-bottom:0.85rem;outline:none;transition:border-color 0.15s;}
-input[type=file]::file-selector-button { background:rgba(174,198,255,0.1); color:#aec6ff; border:1px solid rgba(174,198,255,0.2); border-radius:0.35rem; padding:0.4rem 0.8rem; font-weight:600; cursor:pointer; margin-right: 1rem; transition: background 0.15s; }
-input[type=file] { padding: 0.4rem; background: rgba(0,0,0,0.2) !important; }
+input[type=file]::file-selector-button{background:rgba(174,198,255,0.1);color:#aec6ff;border:1px solid rgba(174,198,255,0.2);border-radius:0.35rem;padding:0.4rem 0.8rem;font-weight:600;cursor:pointer;margin-right:1rem;transition:background 0.15s;}
+input[type=file]{padding:0.4rem;background:rgba(0,0,0,0.2) !important;}
 input:focus,select:focus,textarea:focus{border-color:#5B8DEF;}
 textarea{min-height:4rem;resize:vertical;}
 .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1.1rem;border-radius:0.5rem;font-size:0.84rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none;text-decoration:none;}
@@ -27,101 +27,41 @@ textarea{min-height:4rem;resize:vertical;}
 .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2);}
 .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2);}
 .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin:0.3rem 0;}
-.step-indicator{display:flex;align-items:center;gap:0;margin-bottom:2rem;}
-.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;border:2px solid rgba(66,71,82,0.5);color:#8d909e;background:#0d0e14;flex-shrink:0;transition:all 0.2s;}
-.step-dot.active{background:#5B8DEF;border-color:#5B8DEF;color:#002e6b;}
-.step-dot.done{background:rgba(39,201,63,0.15);border-color:#27c93f;color:#27c93f;}
-.step-line{flex:1;height:2px;background:rgba(66,71,82,0.4);}
-.step-line.done{background:#27c93f;}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
-.copy-box{display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;}
-.copy-box input{margin-bottom:0;font-family:monospace;}
 input[type=checkbox]{width:1.25rem;height:1.25rem;display:inline-block;margin-bottom:0;margin-right:0.5rem;border-radius:0.25rem;accent-color:var(--accent);}
 details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 .stepper{display:flex;flex-direction:column;gap:1.25rem}.step{display:flex;gap:1rem;align-items:flex-start;position:relative}.step::before{content:"";position:absolute;left:13px;top:28px;bottom:-1.25rem;width:2px;background:rgba(174,198,255,0.1);z-index:0}.step:last-child::before{display:none}.step.done::before{background:rgba(39,201,63,0.3)}.step.warn::before{background:rgba(255,189,46,0.3)}.num{width:28px;height:28px;border-radius:50%;background:#0d0e14;border:1px solid rgba(174,198,255,0.2);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;color:#aec6ff;flex-shrink:0;z-index:1}.step.done .num{background:rgba(39,201,63,0.1);border-color:rgba(39,201,63,0.4);color:#27c93f}.step.warn .num{background:rgba(255,189,46,0.1);border-color:rgba(255,189,46,0.4);color:#ffbd2e}.step .body h4{font-size:0.95rem;font-weight:700;color:#e3e1eb;margin-bottom:0.25rem;margin-top:2px;}.step .body p{font-size:0.84rem;color:#8d909e;line-height:1.6;margin:0}
-</style>
-<style>
-  /* Wizard chrome */
-  .wizard-header { text-align:center; margin-bottom:2rem; }
-  .wizard-header h1 { font-size:1.65rem; font-weight:800; letter-spacing:-0.03em; margin-bottom:0.4rem; }
-  .wizard-header p  { color:var(--text-3); font-size:0.88rem; }
-
-  /* Progress bar */
-  .progress-bar { display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:2.5rem; }
-  .step-dot {
-    width:34px; height:34px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:0.78rem; font-weight:700;
-    border:2px solid var(--border-2);
-    background:var(--bg-3); color:var(--text-3);
-    flex-shrink:0; transition:all 0.3s ease;
-  }
-  .step-dot.done   { background:var(--success-bg); border-color:var(--success-border); color:var(--success); }
-  .step-dot.active { background:linear-gradient(135deg,var(--accent),#2B5FC8); border-color:var(--accent); color:#060911; font-weight:700; box-shadow:0 0 16px var(--accent-glow); }
-  .step-line { flex:1; max-width:60px; height:2px; background:var(--border); transition:background 0.3s; }
-  .step-line.done { background:var(--success); }
-
-  /* Step labels */
-  .step-labels { display:flex; justify-content:center; gap:0; margin-bottom:2rem; }
-  .step-label { width:80px; text-align:center; font-size:0.67rem; color:var(--text-3); font-weight:500; }
-  .step-label.active { color:var(--accent-2); font-weight:700; }
-  .step-label.done   { color:var(--success); }
-
-  /* Amenity checkboxes */
-  .amenity-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:0.5rem; margin-bottom:1rem; }
-  .amenity-item { display:flex; align-items:center; gap:0.4rem; font-size:0.82rem; color:var(--text-2); cursor:pointer; }
-  .amenity-item input[type=checkbox] { width:auto; margin:0; }
-
-  /* Connection test inline */
-  .test-row { display:flex; gap:0.5rem; align-items:flex-start; margin-bottom:1rem; }
-  .test-row > * { flex:1; }
-  .test-row .test-btn { flex:0 0 auto; margin-top:0; padding:9px 14px; font-size:0.78rem; }
-  .test-result { font-size:0.76rem; min-height:1.2em; margin-top:4px; }
-  .test-ok   { color:var(--success); }
-  .test-fail { color:var(--danger); }
-
-  /* Step nav */
-  .step-nav {
-    display:flex; justify-content:space-between; align-items:center;
-    margin-top:2rem; padding-top:1.5rem;
-    border-top:1px solid var(--border);
-  }
-  .skip-link {
-    font-size:0.8rem; color:var(--text-3); cursor:pointer;
-    text-decoration:underline; background:none; border:none;
-    font-family:inherit; transition:color var(--t);
-  }
-  .skip-link:hover { color:var(--text-2); }
-
-  /* Custom AM/PM time picker */
-  .time-picker-wrap { display:flex; align-items:center; gap:0.35rem; margin-bottom:0.85rem; }
-  .time-picker-wrap select { width:auto !important; margin-bottom:0 !important; min-width:0; padding:0.55rem 0.45rem; }
-  .ampm-toggle { display:flex; border:1px solid rgba(66,71,82,0.4); border-radius:0.5rem; overflow:hidden; flex-shrink:0; }
-  .ampm-btn { background:transparent; border:none; color:#8d909e; font-size:0.78rem; font-weight:700; padding:0.45rem 0.65rem; cursor:pointer; transition:all 0.15s; font-family:inherit; line-height:1; }
-  .ampm-btn.active { background:var(--accent); color:#002e6b; }
-  .tp-sep { color:var(--text-3); font-weight:700; font-size:0.9rem; flex-shrink:0; }
-
-  /* Demo result */
-  #demo-result {
-    display:none;
-    background:var(--success-bg);
-    border:1px solid var(--success-border);
-    border-radius:var(--radius);
-    padding:1.25rem;
-    margin-top:1.5rem;
-  }
-  #demo-result .demo-draft {
-    background:var(--bg-2);
-    border:1px solid var(--border);
-    border-radius:var(--radius-sm);
-    padding:0.85rem 1rem;
-    font-size:0.84rem;
-    line-height:1.7;
-    white-space:pre-wrap;
-    margin-top:0.75rem;
-    color:var(--text-2);
-    font-family:inherit;
-  }
+/* Wizard chrome */
+.wizard-header{text-align:center;margin-bottom:2rem;}
+.wizard-header h1{font-size:1.65rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.4rem;}
+.wizard-header p{color:var(--text-3);font-size:0.88rem;}
+/* Progress bar */
+.progress-bar{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:2.5rem;}
+.step-dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;border:2px solid var(--border-2);background:var(--bg-3);color:var(--text-3);flex-shrink:0;transition:all 0.3s ease;}
+.step-dot.done{background:var(--success-bg);border-color:var(--success-border);color:var(--success);}
+.step-dot.active{background:linear-gradient(135deg,var(--accent),#2B5FC8);border-color:var(--accent);color:#060911;font-weight:700;box-shadow:0 0 16px var(--accent-glow);}
+.step-line{flex:1;max-width:60px;height:2px;background:var(--border);transition:background 0.3s;}
+.step-line.done{background:var(--success);}
+/* Step labels */
+.step-labels{display:flex;justify-content:center;gap:0;margin-bottom:2rem;}
+.step-label{width:80px;text-align:center;font-size:0.67rem;color:var(--text-3);font-weight:500;}
+.step-label.active{color:var(--accent-2);font-weight:700;}
+.step-label.done{color:var(--success);}
+/* Amenity checkboxes */
+.amenity-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:0.5rem;margin-bottom:1rem;}
+.amenity-item{display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-2);cursor:pointer;}
+.amenity-item input[type=checkbox]{width:auto;margin:0;}
+/* Step nav */
+.step-nav{display:flex;justify-content:space-between;align-items:center;margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);}
+.skip-link{font-size:0.8rem;color:var(--text-3);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:inherit;transition:color var(--t);}
+.skip-link:hover{color:var(--text-2);}
+/* Custom AM/PM time picker */
+.time-picker-wrap{display:flex;align-items:center;gap:0.35rem;margin-bottom:0.85rem;}
+.time-picker-wrap select{width:auto !important;margin-bottom:0 !important;min-width:0;padding:0.55rem 0.45rem;}
+.ampm-toggle{display:flex;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;overflow:hidden;flex-shrink:0;}
+.ampm-btn{background:transparent;border:none;color:#8d909e;font-size:0.78rem;font-weight:700;padding:0.45rem 0.65rem;cursor:pointer;transition:all 0.15s;font-family:inherit;line-height:1;}
+.ampm-btn.active{background:var(--accent);color:#002e6b;}
+.tp-sep{color:var(--text-3);font-weight:700;font-size:0.9rem;flex-shrink:0;}
 </style>
 {% endblock %}
 
@@ -133,7 +73,7 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 </div>
   <div class="wizard-header">
   <h1>Set up your HostAI</h1>
-  <p>Takes under 5 minutes. Skip any step — use the <strong style="color:var(--accent-2)">Quick start</strong> button below to finish in 30 seconds.</p>
+  <p>Takes under 5 minutes — or click <strong style="color:var(--accent-2)">Quick start</strong> on step 1 to finish in 30 seconds.</p>
 </div>
 
 <!-- Progress bar -->
@@ -319,7 +259,6 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
           <input type="hidden" id="q-end" value="">
           <input type="hidden" name="quiet_hours" id="quiet-hours-val" data-initial="{{ cfg.quiet_hours or '' }}" value="{{ cfg.quiet_hours or '' }}">
         </div>
-        <p class="help-text" style="margin-top:0.4rem">Will be included in house rules context.</p>
       </div>
       <div>
         <label>Pet policy</label>
@@ -381,7 +320,6 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
         <span style="display:inline-flex;align-items:center;gap:0.4rem">
           <span style="opacity:0.7">🍳</span>
           I offer on-site food service (B&B / hotel / restaurant)
-          <span style="font-size:0.72rem;color:var(--text-3);font-weight:400;margin-left:0.35rem">— click to expand</span>
         </span>
       </summary>
       <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border)">
@@ -612,14 +550,14 @@ A: [describe your check-in process]{% endif %}{% endset %}
           <div class="num">{% if cfg.ical_urls %}✓{% else %}2{% endif %}</div>
           <div class="body">
             <h4>Calendar connected</h4>
-            <p>Paste your Airbnb iCal URL below.</p>
+            <p>Paste your Airbnb iCal URL in the section above.</p>
           </div>
         </div>
         <div class="step {% if inbound_email_address %}done{% else %}warn{% endif %}">
           <div class="num">{% if inbound_email_address %}✓{% else %}3{% endif %}</div>
           <div class="body">
             <h4>Email forwarding set up</h4>
-            <p>Forward Airbnb guest emails to your HostAI address below.</p>
+            <p>Copy your forwarding address from the Email intake section above.</p>
           </div>
         </div>
         <div class="step done">
@@ -843,100 +781,57 @@ buildTimePicker('tp-q-end',   'q-end',   qParts[1] || '');
   });
 });
 
-// Airbnb listing auto-import
+// ── Airbnb listing import ────────────────────────────────────
 function importListing() {
   const urlEl = document.getElementById('listing-url');
   if (!urlEl) return;
   const url = urlEl.value.trim();
   const stat = document.getElementById('import-status');
   const spinner = document.getElementById('import-spinner');
-  if (!url) { stat.textContent = 'Paste your Airbnb listing URL first.'; return; }
-  stat.style.color = '#856404';
-  stat.textContent = '';
+  if (!url) { if (stat) stat.textContent = 'Paste your Airbnb listing URL first.'; return; }
+  if (stat) { stat.style.color = '#856404'; stat.textContent = ''; }
   if (spinner) spinner.style.display = 'block';
   fetch('/onboarding/import-listing', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({url: url, csrf_token: '{{ request.state.csrf_token }}'})
+    body: JSON.stringify({url, csrf_token: '{{ request.state.csrf_token }}'})
   })
   .then(r => r.json())
   .then(d => {
     if (spinner) spinner.style.display = 'none';
-    if (d.error) { stat.style.color='#721c24'; stat.textContent = '✗ ' + d.error; return; }
-    stat.style.color = '#155724';
-    stat.textContent = '✓ Imported! Fields pre-filled below — please review and adjust.';
-    if (d.property_names) document.getElementById('f-property-names').value = d.property_names;
-    if (d.property_type)  document.getElementById('f-property-type').value  = d.property_type;
-    if (d.property_city)  document.getElementById('f-property-city').value  = d.property_city;
-    if (d.check_in_time)  document.getElementById('f-check-in').value  = d.check_in_time;
-    if (d.check_out_time) document.getElementById('f-check-out').value = d.check_out_time;
-    if (d.max_guests)     document.getElementById('f-max-guests').value = d.max_guests;
+    if (d.error) { if(stat){stat.style.color='#721c24';stat.textContent='✗ '+d.error;} return; }
+    if (stat) { stat.style.color='#155724'; stat.textContent='✓ Imported! Review the pre-filled fields below.'; }
+    if (d.property_names) { const el=document.getElementById('f-property-names'); if(el) el.value=d.property_names; }
+    if (d.property_type)  { const el=document.getElementById('f-property-type');  if(el) el.value=d.property_type; }
+    if (d.property_city)  { const el=document.getElementById('f-property-city');  if(el) el.value=d.property_city; }
+    if (d.max_guests)     { const el=document.getElementById('f-max-guests');     if(el) el.value=d.max_guests; }
+    const firstField = document.getElementById('f-property-names');
+    if (firstField) {
+      firstField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      firstField.style.transition = 'box-shadow 0.3s';
+      firstField.style.boxShadow = '0 0 0 3px rgba(91,141,239,0.4)';
+      setTimeout(() => { firstField.style.boxShadow = ''; }, 2000);
+    }
   })
   .catch(() => {
     if (spinner) spinner.style.display = 'none';
-    stat.style.color='#721c24';
-    stat.textContent = '✗ Could not reach that URL. Please fill in manually.';
+    if (stat) { stat.style.color='#721c24'; stat.textContent='✗ Could not reach that URL. Please fill in manually.'; }
   });
 }
+
 // ── Event Listeners ──────────────────────────────────────────
 document.addEventListener('click', (e) => {
-    if (e.target.id === 'import-listing-btn') {
-        importListing();
+  if (e.target.id === 'import-listing-btn') importListing();
+  if (e.target.classList.contains('copy-btn')) {
+    const el = document.getElementById(e.target.getAttribute('data-target'));
+    if (el) {
+      navigator.clipboard.writeText(el.value);
+      const old = e.target.textContent;
+      e.target.textContent = 'Copied!';
+      setTimeout(() => e.target.textContent = old, 1500);
     }
-
-    if (e.target.classList.contains('copy-btn')) {
-        const targetId = e.target.getAttribute('data-target');
-        const el = document.getElementById(targetId);
-        if (el) {
-            navigator.clipboard.writeText(el.value);
-            const oldText = e.target.textContent;
-            e.target.textContent = 'Copied!';
-            setTimeout(() => e.target.textContent = oldText, 1500);
-        }
-    }
+  }
 });
-
-// ── Airbnb import: auto-scroll + pulse after success ─────────
-(function patchImportListing() {
-  const origImport = window.importListing;
-  window.importListing = function() {
-    const urlEl = document.getElementById('listing-url');
-    if (!urlEl) return origImport && origImport();
-    const url = urlEl.value.trim();
-    const stat = document.getElementById('import-status');
-    const spinner = document.getElementById('import-spinner');
-    if (!url) { if (stat) stat.textContent = 'Paste your Airbnb listing URL first.'; return; }
-    if (stat) { stat.style.color = '#856404'; stat.textContent = ''; }
-    if (spinner) spinner.style.display = 'block';
-    fetch('/onboarding/import-listing', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({url, csrf_token: '{{ request.state.csrf_token }}'})
-    })
-    .then(r => r.json())
-    .then(d => {
-      if (spinner) spinner.style.display = 'none';
-      if (d.error) { if(stat){stat.style.color='#721c24';stat.textContent='✗ '+d.error;} return; }
-      if (stat) { stat.style.color='#155724'; stat.textContent='✓ Imported! Review the pre-filled fields below.'; }
-      if (d.property_names) { const el=document.getElementById('f-property-names'); if(el) el.value=d.property_names; }
-      if (d.property_type)  { const el=document.getElementById('f-property-type');  if(el) el.value=d.property_type; }
-      if (d.property_city)  { const el=document.getElementById('f-property-city');  if(el) el.value=d.property_city; }
-      if (d.max_guests)     { const el=document.getElementById('f-max-guests');     if(el) el.value=d.max_guests; }
-      // Scroll to first form field and pulse it
-      const firstField = document.getElementById('f-property-names');
-      if (firstField) {
-        firstField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        firstField.style.transition = 'box-shadow 0.3s';
-        firstField.style.boxShadow = '0 0 0 3px rgba(91,141,239,0.4)';
-        setTimeout(() => { firstField.style.boxShadow = ''; }, 2000);
-      }
-    })
-    .catch(() => {
-      if (spinner) spinner.style.display = 'none';
-      if (stat) { stat.style.color='#721c24'; stat.textContent='✗ Could not reach that URL. Please fill in manually.'; }
-    });
-  };
-})();
 
 // ── localStorage auto-save ────────────────────────────────────
 (function autoSave() {
