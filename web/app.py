@@ -903,12 +903,15 @@ def _audit_log_action(
     Log administrative or sensitive actions for auditing (HIGH severity fix #10).
     """
     try:
+        msg = f"{actor_email}: {action.replace('_', ' ').title()}"
+        if resource_id:
+            msg += f" {resource_id}"
+        if details:
+            msg += f" — {details}"
         db.add(ActivityLog(
             tenant_id=tenant_id,
             event_type=f"security_audit:{action}",
-            actor_email=actor_email,
-            message=f"{action.replace('_', ' ').title()}" + (f" {resource_id}" if resource_id else ""),
-            details=details,
+            message=msg,
             created_at=datetime.now(timezone.utc),
         ))
         db.commit()
