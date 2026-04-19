@@ -164,19 +164,6 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 <div class="alert alert-success">Saved! Continuing to the next step…</div>
 {% endif %}
 
-{% if step < 5 %}
-<div class="card" style="background:var(--bg-2);border:1px solid var(--border-2);margin-bottom:1.25rem">
-  <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap">
-    <div>
-      <p style="font-size:0.72rem;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent-2);margin-bottom:0.45rem">Recommended Order</p>
-      <p style="font-size:0.9rem;color:var(--text-1);margin-bottom:0.35rem">Connect reservations and your guest inbox before polishing every detail.</p>
-      <p class="help-text" style="margin:0">That gets HostAI useful faster: import stays, receive guest messages, then refine policies and responses.</p>
-    </div>
-    <a href="/onboarding?step=5" class="btn btn-outline" style="white-space:nowrap">Jump to Go Live</a>
-  </div>
-</div>
-{% endif %}
-
 <!-- ─────────────────────────────────────────────────────────
      STEP 1 — Property Basics
 ────────────────────────────────────────────────────────── -->
@@ -186,11 +173,7 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
     <h2 style="margin:0">Step 1 — About your property</h2>
     <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min</span>
   </div>
-  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
-    This information is given to the AI so it can answer guest questions accurately.
-  </p>
-
-  <!-- Quick-start CTA — PROMOTED TO TOP (was buried at bottom) -->
+  <!-- Quick-start CTA -->
   <form method="post" action="/onboarding/quick-start" style="margin-bottom:1.25rem">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <div class="card" style="background:linear-gradient(135deg,rgba(91,141,239,0.08),rgba(174,198,255,0.04));border:1px solid rgba(174,198,255,0.25);margin-bottom:0;padding:1.25rem">
@@ -201,7 +184,7 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
             <h3 style="margin:0;font-size:1rem">Fastest path — use recommended defaults</h3>
           </div>
           <p style="font-size:0.83rem;color:var(--text-2);line-height:1.6;margin-bottom:0.75rem">
-            Skip the form. HostAI will use sensible defaults for rules, FAQ, escalation, and automations. Fill in property name below (optional), or just click through.
+            Skip the form — HostAI uses sensible defaults for everything. Fill in your property name (optional) or just click through.
           </p>
           <div class="chip-row" style="margin:0">
             <span class="chip">Starter automation</span>
@@ -225,7 +208,7 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
   <!-- Optional: Airbnb listing import -->
   <div style="background:var(--bg-2);border:1px solid var(--border-2);border-radius:8px;padding:1rem;margin-bottom:1.5rem">
     <p style="font-size:0.85rem;font-weight:600;margin-bottom:0.5rem">Auto-import from Airbnb (optional)</p>
-    <p style="font-size:0.8rem;color:var(--text-2);margin-bottom:0.75rem">Paste your Airbnb listing URL and we'll pre-fill the fields below automatically.</p>
+    <p style="font-size:0.8rem;color:var(--text-2);margin-bottom:0.75rem">Paste your Airbnb listing URL to pre-fill the form automatically.</p>
     <div style="display:flex;gap:0.5rem">
       <input type="text" id="listing-url" placeholder="https://www.airbnb.com/rooms/12345678" style="margin:0;flex:1">
       <button type="button" class="btn btn-outline" style="white-space:nowrap;padding:8px 14px;font-size:0.85rem"
@@ -305,9 +288,6 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
     <h2 style="margin:0">Step 2 — House rules & amenities</h2>
     <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min</span>
   </div>
-  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
-    The AI uses these to answer rule-related questions and set guest expectations correctly.
-  </p>
 
   <form method="post" action="/onboarding">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
@@ -373,9 +353,7 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
     <h2 style="margin:0">Step 3 — Local guide & extras</h2>
     <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min · optional</span>
   </div>
-  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
-    Most vacation-rental hosts can skip this entirely. Fill it in only if guests ask about local recommendations, on-site food, or extra services you offer.
-  </p>
+  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">Optional — skip if you don't offer local recommendations or extra services.</p>
 
   <form method="post" action="/onboarding" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
@@ -445,16 +423,13 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
     <h2 style="margin:0">Step 4 — Replies & custom instructions</h2>
     <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~1 min</span>
   </div>
-  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
-    Give the AI answers to your most common questions and any special instructions.
-  </p>
 
   <form method="post" action="/onboarding">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <input type="hidden" name="step" value="4">
 
     <label>Frequently asked questions & answers</label>
-    <p class="help-text" style="margin-bottom:0.4rem">Write each Q&A on its own lines. The AI will reference these exactly.</p>
+    <p class="help-text" style="margin-bottom:0.4rem">Q&A pairs — the AI will reference these verbatim.</p>
     {% set faq_prefill %}{% if not cfg.faq %}Q: What is the WiFi password?
 A: [add your WiFi name and password]
 
@@ -515,32 +490,8 @@ A: [describe your check-in process]{% endif %}{% endset %}
     <span style="font-size:0.72rem;color:var(--text-3);background:rgba(174,198,255,0.06);padding:3px 10px;border-radius:999px;border:1px solid rgba(174,198,255,0.1)">~2 min · last step</span>
   </div>
   <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">
-    Two things left: forward Airbnb guest emails to HostAI, and paste your Airbnb calendar link. That's it — AI is already ready.
+    Two things left: paste your Airbnb calendar link, and forward guest emails to HostAI. AI is already configured.
   </p>
-
-  <div class="card" style="margin-bottom:1rem;background:var(--bg-2);border:1px solid var(--border-2)">
-    <h3 style="margin-bottom:0.75rem;font-size:0.95rem">Two steps to go live</h3>
-    <div class="stepper">
-      <div class="step {% if inbound_email_address %}done{% else %}warn{% endif %}">
-        <div class="num">1</div>
-        <div class="body">
-          <h4>Forward Airbnb guest emails to HostAI</h4>
-          <p>Copy your private forwarding address below and add an auto-forward rule in Gmail/Outlook. No password needed.</p>
-        </div>
-      </div>
-      <div class="step {% if cfg.ical_urls %}done{% else %}warn{% endif %}">
-        <div class="num">{% if cfg.ical_urls %}✓{% else %}2{% endif %}</div>
-        <div class="body">
-          <h4>Paste your Airbnb iCal link</h4>
-          <p>This gives HostAI stay timing so arrival, stay, and checkout messages use the right reservation context.</p>
-        </div>
-      </div>
-    </div>
-    <p style="font-size:0.76rem;color:var(--text-3);margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:0.35rem">
-      <span style="color:#27c93f">✓</span>
-      AI reply engine is already configured — managed centrally, no key needed.
-    </p>
-  </div>
 
   <form method="post" action="/onboarding">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
@@ -588,7 +539,7 @@ A: [describe your check-in process]{% endif %}{% endset %}
         <button type="button" class="btn btn-outline btn-sm copy-btn" data-target="inbound-forward-address">Copy</button>
       </div>
       <p class="help-text" style="margin-bottom:1rem">
-        Create an auto-forward rule in Gmail or Outlook for Airbnb guest emails to this address. HostAI will ingest them through a webhook and create drafts without needing your inbox password.
+        Add an auto-forward rule in Gmail or Outlook that sends Airbnb guest emails here. No inbox password needed.
       </p>
 
       <details>
@@ -653,59 +604,33 @@ A: [describe your check-in process]{% endif %}{% endset %}
         <div class="step {% if cfg.property_names %}done{% else %}warn{% endif %}">
           <div class="num">{% if cfg.property_names %}✓{% else %}1{% endif %}</div>
           <div class="body">
-            <h4>Property and stay context added</h4>
-            <p>Add the property name, house rules, FAQ, and check-in / check-out details so the bot has something useful to say.</p>
+            <h4>Property info added</h4>
+            <p>Name, house rules, FAQ, check-in/out times — steps 1–4.</p>
           </div>
         </div>
         <div class="step {% if cfg.ical_urls %}done{% else %}warn{% endif %}">
           <div class="num">{% if cfg.ical_urls %}✓{% else %}2{% endif %}</div>
           <div class="body">
-            <h4>Calendar or reservation source connected</h4>
-            <p>Airbnb iCal, PMS sync, or CSV upload can all feed the stay timeline. CSV stays as the fallback for hosts without a PMS.</p>
+            <h4>Calendar connected</h4>
+            <p>Paste your Airbnb iCal URL below.</p>
           </div>
         </div>
         <div class="step {% if inbound_email_address %}done{% else %}warn{% endif %}">
           <div class="num">{% if inbound_email_address %}✓{% else %}3{% endif %}</div>
           <div class="body">
-            <h4>Forwarding address ready</h4>
-            <p>Forward Airbnb emails to the private HostAI address above. This removes mailbox passwords from the setup path.</p>
+            <h4>Email forwarding set up</h4>
+            <p>Forward Airbnb guest emails to your HostAI address below.</p>
           </div>
         </div>
         <div class="step done">
           <div class="num">✓</div>
           <div class="body">
-            <h4>AI reply engine ready</h4>
-            <p>The HostAI reply engine is managed centrally by your administrator. No individual API key is required.</p>
+            <h4>AI engine ready</h4>
+            <p>Managed centrally — no API key needed.</p>
           </div>
         </div>
       </div>
     </div>
-
-    <div class="form-section">
-      <h2>Guest interaction ideas</h2>
-      <p class="help-text" style="margin-bottom:0.75rem">
-        This is the sort of concierge behavior the bot should support once the host has mapped the booking and room number.
-      </p>
-      <div class="workflow-grid">
-        <div class="workflow-card">
-          <h3>Arrival and access</h3>
-          <p>"Can we check in early?" "What is the room number?" "How do we get inside?"</p>
-        </div>
-        <div class="workflow-card">
-          <h3>Stay support</h3>
-          <p>"What is the Wi-Fi?" "Can we get more towels?" "Is parking included?"</p>
-        </div>
-        <div class="workflow-card">
-          <h3>Local help</h3>
-          <p>"Where should we eat?" "Any grocery stores nearby?" "What should we do in the area?"</p>
-        </div>
-        <div class="workflow-card">
-          <h3>Exceptions</h3>
-          <p>"The AC is not working." "We have a leak." "We need a late checkout."</p>
-        </div>
-      </div>
-    </div>
-
 
     <div class="step-nav">
       <a href="/onboarding?step=4" style="color:var(--text-3);font-size:0.85rem">← Back</a>
