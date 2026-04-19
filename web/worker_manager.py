@@ -19,7 +19,12 @@ import threading
 import time
 from typing import Optional
 
-from web import email_worker, calendar_worker, reservation_scheduler, pms_worker
+try:
+    from web import email_worker
+except ImportError:  # IMAP worker was removed; keep runtime compatible during rollout cleanup.
+    email_worker = None
+
+from web import calendar_worker, reservation_scheduler, pms_worker
 from web.redis_client import get_redis
 
 log = logging.getLogger(__name__)
@@ -133,7 +138,7 @@ def _start_tenant(tenant_id: str):
     # Stop existing workers if running
     _stop_tenant(tenant_id)
 
-    email_cfg = email_worker.make_config_from_db(tenant_id)
+    email_cfg = email_worker.make_config_from_db(tenant_id) if email_worker else None
     cal_cfg   = calendar_worker.make_config_from_db(tenant_id)
 
     entry: dict = {}

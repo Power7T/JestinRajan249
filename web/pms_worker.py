@@ -68,7 +68,7 @@ def _load_config(tenant_id: str) -> Optional[dict]:
             return None
         return {
             "property_context":    build_property_context(cfg),
-            "escalation_email":    cfg.escalation_email or cfg.email_address or "",
+            "escalation_email":    cfg.escalation_email or "",
             # Policy fields passed through for conflict checks
             "pet_policy":          cfg.pet_policy or "",
             "refund_policy":       cfg.refund_policy or "",

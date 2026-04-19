@@ -75,3 +75,33 @@ def test_load_tenant_config_handles_missing_voice_columns(tmp_path):
     assert analytics["plan"] == "growth"
     assert analytics["total_calls"] == 0
     assert analytics["knowledge_gaps"]["total"] == 0
+
+
+def test_create_missing_tenant_config_handles_legacy_schema(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'legacy-tenant-config-create.db'}")
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE tenant_configs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant_id VARCHAR(36) UNIQUE NOT NULL,
+                timezone VARCHAR(64) DEFAULT 'UTC',
+                data_retention_days INTEGER DEFAULT 30,
+                subscription_plan VARCHAR(32) DEFAULT 'starter',
+                subscription_status VARCHAR(32) DEFAULT 'requires_upgrade'
+            )
+        """))
+
+    SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+    with SessionLocal() as db:
+        cfg = load_tenant_config(db, "tenant-create", create_if_missing=True)
+        row = db.execute(
+            text("SELECT tenant_id, subscription_plan, subscription_status FROM tenant_configs WHERE tenant_id = :tenant_id"),
+            {"tenant_id": "tenant-create"},
+        ).mappings().first()
+
+    assert cfg is not None
+    assert tenant_config_schema_is_behind(cfg)
+    assert row is not None
+    assert row["tenant_id"] == "tenant-create"
+    assert row["subscription_plan"] == "starter"
+    assert row["subscription_status"] == "requires_upgrade"

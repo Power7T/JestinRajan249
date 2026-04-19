@@ -1361,12 +1361,7 @@ def login_post(
 
         # Resume onboarding if not yet complete
         try:
-            cfg = db.query(TenantConfig).filter_by(tenant_id=tenant.id).first()
-            if not cfg:
-                log.info("Creating missing TenantConfig for tenant [%s]", tenant.id)
-                cfg = TenantConfig(tenant_id=tenant.id)
-                db.add(cfg)
-                db.commit()
+            cfg = load_tenant_config(db, tenant.id, create_if_missing=True)
         except Exception as exc:
             log.error("Failed to get/create TenantConfig [%s]: %s\n%s", tenant.id, exc, traceback.format_exc())
             cfg = None
@@ -1448,8 +1443,7 @@ def signup_post(
     db.add(tenant)
     db.commit()
     db.refresh(tenant)
-    db.add(TenantConfig(tenant_id=tenant.id))
-    db.commit()
+    load_tenant_config(db, tenant.id, create_if_missing=True)
     # Send verification email (non-blocking — failure just logs a warning)
     send_verification_email(email, ver_token)
     token = create_token(tenant.id, tenant_session_version(tenant))
@@ -1595,10 +1589,9 @@ def google_oauth_callback(
         db.add(tenant)
         db.commit()
         db.refresh(tenant)
-        db.add(TenantConfig(tenant_id=tenant.id))
-        db.commit()
+        load_tenant_config(db, tenant.id, create_if_missing=True)
 
-    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant.id).first()
+    cfg = load_tenant_config(db, tenant.id, create_if_missing=True)
     redirect_to = "/onboarding" if (is_new or not (cfg and cfg.onboarding_complete)) else "/dashboard"
 
     from web.auth import TOKEN_HOURS

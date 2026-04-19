@@ -1,7 +1,7 @@
 import logging
 
 import sqlalchemy as sa
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from web.models import TenantConfig
@@ -66,6 +66,11 @@ def _existing_tenant_config_columns(db: Session) -> set[str]:
     return {col["name"] for col in inspector.get_columns(_TENANT_CONFIG_TABLE)}
 
 
+def _reflected_tenant_config_table(db: Session) -> sa.Table:
+    metadata = sa.MetaData()
+    return sa.Table(_TENANT_CONFIG_TABLE, metadata, autoload_with=db.connection())
+
+
 def _try_schema_repair(db: Session) -> bool:
     try:
         from web.db import db_migrate
@@ -117,6 +122,27 @@ def _load_tenant_config_fallback(db: Session, tenant_id: str, exc: SQLAlchemyErr
     return _mark_schema_drift(cfg)
 
 
+def _create_tenant_config_compat(db: Session, tenant_id: str) -> TenantConfig:
+    cfg = _tenant_config_defaults(tenant_id)
+    reflected_table = _reflected_tenant_config_table(db)
+    existing_columns = set(reflected_table.c.keys())
+    insert_values: dict[str, object] = {"tenant_id": tenant_id}
+
+    for column in TenantConfig.__table__.columns:
+        if column.name in {"id", "tenant_id"} or column.name not in existing_columns:
+            continue
+        value = getattr(cfg, column.key, None)
+        if value is not None:
+            insert_values[column.name] = value
+
+    try:
+        db.execute(sa.insert(reflected_table).values(**insert_values))
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+    return load_tenant_config(db, tenant_id) or _mark_schema_drift(cfg)
+
+
 def load_tenant_config(db: Session, tenant_id: str, *, create_if_missing: bool = False) -> TenantConfig | None:
     try:
         cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
@@ -128,8 +154,5 @@ def load_tenant_config(db: Session, tenant_id: str, *, create_if_missing: bool =
             return cfg
 
     if not cfg and create_if_missing:
-        cfg = TenantConfig(tenant_id=tenant_id)
-        db.add(cfg)
-        db.commit()
-        db.refresh(cfg)
+        return _create_tenant_config_compat(db, tenant_id)
     return cfg
