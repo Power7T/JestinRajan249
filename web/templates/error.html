@@ -74,11 +74,17 @@ body{background:#08090F;font-family:'Plus Jakarta Sans',sans-serif;color:#e3e1eb
 
     <!-- Actions -->
     <div class="flex flex-col sm:flex-row gap-3 justify-center">
-      <a href="/dashboard"
+      <a href="{{ cta_url or '/login' }}"
          class="px-6 py-3 rounded-xl font-bold text-sm text-[#002e6b] transition-all hover:scale-105"
          style="background:linear-gradient(135deg,#5B8DEF,#aec6ff)">
+        {% if cta_url == '/login' or not is_authed %}
+        <span class="material-symbols-outlined text-base align-middle mr-1">login</span>
+        {% elif cta_url and 'onboarding' in cta_url %}
+        <span class="material-symbols-outlined text-base align-middle mr-1">rocket_launch</span>
+        {% else %}
         <span class="material-symbols-outlined text-base align-middle mr-1">dashboard</span>
-        Go to Dashboard
+        {% endif %}
+        {{ cta_label or 'Log in' }}
       </a>
       <button id="go-back-btn"
               class="px-6 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-sm transition-all">
@@ -96,12 +102,15 @@ body{background:#08090F;font-family:'Plus Jakarta Sans',sans-serif;color:#e3e1eb
 
     <!-- Helpful hints per code -->
     <div class="mt-10 text-xs text-slate-600">
-      {% if code == 404 %}
-      Try the <a href="/dashboard" class="text-[#aec6ff] hover:text-white">Dashboard</a>,
+      {% if not is_authed %}
+      <a href="/login" class="text-[#aec6ff] hover:text-white">Log in</a> to access your workspace.
+      {% elif code == 404 %}
+      Try
+      <a href="/dashboard" class="text-[#aec6ff] hover:text-white">Dashboard</a>,
       <a href="/settings" class="text-[#aec6ff] hover:text-white">Settings</a>, or
       <a href="/activity" class="text-[#aec6ff] hover:text-white">Activity Log</a>
       {% elif code == 403 %}
-      You don't have permission to view this page. <a href="/login" class="text-[#aec6ff] hover:text-white">Log in</a> with the correct account.
+      You don't have permission to view this page.
       {% elif code == 429 %}
       Wait a moment before refreshing. Rate limits reset automatically.
       {% else %}

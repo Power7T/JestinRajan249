@@ -667,14 +667,40 @@ app.add_middleware(CSRFMiddleware)
 # Global error handlers
 # ---------------------------------------------------------------------------
 
+def _error_nav_context(request: Request) -> dict:
+    """Determine safe CTA for error pages based on auth + onboarding state."""
+    try:
+        from web.auth import _decode_token_payload  # local import to avoid circular
+        token = request.cookies.get("session")
+        if not token:
+            return {"is_authed": False, "cta_url": "/login", "cta_label": "Log in"}
+        payload = _decode_token_payload(token)
+        if not payload or not payload.get("sub"):
+            return {"is_authed": False, "cta_url": "/login", "cta_label": "Log in"}
+        tenant_id = payload["sub"]
+        db = SessionLocal()
+        try:
+            cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+            if cfg and not cfg.onboarding_complete:
+                step = cfg.onboarding_step or 0
+                url = f"/onboarding?step={5 if step >= 1 else 1}"
+                return {"is_authed": True, "cta_url": url, "cta_label": "Continue setup"}
+        finally:
+            db.close()
+        return {"is_authed": True, "cta_url": "/dashboard", "cta_label": "Go to Dashboard"}
+    except Exception:
+        return {"is_authed": False, "cta_url": "/login", "cta_label": "Log in"}
+
+
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc: HTTPException):
     if request.url.path.startswith("/api/"):
         return JSONResponse({"detail": "Not found"}, status_code=404)
+    ctx = _error_nav_context(request)
     return templates.TemplateResponse(
         "error.html",
         {"request": request, "code": 404, "title": "Page not found",
-         "message": "The page you're looking for doesn't exist."},
+         "message": "The page you're looking for doesn't exist.", **ctx},
         status_code=404,
     )
 
@@ -683,10 +709,11 @@ async def not_found_handler(request: Request, exc: HTTPException):
 async def forbidden_handler(request: Request, exc: HTTPException):
     if request.url.path.startswith("/api/"):
         return JSONResponse({"detail": exc.detail}, status_code=403)
+    ctx = _error_nav_context(request)
     return templates.TemplateResponse(
         "error.html",
         {"request": request, "code": 403, "title": "Forbidden",
-         "message": str(exc.detail)},
+         "message": str(exc.detail), **ctx},
         status_code=403,
     )
 
@@ -695,31 +722,12 @@ async def forbidden_handler(request: Request, exc: HTTPException):
 async def rate_limit_handler(request: Request, exc: HTTPException):
     if request.url.path.startswith("/api/"):
         return JSONResponse({"detail": exc.detail}, status_code=429)
+    ctx = _error_nav_context(request)
     return templates.TemplateResponse(
         "error.html",
         {"request": request, "code": 429, "title": "Too many requests",
-         "message": "You've made too many requests. Please wait a moment and try again."},
+         "message": "You've made too many requests. Please wait a moment and try again.", **ctx},
         status_code=429,
-    )
-
-
-@app.exception_handler(403)
-async def forbidden_error_handler(request: Request, exc: HTTPException):
-    """Handle 403 Forbidden errors gracefully."""
-    if request.url.path.startswith("/api/"):
-        return JSONResponse({"detail": "Forbidden access"}, status_code=403)
-    
-    nonce = getattr(request.state, "csp_nonce", "")
-    return templates.TemplateResponse(
-        "error.html",
-        {
-            "request": request,
-            "code": 403,
-            "title": "Access denied",
-            "message": "You don't have permission to view this page.",
-            "csp_nonce": nonce
-        },
-        status_code=403,
     )
 
 
