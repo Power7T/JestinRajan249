@@ -14184,6 +14184,44 @@ async def api_admin_set_rate_limits(request: Request, db: Session = Depends(get_
         return JSONResponse({"error": "Failed to update rate limits"}, status_code=500)
 
 
+@app.post("/api/admin/feature-flags/update")
+async def api_admin_feature_flag_update(request: Request, db: Session = Depends(get_db)):
+    """Update global feature flag settings."""
+    try:
+        admin = _require_admin(request, db)
+    except HTTPException:
+        return JSONResponse({"error": "Admin access required"}, status_code=401)
+
+    rate_limit(f"admin-api:{admin.id}:feature-flags", max_requests=10, window_seconds=60)
+    validate_csrf_header(request)
+
+    data = await request.json()
+    flag_name = data.get("flag_name")
+    enabled = data.get("enabled")
+    rollout_percentage = data.get("rollout_percentage", 100 if enabled else 0)
+
+    try:
+        flag = db.query(FeatureFlag).filter_by(flag_name=flag_name).first()
+        if not flag:
+            return JSONResponse({"error": "Feature flag not found"}, status_code=404)
+
+        flag.enabled = enabled
+        flag.rollout_percentage = min(100, max(0, rollout_percentage))
+        flag.updated_at = datetime.now(timezone.utc)
+        db.commit()
+
+        _audit_log_action(
+            db, admin.id, admin.email, "admin_feature_flag_update",
+            resource_id=flag_name,
+            details=f"Enabled: {enabled}, Rollout: {flag.rollout_percentage}%"
+        )
+
+        return JSONResponse({"message": "Feature flag updated successfully"})
+    except Exception as e:
+        log.error(f"Error updating flag {flag_name}: {type(e).__name__}")
+        return JSONResponse({"error": "Failed to update feature flag"}, status_code=500)
+
+
 @app.post("/api/admin/feature-flags/override")
 async def api_admin_feature_flag_override(request: Request, db: Session = Depends(get_db)):
     """Set per-tenant feature flag override."""
@@ -14222,6 +14260,70 @@ async def api_admin_feature_flag_override(request: Request, db: Session = Depend
         # CRITICAL severity fix #3: Don't expose internal error details
         log.error(f"Error setting flag override for {flag_name}/{tenant_id}: {type(e).__name__}")
         return JSONResponse({"error": "Failed to set feature flag override"}, status_code=500)
+
+
+# Admin Draft Actions
+@app.post("/api/admin/draft/approve")
+def api_admin_draft_approve(request: Request, db: Session = Depends(get_db)):
+    """Admin approval of a pending draft."""
+    try:
+        admin = _require_admin(request, db)
+    except HTTPException:
+        return JSONResponse({"error": "Admin access required"}, status_code=401)
+
+    validate_csrf(request)
+    draft_id = request.form.get("draft_id")
+
+    try:
+        draft = db.query(Draft).filter_by(id=draft_id).first()
+        if not draft:
+            return JSONResponse({"error": "Draft not found"}, status_code=404)
+
+        draft.status = "approved"
+        draft.final_text = draft.draft
+        db.commit()
+
+        _audit_log_action(
+            db, admin.id, admin.email, "admin_draft_approve",
+            resource_id=draft.tenant_id,
+            details=f"Draft ID: {draft_id}"
+        )
+
+        return RedirectResponse("/admin", status_code=303)
+    except Exception as e:
+        log.error(f"Error approving draft: {e}")
+        return JSONResponse({"error": "Failed to approve draft"}, status_code=500)
+
+
+@app.post("/api/admin/draft/dismiss")
+def api_admin_draft_dismiss(request: Request, db: Session = Depends(get_db)):
+    """Admin dismissal of a pending draft."""
+    try:
+        admin = _require_admin(request, db)
+    except HTTPException:
+        return JSONResponse({"error": "Admin access required"}, status_code=401)
+
+    validate_csrf(request)
+    draft_id = request.form.get("draft_id")
+
+    try:
+        draft = db.query(Draft).filter_by(id=draft_id).first()
+        if not draft:
+            return JSONResponse({"error": "Draft not found"}, status_code=404)
+
+        draft.status = "skipped"
+        db.commit()
+
+        _audit_log_action(
+            db, admin.id, admin.email, "admin_draft_dismiss",
+            resource_id=draft.tenant_id,
+            details=f"Draft ID: {draft_id}"
+        )
+
+        return RedirectResponse("/admin", status_code=303)
+    except Exception as e:
+        log.error(f"Error dismissing draft: {e}")
+        return JSONResponse({"error": "Failed to dismiss draft"}, status_code=500)
 
 
 # ---------------------------------------------------------------------------

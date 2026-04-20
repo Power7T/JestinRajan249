@@ -162,6 +162,66 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     </div>
   </div>
 
+  <!-- Pending Drafts -->
+  {% set pending_drafts = drafts | selectattr('status', 'equalto', 'pending') | list %}
+  {% if pending_drafts %}
+  <div class="glass-card rounded-3xl p-6 mb-8 border border-amber-500/30 bg-amber-500/5 relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500/20 rounded-full blur-[50px] pointer-events-none"></div>
+    <h2 class="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
+      <span class="material-symbols-outlined">pending_actions</span>
+      <span style="display:inline-flex;align-items:center;gap:0.4rem">
+        Pending Drafts ({{ pending_drafts | length }})
+        <div class="tooltip-container">
+          <button type="button" class="tooltip-trigger" style="background:none;border:none;padding:0;color:#fbbf24">
+            <span style="font-size:0.8rem">ⓘ</span>
+          </button>
+          <div class="tooltip-content">Messages drafted by AI waiting for host approval across all tenants</div>
+        </div>
+      </span>
+    </h2>
+    <div class="flex flex-col gap-3 relative z-10 max-h-96 overflow-y-auto">
+      {% for draft in pending_drafts %}
+      <div class="p-3 rounded-xl bg-black/20 border border-white/5">
+        <div class="flex items-start justify-between gap-4 mb-2">
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <a href="/admin/tenants/{{ draft.tenant_id }}" class="font-bold text-white hover:text-amber-300 transition-colors text-sm">
+                {% set tenant_email = "Unknown" %}
+                {% for row in tenant_rows %}
+                  {% if row.tenant.id == draft.tenant_id %}
+                    {% set tenant_email = row.tenant.email %}
+                  {% endif %}
+                {% endfor %}
+                {{ tenant_email }}
+              </a>
+              <span class="px-2 py-0.5 bg-white/10 rounded text-[10px] font-mono text-slate-400">{{ draft.thread_key[:20] }}...</span>
+            </div>
+            <p class="text-xs text-slate-400 line-clamp-2">{{ draft.draft }}</p>
+          </div>
+          <div class="text-[10px] text-slate-500 flex-shrink-0">{{ draft.created_at.strftime("%m/%d %H:%M") }}</div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <form method="post" action="/api/admin/draft/approve" style="display:inline" class="flex items-center gap-1">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <input type="hidden" name="draft_id" value="{{ draft.id }}">
+            <button type="submit" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#27c93f]/10 hover:bg-[#27c93f]/20 text-[#27c93f] text-[9px] font-bold uppercase tracking-wide transition-all border border-[#27c93f]/20">
+              <span class="material-symbols-outlined text-[0.65rem]">done</span>Approve
+            </button>
+          </form>
+          <form method="post" action="/api/admin/draft/dismiss" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <input type="hidden" name="draft_id" value="{{ draft.id }}">
+            <button type="submit" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[9px] font-bold uppercase tracking-wide transition-all border border-rose-500/20">
+              <span class="material-symbols-outlined text-[0.65rem]">close</span>Dismiss
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Churn Signals -->
   {% if churn_signals %}
   <div class="glass-card rounded-3xl p-6 mb-8 border border-rose-500/30 bg-rose-500/5 relative overflow-hidden">
