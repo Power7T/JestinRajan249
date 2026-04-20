@@ -282,7 +282,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
                 </td>
                 <td class="px-5 py-3 text-xs text-slate-300">{{ log.feature }}</td>
                 <td class="px-5 py-3 text-xs font-mono text-slate-400">
-                  <span class="text-emerald-400">{{ log.input_tokens }}</span> / <span class="text-amber-400">{{ log.output_tokens }}</span>
+                  <span class="text-emerald-400">{{ log.input_tokens or 0 }}</span> / <span class="text-amber-400">{{ log.output_tokens or 0 }}</span>
                 </td>
                 <td class="px-5 py-3 text-xs font-medium text-right text-emerald-400">${{ "%.3f"|format(log.cost_usd) }}</td>
               </tr>

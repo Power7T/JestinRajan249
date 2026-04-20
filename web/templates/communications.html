@@ -7,7 +7,7 @@
 {% block workspace_content %}
 <div class="metric-grid">
   <div class="metric-card">
-    <div class="metric-value">{% if cfg.wa_mode == 'meta_cloud' %}Cloud{% elif cfg.wa_mode == 'twilio' %}Twilio{% else %}None{% endif %}</div>
+    <div class="metric-value">{% if cfg.wa_mode == 'meta_cloud' %}Cloud{% elif cfg.wa_mode == 'twilio' %}Twilio{% else %}Not connected{% endif %}</div>
     <div class="metric-label">WhatsApp mode</div>
     <div class="metric-note">The app auto-selects Twilio WhatsApp when a sender is configured, otherwise Meta Cloud when a phone ID and token exist.</div>
   </div>
