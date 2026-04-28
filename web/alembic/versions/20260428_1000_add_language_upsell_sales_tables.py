@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 revision: str = "20260428_1000"
-down_revision: Union[str, None] = "20260404_1000"
+down_revision: Union[str, None] = "20260419_0800"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

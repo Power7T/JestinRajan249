@@ -172,7 +172,10 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
                 {{ conv.guest_name[0]|upper if conv.guest_name else '?' }}
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-semibold text-white text-sm truncate">{{ conv.guest_name }}</p>
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <p class="font-semibold text-white text-sm truncate">{{ conv.guest_name }}</p>
+                  {% if conv.detected_language and conv.detected_language != 'en' %}<span class="flex-shrink-0 text-[9px] font-bold uppercase tracking-wide px-1 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">{{ conv.detected_language }}</span>{% endif %}
+                </div>
                 <p class="text-slate-500 text-xs font-mono truncate">{{ conv.guest_phone }}</p>
               </div>
               <div class="text-right flex-shrink-0">

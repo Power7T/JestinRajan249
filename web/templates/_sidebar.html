@@ -87,6 +87,13 @@
 <span class="material-symbols-outlined text-[1.15rem]">handyman</span><span class="text-sm">Vendors</span>
 </a>
 
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p == '/upsells' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/upsells">
+<span class="material-symbols-outlined text-[1.15rem]">sell</span><span class="text-sm">Upsells</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 rounded-xl {% if p.startswith('/sales-ai') %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/sales-ai">
+<span class="material-symbols-outlined text-[1.15rem]">storefront</span><span class="text-sm">Sales AI</span>
+</a>
+
 <div class="pt-3 pb-1 px-6">
   <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Account</p>
 </div>

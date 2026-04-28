@@ -5749,7 +5749,7 @@ def _check_upsell_triggers(
                 source=channel,
                 reservation_id=reservation.id,
                 guest_name=reservation.guest_name,
-                message=f"[Upsell: {offer.name}]",
+                message=f"[Upsell: {offer.name or offer.title or 'Offer'}]",
                 reply_to=reply_to,
                 msg_type="routine",
                 draft=pitch,
