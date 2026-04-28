@@ -1,0 +1,436 @@
+{%- extends "base.html" %}
+{%- block title %}Upsells — HostAI{%- endblock %}
+
+{%- block head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" nonce="{{ request.state.csp_nonce }}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config" nonce="{{ request.state.csp_nonce }}">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#121319",
+              "tertiary-fixed-dim": "#ffb960",
+              "tertiary-container": "#ca8103",
+              "on-error": "#690005",
+              "on-tertiary-fixed": "#2a1700",
+              "secondary-fixed-dim": "#00daf3",
+              "primary": "#aec6ff",
+              "surface-container": "#1e1f26",
+              "tertiary": "#ffb960",
+              "primary-fixed-dim": "#aec6ff",
+              "on-tertiary": "#472a00",
+              "inverse-on-surface": "#2f3037",
+              "surface": "#121319",
+              "secondary": "#bdf4ff",
+              "outline": "#8d909e",
+              "surface-variant": "#34343b",
+              "inverse-surface": "#e3e1eb",
+              "on-primary-container": "#00275e",
+              "background": "#121319",
+              "error-container": "#93000a",
+              "surface-bright": "#383940",
+              "primary-fixed": "#d8e2ff",
+              "primary-container": "#5d8ef1",
+              "on-secondary-container": "#00616d",
+              "secondary-container": "#00e3fd",
+              "on-surface": "#e3e1eb",
+              "surface-container-highest": "#34343b",
+              "on-secondary-fixed-variant": "#004f58",
+              "on-secondary-fixed": "#001f24",
+              "surface-container-lowest": "#0d0e14",
+              "on-tertiary-container": "#3e2400",
+              "surface-container-low": "#1a1b22",
+              "on-surface-variant": "#c3c6d4",
+              "surface-container-high": "#292930",
+              "on-secondary": "#00363d",
+              "error": "#ffb4ab",
+              "secondary-fixed": "#9cf0ff",
+              "on-primary-fixed-variant": "#004397",
+              "inverse-primary": "#1e5bba",
+              "on-primary-fixed": "#001a43",
+              "surface-tint": "#aec6ff",
+              "on-error-container": "#ffdad6",
+              "on-primary": "#002e6b",
+              "outline-variant": "#424752",
+              "on-background": "#e3e1eb",
+              "tertiary-fixed": "#ffddb8",
+              "on-tertiary-fixed-variant": "#653e00"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #08090F;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #e3e1eb;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(26, 27, 34, 0.7);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(174, 198, 255, 0.1);
+            border-left: 1px solid rgba(174, 198, 255, 0.1);
+        }
+        .text-gradient-primary {
+            background: linear-gradient(135deg, #aec6ff 0%, #5d8ef1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #aec6ff 0%, #5d8ef1 100%);
+            box-shadow: 0px 0px 12px rgba(174, 198, 255, 0.3);
+        }
+    </style>
+
+<style>
+/* Settings Compat Layer — maps old CSS vars to the Obsidian system */
+:root {
+  --surface: #1a1b22;
+  --bg: #08090F;
+  --bg-2: #121319;
+  --bg-3: #1e1f26;
+  --bg-4: #292930;
+  --border: rgba(66,71,82,0.5);
+  --border-2: rgba(174,198,255,0.2);
+  --text-1: #e3e1eb;
+  --text-2: #c3c6d4;
+  --text-3: #8d909e;
+  --accent: #5B8DEF;
+  --accent-2: #aec6ff;
+  --accent-glow: rgba(91,141,239,0.3);
+  --success: #27c93f;
+  --success-bg: rgba(39,201,63,0.1);
+  --success-border: rgba(39,201,63,0.3);
+  --danger: #ffb4ab;
+  --danger-bg: rgba(255,180,171,0.1);
+  --danger-border: rgba(255,180,171,0.3);
+  --warn: #ffbd2e;
+  --warn-bg: rgba(255,189,46,0.1);
+  --warn-border: rgba(255,189,46,0.3);
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --radius-lg: 1rem;
+  --t: 0.15s ease;
+  --nav-h: 64px;
+  --rose: #ff6b8a;
+}
+.settings-compat h1{font-size:1.8rem;font-weight:800;margin-bottom:1rem;color:#e3e1eb}
+.settings-compat h2{font-size:1.1rem;font-weight:700;margin-bottom:0.75rem;color:#e3e1eb}
+.settings-compat h3{font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;color:#c3c6d4}
+.settings-compat .card,.settings-compat .form-section,.settings-compat .channel-section{background:rgba(26,27,34,0.7);backdrop-filter:blur(16px);border:1px solid rgba(174,198,255,0.08);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem}
+.settings-compat label{display:block;font-size:0.78rem;font-weight:600;color:#8d909e;margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.06em}
+.settings-compat input:not([type=checkbox]):not([type=submit]):not([type=hidden]),.settings-compat select,.settings-compat textarea{width:100%;background:#0d0e14 !important;border:1px solid rgba(66,71,82,0.4) !important;border-radius:0.5rem;padding:0.6rem 0.85rem;color:#e3e1eb !important;font-size:0.85rem;margin-bottom:1rem;outline:none;transition:border-color 0.15s}
+.settings-compat input:focus,.settings-compat select:focus,.settings-compat textarea:focus{border-color:#5B8DEF}
+.settings-compat textarea{min-height:4rem;resize:vertical}
+.settings-compat .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1.1rem;border-radius:0.5rem;font-size:0.84rem;font-weight:600;cursor:pointer;transition:all 0.15s;border:none}
+.settings-compat .btn-primary{background:linear-gradient(135deg,#5B8DEF,#aec6ff);color:#002e6b}
+.settings-compat .btn-outline{background:transparent;border:1px solid rgba(174,198,255,0.2);color:#aec6ff}
+.settings-compat .btn-outline:hover{background:rgba(174,198,255,0.08)}
+.settings-compat .btn-success{background:rgba(39,201,63,0.15);border:1px solid rgba(39,201,63,0.3);color:#27c93f}
+.settings-compat .btn-sm{padding:0.3rem 0.75rem;font-size:0.77rem}
+.settings-compat .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:0.5rem}
+.settings-compat table{width:100%;border-collapse:collapse;font-size:0.84rem}
+.settings-compat th{text-align:left;color:#8d909e;font-size:0.72rem;font-weight:700;text-transform:uppercase;padding:0.5rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.3)}
+.settings-compat td{padding:0.6rem 0.75rem;border-bottom:1px solid rgba(66,71,82,0.15);color:#c3c6d4}
+.settings-compat .alert-success{background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.3);color:#27c93f;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.85rem}
+.settings-compat .checklist-item{display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid rgba(66,71,82,0.2);font-size:0.84rem;color:#c3c6d4}
+.settings-compat .check-icon.done{color:#27c93f}
+.settings-compat .check-icon.todo{color:#424752}
+.settings-compat .checklist-action{margin-left:auto}
+.settings-compat .chip{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:0.72rem;font-weight:600;background:rgba(174,198,255,0.08);color:#aec6ff;border:1px solid rgba(174,198,255,0.12);margin-right:0.25rem}
+.settings-compat .chip.good{background:rgba(39,201,63,0.1);color:#27c93f;border-color:rgba(39,201,63,0.2)}
+.settings-compat .chip.warn{background:rgba(255,189,46,0.1);color:#ffbd2e;border-color:rgba(255,189,46,0.2)}
+.settings-compat .chip.bad{background:rgba(255,180,171,0.1);color:#ffb4ab;border-color:rgba(255,180,171,0.2)}
+.settings-compat .chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.5rem}
+.settings-compat .help-text{font-size:0.78rem;color:#8d909e;margin-top:-0.5rem;margin-bottom:0.75rem}
+.settings-compat .copy-box{display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem}
+.settings-compat .copy-box input{margin-bottom:0;font-family:monospace}
+.settings-compat .channel-section{opacity:1}
+.settings-compat .channel-section.locked{opacity:0.5;pointer-events:none}
+.settings-compat .channel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.settings-compat .channel-title{font-size:0.95rem;font-weight:700;color:#e3e1eb}
+.settings-compat .active-badge{font-size:0.72rem;background:rgba(39,201,63,0.1);color:#27c93f;border:1px solid rgba(39,201,63,0.3);padding:3px 10px;border-radius:999px;font-weight:700}
+.settings-compat .lock-badge{font-size:0.72rem;background:rgba(255,180,171,0.1);color:#ffb4ab;border:1px solid rgba(255,180,171,0.3);padding:3px 10px;border-radius:999px;font-weight:700;text-decoration:none}
+.settings-compat .token-display{font-family:monospace;font-size:0.82rem;background:#0d0e14;border:1px solid rgba(66,71,82,0.4);border-radius:0.5rem;padding:8px 12px;word-break:break-all;color:#aec6ff;margin-bottom:0.75rem}
+.settings-compat .download-box{background:rgba(39,201,63,0.06);border:1px solid rgba(39,201,63,0.2);border-radius:0.75rem;padding:1.25rem}
+.settings-compat .workflow-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.85rem}
+.settings-compat .workflow-card{background:#0d0e14;border:1px solid rgba(66,71,82,0.3);border-radius:0.75rem;padding:1.1rem;transition:all 0.15s}
+.settings-compat .workflow-card:hover{border-color:#5B8DEF}
+.settings-compat .workflow-card h3{font-size:0.88rem;margin-bottom:0.4rem;color:#e3e1eb;text-transform:none;letter-spacing:0}
+.settings-compat .workflow-card p{font-size:0.8rem;color:#8d909e;line-height:1.6}
+.settings-compat select[multiple]{height:auto;min-height:80px}
+.settings-compat input[type=checkbox]{width:1.25rem !important;height:1.25rem !important;margin-bottom:0;margin-right:0.4rem;border-radius:0.25rem;accent-color:#5B8DEF}
+.settings-compat details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600}
+.settings-compat .accordion-body{margin-top:1rem;padding:1rem;background:#0d0e14;border-radius:0.5rem;border:1px solid rgba(66,71,82,0.3)}
+</style>
+{%- endblock %}
+
+{%- block nav %}{%- endblock %}
+
+{%- block main_wrapper %}
+{%- block content %}
+<aside class="fixed left-0 top-0 h-screen w-[260px] z-50 bg-[#08090F]/80 backdrop-blur-2xl border-r border-white/5 shadow-[4px_0_24px_rgba(91,141,239,0.05)] flex flex-col h-full font-['Plus_Jakarta_Sans'] text-sm font-medium">
+<a href="/dashboard" class="flex items-center gap-3 text-xl font-extrabold text-white tracking-tight px-6 py-8 hover:opacity-80 transition-opacity">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">hub</span>
+</div>
+<span>HostAI</span>
+</a>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/dashboard">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/conversations">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+                Conversations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/reservations">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+                Reservations
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/activity">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Activity
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/analytics/roi">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+                ROI Dashboard
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/voice-calls' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/voice-calls">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+                Voice AI
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/workflow' or request.url.path == '/billing' or request.url.path == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/workflow">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+                Workflow Center
+            </a>
+
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/upsells' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/upsells">
+<span class="material-symbols-outlined" data-icon="sell">sell</span>
+                Upsells
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/sales-ai') %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/sales-ai">
+<span class="material-symbols-outlined" data-icon="storefront">storefront</span>
+                Sales AI
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path == '/settings' %}text-[#5B8DEF] bg-[#5B8DEF]/10 border-r-2 border-[#5B8DEF]{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 active:scale-[0.98]" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+{% if tenant is defined and tenant and is_admin(tenant.email) %}
+<a class="flex items-center gap-3 px-6 py-3 {% if request.url.path.startswith('/admin') %}text-rose-400 bg-rose-400/10 border-r-2 border-rose-400 font-bold{% else %}text-rose-400 hover:text-rose-300 hover:bg-white/5 font-bold{% endif %} transition-all duration-200" href="/admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+                Admin
+            </a>
+{% endif %}
+</nav>
+<div class="mt-auto p-6 space-y-4">
+<div class="flex items-center gap-3 px-2 py-3 rounded-xl bg-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-lg flex-shrink-0">
+  {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-white font-bold truncate">{{ current_user.name if current_user else "Your Account" }}</p>
+<p class="text-slate-500 text-xs truncate">Host Administrator</p>
+</div>
+</div>
+<form method="post" action="/logout">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button type="submit" class="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">
+    <span class="material-symbols-outlined text-sm">logout</span>
+    Sign Out
+  </button>
+</form>
+</div>
+</aside>
+
+<!-- Main Content Area -->
+<main class="flex-1 ml-[260px] relative">
+<!-- TopAppBar -->
+<!-- TopNavBar Shell -->
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-[#08090F]/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-8 h-16 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface border-none rounded-xl pl-10 pr-4 py-2 focus:ring-1 focus:ring-primary/40 transition-all text-sm placeholder:text-slate-600" placeholder="Search guests, drafts, or analytics..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative p-2 text-slate-400 hover:bg-white/5 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface-dim"></span>
+</button>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<span class="text-slate-200 group-hover:text-white transition-colors">Host Control</span>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold text-sm">
+  {{ (tenant.name or tenant.email or 'H')[0]|upper if tenant else 'H' }}
+</div>
+</div>
+</div>
+</header>
+
+<!-- Upsells Content Canvas -->
+<div class="pt-24 pb-16 px-10 max-w-5xl mx-auto settings-compat">
+<div class="mb-10">
+<h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">Upsells</h1>
+<p class="text-slate-400">Create offers that automatically send to guests at key moments during their stay.</p>
+</div>
+
+{% if saved_message == '1' %}
+<div class="alert-success">Offer saved successfully.</div>
+{% endif %}
+
+<!-- Revenue summary -->
+<div class="form-section" style="margin-bottom:1.5rem">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 style="margin-bottom:0.25rem">Revenue from accepted upsells</h2>
+      <p class="text-slate-400 text-sm">Based on {{ sends|selectattr('status','equalto','accepted')|list|length }} accepted offer(s)</p>
+    </div>
+    <div class="text-right">
+      <p class="text-3xl font-extrabold text-white">${{ "%.0f"|format(total_revenue) }}</p>
+      <p class="text-slate-500 text-xs">all time</p>
+    </div>
+  </div>
+</div>
+
+<!-- Add new offer -->
+<div class="form-section">
+  <h2>Add a new offer</h2>
+  <form method="post" action="/upsells/offers/add">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div class="form-row">
+      <div>
+        <label>Offer name</label>
+        <input type="text" name="name" placeholder="Late Checkout" required>
+      </div>
+      <div>
+        <label>Price (USD)</label>
+        <input type="number" name="price_usd" placeholder="30" step="0.01" min="0">
+      </div>
+    </div>
+    <label>Description (shown in the AI message)</label>
+    <textarea name="description" placeholder="Enjoy an extra 2 hours before you check out. Perfect for late flights!"></textarea>
+    <div class="form-row">
+      <div>
+        <label>Trigger point</label>
+        <select name="trigger_point">
+          <option value="booking_confirmation">At booking confirmation</option>
+          <option value="pre_arrival">Pre-arrival</option>
+          <option value="mid_stay">Mid-stay</option>
+        </select>
+      </div>
+      <div>
+        <label>Days before check-in (pre-arrival only)</label>
+        <input type="number" name="trigger_days_before" placeholder="3" min="1">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Offer</button>
+  </form>
+</div>
+
+<!-- Existing offers -->
+{% if offers %}
+<div class="form-section">
+  <h2>Your offers</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Trigger</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for offer in offers %}
+      <tr>
+        <td>
+          <p class="text-white font-semibold text-sm">{{ offer.name }}</p>
+          {% if offer.description %}<p class="text-slate-500 text-xs mt-0.5">{{ offer.description[:60] }}{% if offer.description|length > 60 %}…{% endif %}</p>{% endif %}
+        </td>
+        <td>{% if offer.price_usd %}${{ "%.0f"|format(offer.price_usd) }}{% else %}<span class="text-slate-600">—</span>{% endif %}</td>
+        <td>
+          {% if offer.trigger_point == 'booking_confirmation' %}<span class="chip">Booking</span>
+          {% elif offer.trigger_point == 'pre_arrival' %}<span class="chip">Pre-arrival{% if offer.trigger_days_before %} ({{ offer.trigger_days_before }}d){% endif %}</span>
+          {% else %}<span class="chip">Mid-stay</span>{% endif %}
+        </td>
+        <td>{% if offer.is_active %}<span class="chip good">Active</span>{% else %}<span class="chip bad">Paused</span>{% endif %}</td>
+        <td>
+          <div class="flex gap-2">
+            <form method="post" action="/upsells/offers/{{ offer.id }}/edit" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+              <input type="hidden" name="name" value="{{ offer.name }}">
+              <input type="hidden" name="description" value="{{ offer.description or '' }}">
+              <input type="hidden" name="price_usd" value="{{ offer.price_usd or '' }}">
+              <input type="hidden" name="trigger_point" value="{{ offer.trigger_point }}">
+              <input type="hidden" name="trigger_days_before" value="{{ offer.trigger_days_before or '' }}">
+              <input type="hidden" name="is_active" value="{% if offer.is_active %}off{% else %}on{% endif %}">
+              <button type="submit" class="btn btn-sm btn-outline">{% if offer.is_active %}Pause{% else %}Activate{% endif %}</button>
+            </form>
+            <form method="post" action="/upsells/offers/{{ offer.id }}/delete" style="display:inline" onsubmit="return confirm('Delete this offer?')">
+              <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+              <button type="submit" class="btn btn-sm" style="background:rgba(255,180,171,0.1);color:#ffb4ab;border:1px solid rgba(255,180,171,0.3)">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Send history -->
+{% if sends %}
+<div class="form-section">
+  <h2>Recent sends</h2>
+  <table>
+    <thead>
+      <tr><th>Offer</th><th>Guest</th><th>Channel</th><th>Status</th><th>Sent</th></tr>
+    </thead>
+    <tbody>
+      {% for s in sends %}
+      <tr>
+        <td class="text-white text-sm">{{ s.offer.name if s.offer else '—' }}</td>
+        <td class="text-slate-400 text-sm">{{ s.reservation.guest_name if s.reservation else '—' }}</td>
+        <td><span class="chip">{{ s.channel }}</span></td>
+        <td>
+          {% if s.status == 'accepted' %}<span class="chip good">Accepted</span>
+          {% elif s.status == 'declined' %}<span class="chip bad">Declined</span>
+          {% else %}<span class="chip">Sent</span>{% endif %}
+        </td>
+        <td class="text-slate-500 text-xs">{{ s.sent_at.strftime('%b %d') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+</div><!-- end canvas -->
+</main>
+{%- endblock %}
+{%- endblock %}

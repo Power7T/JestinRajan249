@@ -181,6 +181,9 @@ class Tenant(Base):
     voice_calls:    Mapped[list["VoiceCall"]]     = relationship("VoiceCall", back_populates="tenant")
     voice_routing_config: Mapped[Optional["VoiceRoutingConfig"]] = relationship("VoiceRoutingConfig", back_populates="tenant", uselist=False)
     routing_rules:  Mapped[list["RoutingRule"]]   = relationship("RoutingRule", back_populates="tenant")
+    upsell_offers:  Mapped[list["UpsellOffer"]]   = relationship("UpsellOffer", back_populates="tenant")
+    sales_config:   Mapped[Optional["SalesConfig"]] = relationship("SalesConfig", back_populates="tenant", uselist=False)
+    sales_conversations: Mapped[list["SalesConversation"]] = relationship("SalesConversation", back_populates="tenant")
 
 
 # ---------------------------------------------------------------------------
@@ -525,6 +528,7 @@ class Draft(Base):
     host_feedback_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     context_sources: Mapped[Optional[str]]   = mapped_column(Text, nullable=True)   # JSON list of source labels
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    detected_language: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="drafts")
     reservation: Mapped[Optional["Reservation"]] = relationship("Reservation", back_populates="drafts")
@@ -662,6 +666,11 @@ class Reservation(Base):
     # Guest-facing check-in portal token (random URL-safe string, unique per reservation)
     checkin_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True, unique=True)
     checkin_token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Upsell send-state flags (prevent duplicate sends per trigger point)
+    upsell_booking_sent:    Mapped[bool] = mapped_column(Boolean, default=False)
+    upsell_pre_arrival_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    upsell_mid_stay_sent:   Mapped[bool] = mapped_column(Boolean, default=False)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="reservations")
     intake_batch: Mapped[Optional["ReservationIntakeBatch"]] = relationship("ReservationIntakeBatch", back_populates="reservations")
@@ -1437,3 +1446,114 @@ class UpsellOffer(Base):
     updated_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
     tenant: Mapped["Tenant"] = relationship("Tenant")
+
+
+# ---------------------------------------------------------------------------
+# UpsellOffer — host-configured upsell offers (late checkout, experiences, etc.)
+# ---------------------------------------------------------------------------
+
+class UpsellOffer(Base):
+    __tablename__ = "upsell_offers"
+
+    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    name:        Mapped[str]           = mapped_column(String(128))
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    price_usd:   Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    trigger_point: Mapped[str]         = mapped_column(String(32), index=True)  # booking_confirmation | pre_arrival | mid_stay
+    trigger_days_before: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    is_active:   Mapped[bool]          = mapped_column(Boolean, default=True, index=True)
+    sort_order:  Mapped[int]           = mapped_column(Integer, default=100)
+    created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="upsell_offers")
+    sends:  Mapped[list["UpsellSend"]] = relationship("UpsellSend", back_populates="offer")
+
+
+# ---------------------------------------------------------------------------
+# UpsellSend — tracks which offers were sent to which reservation and outcome
+# ---------------------------------------------------------------------------
+
+class UpsellSend(Base):
+    __tablename__ = "upsell_sends"
+    __table_args__ = (
+        UniqueConstraint("offer_id", "reservation_id", name="uq_upsell_send"),
+    )
+
+    id:              Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:       Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    offer_id:        Mapped[int]           = mapped_column(Integer, ForeignKey("upsell_offers.id"), index=True)
+    reservation_id:  Mapped[int]           = mapped_column(Integer, ForeignKey("reservations.id"), index=True)
+    draft_id:        Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    channel:         Mapped[str]           = mapped_column(String(32))
+    status:          Mapped[str]           = mapped_column(String(16), default="sent", index=True)  # sent | accepted | declined
+    guest_response_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    accepted_at:     Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at:         Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+    offer:       Mapped["UpsellOffer"]  = relationship("UpsellOffer", back_populates="sends")
+    reservation: Mapped["Reservation"]  = relationship("Reservation")
+
+
+# ---------------------------------------------------------------------------
+# SalesConfig — per-tenant Sales AI agent settings
+# ---------------------------------------------------------------------------
+
+class SalesConfig(Base):
+    __tablename__ = "sales_configs"
+
+    id:               Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:        Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), unique=True, index=True)
+    is_enabled:       Mapped[bool]          = mapped_column(Boolean, default=False)
+    ai_persona_name:  Mapped[str]           = mapped_column(String(128), default="Your Host")
+    pricing_note:     Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    booking_link:     Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    max_conv_turns:   Mapped[int]           = mapped_column(Integer, default=10)
+    created_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="sales_config")
+
+
+# ---------------------------------------------------------------------------
+# SalesConversation — pre-booking inquiry thread (kept separate from post-booking drafts)
+# ---------------------------------------------------------------------------
+
+class SalesConversation(Base):
+    __tablename__ = "sales_conversations"
+
+    id:               Mapped[str]           = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id:        Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    channel:          Mapped[str]           = mapped_column(String(16))
+    lead_phone:       Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    lead_email:       Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    lead_name:        Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    status:           Mapped[str]           = mapped_column(String(24), default="open", index=True)  # open | closed_booked | closed_dropped | closed_maxturns
+    detected_language: Mapped[str]          = mapped_column(String(8), default="en")
+    turn_count:       Mapped[int]           = mapped_column(Integer, default=0)
+    booking_sent_at:  Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at:        Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    updated_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    tenant:   Mapped["Tenant"]             = relationship("Tenant", back_populates="sales_conversations")
+    messages: Mapped[list["SalesMessage"]] = relationship("SalesMessage", back_populates="conversation", order_by="SalesMessage.created_at")
+
+
+# ---------------------------------------------------------------------------
+# SalesMessage — individual turn in a sales conversation
+# ---------------------------------------------------------------------------
+
+class SalesMessage(Base):
+    __tablename__ = "sales_messages"
+
+    id:              Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[str]      = mapped_column(String(36), ForeignKey("sales_conversations.id"), index=True)
+    tenant_id:       Mapped[str]      = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    direction:       Mapped[str]      = mapped_column(String(8))   # inbound | outbound
+    body:            Mapped[str]      = mapped_column(Text)
+    channel:         Mapped[str]      = mapped_column(String(16))
+    created_at:      Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+    conversation: Mapped["SalesConversation"] = relationship("SalesConversation", back_populates="messages")

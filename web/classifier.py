@@ -145,6 +145,33 @@ _MULTILINGUAL_RULE = """
 LANGUAGE RULE: Detect the language the guest is writing in. Always reply in the SAME language as the guest's message. If the guest writes in French, reply in French. If the guest writes in Spanish, reply in Spanish. If the guest writes in Arabic, reply in Arabic. The property information above is in English — translate your response for the guest automatically. The menu, house rules, and FAQ content should be translated on-the-fly as needed.
 """
 
+_LANGUAGE_NAMES = {
+    "en": "English", "es": "Spanish", "fr": "French", "de": "German",
+    "pt": "Portuguese", "it": "Italian", "nl": "Dutch", "ar": "Arabic",
+    "ja": "Japanese", "ko": "Korean", "zh": "Mandarin Chinese", "ru": "Russian",
+}
+
+_UPSELL_SYSTEM_PROMPT = """
+You are a warm, concise hospitality assistant. Generate a short, personalized offer message for a guest.
+Be friendly and specific to their stay context. Keep it to 2–4 sentences.
+End with a clear yes/no question or action prompt. Include the price if provided.
+Detect and match the guest's likely language from any prior context clues.
+Do NOT hard-sell or repeat the same line twice. Do NOT mention competitors.
+"""
+
+_SALES_SYSTEM_PROMPT = """
+You are {persona_name}'s knowledgeable and friendly booking assistant for a short-term rental property.
+Your job is to answer pre-booking questions, quote pricing, check availability, and guide potential guests toward making a booking.
+
+Rules:
+- Never invent prices, fees, or availability. Use only the context provided.
+- If a date range is requested, reference the availability data to confirm or decline clearly.
+- Always close with a call-to-action pointing to the booking link (if provided) or asking the guest to confirm interest.
+- Be warm, brief, and helpful without being pushy.
+- Detect the guest's language and reply in the same language.
+- Do NOT mention or compare with other platforms or competitors.
+"""
+
 _GUEST_CONTEXT_RULE = """
 GUEST CONTEXT RULES:
 - Treat host-provided FAQ, house rules, food menu, nearby recommendations, and custom instructions as the operating manual for this property.
@@ -414,11 +441,33 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
     skill_cmd  = _SKILL_CMD_MAP.get(skill) or ("/reply" if msg_type == "routine" else "/complaint")
     max_tokens = 1024 if skill in _CALENDAR_SKILLS else 512
 
-    # Build dynamic system prompt: base + per-tenant property context + multilingual rule
+    # Build dynamic system prompt: base + per-tenant property context + language rule
     system = SYSTEM_PROMPT
     if property_context:
         system = system + "\n\n" + property_context
-    system = system + "\n\n" + _MULTILINGUAL_RULE + "\n\n" + _GUEST_CONTEXT_RULE
+
+    # Resolve language rule: check TenantConfig overrides
+    lang_rule = _MULTILINGUAL_RULE
+    if tenant_id:
+        try:
+            from web.db import SessionLocal
+            from web.models import TenantConfig as _TC
+            with SessionLocal() as _db:
+                _cfg = _db.query(_TC).filter_by(tenant_id=tenant_id).first()
+                if _cfg:
+                    pref = getattr(_cfg, "preferred_reply_language", None)
+                    sec  = getattr(_cfg, "secondary_reply_language", None)
+                    if pref and pref in _LANGUAGE_NAMES:
+                        lang_rule = f"LANGUAGE RULE: Always reply in {_LANGUAGE_NAMES[pref]} regardless of the guest's language."
+                    elif sec and sec in _LANGUAGE_NAMES:
+                        lang_rule = (
+                            "LANGUAGE RULE: Detect guest language and reply in that language. "
+                            f"Also append a translation in {_LANGUAGE_NAMES[sec]} below a '---' divider."
+                        )
+        except Exception:
+            pass
+
+    system = system + "\n\n" + lang_rule + "\n\n" + _GUEST_CONTEXT_RULE
 
     safe_guest_name = "Guest" if guest_name else ""
     
@@ -551,3 +600,118 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
 
 def make_draft_id(source: str) -> str:
     return f"{source}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}"
+
+
+def generate_upsell_pitch(reservation, offer, cfg, tenant_id: Optional[str] = None) -> str:
+    """Generate a personalized upsell offer message for a guest."""
+    from web.db import SessionLocal
+    from web.models import SystemConfig, APIUsageLog
+    import openai
+
+    price_str = f"${offer.price_usd:.0f}" if offer.price_usd else "ask about pricing"
+    checkin_str = str(reservation.checkin) if reservation.checkin else "upcoming"
+    system = _UPSELL_SYSTEM_PROMPT
+
+    user_content = (
+        f"Guest name: {reservation.guest_name}\n"
+        f"Check-in: {checkin_str}\n"
+        f"Offer: {offer.name}\n"
+        f"Offer description: {offer.description or ''}\n"
+        f"Price: {price_str}\n\n"
+        "Generate a short, warm upsell message to send this guest."
+    )
+
+    with SessionLocal() as db:
+        sys_conf = db.query(SystemConfig).first()
+        if not sys_conf or not sys_conf.openrouter_api_key_enc:
+            return f"Hi {reservation.guest_name}! Would you like to add {offer.name} to your stay? {price_str}. Let us know!"
+
+        client = openai.OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=decrypt(sys_conf.openrouter_api_key_enc),
+        )
+        try:
+            resp = client.chat.completions.create(
+                model=sys_conf.routine_model or "google/gemini-2.5-flash",
+                max_tokens=200,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_content},
+                ],
+            )
+            content = resp.choices[0].message.content or ""
+            db.add(APIUsageLog(
+                tenant_id=tenant_id,
+                model=sys_conf.routine_model,
+                provider="openrouter",
+                input_tokens=resp.usage.prompt_tokens if resp.usage else 0,
+                output_tokens=resp.usage.completion_tokens if resp.usage else 0,
+                feature="upsell_pitch",
+            ))
+            db.commit()
+            return content.strip()
+        except Exception as exc:
+            log.warning("Upsell pitch generation failed: %s", exc)
+            return f"Hi {reservation.guest_name}! Would you like to add {offer.name} to your stay? {price_str}. Let us know!"
+
+
+def generate_sales_reply(
+    persona_name: str,
+    lead_name: Optional[str],
+    message: str,
+    conversation_history: list[dict],
+    property_context: str,
+    availability_context: str,
+    pricing_note: Optional[str],
+    booking_link: Optional[str],
+    tenant_id: Optional[str] = None,
+) -> str:
+    """Generate a sales AI reply for a pre-booking inquiry."""
+    from web.db import SessionLocal
+    from web.models import SystemConfig, APIUsageLog
+    import openai
+
+    system = _SALES_SYSTEM_PROMPT.format(persona_name=persona_name)
+    if property_context:
+        system += "\n\n" + property_context
+    if pricing_note:
+        system += f"\n\nPRICING: {pricing_note}"
+    if availability_context:
+        system += f"\n\nAVAILABILITY:\n{availability_context}"
+    if booking_link:
+        system += f"\n\nBOOKING LINK: {booking_link}"
+
+    messages: list[dict] = [{"role": "system", "content": system}]
+    for turn in conversation_history[-10:]:
+        messages.append({"role": turn["role"], "content": turn["content"]})
+    messages.append({"role": "user", "content": message})
+
+    with SessionLocal() as db:
+        sys_conf = db.query(SystemConfig).first()
+        if not sys_conf or not sys_conf.openrouter_api_key_enc:
+            return "Thanks for your interest! Please use our booking link to check availability and complete your reservation."
+
+        client = openai.OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=decrypt(sys_conf.openrouter_api_key_enc),
+        )
+        try:
+            resp = client.chat.completions.create(
+                model=sys_conf.primary_model or "anthropic/claude-3.5-sonnet",
+                max_tokens=400,
+                messages=messages,
+            )
+            content = resp.choices[0].message.content or ""
+            db.add(APIUsageLog(
+                tenant_id=tenant_id,
+                model=sys_conf.primary_model,
+                provider="openrouter",
+                input_tokens=resp.usage.prompt_tokens if resp.usage else 0,
+                output_tokens=resp.usage.completion_tokens if resp.usage else 0,
+                feature="sales_reply",
+            ))
+            db.commit()
+            return content.strip()
+        except Exception as exc:
+            log.warning("Sales reply generation failed: %s", exc)
+            return "Thanks for your interest! Please use our booking link to check availability and complete your reservation."

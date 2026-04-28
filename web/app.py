@@ -84,6 +84,8 @@ from web.models import (
     PMSIntegration, PMSProcessedMessage,
     ProcessedEmail, PlanConfig, VoicePricingConfig, FailedDraftLog,
     VoiceCall, VoiceKnowledgeGap, APIUsageLog, TenantRateLimit, RateLimitCounter, FeatureFlag, FeatureFlagOverride,
+    UpsellOffer, UpsellSend,
+    SalesConfig, SalesConversation, SalesMessage,
     PLAN_FREE, PLAN_META_CLOUD, PLAN_SMS, PLAN_PRO,
     PLAN_STARTER, PLAN_GROWTH,
 )
@@ -590,6 +592,13 @@ async def lifespan(app: FastAPI):
             CronTrigger(hour=9, minute=0, timezone="UTC"),  # Daily at 9:00 AM UTC
             id="voice_scheduled_calls",
             name="Voice Pre-checkin Calls",
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            _upsell_mid_stay_job,
+            CronTrigger(hour="*/2", minute=0, timezone="UTC"),  # Every 2 hours
+            id="upsell_mid_stay",
+            name="Upsell Mid-Stay Trigger",
             replace_existing=True,
         )
         # Add APScheduler event listeners for job failures (Failure gap fix #5)
@@ -5261,8 +5270,13 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
     if not is_guest_whitelisted(tenant_id, reply_to, db):
         guest_contact = get_guest_contact_for_phone(tenant_id, reply_to, db)
         if not guest_contact:
-            log.warning(f"[{tenant_id}] Inbound from unregistered guest {reply_to} ({source}) — rejecting")
-            return  # Don't process unregistered guests
+            # Not a known guest — check if Sales AI should handle this as a pre-booking inquiry
+            sales_cfg = db.query(SalesConfig).filter_by(tenant_id=tenant_id, is_enabled=True).first()
+            if sales_cfg:
+                _handle_sales_inquiry(tenant_id, source, reply_to, text, sales_cfg, db)
+            else:
+                log.warning(f"[{tenant_id}] Inbound from unregistered guest {reply_to} ({source}) — rejecting")
+            return
         # Guest contact found but outside check-in window — allow but log
         log.info(f"[{tenant_id}] Message from {guest_contact.guest_name} outside check-in window")
     else:
@@ -5360,6 +5374,9 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
         thread_key, parent_draft_id, guest_message_index = _draft_thread_metadata(
             db, tenant_id, reservation, reply_to, guest_name, source
         )
+        from web.lang_detect import detect_language as _detect_lang
+        detected_lang = _detect_lang(text, tenant_id)
+
         draft_id = secrets.token_hex(8)
         draft = Draft(
             id=draft_id,
@@ -5384,6 +5401,7 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
             sentiment_score=sentiment["score"],
             stay_stage=stay_stage,
             policy_conflicts_json=_draft_policy_conflicts_json(policy_conflicts),
+            detected_language=detected_lang,
         )
         db.add(draft)
         if reservation:
@@ -5558,6 +5576,228 @@ def _normalize_phone(phone: str | None) -> str:
     if len(digits) == 10:
         return f"1{digits}"
     return digits
+
+
+def _get_ical_availability(cfg: TenantConfig, days_ahead: int = 90) -> str:
+    """Return a human-readable availability summary from the tenant's iCal feed."""
+    from web.calendar_worker import _fetch_ical, _parse_ical
+    from datetime import date as date_type, timedelta
+    today = datetime.now(timezone.utc).date()
+    end_date = today + timedelta(days=days_ahead)
+    booked_ranges = []
+    for url in (cfg.ical_urls or "").split(","):
+        url = url.strip()
+        if not url:
+            continue
+        try:
+            raw = _fetch_ical(url)
+            bookings = _parse_ical(raw)
+            for b in bookings:
+                if b["checkout"] >= today and b["checkin"] <= end_date:
+                    booked_ranges.append((b["checkin"], b["checkout"]))
+        except Exception as exc:
+            log.debug("iCal fetch failed for availability context: %s", exc)
+
+    if not booked_ranges:
+        return f"Property appears available for the next {days_ahead} days (no bookings found in calendar)."
+
+    booked_ranges.sort()
+    lines = [f"- {start} to {end} (booked)" for start, end in booked_ranges]
+    return "Booked dates in the next {} days:\n{}".format(days_ahead, "\n".join(lines))
+
+
+def _handle_sales_inquiry(
+    tenant_id: str, source: str, reply_to: str, text: str,
+    sales_cfg: SalesConfig, db
+) -> None:
+    """Handle a pre-booking inquiry from an unknown number via the Sales AI agent."""
+    from web.lang_detect import detect_language as _detect_lang
+    from web.classifier import generate_sales_reply, build_property_context
+
+    try:
+        # Upsert conversation keyed by (tenant, channel, phone/email)
+        conv = db.query(SalesConversation).filter_by(
+            tenant_id=tenant_id, channel=source, lead_phone=reply_to,
+        ).filter(SalesConversation.status == "open").first()
+
+        if not conv:
+            conv = SalesConversation(
+                tenant_id=tenant_id, channel=source, lead_phone=reply_to,
+                detected_language=_detect_lang(text, tenant_id),
+            )
+            db.add(conv)
+            db.flush()
+
+        if conv.turn_count >= sales_cfg.max_conv_turns:
+            conv.status = "closed_maxturns"
+            conv.closed_at = datetime.now(timezone.utc)
+            db.commit()
+            return
+
+        # Log inbound message
+        db.add(SalesMessage(
+            conversation_id=conv.id, tenant_id=tenant_id,
+            direction="inbound", body=text, channel=source,
+        ))
+
+        # Build context
+        cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+        property_ctx = build_property_context(cfg) if cfg else ""
+        availability_ctx = _get_ical_availability(cfg) if cfg else ""
+
+        # Build conversation history for LLM
+        history = [
+            {"role": "inbound" if m.direction == "inbound" else "assistant", "content": m.body}
+            for m in conv.messages
+        ]
+        # Map inbound → user for OpenAI format
+        history = [
+            {"role": "user" if h["role"] == "inbound" else "assistant", "content": h["content"]}
+            for h in history
+        ]
+
+        reply = generate_sales_reply(
+            persona_name=sales_cfg.ai_persona_name,
+            lead_name=conv.lead_name,
+            message=text,
+            conversation_history=history,
+            property_context=property_ctx,
+            availability_context=availability_ctx,
+            pricing_note=sales_cfg.pricing_note,
+            booking_link=sales_cfg.booking_link,
+            tenant_id=tenant_id,
+        )
+
+        # Append booking link if not already included
+        if sales_cfg.booking_link and sales_cfg.booking_link not in reply:
+            reply = reply + f"\n\nBook here: {sales_cfg.booking_link}"
+            conv.booking_sent_at = datetime.now(timezone.utc)
+
+        # Log outbound message
+        db.add(SalesMessage(
+            conversation_id=conv.id, tenant_id=tenant_id,
+            direction="outbound", body=reply, channel=source,
+        ))
+
+        conv.turn_count += 1
+        conv.updated_at = datetime.now(timezone.utc)
+        db.add(ActivityLog(
+            tenant_id=tenant_id, event_type="sales_inquiry",
+            message=f"Sales AI handled inquiry from {reply_to}: {text[:80]}",
+        ))
+        db.commit()
+
+        # Send reply via the appropriate channel
+        if cfg:
+            if source == "whatsapp" and cfg.wa_mode != "none" and cfg.whatsapp_phone_id:
+                from web.meta_sender import send_whatsapp
+                token = decrypt(cfg.whatsapp_token_enc) if cfg.whatsapp_token_enc else ""
+                send_whatsapp(cfg.whatsapp_phone_id, token, reply_to, reply)
+            elif source == "sms" and cfg.sms_mode != "none" and cfg.twilio_account_sid:
+                from web.sms_sender import send_sms
+                auth = decrypt(cfg.twilio_auth_token_enc) if cfg.twilio_auth_token_enc else ""
+                send_sms(cfg.twilio_account_sid, auth, cfg.twilio_from_number, reply_to, reply)
+
+    except Exception as exc:
+        log.error("[%s] Sales inquiry handler failed: %s", tenant_id, exc)
+
+
+def _check_upsell_triggers(
+    tenant_id: str, reservation: "Reservation", trigger_point: str, db
+) -> None:
+    """Fire upsell offers for a reservation at the given trigger point."""
+    from web.classifier import generate_upsell_pitch
+
+    offers = (
+        db.query(UpsellOffer)
+        .filter_by(tenant_id=tenant_id, is_active=True, trigger_point=trigger_point)
+        .order_by(UpsellOffer.sort_order)
+        .all()
+    )
+    if not offers:
+        return
+
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    if not cfg:
+        return
+
+    channel = None
+    reply_to = None
+    if reservation.guest_phone:
+        if cfg.wa_mode != "none":
+            channel, reply_to = "whatsapp", reservation.guest_phone
+        elif cfg.sms_mode != "none":
+            channel, reply_to = "sms", reservation.guest_phone
+
+    if not channel:
+        return
+
+    for offer in offers:
+        existing = db.query(UpsellSend).filter_by(
+            offer_id=offer.id, reservation_id=reservation.id,
+        ).first()
+        if existing:
+            continue
+
+        try:
+            pitch = generate_upsell_pitch(reservation, offer, cfg, tenant_id)
+            import secrets as _sec
+            draft_id = _sec.token_hex(8)
+            draft = Draft(
+                id=draft_id,
+                tenant_id=tenant_id,
+                source=channel,
+                reservation_id=reservation.id,
+                guest_name=reservation.guest_name,
+                message=f"[Upsell: {offer.name}]",
+                reply_to=reply_to,
+                msg_type="routine",
+                draft=pitch,
+                auto_send_eligible=True,
+            )
+            db.add(draft)
+            db.flush()
+
+            upsell_send = UpsellSend(
+                tenant_id=tenant_id,
+                offer_id=offer.id,
+                reservation_id=reservation.id,
+                draft_id=draft_id,
+                channel=channel,
+                status="sent",
+            )
+            db.add(upsell_send)
+            db.commit()
+
+            # Deliver
+            _execute_draft(draft, pitch, tenant_id, db, reservation=reservation)
+
+        except Exception as exc:
+            log.error("[%s] Upsell trigger failed for offer %s: %s", tenant_id, offer.id, exc)
+
+
+def _upsell_mid_stay_job() -> None:
+    """APScheduler job: send mid-stay upsells to currently in-stay reservations."""
+    from web.db import SessionLocal
+    today = datetime.now(timezone.utc).date()
+    with SessionLocal() as db:
+        active = (
+            db.query(Reservation)
+            .filter(
+                Reservation.checkin <= today,
+                Reservation.checkout >= today,
+                Reservation.upsell_mid_stay_sent == False,
+                Reservation.status == "confirmed",
+            )
+            .all()
+        )
+        for res in active:
+            try:
+                _check_upsell_triggers(res.tenant_id, res, "mid_stay", db)
+                res.upsell_mid_stay_sent = True
+                db.commit()
+            except Exception as exc:
+                log.error("Mid-stay upsell job failed for reservation %s: %s", res.id, exc)
 
 
 def _reservation_sort_key(res: Reservation, today: date_type) -> tuple[int, int, float]:
@@ -14359,6 +14599,206 @@ async def catch_all_404(request: Request, path: str):
 </body></html>""",
             status_code=404
         )
+
+
+# ---------------------------------------------------------------------------
+# Upsells
+# ---------------------------------------------------------------------------
+
+@app.get("/upsells", response_class=HTMLResponse)
+def upsells_page(request: Request, db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    tenant = _get_tenant(tenant_id, db)
+    cfg    = _get_or_create_config(tenant_id, db)
+    offers = db.query(UpsellOffer).filter_by(tenant_id=tenant_id).order_by(UpsellOffer.sort_order, UpsellOffer.id).all()
+    sends  = db.query(UpsellSend).filter_by(tenant_id=tenant_id).order_by(UpsellSend.sent_at.desc()).limit(100).all()
+    total_revenue = sum((s.offer.price_usd or 0) for s in sends if s.status == "accepted")
+    saved_message = request.query_params.get("saved")
+    return templates.TemplateResponse("upsells.html", {
+        "request": request, "tenant": tenant, "cfg": cfg,
+        "offers": offers, "sends": sends, "total_revenue": total_revenue,
+        "saved_message": saved_message,
+    })
+
+
+@app.post("/upsells/offers/add", response_class=HTMLResponse)
+async def upsell_offer_add(
+    request: Request,
+    name: str = Form(""),
+    description: str = Form(""),
+    price_usd: str = Form(""),
+    trigger_point: str = Form("booking_confirmation"),
+    trigger_days_before: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    if not name.strip():
+        return RedirectResponse("/upsells?saved=error", status_code=303)
+    offer = UpsellOffer(
+        tenant_id=tenant_id,
+        name=name.strip(),
+        description=description.strip() or None,
+        price_usd=float(price_usd) if price_usd.strip() else None,
+        trigger_point=trigger_point.strip() or "booking_confirmation",
+        trigger_days_before=int(trigger_days_before) if trigger_days_before.strip().isdigit() else None,
+    )
+    db.add(offer)
+    db.add(ActivityLog(tenant_id=tenant_id, event_type="upsell_offer_added", message=f"Added upsell offer: {offer.name}"))
+    db.commit()
+    return RedirectResponse("/upsells?saved=1", status_code=303)
+
+
+@app.post("/upsells/offers/{offer_id}/edit", response_class=HTMLResponse)
+async def upsell_offer_edit(
+    offer_id: int,
+    request: Request,
+    name: str = Form(""),
+    description: str = Form(""),
+    price_usd: str = Form(""),
+    trigger_point: str = Form("booking_confirmation"),
+    trigger_days_before: str = Form(""),
+    is_active: str = Form("off"),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    offer = db.query(UpsellOffer).filter_by(id=offer_id, tenant_id=tenant_id).first()
+    if not offer:
+        raise HTTPException(404)
+    offer.name        = name.strip() or offer.name
+    offer.description = description.strip() or None
+    offer.price_usd   = float(price_usd) if price_usd.strip() else None
+    offer.trigger_point = trigger_point.strip() or offer.trigger_point
+    offer.trigger_days_before = int(trigger_days_before) if trigger_days_before.strip().isdigit() else None
+    offer.is_active   = (is_active == "on")
+    db.commit()
+    return RedirectResponse("/upsells?saved=1", status_code=303)
+
+
+@app.post("/upsells/offers/{offer_id}/delete", response_class=HTMLResponse)
+async def upsell_offer_delete(
+    offer_id: int,
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    offer = db.query(UpsellOffer).filter_by(id=offer_id, tenant_id=tenant_id).first()
+    if offer:
+        db.delete(offer)
+        db.commit()
+    return RedirectResponse("/upsells", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Sales AI
+# ---------------------------------------------------------------------------
+
+@app.get("/sales-ai", response_class=HTMLResponse)
+def sales_ai_page(request: Request, db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    tenant = _get_tenant(tenant_id, db)
+    cfg    = _get_or_create_config(tenant_id, db)
+    sales_cfg = db.query(SalesConfig).filter_by(tenant_id=tenant_id).first()
+    conversations = (
+        db.query(SalesConversation)
+        .filter_by(tenant_id=tenant_id)
+        .order_by(SalesConversation.updated_at.desc())
+        .limit(100)
+        .all()
+    )
+    saved_message = request.query_params.get("saved")
+    return templates.TemplateResponse("sales_ai.html", {
+        "request": request, "tenant": tenant, "cfg": cfg,
+        "sales_cfg": sales_cfg, "conversations": conversations,
+        "saved_message": saved_message,
+    })
+
+
+@app.get("/sales-ai/{conv_id}", response_class=HTMLResponse)
+def sales_ai_conversation(conv_id: str, request: Request, db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    tenant = _get_tenant(tenant_id, db)
+    cfg    = _get_or_create_config(tenant_id, db)
+    conv   = db.query(SalesConversation).filter_by(id=conv_id, tenant_id=tenant_id).first()
+    if not conv:
+        raise HTTPException(404)
+    return templates.TemplateResponse("sales_conversation.html", {
+        "request": request, "tenant": tenant, "cfg": cfg, "conv": conv,
+    })
+
+
+@app.post("/sales-ai/settings", response_class=HTMLResponse)
+async def sales_ai_settings_save(
+    request: Request,
+    is_enabled: str = Form("off"),
+    ai_persona_name: str = Form("Your Host"),
+    pricing_note: str = Form(""),
+    booking_link: str = Form(""),
+    max_conv_turns: str = Form("10"),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    sales_cfg = db.query(SalesConfig).filter_by(tenant_id=tenant_id).first()
+    if not sales_cfg:
+        sales_cfg = SalesConfig(tenant_id=tenant_id)
+        db.add(sales_cfg)
+    sales_cfg.is_enabled      = (is_enabled == "on")
+    sales_cfg.ai_persona_name = ai_persona_name.strip() or "Your Host"
+    sales_cfg.pricing_note    = pricing_note.strip() or None
+    sales_cfg.booking_link    = booking_link.strip() or None
+    sales_cfg.max_conv_turns  = int(max_conv_turns) if max_conv_turns.strip().isdigit() else 10
+    db.add(ActivityLog(tenant_id=tenant_id, event_type="sales_ai_settings_saved",
+                       message=f"Sales AI {'enabled' if sales_cfg.is_enabled else 'disabled'}"))
+    db.commit()
+    return RedirectResponse("/sales-ai?saved=1", status_code=303)
+
+
+@app.post("/api/sales-ai/close/{conv_id}", response_class=HTMLResponse)
+async def sales_ai_close_conv(
+    conv_id: str,
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    conv = db.query(SalesConversation).filter_by(id=conv_id, tenant_id=tenant_id).first()
+    if conv and conv.status == "open":
+        conv.status    = "closed_dropped"
+        conv.closed_at = datetime.now(timezone.utc)
+        db.commit()
+    return RedirectResponse("/sales-ai", status_code=303)
 
 
 # ---------------------------------------------------------------------------

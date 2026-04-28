@@ -176,6 +176,22 @@ def check_booking_confirmed(cfg: CalendarConfig, booking: dict, label: str):
     _fire_state(cfg.tenant_id, key)
     log.info("[%s] New booking for %s noted", cfg.tenant_id, guest)
 
+    # Fire booking_confirmation upsells
+    db2 = SessionLocal()
+    try:
+        res = db2.query(Reservation).filter_by(
+            tenant_id=cfg.tenant_id, confirmation_code=booking["uid"]
+        ).first()
+        if res and not res.upsell_booking_sent:
+            from web.app import _check_upsell_triggers
+            _check_upsell_triggers(cfg.tenant_id, res, "booking_confirmation", db2)
+            res.upsell_booking_sent = True
+            db2.commit()
+    except Exception as exc:
+        log.error("[%s] Booking upsell trigger failed: %s", cfg.tenant_id, exc)
+    finally:
+        db2.close()
+
 
 def check_pre_arrival(cfg: CalendarConfig, booking: dict, label: str, now: datetime):
     key = f"pre_arrival:{booking['uid']}"
@@ -197,6 +213,22 @@ def check_pre_arrival(cfg: CalendarConfig, booking: dict, label: str, now: datet
             draft_id, draft = result
             _save_draft(cfg.tenant_id, draft_id, f"{guest} — pre-arrival", context, draft, "pre-arrival")
             _fire_state(cfg.tenant_id, key)
+
+            # Fire pre_arrival upsells
+            db2 = SessionLocal()
+            try:
+                res = db2.query(Reservation).filter_by(
+                    tenant_id=cfg.tenant_id, confirmation_code=booking["uid"]
+                ).first()
+                if res and not res.upsell_pre_arrival_sent:
+                    from web.app import _check_upsell_triggers
+                    _check_upsell_triggers(cfg.tenant_id, res, "pre_arrival", db2)
+                    res.upsell_pre_arrival_sent = True
+                    db2.commit()
+            except Exception as exc:
+                log.error("[%s] Pre-arrival upsell trigger failed: %s", cfg.tenant_id, exc)
+            finally:
+                db2.close()
 
 
 def check_checkin(cfg: CalendarConfig, booking: dict, label: str, now: datetime):
