@@ -43,21 +43,44 @@ def upgrade() -> None:
         op.add_column("reservations", sa.Column("upsell_mid_stay_sent", sa.Boolean(), nullable=False, server_default=sa.false()))
 
     # ── Phase 2: Upsell tables ───────────────────────────────────────────────
+    # upsell_offers may already exist (created by 20260410_0100_add_saas_features.py)
+    # — add only the new time-trigger columns if missing
     if "upsell_offers" not in existing_tables:
         op.create_table(
             "upsell_offers",
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column("tenant_id", sa.String(36), sa.ForeignKey("tenants.id"), nullable=False, index=True),
-            sa.Column("name", sa.String(128), nullable=False),
+            sa.Column("offer_type", sa.String(32), nullable=True),
+            sa.Column("title", sa.String(128), nullable=True),
+            sa.Column("price_str", sa.String(32), nullable=True),
+            sa.Column("trigger_keywords", sa.Text(), nullable=True),
+            sa.Column("message_template", sa.Text(), nullable=True),
+            sa.Column("accepted_count", sa.Integer(), nullable=True, server_default="0"),
+            sa.Column("total_revenue", sa.Float(), nullable=True, server_default="0.0"),
+            sa.Column("name", sa.String(128), nullable=True),
             sa.Column("description", sa.Text(), nullable=True),
             sa.Column("price_usd", sa.Float(), nullable=True),
-            sa.Column("trigger_point", sa.String(32), nullable=False, index=True),
+            sa.Column("trigger_point", sa.String(32), nullable=True),
             sa.Column("trigger_days_before", sa.Integer(), nullable=True),
             sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
             sa.Column("sort_order", sa.Integer(), nullable=False, server_default="100"),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
         )
+    else:
+        # Table already exists — add the new columns only if missing
+        existing_offer_cols = {c["name"] for c in inspector.get_columns("upsell_offers")}
+        new_offer_cols = {
+            "name":               sa.Column("name", sa.String(128), nullable=True),
+            "description":        sa.Column("description", sa.Text(), nullable=True),
+            "price_usd":          sa.Column("price_usd", sa.Float(), nullable=True),
+            "trigger_point":      sa.Column("trigger_point", sa.String(32), nullable=True),
+            "trigger_days_before": sa.Column("trigger_days_before", sa.Integer(), nullable=True),
+            "sort_order":         sa.Column("sort_order", sa.Integer(), nullable=True, server_default="100"),
+        }
+        for col_name, col_def in new_offer_cols.items():
+            if col_name not in existing_offer_cols:
+                op.add_column("upsell_offers", col_def)
 
     if "upsell_sends" not in existing_tables:
         op.create_table(

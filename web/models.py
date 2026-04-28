@@ -1430,42 +1430,29 @@ class QuickReply(Base):
 # ---------------------------------------------------------------------------
 
 class UpsellOffer(Base):
+    """Unified upsell offer — supports both keyword-triggered and time-triggered modes."""
     __tablename__ = "upsell_offers"
 
     id:               Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
     tenant_id:        Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
-    offer_type:       Mapped[str]           = mapped_column(String(32), index=True)  # early_checkin | late_checkout | airport_transfer | upgrade | tour
-    title:            Mapped[str]           = mapped_column(String(128))             # "Early Check-in"
-    price_str:        Mapped[str]           = mapped_column(String(32))              # "$20" / "€15"
-    trigger_keywords: Mapped[Optional[str]] = mapped_column(Text, nullable=True)     # comma-separated: "early,arrive,check in early"
-    message_template: Mapped[str]           = mapped_column(Text)                   # Message to send to guest
-    is_active:        Mapped[bool]          = mapped_column(Boolean, default=True)
+    # Original fields (keyword-triggered mode)
+    offer_type:       Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    title:            Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    price_str:        Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    trigger_keywords: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    message_template: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     accepted_count:   Mapped[int]           = mapped_column(Integer, default=0)
     total_revenue:    Mapped[float]         = mapped_column(Float, default=0.0)
+    # Extended fields (time-triggered mode)
+    name:             Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    description:      Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    price_usd:        Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    trigger_point:    Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    trigger_days_before: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    sort_order:       Mapped[int]           = mapped_column(Integer, default=100)
+    is_active:        Mapped[bool]          = mapped_column(Boolean, default=True, index=True)
     created_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
     updated_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
-
-    tenant: Mapped["Tenant"] = relationship("Tenant")
-
-
-# ---------------------------------------------------------------------------
-# UpsellOffer — host-configured upsell offers (late checkout, experiences, etc.)
-# ---------------------------------------------------------------------------
-
-class UpsellOffer(Base):
-    __tablename__ = "upsell_offers"
-
-    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id:   Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
-    name:        Mapped[str]           = mapped_column(String(128))
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    price_usd:   Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    trigger_point: Mapped[str]         = mapped_column(String(32), index=True)  # booking_confirmation | pre_arrival | mid_stay
-    trigger_days_before: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    is_active:   Mapped[bool]          = mapped_column(Boolean, default=True, index=True)
-    sort_order:  Mapped[int]           = mapped_column(Integer, default=100)
-    created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
-    updated_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="upsell_offers")
     sends:  Mapped[list["UpsellSend"]] = relationship("UpsellSend", back_populates="offer")
