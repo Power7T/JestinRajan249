@@ -79,15 +79,99 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   </div>
   {% endif %}
 
+  {% if budget_alert %}
+  <div class="bg-amber-500/10 border border-amber-400/30 text-amber-200 px-4 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+    <span class="material-symbols-outlined text-sm">warning</span>
+    API budget alert: MTD spend ${{ "%.2f"|format(mtd_cost) }} has reached the {{ sys_conf.api_budget_alert_percent or 80 }}% threshold of your ${{ "%.2f"|format(sys_conf.api_budget_monthly_usd or 100) }} monthly budget.
+  </div>
+  {% endif %}
+
   <!-- Key Metrics -->
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <div class="glass-card p-5 rounded-2xl">
-      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total API Spend</p>
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">30-Day API Spend</p>
       <p class="text-3xl font-extrabold text-[#5B8DEF]">${{ "%.2f"|format(total_cost) }}</p>
     </div>
     <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">MTD Spend</p>
+      <p class="text-3xl font-extrabold text-[#aec6ff]">${{ "%.2f"|format(mtd_cost) }}</p>
+    </div>
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Monthly Budget</p>
+      <p class="text-3xl font-extrabold text-white">${{ "%.0f"|format(sys_conf.api_budget_monthly_usd or 100) }}</p>
+    </div>
+    <div class="glass-card p-5 rounded-2xl">
       <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Recent Generations</p>
-      <p class="text-3xl font-extrabold text-[#aec6ff]">{{ logs|length }}</p>
+      <p class="text-3xl font-extrabold text-emerald-400">{{ logs|length }}</p>
+    </div>
+  </div>
+
+  <!-- Phase 2: Cost Analytics -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+    <!-- Budget Progress -->
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-3">MTD Budget Usage</p>
+      {% set budget = (sys_conf.api_budget_monthly_usd or 100)|float %}
+      {% set pct = ((mtd_cost / budget) * 100) if budget > 0 else 0 %}
+      {% set bar_pct = [pct, 100]|min %}
+      <div class="flex justify-between text-xs text-slate-400 mb-1.5">
+        <span>${{ "%.2f"|format(mtd_cost) }} used</span>
+        <span>${{ "%.0f"|format(budget) }} budget</span>
+      </div>
+      <div class="w-full bg-white/5 rounded-full h-2.5 mb-3 overflow-hidden">
+        <div class="h-2.5 rounded-full transition-all {% if pct >= 100 %}bg-red-500{% elif pct >= (sys_conf.api_budget_alert_percent or 80) %}bg-amber-500{% else %}bg-emerald-500{% endif %}" style="width:{{ bar_pct }}%"></div>
+      </div>
+      <p class="text-xs text-slate-500">{{ "%.1f"|format(pct) }}% of monthly budget consumed</p>
+      <p class="text-[0.65rem] text-slate-600 mt-1">Alert threshold: {{ sys_conf.api_budget_alert_percent or 80 }}%</p>
+    </div>
+
+    <!-- Cost by Model -->
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-3">Cost by Model (30d)</p>
+      {% if cost_by_model %}
+        {% set max_cost = cost_by_model[0].cost if cost_by_model else 1 %}
+        <div class="space-y-2.5">
+        {% for row in cost_by_model[:6] %}
+          {% set bar_w = ((row.cost / max_cost) * 100) if max_cost > 0 else 0 %}
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300 font-mono truncate max-w-[130px]" title="{{ row.model }}">{{ row.model.split('/')[-1] }}</span>
+              <span class="text-[#aec6ff] font-bold">${{ "%.3f"|format(row.cost) }}</span>
+            </div>
+            <div class="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+              <div class="h-1.5 rounded-full bg-[#5B8DEF]/70" style="width:{{ bar_w }}%"></div>
+            </div>
+          </div>
+        {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-slate-600 text-xs py-4 text-center">No usage data yet</p>
+      {% endif %}
+    </div>
+
+    <!-- Cost by Feature -->
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-3">Cost by Feature (30d)</p>
+      {% if cost_by_feature %}
+        {% set max_fcost = cost_by_feature[0].cost if cost_by_feature else 1 %}
+        <div class="space-y-2.5">
+        {% for row in cost_by_feature %}
+          {% set bar_w = ((row.cost / max_fcost) * 100) if max_fcost > 0 else 0 %}
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300 capitalize">{{ row.feature or "unknown" }}</span>
+              <span class="text-emerald-400 font-bold">${{ "%.3f"|format(row.cost) }}</span>
+            </div>
+            <div class="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+              <div class="h-1.5 rounded-full bg-emerald-500/60" style="width:{{ bar_w }}%"></div>
+            </div>
+            <p class="text-[0.6rem] text-slate-600 mt-0.5">{{ row.count }} call{{ 's' if row.count != 1 else '' }}</p>
+          </div>
+        {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-slate-600 text-xs py-4 text-center">No usage data yet</p>
+      {% endif %}
     </div>
   </div>
 
@@ -243,6 +327,22 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">TTS Similarity</label>
             <input type="number" name="voice_elevenlabs_similarity" class="compat-input" value="{{ sys_conf.voice_elevenlabs_similarity }}" min="0" max="1" step="0.1" title="Voice similarity: 0=different, 1=exact">
             <p class="text-[10px] text-slate-500 font-medium">Voice similarity to reference (0.75 recommended)</p>
+          </div>
+
+          <!-- Budget Settings -->
+          <hr class="border-white/10 my-4">
+          <div class="col-span-full mb-3">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">💰 API Budget</h3>
+            <p class="text-[10px] text-slate-500 mt-1">Alert when MTD spend exceeds the threshold % of budget</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Monthly Budget (USD)</label>
+            <input type="number" name="api_budget_monthly_usd" class="compat-input" value="{{ sys_conf.api_budget_monthly_usd or 100 }}" min="0" step="1">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Alert at (% of budget)</label>
+            <input type="number" name="api_budget_alert_percent" class="compat-input" value="{{ sys_conf.api_budget_alert_percent or 80 }}" min="1" max="100" step="1">
+            <p class="text-[10px] text-slate-500 font-medium">Banner shown when MTD spend ≥ this % (default 80)</p>
           </div>
 
           <button type="submit" class="w-full mt-4 py-3 bg-gradient-to-br from-[#aec6ff] to-[#5d8ef1] text-[#002e6b] text-sm font-extrabold rounded-xl shadow-[0_0_20px_rgba(174,198,255,0.2)] hover:shadow-[0_0_30px_rgba(174,198,255,0.4)] transition-all">

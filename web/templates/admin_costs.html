@@ -165,6 +165,36 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       
     </div>
   </div>
+  <!-- Per-Tenant API Cost Attribution -->
+  <div class="mt-8">
+    <h2 class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-4">Per-Tenant API Cost Attribution (30d)</h2>
+    {% if tenant_costs %}
+    <div class="glass-card rounded-2xl overflow-hidden">
+      <table class="w-full text-left">
+        <thead class="text-[0.65rem] tracking-wider uppercase text-slate-500 bg-black/20 border-b border-white/5">
+          <tr>
+            <th class="px-5 py-3 font-bold">Tenant</th>
+            <th class="px-5 py-3 font-bold text-right">API Calls</th>
+            <th class="px-5 py-3 font-bold text-right">Cost (30d)</th>
+            <th class="px-5 py-3 font-bold text-right">Cost / Call</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5 text-sm">
+          {% for t in tenant_costs %}
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="px-5 py-3 text-slate-300 font-medium text-xs">{{ t.email }}</td>
+            <td class="px-5 py-3 text-slate-400 text-xs text-right">{{ t.calls }}</td>
+            <td class="px-5 py-3 text-amber-400 font-mono font-bold text-xs text-right">${{ "%.4f"|format(t.cost) }}</td>
+            <td class="px-5 py-3 text-slate-500 font-mono text-xs text-right">${{ "%.5f"|format(t.cost / t.calls if t.calls else 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="glass-card rounded-2xl px-6 py-10 text-center text-slate-600 text-sm">No API usage logged yet.</div>
+    {% endif %}
+  </div>
 </main>
 {%- endblock %}
 {%- endblock %}

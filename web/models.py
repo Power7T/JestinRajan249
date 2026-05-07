@@ -91,6 +91,9 @@ class SystemConfig(Base):
     voice_google_tts_voice: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, default="en-US-Neural2-F")
     voice_google_tts_language: Mapped[Optional[str]] = mapped_column(String(16), nullable=True, default="en-US")
     voice_google_tts_speaking_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=1.0)
+    # Phase 2: API budget tracking
+    api_budget_monthly_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=100.0)
+    api_budget_alert_percent: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=80)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, default=_now, onupdate=_now)
 
 # ---------------------------------------------------------------------------

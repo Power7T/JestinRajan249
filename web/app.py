@@ -9489,14 +9489,49 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
 
     usage_logs = []
     total_cost = 0.0
+    cost_by_model = []
+    cost_by_feature = []
+    mtd_cost = 0.0
+    budget_alert = False
 
     try:
         from datetime import timedelta
+        from sqlalchemy.sql import func as sqlfunc
         start_date = datetime.now(timezone.utc) - timedelta(days=30)
+        start_of_month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
         usage_logs = db.query(APIUsageLog).filter(APIUsageLog.created_at >= start_date).order_by(APIUsageLog.created_at.desc()).limit(100).all()
-        total_cost = sum(log.cost_usd for log in db.query(APIUsageLog).filter(APIUsageLog.created_at >= start_date).all())
+        total_cost = float(db.query(sqlfunc.sum(APIUsageLog.cost_usd)).filter(APIUsageLog.created_at >= start_date).scalar() or 0)
+
+        # MTD cost
+        mtd_cost = float(db.query(sqlfunc.sum(APIUsageLog.cost_usd)).filter(APIUsageLog.created_at >= start_of_month).scalar() or 0)
+
+        # Cost breakdown by model (30 days)
+        model_rows = (
+            db.query(APIUsageLog.model, sqlfunc.sum(APIUsageLog.cost_usd), sqlfunc.count(APIUsageLog.id))
+            .filter(APIUsageLog.created_at >= start_date)
+            .group_by(APIUsageLog.model)
+            .order_by(sqlfunc.sum(APIUsageLog.cost_usd).desc())
+            .all()
+        )
+        cost_by_model = [{"model": m, "cost": float(c or 0), "count": n} for m, c, n in model_rows]
+
+        # Cost breakdown by feature (30 days)
+        feature_rows = (
+            db.query(APIUsageLog.feature, sqlfunc.sum(APIUsageLog.cost_usd), sqlfunc.count(APIUsageLog.id))
+            .filter(APIUsageLog.created_at >= start_date)
+            .group_by(APIUsageLog.feature)
+            .order_by(sqlfunc.sum(APIUsageLog.cost_usd).desc())
+            .all()
+        )
+        cost_by_feature = [{"feature": f, "cost": float(c or 0), "count": n} for f, c, n in feature_rows]
+
+        # Budget alert check
+        budget = float(sys_conf.api_budget_monthly_usd or 100.0)
+        alert_pct = int(sys_conf.api_budget_alert_percent or 80)
+        if budget > 0:
+            budget_alert = mtd_cost >= (budget * alert_pct / 100)
     except Exception:
-        # api_usage_logs table may not exist yet if migrations haven't fully run
         pass
 
     return templates.TemplateResponse("admin_ai.html", {
@@ -9506,6 +9541,10 @@ def admin_ai_engine(request: Request, db: Session = Depends(get_db)):
         "schema_drift": schema_drift,
         "logs": usage_logs,
         "total_cost": total_cost,
+        "cost_by_model": cost_by_model,
+        "cost_by_feature": cost_by_feature,
+        "mtd_cost": round(mtd_cost, 4),
+        "budget_alert": budget_alert,
     })
 
 
@@ -9899,6 +9938,30 @@ def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
         forecast_next_month = 0
         cost_history = []
 
+    # Per-tenant cost attribution (30 days)
+    tenant_costs = []
+    try:
+        start_date_30 = now - timedelta(days=30)
+        tenant_cost_rows = (
+            db.query(APIUsageLog.tenant_id, func.sum(APIUsageLog.cost_usd), func.count(APIUsageLog.id))
+            .filter(APIUsageLog.created_at >= start_date_30)
+            .group_by(APIUsageLog.tenant_id)
+            .order_by(func.sum(APIUsageLog.cost_usd).desc())
+            .limit(20)
+            .all()
+        )
+        tenant_email_map = {}
+        if tenant_cost_rows:
+            tids = [r[0] for r in tenant_cost_rows]
+            tenants_q = db.query(Tenant).filter(Tenant.id.in_(tids)).all()
+            tenant_email_map = {t.id: t.email for t in tenants_q}
+        tenant_costs = [
+            {"tenant_id": tid, "email": tenant_email_map.get(tid, tid[:8] + "..."), "cost": round(float(c or 0), 4), "calls": n}
+            for tid, c, n in tenant_cost_rows
+        ]
+    except Exception:
+        pass
+
     return templates.TemplateResponse("admin_costs.html", {
         "request": request,
         "admin": admin,
@@ -9910,6 +9973,7 @@ def admin_costs_dashboard(request: Request, db: Session = Depends(get_db)):
         "forecast_this_month": round(forecast_this_month, 2),
         "forecast_next_month": round(forecast_next_month, 2),
         "cost_history": cost_history,
+        "tenant_costs": tenant_costs,
     })
 
 
@@ -10348,6 +10412,8 @@ def admin_ai_save(
     voice_elevenlabs_model: str = Form("eleven_turbo_v2"),
     voice_elevenlabs_stability: float = Form(0.5),
     voice_elevenlabs_similarity: float = Form(0.75),
+    api_budget_monthly_usd: float = Form(100.0),
+    api_budget_alert_percent: int = Form(80),
     csrf_token: str = Form(None),
     db: Session = Depends(get_db)
 ):
@@ -10376,6 +10442,9 @@ def admin_ai_save(
     sys_conf.voice_elevenlabs_model = voice_elevenlabs_model.strip()
     sys_conf.voice_elevenlabs_stability = voice_elevenlabs_stability
     sys_conf.voice_elevenlabs_similarity = voice_elevenlabs_similarity
+    # Save budget settings
+    sys_conf.api_budget_monthly_usd = max(0.0, api_budget_monthly_usd)
+    sys_conf.api_budget_alert_percent = max(1, min(100, api_budget_alert_percent))
     db.commit()
 
     # Audit log + admin alert
