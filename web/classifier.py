@@ -457,13 +457,20 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
                 if _cfg:
                     pref = getattr(_cfg, "preferred_reply_language", None)
                     sec  = getattr(_cfg, "secondary_reply_language", None)
+                    lang_override = None
                     if pref and pref in _LANGUAGE_NAMES:
+                        lang_override = pref
                         lang_rule = f"LANGUAGE RULE: Always reply in {_LANGUAGE_NAMES[pref]} regardless of the guest's language."
                     elif sec and sec in _LANGUAGE_NAMES:
                         lang_rule = (
                             "LANGUAGE RULE: Detect guest language and reply in that language. "
                             f"Also append a translation in {_LANGUAGE_NAMES[sec]} below a '---' divider."
                         )
+                    # check default_response_language as fallback
+                    if not lang_override and hasattr(_cfg, 'default_response_language') and _cfg.default_response_language:
+                        lang_override = _cfg.default_response_language
+                        if lang_override in _LANGUAGE_NAMES and lang_override != "en":
+                            lang_rule = f"LANGUAGE RULE: Always reply in {_LANGUAGE_NAMES[lang_override]} regardless of the guest's language."
         except Exception:
             pass
 
@@ -594,8 +601,21 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
 
             raise RuntimeError(f"OpenRouter API failed after {_MAX_RETRIES} attempts: {last_exc}")
 
-        # Admin must configure OpenRouter key
-        raise RuntimeError("HostAI reply engine is not configured by the administrator.")
+        # Phase 5: BYOK — try tenant's own Anthropic key if global key not set
+        if tenant_id:
+            cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+            if cfg and cfg.anthropic_api_key_enc:
+                _api_key = decrypt(cfg.anthropic_api_key_enc)
+                if _api_key:
+                    _client = anthropic.Anthropic(api_key=_api_key)
+                    _resp = _client.messages.create(
+                        model="claude-3-5-sonnet-20241022",
+                        max_tokens=max_tokens,
+                        system=system,
+                        messages=[{"role": "user", "content": user_content}]
+                    )
+                    return _resp.content[0].text.strip()
+        raise RuntimeError("HostAI reply engine is not configured. Ask your admin to add an OpenRouter key, or add your own Anthropic key in Settings.")
 
 
 def make_draft_id(source: str) -> str:

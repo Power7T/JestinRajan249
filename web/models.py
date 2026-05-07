@@ -318,6 +318,9 @@ class TenantConfig(Base):
     bot_last_heartbeat: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     digest_email_address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # separate digest email if different from account
 
+    # Default AI response language
+    default_response_language: Mapped[Optional[str]] = mapped_column(String(8), nullable=True, default="en")
+
     # Guest review request automation
     review_request_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)    # Airbnb / Google review link
     review_request_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -1098,6 +1101,7 @@ class VoiceCall(Base):
 
     # Post-call feedback
     guest_rating: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1-5
+    quality_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 0-100
 
     # Callback scheduling
     callback_requested: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -1145,9 +1149,10 @@ class VoiceKnowledgeGap(Base):
     reply_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     reply_channel: Mapped[Optional[str]]      = mapped_column(String(16), nullable=True)  # sms | whatsapp
 
-    alerted_at:  Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at:  Mapped[datetime]           = mapped_column(DateTime(timezone=True), default=_now, index=True)
-    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    alerted_at:   Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    escalated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at:   Mapped[datetime]           = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    resolved_at:  Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     call:   Mapped[Optional["VoiceCall"]] = relationship("VoiceCall", back_populates="knowledge_gaps")
     tenant: Mapped["Tenant"]              = relationship("Tenant")

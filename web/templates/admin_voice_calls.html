@@ -63,6 +63,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <a href="/admin/voice-analytics" class="admin-tab">Voice Analytics</a>
       <a href="/admin/voice-routing" class="admin-tab">Voice Routing</a>
       <a href="/admin/voice-calls" class="admin-tab active">Call Archive</a>
+      <a href="/admin/voice-tickets" class="admin-tab">Tickets</a>
     </div>
   </div>
 
@@ -131,6 +132,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
             <th class="px-5 py-3 font-bold">Duration</th>
             <th class="px-5 py-3 font-bold">Status</th>
             <th class="px-5 py-3 font-bold">Sentiment</th>
+            <th class="px-5 py-3 font-bold">Quality</th>
             <th class="px-5 py-3 font-bold">Transcript</th>
             <th class="px-5 py-3 font-bold">Recording</th>
             <th class="px-5 py-3 font-bold">Callback</th>
@@ -189,6 +191,19 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
                 <span class="text-slate-600 text-xs">—</span>
               {% endif %}
             </td>
+            <td class="px-5 py-3 whitespace-nowrap">
+              {% if call.quality_score is not none %}
+                {% if call.quality_score >= 80 %}
+                  <span class="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[0.65rem] font-bold">{{ call.quality_score }}</span>
+                {% elif call.quality_score >= 50 %}
+                  <span class="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 text-[0.65rem] font-bold">{{ call.quality_score }}</span>
+                {% else %}
+                  <span class="px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 text-[0.65rem] font-bold">{{ call.quality_score }}</span>
+                {% endif %}
+              {% else %}
+                <span class="text-slate-600 text-xs">—</span>
+              {% endif %}
+            </td>
             <td class="px-5 py-3 max-w-[200px]">
               {% if call.full_transcript %}
                 <div class="flex items-center gap-2">
@@ -225,7 +240,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           </tr>
           {% if call.full_transcript %}
           <tr id="transcript-{{ loop.index }}" class="transcript-panel">
-            <td colspan="8" class="px-5 pb-4 pt-0">
+            <td colspan="9" class="px-5 pb-4 pt-0">
               <div class="bg-black/30 border border-white/5 rounded-xl p-4">
                 <div class="flex items-center justify-between mb-3">
                   <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Full Transcript — {{ call.guest_phone_number }}</p>

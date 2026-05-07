@@ -4396,6 +4396,51 @@ async def voice_ai_settings_save(
     return RedirectResponse(url="/voice-calls?tab=settings&saved=1#voice-ai-setup", status_code=303)
 
 
+@app.post("/settings/byok", response_class=HTMLResponse)
+def settings_byok(
+    request: Request,
+    anthropic_api_key: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    cfg = _get_or_create_config(tenant_id, db)
+
+    key = anthropic_api_key.strip()
+    if key and key not in ("••••••••", "********"):
+        if key.lower() == "remove":
+            cfg.anthropic_api_key_enc = None
+        elif key.startswith("sk-ant-"):
+            cfg.anthropic_api_key_enc = encrypt(key)
+        # else: ignore (not a valid key format)
+    db.commit()
+    return RedirectResponse("/settings?saved=byok", status_code=302)
+
+
+@app.post("/settings/language")
+def settings_language(
+    request: Request,
+    default_response_language: str = Form("en"),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    cfg = _get_or_create_config(tenant_id, db)
+    valid_langs = {"en", "es", "fr", "de", "it", "pt", "nl", "ar", "zh", "ja", "ko"}
+    if default_response_language in valid_langs:
+        cfg.default_response_language = default_response_language
+        db.commit()
+    return RedirectResponse("/settings?saved=language", status_code=302)
+
+
 @app.post("/automations/rules")
 @app.post("/settings/automation")
 def automation_rule_add(
@@ -10039,9 +10084,42 @@ def admin_api_health(request: Request, db: Session = Depends(get_db)):
         # Calculate average cost per call (from all history)
         total_cost = db.query(func.sum(APIUsageLog.cost_usd)).scalar() or 0.0
         avg_cost = (total_cost / total_count) if total_count > 0 else 0.0
-        predicted_monthly = monthly_cost  # actual 30-day cost, not projection
+        predicted_monthly = monthly_cost
     except Exception:
-        # api_usage_logs table may not exist yet if migrations haven't fully run
+        pass
+
+    # Phase 4: Per-model health stats (30-day call count, cost, last used)
+    model_health = []
+    try:
+        from datetime import timedelta
+        sys_conf_h = load_system_config(db) or SystemConfig()
+        thirty_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        configured_models = [
+            ("Primary",        sys_conf_h.primary_model        or "mistralai/mistral-large-2512"),
+            ("Routine",        sys_conf_h.routine_model        or "google/gemini-2.5-flash"),
+            ("Primary Backup", sys_conf_h.primary_backup_model or "anthropic/claude-3.5-sonnet"),
+            ("Routine Backup", sys_conf_h.routine_backup_model or "anthropic/claude-3.5-haiku"),
+            ("Fallback",       sys_conf_h.fallback_model       or "meta-llama/llama-3.3-70b-instruct"),
+            ("Sentiment",      sys_conf_h.sentiment_model      or "openai/gpt-4o-mini"),
+            ("Voice LLM",      sys_conf_h.voice_llm_model      or "openai/gpt-4o-mini"),
+        ]
+        for role, model_id in configured_models:
+            rows = db.query(APIUsageLog).filter(
+                APIUsageLog.model == model_id,
+                APIUsageLog.created_at >= thirty_ago,
+            ).all()
+            call_count = len(rows)
+            model_cost = round(sum(r.cost_usd for r in rows), 4)
+            last_used = max((r.created_at for r in rows), default=None)
+            model_health.append({
+                "role": role,
+                "model": model_id,
+                "calls_30d": call_count,
+                "cost_30d": model_cost,
+                "last_used": last_used.strftime("%b %d %H:%M") if last_used else "Never",
+                "status": "active" if call_count > 0 else "idle",
+            })
+    except Exception:
         pass
 
     return templates.TemplateResponse("admin_api.html", {
@@ -10049,7 +10127,56 @@ def admin_api_health(request: Request, db: Session = Depends(get_db)):
         "admin": admin,
         "avg_cost": avg_cost,
         "predicted_monthly": predicted_monthly,
+        "model_health": model_health,
     })
+
+
+@app.post("/admin/rotate-keys", response_class=HTMLResponse)
+def admin_rotate_keys(request: Request, csrf_token: str = Form(None), db: Session = Depends(get_db)):
+    """Security: Re-encrypt all stored API keys with the current encryption key."""
+    admin = _require_admin(request, db)
+    validate_csrf(request, csrf_token)
+
+    rotated = 0
+    errors = 0
+    sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
+    enc_fields = [
+        "openrouter_api_key_enc", "google_maps_api_key_enc", "deepgram_api_key_enc",
+        "elevenlabs_api_key_enc", "cloudflare_r2_access_key_enc", "cloudflare_r2_secret_key_enc",
+        "google_tts_api_key_enc",
+    ]
+    for field in enc_fields:
+        val = getattr(sys_conf, field, None)
+        if val:
+            try:
+                plaintext = decrypt(val)
+                if plaintext:
+                    setattr(sys_conf, field, encrypt(plaintext))
+                    rotated += 1
+            except Exception:
+                errors += 1
+
+    # Also rotate per-tenant Anthropic keys
+    try:
+        tenant_cfgs = db.query(TenantConfig).filter(TenantConfig.anthropic_api_key_enc.isnot(None)).all()
+        for cfg in tenant_cfgs:
+            try:
+                plaintext = decrypt(cfg.anthropic_api_key_enc)
+                if plaintext:
+                    cfg.anthropic_api_key_enc = encrypt(plaintext)
+                    rotated += 1
+            except Exception:
+                errors += 1
+    except Exception:
+        pass
+
+    db.commit()
+    db.add(ActivityLog(
+        tenant_id=admin.id, event_type="admin_keys_rotated",
+        message=f"Key rotation: {rotated} re-encrypted, {errors} errors. By {admin.email}"
+    ))
+    db.commit()
+    return RedirectResponse(f"/admin/health_api?msg=rotated&count={rotated}&errors={errors}", status_code=302)
 
 
 @app.get("/admin/api-status")
@@ -13831,6 +13958,50 @@ def admin_voice_calls_archive(request: Request, db: Session = Depends(get_db), p
         "status_filter": status, "has_recording": has_recording,
         "total_pages": max(1, (total + per_page - 1) // per_page),
     })
+
+
+@app.get("/admin/voice-tickets", response_class=HTMLResponse)
+def admin_voice_tickets(request: Request, db: Session = Depends(get_db)):
+    """Phase 12: Unresolved knowledge gaps auto-escalated to tickets after 24h"""
+    admin = _require_admin(request, db)
+    from datetime import timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    open_tickets = db.query(VoiceKnowledgeGap).filter(
+        VoiceKnowledgeGap.resolved == False,
+        VoiceKnowledgeGap.created_at <= cutoff,
+    ).order_by(VoiceKnowledgeGap.created_at.asc()).all()
+
+    # Auto-mark unescalated ones as escalated
+    for gap in open_tickets:
+        if not gap.escalated_at:
+            gap.escalated_at = datetime.now(timezone.utc)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+
+    return templates.TemplateResponse("admin_voice_tickets.html", {
+        "request": request, "admin": admin, "tickets": open_tickets,
+    })
+
+
+@app.post("/admin/voice-ticket/{gap_id}/resolve")
+def admin_voice_ticket_resolve(
+    gap_id: str,
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    admin = _require_admin(request, db)
+    validate_csrf(request, csrf_token)
+    gap = db.query(VoiceKnowledgeGap).filter_by(id=gap_id).first()
+    if gap:
+        gap.resolved = True
+        if hasattr(gap, "resolved_at"):
+            gap.resolved_at = datetime.now(timezone.utc)
+        db.commit()
+    return RedirectResponse("/admin/voice-tickets?msg=resolved", status_code=302)
+
 
 @app.get("/admin/voice-routing", response_class=HTMLResponse)
 def admin_voice_routing_view(request: Request, db: Session = Depends(get_db)):

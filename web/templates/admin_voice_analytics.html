@@ -54,10 +54,11 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       <a href="/admin/voice-analytics" class="admin-tab active">Voice Analytics</a>
       <a href="/admin/voice-routing" class="admin-tab">Voice Routing</a>
       <a href="/admin/voice-calls" class="admin-tab">Call Archive</a>
+      <a href="/admin/voice-tickets" class="admin-tab">Tickets</a>
     </div>
   </div>
 
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
     <div class="glass-card p-5 rounded-2xl">
       <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Calls</p>
       <p class="text-3xl font-extrabold text-white">{{ analytics_data.total_calls }}</p>
@@ -73,6 +74,14 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     <div class="glass-card p-5 rounded-2xl">
       <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Estimated Cost</p>
       <p class="text-3xl font-extrabold text-amber-500">${{ analytics_data.estimated_cost }}</p>
+    </div>
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Answer Rate</p>
+      <p class="text-3xl font-extrabold text-[#5B8DEF]">{{ "%.1f"|format(analytics_data.answer_rate) }}%</p>
+    </div>
+    <div class="glass-card p-5 rounded-2xl">
+      <p class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest mb-1">Abandonment Rate</p>
+      <p class="text-3xl font-extrabold text-rose-400">{{ "%.1f"|format(analytics_data.abandonment_rate) }}%</p>
     </div>
   </div>
 

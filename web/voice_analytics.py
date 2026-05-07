@@ -10,6 +10,24 @@ from web.tenant_config_store import load_tenant_config
 logger = logging.getLogger(__name__)
 
 
+def compute_call_quality_score(call) -> int:
+    """Score 0-100. Higher is better."""
+    score = 50  # baseline
+    if call.status == "completed":
+        score += 20
+    if call.sentiment == "positive":
+        score += 20
+    elif call.sentiment == "negative":
+        score -= 20
+    if call.duration_seconds and call.duration_seconds > 30:
+        score += 10
+    if call.recording_consent_given:
+        score += 5
+    if call.callback_requested:
+        score -= 10  # needed followup = quality issue
+    return max(0, min(100, score))
+
+
 def _existing_columns(db: Session, table_name: str) -> set[str]:
     inspector = sa.inspect(db.connection())
     return {col["name"] for col in inspector.get_columns(table_name)}
@@ -29,9 +47,13 @@ def _voice_call_metrics(db: Session, tenant_id: str, cutoff_date: datetime) -> D
         "avg_duration": 0.0,
         "completed_calls": 0,
         "abandoned_calls": 0,
+        "answered_calls": 0,
         "completion_rate": 0.0,
         "sentiment_dist": {},
         "estimated_cost": 0.0,
+        "answer_rate": 0.0,
+        "abandonment_rate": 0.0,
+        "repeat_callers": 0,
     }
     try:
         existing_columns = _existing_columns(db, "voice_calls")
@@ -58,9 +80,11 @@ def _voice_call_metrics(db: Session, tenant_id: str, cutoff_date: datetime) -> D
 
     completed_calls = 0
     abandoned_calls = 0
+    answered_calls = 0
     avg_duration = 0.0
     sentiment_dist: dict[str, int] = {}
     total_duration_minutes = 0.0
+    repeat_callers = 0
 
     if "status" in existing_columns:
         completed_calls = db.execute(
@@ -72,6 +96,11 @@ def _voice_call_metrics(db: Session, tenant_id: str, cutoff_date: datetime) -> D
             sa.select(sa.func.count())
             .select_from(voice_calls)
             .where(*filters, voice_calls.c.status.in_(["abandoned", "failed"]))
+        ).scalar_one()
+        answered_calls = db.execute(
+            sa.select(sa.func.count())
+            .select_from(voice_calls)
+            .where(*filters, voice_calls.c.status == "answered")
         ).scalar_one()
 
     if {"status", "duration_seconds"}.issubset(existing_columns):
@@ -100,17 +129,32 @@ def _voice_call_metrics(db: Session, tenant_id: str, cutoff_date: datetime) -> D
         ).all()
         sentiment_dist = {row[0]: row[1] for row in sentiment_rows}
 
+    if "guest_phone_number" in existing_columns:
+        phone_counts = db.execute(
+            sa.select(voice_calls.c.guest_phone_number, sa.func.count().label("cnt"))
+            .where(*filters, voice_calls.c.guest_phone_number.is_not(None))
+            .group_by(voice_calls.c.guest_phone_number)
+            .having(sa.func.count() > 1)
+        ).all()
+        repeat_callers = len(phone_counts)
+
     completion_rate = round((completed_calls / total_calls * 100), 1) if total_calls > 0 else 0.0
     estimated_cost = round(total_duration_minutes * 0.05, 2)
+    answer_rate = round(((completed_calls + answered_calls) / total_calls * 100), 1) if total_calls > 0 else 0.0
+    abandonment_rate = round((abandoned_calls / total_calls * 100), 1) if total_calls > 0 else 0.0
 
     return {
         "total_calls": total_calls,
         "avg_duration": avg_duration,
         "completed_calls": completed_calls,
         "abandoned_calls": abandoned_calls,
+        "answered_calls": answered_calls,
         "completion_rate": completion_rate,
         "sentiment_dist": sentiment_dist,
         "estimated_cost": estimated_cost,
+        "answer_rate": answer_rate,
+        "abandonment_rate": abandonment_rate,
+        "repeat_callers": repeat_callers,
     }
 
 
@@ -183,9 +227,13 @@ def get_voice_analytics(db: Session, tenant_id: str, days: int = 30) -> Dict[str
         "avg_duration": voice_metrics["avg_duration"],
         "completed_calls": voice_metrics["completed_calls"],
         "abandoned_calls": voice_metrics["abandoned_calls"],
+        "answered_calls": voice_metrics["answered_calls"],
         "completion_rate": voice_metrics["completion_rate"],
         "sentiment_dist": voice_metrics["sentiment_dist"],
         "knowledge_gaps": knowledge_gap_metrics,
         "estimated_cost": voice_metrics["estimated_cost"],
+        "answer_rate": voice_metrics["answer_rate"],
+        "abandonment_rate": voice_metrics["abandonment_rate"],
+        "repeat_callers": voice_metrics["repeat_callers"],
         "plan": plan,
     }
