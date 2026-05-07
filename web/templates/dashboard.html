@@ -318,10 +318,10 @@ body {
   <div class="flex items-center gap-4">
     <input type="checkbox" class="draft-checkbox w-5 h-5 rounded accent-primary" value="{{ draft.id }}">
     <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary text-xl font-extrabold shadow-lg">
-      {{ (draft.guest_name or '?')[0] | upper }}
+      {{ (draft.guest_name if draft.guest_name and draft.guest_name.lower() not in ('unknown','reserved') else 'Guest')[0] | upper }}
     </div>
     <div>
-      <h3 class="font-bold text-lg text-white">{{ draft.guest_name }}</h3>
+      <h3 class="font-bold text-lg text-white">{{ draft.guest_name if draft.guest_name and draft.guest_name.lower() not in ('unknown', 'reserved') else 'Guest' }}</h3>
       {% set _src_labels = {'whatsapp': 'WhatsApp', 'sms': 'SMS', 'email': 'Email', 'airbnb': 'Airbnb', 'calendar': 'Calendar'} %}
 <p class="text-slate-400 text-sm">{{ draft.property_name_snapshot or (draft.reservation.listing_name if draft.reservation else '—') }} &bull; {{ _src_labels.get(draft.source, draft.source | replace('_',' ') | title) }}</p>
     </div>

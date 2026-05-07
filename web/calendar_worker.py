@@ -70,6 +70,8 @@ def _parse_ical(raw: bytes) -> list[dict]:
         if not m:
             continue
         guest_name = m.group(1).strip()
+        if guest_name.lower() in ("unknown", "reserved", ""):
+            guest_name = "Guest"
         uid        = str(component.get("UID", "unknown"))
         checkin    = _to_date(component.get("DTSTART").dt)
         checkout   = _to_date(component.get("DTEND").dt)

@@ -5393,6 +5393,10 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
             tenant_id, db, guest_phone=reply_to, guest_name=f"{source.title()} guest"
         )
         guest_name = reservation.guest_name if reservation else f"{source.title()} guest"
+        # If reservation name is a placeholder, prefer the GuestContact name
+        if guest_name.strip().lower() in ("unknown", "", "reserved"):
+            gc_name = getattr(guest_contact, "guest_name", None) if guest_contact else None
+            guest_name = (gc_name or f"{source.title()} Guest").strip()
         msg_type, confidence, _matched_patterns = classify_message_with_confidence(text)
 
         from web import classifier as classifier_mod
