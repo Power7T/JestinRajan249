@@ -1510,12 +1510,16 @@ def signup_post(
     country:    str = Form(...),
     phone:      str = Form(""),
     password:   str = Form(...),
+    website:    str = Form(""),  # honeypot — bots fill this, humans leave it blank
     csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
     # CRITICAL severity fix #2: Rate limit signup
     rate_limit(f"signup:{client_ip(request)}", max_requests=5, window_seconds=3600)
     validate_csrf(request, csrf_token)
+    # Honeypot: silently reject bots that fill the hidden "website" field
+    if website.strip():
+        return RedirectResponse("/signup?done=1", status_code=302)
     email = email.lower().strip()
     if db.query(Tenant).filter_by(email=email).first():
         return templates.TemplateResponse("signup.html",
@@ -8943,6 +8947,22 @@ def _require_admin(request: Request, db: Session) -> Tenant:
         or tenant.email.lower() not in _ADMIN_EMAILS
     ):
         raise HTTPException(status_code=403, detail="Admin access required")
+
+    # IP whitelist check (if configured)
+    try:
+        sys_conf = load_system_config(db)
+        if sys_conf and sys_conf.admin_ip_whitelist:
+            allowed = [ip.strip() for ip in sys_conf.admin_ip_whitelist.split(",") if ip.strip()]
+            if allowed:
+                ip = client_ip(request)
+                if ip not in allowed:
+                    log.warning("Admin access denied for IP %s (not in whitelist)", ip)
+                    raise HTTPException(status_code=403, detail="Admin access restricted")
+    except HTTPException:
+        raise
+    except Exception:
+        pass  # whitelist check failure is non-fatal
+
     return tenant
 
 
@@ -13776,6 +13796,24 @@ def admin_voice_analytics_view(request: Request, days: int = 30, db: Session = D
         }
     )
 
+@app.get("/admin/voice-calls", response_class=HTMLResponse)
+def admin_voice_calls_archive(request: Request, db: Session = Depends(get_db), page: int = 1, status: str = "", has_recording: str = ""):
+    admin = _require_admin(request, db)
+    per_page = 25
+    q = db.query(VoiceCall).order_by(VoiceCall.created_at.desc())
+    if status:
+        q = q.filter(VoiceCall.status == status)
+    if has_recording == "1":
+        q = q.filter(VoiceCall.recording_url.isnot(None))
+    total = q.count()
+    calls = q.offset((page - 1) * per_page).limit(per_page).all()
+    return templates.TemplateResponse("admin_voice_calls.html", {
+        "request": request, "admin": admin, "calls": calls,
+        "page": page, "total": total, "per_page": per_page,
+        "status_filter": status, "has_recording": has_recording,
+        "total_pages": max(1, (total + per_page - 1) // per_page),
+    })
+
 @app.get("/admin/voice-routing", response_class=HTMLResponse)
 def admin_voice_routing_view(request: Request, db: Session = Depends(get_db)):
     """Phase 7: Smart Routing UI"""
@@ -13799,6 +13837,83 @@ def admin_voice_routing_view(request: Request, db: Session = Depends(get_db)):
             "active_page": "voice_routing"
         }
     )
+
+@app.post("/api/admin/voice-routing/config", response_class=HTMLResponse)
+def admin_voice_routing_config_save(
+    request: Request,
+    default_route: str = Form(...),
+    host_routing_number: str = Form(""),
+    fallback_sms: str = Form("off"),
+    queue_hold_music: str = Form("off"),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Save VoiceRoutingConfig for the admin tenant."""
+    tenant = _require_admin(request, db)
+    validate_csrf(request, csrf_token)
+    from web.models import VoiceRoutingConfig
+    cfg = db.query(VoiceRoutingConfig).filter(VoiceRoutingConfig.tenant_id == tenant.id).first()
+    if cfg is None:
+        cfg = VoiceRoutingConfig(tenant_id=tenant.id)
+        db.add(cfg)
+    cfg.default_route = default_route.strip()
+    cfg.host_routing_number = host_routing_number.strip() or None
+    cfg.fallback_sms = (fallback_sms == "on")
+    cfg.queue_hold_music = (queue_hold_music == "on")
+    db.commit()
+    return RedirectResponse("/admin/voice-routing?msg=saved", status_code=302)
+
+
+@app.post("/api/admin/voice-routing/rule", response_class=HTMLResponse)
+def admin_voice_routing_rule_create(
+    request: Request,
+    name: str = Form(...),
+    priority: int = Form(100),
+    condition_type: str = Form(...),
+    condition_value: str = Form(...),
+    action: str = Form(...),
+    action_target: str = Form(""),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Create a new RoutingRule for the admin tenant."""
+    tenant = _require_admin(request, db)
+    validate_csrf(request, csrf_token)
+    from web.models import RoutingRule
+    rule = RoutingRule(
+        tenant_id=tenant.id,
+        name=name.strip(),
+        priority=priority,
+        condition_type=condition_type.strip(),
+        condition_value=condition_value.strip(),
+        action=action.strip(),
+        action_target=action_target.strip() or None,
+    )
+    db.add(rule)
+    db.commit()
+    return RedirectResponse("/admin/voice-routing?msg=saved", status_code=302)
+
+
+@app.post("/api/admin/voice-routing/rule/{rule_id}/delete", response_class=HTMLResponse)
+def admin_voice_routing_rule_delete(
+    rule_id: str,
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Delete a RoutingRule, verifying it belongs to the admin tenant."""
+    tenant = _require_admin(request, db)
+    validate_csrf(request, csrf_token)
+    from web.models import RoutingRule
+    rule = db.query(RoutingRule).filter(
+        RoutingRule.id == rule_id,
+        RoutingRule.tenant_id == tenant.id,
+    ).first()
+    if rule:
+        db.delete(rule)
+        db.commit()
+    return RedirectResponse("/admin/voice-routing?msg=deleted", status_code=302)
+
 
 @app.get("/admin/saas-dashboard", response_class=HTMLResponse)
 def admin_saas_dashboard(request: Request, db: Session = Depends(get_db)):
