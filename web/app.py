@@ -14881,15 +14881,14 @@ async def api_admin_feature_flag_override(request: Request, db: Session = Depend
 
 # Admin Draft Actions
 @app.post("/api/admin/draft/approve")
-def api_admin_draft_approve(request: Request, db: Session = Depends(get_db)):
+def api_admin_draft_approve(request: Request, draft_id: str = Form(...), csrf_token: str = Form(None), db: Session = Depends(get_db)):
     """Admin approval of a pending draft."""
     try:
         admin = _require_admin(request, db)
     except HTTPException:
         return JSONResponse({"error": "Admin access required"}, status_code=401)
 
-    validate_csrf(request)
-    draft_id = request.form.get("draft_id")
+    validate_csrf(request, csrf_token)
 
     try:
         draft = db.query(Draft).filter_by(id=draft_id).first()
@@ -14913,15 +14912,14 @@ def api_admin_draft_approve(request: Request, db: Session = Depends(get_db)):
 
 
 @app.post("/api/admin/draft/dismiss")
-def api_admin_draft_dismiss(request: Request, db: Session = Depends(get_db)):
+def api_admin_draft_dismiss(request: Request, draft_id: str = Form(...), csrf_token: str = Form(None), db: Session = Depends(get_db)):
     """Admin dismissal of a pending draft."""
     try:
         admin = _require_admin(request, db)
     except HTTPException:
         return JSONResponse({"error": "Admin access required"}, status_code=401)
 
-    validate_csrf(request)
-    draft_id = request.form.get("draft_id")
+    validate_csrf(request, csrf_token)
 
     try:
         draft = db.query(Draft).filter_by(id=draft_id).first()
