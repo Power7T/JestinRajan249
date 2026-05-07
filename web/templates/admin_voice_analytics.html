@@ -129,6 +129,54 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
       {% endif %}
     </div>
   </div>
+
+  <!-- Phase 8: Pending Callbacks -->
+  <div class="mt-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">Pending Callbacks</h2>
+      <a href="/admin/voice-calls?status=&has_recording=" class="text-[0.65rem] text-[#5B8DEF] hover:text-[#aec6ff] transition-colors">View all calls →</a>
+    </div>
+    {% if pending_callbacks %}
+    <div class="glass-card rounded-2xl overflow-hidden">
+      <table class="w-full text-left">
+        <thead class="text-[0.65rem] tracking-wider uppercase text-slate-500 bg-black/20 border-b border-white/5">
+          <tr>
+            <th class="px-5 py-3 font-bold">Guest Phone</th>
+            <th class="px-5 py-3 font-bold">Requested</th>
+            <th class="px-5 py-3 font-bold">Scheduled For</th>
+            <th class="px-5 py-3 font-bold">Sentiment</th>
+            <th class="px-5 py-3 font-bold">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5 text-sm">
+          {% for call in pending_callbacks %}
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="px-5 py-3 text-slate-300 font-mono text-xs">{{ call.guest_phone_number }}</td>
+            <td class="px-5 py-3 text-slate-500 text-xs">{{ call.created_at.strftime('%b %d %H:%M') if call.created_at else '—' }}</td>
+            <td class="px-5 py-3 text-xs">
+              {% if call.callback_at %}
+                <span class="text-amber-400 font-medium">{{ call.callback_at.strftime('%b %d %H:%M') }}</span>
+              {% else %}
+                <span class="text-slate-600">No time set</span>
+              {% endif %}
+            </td>
+            <td class="px-5 py-3 text-xs">
+              {% if call.sentiment == 'positive' %}<span class="text-emerald-400">Positive</span>
+              {% elif call.sentiment == 'negative' %}<span class="text-rose-400">Negative</span>
+              {% else %}<span class="text-slate-500">Neutral</span>{% endif %}
+            </td>
+            <td class="px-5 py-3 text-xs">
+              <span class="px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[0.65rem] font-bold uppercase tracking-wide">Pending</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="glass-card rounded-2xl px-6 py-10 text-center text-slate-600 text-sm">No pending callbacks.</div>
+    {% endif %}
+  </div>
 </main>
 {%- endblock %}
 {%- endblock %}

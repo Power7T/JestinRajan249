@@ -233,6 +233,11 @@ body {
         <label for="terms" class="text-xs text-on-surface-variant leading-relaxed">I agree to the <a href="/terms" class="text-primary hover:underline">Terms of Service</a> & <a href="/privacy" class="text-primary hover:underline">Privacy Policy</a>.</label>
     </div>
 
+    <!-- Honeypot: hidden from real users, visible to bots -->
+    <div style="position:absolute;left:-9999px;top:-9999px;opacity:0;height:0;overflow:hidden" aria-hidden="true">
+      <input type="text" name="website" tabindex="-1" autocomplete="off">
+    </div>
+
     <!-- Submit Button -->
     <button class="group relative w-full bg-gradient-to-r from-primary-container to-primary-fixed-dim py-3.5 mt-2 rounded-lg flex items-center justify-center gap-2 overflow-hidden transition-all hover:shadow-[0_0_20px_rgba(174,198,255,0.3)] active:scale-[0.98]" type="submit">
     <span class="text-on-primary-container font-headline font-bold text-sm">Create Account</span>

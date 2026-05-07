@@ -56,6 +56,18 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     </div>
   </div>
 
+  {% if request.query_params.get("msg") == "saved" %}
+  <div class="mb-6 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm font-medium flex items-center gap-2">
+    <span class="material-symbols-outlined text-[1.1rem]">check_circle</span>
+    Changes saved successfully.
+  </div>
+  {% elif request.query_params.get("msg") == "deleted" %}
+  <div class="mb-6 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-sm font-medium flex items-center gap-2">
+    <span class="material-symbols-outlined text-[1.1rem]">delete</span>
+    Rule deleted.
+  </div>
+  {% endif %}
+
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
     <!-- Config -->
     <div class="glass-card p-6 rounded-3xl h-fit">
@@ -82,7 +94,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           <input type="checkbox" name="queue_hold_music" id="queue_hold_music" class="w-5 h-5 rounded border-white/20 bg-white/5 text-[#5B8DEF] cursor-pointer" {% if routing_config and routing_config.queue_hold_music %}checked{% endif %}>
           <label for="queue_hold_music" class="text-sm text-slate-300 font-medium cursor-pointer">Play hold music during complex tasks</label>
         </div>
-        <button type="button" class="mt-4 px-5 py-2.5 bg-[#5B8DEF] hover:bg-blue-600 text-[#002e6b] hover:text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all font-['Plus_Jakarta_Sans'] group flex items-center gap-2">
+        <button type="submit" class="mt-4 px-5 py-2.5 bg-[#5B8DEF] hover:bg-blue-600 text-[#002e6b] hover:text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all font-['Plus_Jakarta_Sans'] group flex items-center gap-2">
           Save Configuration
         </button>
       </form>
@@ -92,7 +104,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     <div class="glass-card p-6 rounded-3xl h-fit">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-bold text-white">Smart Escalation Rules</h2>
-        <button class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg text-xs transition-colors border border-white/5">
+        <button onclick="document.getElementById('newRuleModal').classList.remove('hidden')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg text-xs transition-colors border border-white/5">
           + New Rule
         </button>
       </div>
@@ -103,11 +115,19 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           <div class="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
             <div class="flex justify-between items-start mb-2">
               <span class="font-bold text-slate-200">{{ rule.name }}</span>
-              {% if rule.is_active %}
-                <span class="text-[10px] font-bold tracking-wider uppercase text-[#27c93f]">Active</span>
-              {% else %}
-                <span class="text-[10px] font-bold tracking-wider uppercase text-slate-500">Disabled</span>
-              {% endif %}
+              <div class="flex items-center gap-2">
+                {% if rule.is_active %}
+                  <span class="text-[10px] font-bold tracking-wider uppercase text-[#27c93f]">Active</span>
+                {% else %}
+                  <span class="text-[10px] font-bold tracking-wider uppercase text-slate-500">Disabled</span>
+                {% endif %}
+                <form method="POST" action="/api/admin/voice-routing/rule/{{ rule.id }}/delete" onsubmit="return confirm('Delete this rule?')">
+                  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+                  <button type="submit" class="p-1 rounded hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors" title="Delete rule">
+                    <span class="material-symbols-outlined text-[1rem]" style="font-variation-settings:'FILL' 0">delete</span>
+                  </button>
+                </form>
+              </div>
             </div>
             <div class="flex flex-col gap-2 text-sm text-slate-400">
               <div class="flex items-center gap-2">
@@ -129,6 +149,66 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           </div>
         {% endif %}
       </div>
+    </div>
+  </div>
+  <!-- New Rule Modal -->
+  <div id="newRuleModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="glass-card rounded-3xl p-8 w-full max-w-lg border border-white/10 shadow-2xl">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-lg font-bold text-white">New Routing Rule</h3>
+        <button onclick="document.getElementById('newRuleModal').classList.add('hidden')" class="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
+          <span class="material-symbols-outlined text-[1.2rem]">close</span>
+        </button>
+      </div>
+      <form method="POST" action="/api/admin/voice-routing/rule" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <div>
+          <label class="block text-sm font-bold text-slate-300 mb-1.5">Rule Name</label>
+          <input type="text" name="name" required placeholder="e.g. Escalate angry guests" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-slate-200 placeholder-slate-600 focus:outline-[#5B8DEF] transition-all">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-bold text-slate-300 mb-1.5">Condition Type</label>
+            <select name="condition_type" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-[#5B8DEF] transition-all">
+              <option value="sentiment">Sentiment</option>
+              <option value="vip">VIP</option>
+              <option value="repeat_caller">Repeat Caller</option>
+              <option value="time_of_day">Time of Day</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-slate-300 mb-1.5">Condition Value</label>
+            <input type="text" name="condition_value" required placeholder="e.g. negative" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-slate-200 placeholder-slate-600 focus:outline-[#5B8DEF] transition-all">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-bold text-slate-300 mb-1.5">Action</label>
+            <select name="action" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-[#5B8DEF] transition-all">
+              <option value="escalate">Escalate</option>
+              <option value="direct_to_voicemail">Direct to Voicemail</option>
+              <option value="direct_to_host">Direct to Host</option>
+              <option value="send_sms">Send SMS</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-slate-300 mb-1.5">Action Target <span class="text-slate-500 font-normal">(optional)</span></label>
+            <input type="text" name="action_target" placeholder="e.g. +1234567890" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-slate-200 placeholder-slate-600 focus:outline-[#5B8DEF] transition-all">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-slate-300 mb-1.5">Priority <span class="text-slate-500 font-normal">(lower = higher priority)</span></label>
+          <input type="number" name="priority" value="100" min="1" max="999" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-[#5B8DEF] transition-all">
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+          <button type="button" onclick="document.getElementById('newRuleModal').classList.add('hidden')" class="px-5 py-2.5 bg-white/10 hover:bg-white/15 text-white font-medium rounded-xl transition-colors">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2.5 bg-[#5B8DEF] hover:bg-blue-600 text-[#002e6b] hover:text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all">
+            Create Rule
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </main>

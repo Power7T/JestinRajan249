@@ -94,6 +94,8 @@ class SystemConfig(Base):
     # Phase 2: API budget tracking
     api_budget_monthly_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=100.0)
     api_budget_alert_percent: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=80)
+    # Security: admin IP whitelist (comma-separated CIDRs/IPs; empty = allow all)
+    admin_ip_whitelist: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, default=_now, onupdate=_now)
 
 # ---------------------------------------------------------------------------

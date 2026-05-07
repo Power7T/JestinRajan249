@@ -10434,6 +10434,7 @@ def admin_ai_save(
     voice_elevenlabs_similarity: float = Form(0.75),
     api_budget_monthly_usd: float = Form(100.0),
     api_budget_alert_percent: int = Form(80),
+    admin_ip_whitelist: str = Form(""),
     csrf_token: str = Form(None),
     db: Session = Depends(get_db)
 ):
@@ -10465,6 +10466,9 @@ def admin_ai_save(
     # Save budget settings
     sys_conf.api_budget_monthly_usd = max(0.0, api_budget_monthly_usd)
     sys_conf.api_budget_alert_percent = max(1, min(100, api_budget_alert_percent))
+    # Save IP whitelist (store cleaned comma-separated value, or None if blank)
+    cleaned_whitelist = ", ".join(ip.strip() for ip in admin_ip_whitelist.split(",") if ip.strip())
+    sys_conf.admin_ip_whitelist = cleaned_whitelist or None
     db.commit()
 
     # Audit log + admin alert
@@ -13782,9 +13786,22 @@ def admin_voice_analytics_view(request: Request, days: int = 30, db: Session = D
         raise HTTPException(status_code=401, detail="Admin access required")
     
     from web.voice_analytics import get_voice_analytics
-    # Use tenant.id for analytics
     analytics_data = get_voice_analytics(db, tenant.id, days=days)
-    
+
+    # Phase 8: pending callbacks
+    pending_callbacks = []
+    try:
+        from datetime import timedelta
+        pending_callbacks = (
+            db.query(VoiceCall)
+            .filter(VoiceCall.callback_requested == True, VoiceCall.status != "completed_callback")  # noqa: E712
+            .order_by(VoiceCall.callback_at.asc().nulls_last(), VoiceCall.created_at.desc())
+            .limit(20)
+            .all()
+        )
+    except Exception:
+        pass
+
     return templates.TemplateResponse(
         "admin_voice_analytics.html",
         {
@@ -13792,6 +13809,7 @@ def admin_voice_analytics_view(request: Request, days: int = 30, db: Session = D
             "admin": tenant,
             "tenant": tenant,
             "analytics_data": analytics_data,
+            "pending_callbacks": pending_callbacks,
             "active_page": "voice_analytics"
         }
     )

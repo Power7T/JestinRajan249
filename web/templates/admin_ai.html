@@ -332,6 +332,18 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
             <p class="text-[10px] text-slate-500 font-medium">Voice similarity to reference (0.75 recommended)</p>
           </div>
 
+          <!-- Security: IP Whitelist -->
+          <hr class="border-white/10 my-4">
+          <div class="col-span-full mb-3">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">🔒 Admin IP Whitelist</h3>
+            <p class="text-[10px] text-slate-500 mt-1">Comma-separated IPs allowed to access /admin. Leave blank to allow all.</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Allowed IPs</label>
+            <input type="text" name="admin_ip_whitelist" class="compat-input" value="{{ sys_conf.admin_ip_whitelist or '' }}" placeholder="203.0.113.1, 198.51.100.0">
+            <p class="text-[10px] text-amber-500/80 font-medium">⚠ Add your current IP before saving or you will be locked out.</p>
+          </div>
+
           <!-- Budget Settings -->
           <hr class="border-white/10 my-4">
           <div class="col-span-full mb-3">
