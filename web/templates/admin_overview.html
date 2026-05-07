@@ -201,20 +201,12 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           <div class="text-[10px] text-slate-500 flex-shrink-0">{{ draft.created_at.strftime("%m/%d %H:%M") }}</div>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-          <form method="post" action="/api/admin/draft/approve" style="display:inline" class="flex items-center gap-1">
-            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-            <input type="hidden" name="draft_id" value="{{ draft.id }}">
-            <button type="submit" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#27c93f]/10 hover:bg-[#27c93f]/20 text-[#27c93f] text-[9px] font-bold uppercase tracking-wide transition-all border border-[#27c93f]/20">
-              <span class="material-symbols-outlined text-[0.65rem]">done</span>Approve
-            </button>
-          </form>
-          <form method="post" action="/api/admin/draft/dismiss" style="display:inline">
-            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-            <input type="hidden" name="draft_id" value="{{ draft.id }}">
-            <button type="submit" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[9px] font-bold uppercase tracking-wide transition-all border border-rose-500/20">
-              <span class="material-symbols-outlined text-[0.65rem]">close</span>Dismiss
-            </button>
-          </form>
+          <button type="button" onclick="adminDraftAction(this,'approve','{{ draft.id }}')" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#27c93f]/10 hover:bg-[#27c93f]/20 text-[#27c93f] text-[9px] font-bold uppercase tracking-wide transition-all border border-[#27c93f]/20">
+            <span class="material-symbols-outlined text-[0.65rem]">done</span>Approve
+          </button>
+          <button type="button" onclick="adminDraftAction(this,'dismiss','{{ draft.id }}')" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[9px] font-bold uppercase tracking-wide transition-all border border-rose-500/20">
+            <span class="material-symbols-outlined text-[0.65rem]">close</span>Dismiss
+          </button>
         </div>
       </div>
       {% endfor %}
@@ -253,12 +245,9 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           <a href="/admin/tenants/{{ row.tenant.id }}/nudge" class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#5B8DEF]/10 hover:bg-[#5B8DEF]/20 text-[#aec6ff] text-[10px] font-bold uppercase tracking-wide transition-all border border-[#5B8DEF]/20">
             <span class="material-symbols-outlined text-[0.7rem]">mail</span>Send Nudge
           </a>
-          <form method="post" action="/admin/tenants/{{ row.tenant.id }}/mark-contacted" style="display:inline">
-            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-            <button type="submit" class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[10px] font-bold uppercase tracking-wide transition-all border border-white/10">
-              <span class="material-symbols-outlined text-[0.7rem]">check_circle</span>Mark Contacted
-            </button>
-          </form>
+          <button type="button" onclick="adminMarkContacted(this,'{{ row.tenant.id }}')" class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[10px] font-bold uppercase tracking-wide transition-all border border-white/10">
+            <span class="material-symbols-outlined text-[0.7rem]">check_circle</span>Mark Contacted
+          </button>
         </div>
       </div>
       {% endfor %}
@@ -338,5 +327,44 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     </div>
   </div>
 </main>
+<script nonce="{{ request.state.csp_nonce }}">
+var _csrfToken = '{{ request.state.csrf_token }}';
+
+function adminDraftAction(btn, action, draftId) {
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  var url = action === 'approve' ? '/api/admin/draft/approve' : '/api/admin/draft/dismiss';
+  var body = new URLSearchParams({draft_id: draftId, csrf_token: _csrfToken});
+  fetch(url, {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: body})
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.ok) {
+        var card = btn.closest('.p-3.rounded-xl');
+        if (card) { card.style.transition = 'opacity 0.2s'; card.style.opacity = '0'; setTimeout(function(){ card.remove(); }, 200); }
+      } else {
+        btn.disabled = false; btn.style.opacity = '';
+        alert(data.error || 'Action failed');
+      }
+    })
+    .catch(function(){ btn.disabled = false; btn.style.opacity = ''; });
+}
+
+function adminMarkContacted(btn, tenantId) {
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  var body = new URLSearchParams({csrf_token: _csrfToken});
+  fetch('/admin/tenants/' + tenantId + '/mark-contacted', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: body})
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.ok) {
+        var row = btn.closest('.flex.items-center.justify-between');
+        if (row) { row.style.transition = 'opacity 0.2s'; row.style.opacity = '0'; setTimeout(function(){ row.remove(); }, 200); }
+      } else {
+        btn.disabled = false; btn.style.opacity = '';
+      }
+    })
+    .catch(function(){ btn.disabled = false; btn.style.opacity = ''; });
+}
+</script>
 {%- endblock %}
 {%- endblock %}

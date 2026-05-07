@@ -121,12 +121,9 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
                 {% else %}
                   <span class="text-[10px] font-bold tracking-wider uppercase text-slate-500">Disabled</span>
                 {% endif %}
-                <form method="POST" action="/api/admin/voice-routing/rule/{{ rule.id }}/delete" onsubmit="return confirm('Delete this rule?')">
-                  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-                  <button type="submit" class="p-1 rounded hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors" title="Delete rule">
-                    <span class="material-symbols-outlined text-[1rem]" style="font-variation-settings:'FILL' 0">delete</span>
-                  </button>
-                </form>
+                <button type="button" data-rule-id="{{ rule.id }}" onclick="deleteRule(this)" class="p-1 rounded hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors" title="Delete rule">
+                  <span class="material-symbols-outlined text-[1rem]" style="font-variation-settings:'FILL' 0">delete</span>
+                </button>
               </div>
             </div>
             <div class="flex flex-col gap-2 text-sm text-slate-400">
@@ -212,5 +209,22 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     </div>
   </div>
 </main>
+<script nonce="{{ request.state.csp_nonce }}">
+function deleteRule(btn) {
+  if (!confirm('Delete this rule?')) return;
+  btn.disabled = true; btn.style.opacity = '0.5';
+  var ruleId = btn.dataset.ruleId;
+  var body = new URLSearchParams({csrf_token: '{{ request.state.csrf_token }}'});
+  fetch('/api/admin/voice-routing/rule/' + ruleId + '/delete', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: body})
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.ok) {
+        var card = btn.closest('.p-4.rounded-xl');
+        if (card) { card.style.transition = 'opacity 0.2s'; card.style.opacity = '0'; setTimeout(function(){ card.remove(); }, 200); }
+      } else { btn.disabled = false; btn.style.opacity = ''; }
+    })
+    .catch(function(){ btn.disabled = false; btn.style.opacity = ''; });
+}
+</script>
 {%- endblock %}
 {%- endblock %}

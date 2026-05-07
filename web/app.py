@@ -9473,7 +9473,7 @@ def admin_mark_contacted(
         message=f"Marked as contacted by admin {admin.email}",
     ))
     db.commit()
-    return RedirectResponse("/admin", status_code=303)
+    return JSONResponse({"ok": True})
 
 
 @app.get("/admin/system", response_class=HTMLResponse)
@@ -14004,7 +14004,7 @@ def admin_voice_ticket_resolve(
         if hasattr(gap, "resolved_at"):
             gap.resolved_at = datetime.now(timezone.utc)
         db.commit()
-    return RedirectResponse("/admin/voice-tickets?msg=resolved", status_code=302)
+    return JSONResponse({"ok": True})
 
 
 @app.get("/admin/voice-routing", response_class=HTMLResponse)
@@ -14105,7 +14105,7 @@ def admin_voice_routing_rule_delete(
     if rule:
         db.delete(rule)
         db.commit()
-    return RedirectResponse("/admin/voice-routing?msg=deleted", status_code=302)
+    return JSONResponse({"ok": True})
 
 
 @app.get("/admin/saas-dashboard", response_class=HTMLResponse)
@@ -14905,7 +14905,7 @@ def api_admin_draft_approve(request: Request, draft_id: str = Form(...), csrf_to
             details=f"Draft ID: {draft_id}"
         )
 
-        return RedirectResponse("/admin", status_code=303)
+        return JSONResponse({"ok": True})
     except Exception as e:
         log.error(f"Error approving draft: {e}")
         return JSONResponse({"error": "Failed to approve draft"}, status_code=500)
@@ -14935,7 +14935,7 @@ def api_admin_draft_dismiss(request: Request, draft_id: str = Form(...), csrf_to
             details=f"Draft ID: {draft_id}"
         )
 
-        return RedirectResponse("/admin", status_code=303)
+        return JSONResponse({"ok": True})
     except Exception as e:
         log.error(f"Error dismissing draft: {e}")
         return JSONResponse({"error": "Failed to dismiss draft"}, status_code=500)

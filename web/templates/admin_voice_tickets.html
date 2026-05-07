@@ -135,13 +135,10 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
               {% endif %}
             </td>
             <td class="px-5 py-3 whitespace-nowrap">
-              <form method="POST" action="/admin/voice-ticket/{{ ticket.id }}/resolve">
-                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-                <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[0.65rem] font-bold hover:bg-emerald-500/20 transition-all">
-                  <span class="material-symbols-outlined text-xs">check_circle</span>
-                  Mark Resolved
-                </button>
-              </form>
+              <button type="button" data-ticket-id="{{ ticket.id }}" onclick="resolveTicket(this)" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[0.65rem] font-bold hover:bg-emerald-500/20 transition-all">
+                <span class="material-symbols-outlined text-xs">check_circle</span>
+                Mark Resolved
+              </button>
             </td>
           </tr>
           {% endfor %}
@@ -161,5 +158,21 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   </div>
 
 </main>
+<script nonce="{{ request.state.csp_nonce }}">
+function resolveTicket(btn) {
+  btn.disabled = true; btn.style.opacity = '0.5';
+  var ticketId = btn.dataset.ticketId;
+  var body = new URLSearchParams({csrf_token: '{{ request.state.csrf_token }}'});
+  fetch('/admin/voice-ticket/' + ticketId + '/resolve', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: body})
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.ok) {
+        var row = btn.closest('tr');
+        if (row) { row.style.transition = 'opacity 0.2s'; row.style.opacity = '0'; setTimeout(function(){ row.remove(); }, 200); }
+      } else { btn.disabled = false; btn.style.opacity = ''; }
+    })
+    .catch(function(){ btn.disabled = false; btn.style.opacity = ''; });
+}
+</script>
 {%- endblock %}
 {%- endblock %}
