@@ -194,7 +194,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
                 {% endfor %}
                 {{ tenant_email }}
               </a>
-              <span class="px-2 py-0.5 bg-white/10 rounded text-[10px] font-mono text-slate-400">{{ draft.thread_key[:20] }}...</span>
+              <span class="px-2 py-0.5 bg-white/10 rounded text-[10px] font-mono text-slate-400">{{ (draft.thread_key or '')[:20] }}...</span>
             </div>
             <p class="text-xs text-slate-400 line-clamp-2">{{ draft.draft }}</p>
           </div>
