@@ -331,6 +331,11 @@ class TenantConfig(Base):
     # Upsell offers engine
     upsell_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # iCal sync health tracking
+    ical_last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ical_last_error_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    ical_last_success_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="config")
 
 

@@ -2497,7 +2497,21 @@ def _get_setup_alerts(cfg, tenant, reservations: list) -> list[dict]:
             "tab": "properties",
         })
 
-    # 6. No reservations imported
+    # 6. iCal sync error (broken/expired URL)
+    if getattr(cfg, "ical_last_error", None) and getattr(cfg, "ical_last_error_at", None):
+        from datetime import timedelta
+        error_age = datetime.now(timezone.utc) - cfg.ical_last_error_at
+        if error_age.total_seconds() < 86400 * 3:  # only show if error is within last 3 days
+            alerts.append({
+                "level": "error",
+                "icon": "sync_problem",
+                "message": "Airbnb iCal sync is failing — your calendar URL may be expired. Get a fresh link from Airbnb and update it.",
+                "cta": "Update iCal URL",
+                "link": "/integrations",
+                "tab": "integrations",
+            })
+
+    # 7. No reservations imported
     if not reservations:
         alerts.append({
             "level": "info",

@@ -17,7 +17,7 @@ from typing import Optional
 from icalendar import Calendar
 
 from web.db import SessionLocal
-from web.models import Draft, CalendarState, ActivityLog, Reservation
+from web.models import Draft, CalendarState, ActivityLog, Reservation, TenantConfig
 from web.classifier import generate_draft, make_draft_id, build_property_context
 from web.crypto import decrypt
 
@@ -304,6 +304,40 @@ def check_extension_offer(cfg: CalendarConfig, booking: dict, label: str, now: d
 # Main poll loop
 # ---------------------------------------------------------------------------
 
+def _mark_ical_error(tenant_id: str, error_msg: str) -> None:
+    try:
+        db = SessionLocal()
+        try:
+            cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+            if cfg:
+                cfg.ical_last_error = error_msg[:500]
+                cfg.ical_last_error_at = datetime.now(timezone.utc)
+                db.commit()
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+
+def _mark_ical_success(tenant_id: str) -> None:
+    try:
+        db = SessionLocal()
+        try:
+            cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+            if cfg and (cfg.ical_last_error or cfg.ical_last_error_at):
+                cfg.ical_last_error = None
+                cfg.ical_last_error_at = None
+                cfg.ical_last_success_at = datetime.now(timezone.utc)
+                db.commit()
+            elif cfg:
+                cfg.ical_last_success_at = datetime.now(timezone.utc)
+                db.commit()
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+
 def run_for_tenant(cfg: CalendarConfig, stop_flag: "threading.Event"):
     """Poll loop for one tenant. Runs until stop_flag is set."""
     if not cfg.ical_urls:
@@ -327,11 +361,13 @@ def run_for_tenant(cfg: CalendarConfig, stop_flag: "threading.Event"):
                     check_cleaner_brief(cfg, booking, label, now)
                     check_extension_offer(cfg, booking, label, now)
             fail_streak = 0
+            _mark_ical_success(cfg.tenant_id)
         except Exception as exc:
             fail_streak += 1
             backoff = min(cfg.poll_minutes * 60 * (2 ** (fail_streak - 1)), _MAX_BACKOFF)
             log.error("[%s] Calendar error (streak=%d): %s — backoff %ds",
                       cfg.tenant_id, fail_streak, exc, backoff)
+            _mark_ical_error(cfg.tenant_id, str(exc))
             stop_flag.wait(backoff)
             continue
         stop_flag.wait(cfg.poll_minutes * 60)
