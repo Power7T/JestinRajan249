@@ -112,7 +112,7 @@
 <div class="flex-shrink-0 p-5 border-t border-white/5">
 <div class="flex items-center gap-3 mb-4">
 <div class="w-9 h-9 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold flex-shrink-0">
-{{ (tenant.first_name or tenant.email.split('@')[0] or 'H')[0]|upper if tenant else 'H' }}
+{{ (tenant.first_name or (tenant.email.split('@')[0] if tenant.email else '') or 'H')[0]|upper if tenant else 'H' }}
 </div>
 <div class="flex-1 min-w-0">
 <p class="text-white font-semibold text-sm truncate">{{ tenant.first_name or "Your Account" }}</p>

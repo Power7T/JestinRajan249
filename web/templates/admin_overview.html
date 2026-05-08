@@ -239,7 +239,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
         </div>
         <div class="text-xs text-rose-300 font-medium flex-1">
           {% if row.worker_dead %}Worker thread dead · {% endif %}
-          {% if row.inactive_14d %}No activity 14+ days ({{ row.last_active.strftime("%b %d") }}){% endif %}
+          {% if row.inactive_14d %}No activity 14+ days{% if row.last_active %} ({{ row.last_active.strftime("%b %d") }}){% endif %}{% endif %}
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
           <a href="/admin/tenants/{{ row.tenant.id }}/nudge" class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#5B8DEF]/10 hover:bg-[#5B8DEF]/20 text-[#aec6ff] text-[10px] font-bold uppercase tracking-wide transition-all border border-[#5B8DEF]/20">
@@ -310,7 +310,7 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
               {% endif %}
             </td>
             <td class="px-6 py-4 text-[0.8rem] font-medium {% if row.inactive_14d %}text-amber-500{% else %}text-slate-400{% endif %}">
-              {{ row.last_active.strftime("%Y-%m-%d") }}
+              {{ row.last_active.strftime("%Y-%m-%d") if row.last_active else "—" }}
             </td>
             <td class="px-6 py-4 text-right">
               <a href="/admin/tenants/{{ row.tenant.id }}" class="inline-flex items-center justify-center px-4 py-1.5 rounded-xl text-xs font-bold text-[#aec6ff] border border-[rgba(174,198,255,0.2)] hover:bg-[rgba(174,198,255,0.1)] transition-colors">

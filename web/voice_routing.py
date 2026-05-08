@@ -23,21 +23,31 @@ def evaluate_routing_rules(db: Session, tenant_id: str, caller_number: str) -> D
         if config.queue_hold_music:
             action["hold_music"] = True
 
-    # Get recent calls to determine things like call_count or sentiment history
-    # Simple logic
-    recent_calls = db.query(VoiceCall).filter(
-        VoiceCall.tenant_id == tenant_id,
-        VoiceCall.guest_phone_number == caller_number
-    ).order_by(VoiceCall.created_at.desc()).all()
+    # Get recent calls to determine things like call_count or sentiment history.
+    # NOTE: These queries run inside a request context and have no statement timeout
+    # configured at the DB level. A slow query can block the request thread indefinitely.
+    # Wrap with try/except so a DB hiccup degrades gracefully to default routing.
+    try:
+        recent_calls = db.query(VoiceCall).filter(
+            VoiceCall.tenant_id == tenant_id,
+            VoiceCall.guest_phone_number == caller_number
+        ).order_by(VoiceCall.created_at.desc()).all()
+    except Exception as exc:
+        logger.warning("[%s] Voice routing VoiceCall query failed: %s", tenant_id, exc)
+        recent_calls = []
 
     call_count = len(recent_calls)
     negative_calls = sum(1 for c in recent_calls if c.sentiment == "negative")
 
     # Evaluate rules by priority
-    rules = db.query(RoutingRule).filter(
-        RoutingRule.tenant_id == tenant_id,
-        RoutingRule.is_active == True
-    ).order_by(RoutingRule.priority.asc()).all()
+    try:
+        rules = db.query(RoutingRule).filter(
+            RoutingRule.tenant_id == tenant_id,
+            RoutingRule.is_active == True
+        ).order_by(RoutingRule.priority.asc()).all()
+    except Exception as exc:
+        logger.warning("[%s] Voice routing RoutingRule query failed: %s", tenant_id, exc)
+        rules = []
 
     for rule in rules:
         matched = False

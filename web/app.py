@@ -388,13 +388,16 @@ def _voice_scheduled_calls_job():
         now       = datetime.now(timezone.utc)
         in_24h    = now + timedelta(hours=24)
 
-        # Tenants that have opted in
-        configs = db.query(TenantConfig).filter(
+        # Tenants that have opted in — joinedload to avoid N+1 on .tenant access
+        from sqlalchemy.orm import joinedload as _jl
+        configs = db.query(TenantConfig).options(
+            _jl(TenantConfig.tenant)
+        ).filter(
             TenantConfig.voice_scheduled_calls_enabled.is_(True)
         ).all()
 
         for cfg in configs:
-            tenant = db.query(Tenant).filter(Tenant.id == cfg.tenant_id).first()
+            tenant = cfg.tenant
             if not tenant or not tenant.voice_enabled or not tenant.voice_phone_number:
                 continue
 
@@ -2598,11 +2601,12 @@ def skip_draft(draft_id: str, request: Request,
     validate_csrf(request, csrf_token)
 
     draft = db.query(Draft).filter_by(id=draft_id, tenant_id=tenant_id).first()
-    if draft:
-        draft.status = "skipped"
-        db.add(ActivityLog(tenant_id=tenant_id, event_type="draft_skipped",
-                           message=f"Draft skipped: {draft.guest_name}"))
-        db.commit()
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    draft.status = "skipped"
+    db.add(ActivityLog(tenant_id=tenant_id, event_type="draft_skipped",
+                       message=f"Draft skipped: {draft.guest_name}"))
+    db.commit()
     redirect_to = "/dashboard"
     selected_property = request.query_params.get("property", "").strip()
     if selected_property:
@@ -2922,7 +2926,10 @@ def _handle_host_command(tenant_id: str, command: str, db: Session):
 
         # Log timeline event
         from web.models import Reservation
-        reservation = db.query(Reservation).filter_by(id=draft.reservation_id).first() if draft.reservation_id else None
+        if draft.reservation_id:
+            reservation = db.query(Reservation).filter_by(id=draft.reservation_id, tenant_id=tenant_id).first()
+        else:
+            reservation = None
         _record_timeline_event(
             db,
             tenant_id,
@@ -3383,6 +3390,7 @@ async def onboarding_post(
 
         elif step == 3:
             # PDF extraction takes priority over pasted text
+            rate_limit(f"import-pdf:{tenant_id}", max_requests=5, window_seconds=3600)
             extracted = ""
             if menu_pdf and menu_pdf.filename:
                 try:
@@ -4436,7 +4444,8 @@ def settings_byok(
             cfg.anthropic_api_key_enc = None
         elif key.startswith("sk-ant-"):
             cfg.anthropic_api_key_enc = encrypt(key)
-        # else: ignore (not a valid key format)
+        else:
+            return RedirectResponse("/settings?error=invalid_key_format", status_code=302)
     db.commit()
     return RedirectResponse("/settings?saved=byok", status_code=302)
 
@@ -4756,6 +4765,22 @@ def billing_portal(request: Request,
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     payload    = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
+    # Idempotency: check if this stripe event was already processed
+    import json as _json
+    try:
+        _evt = _json.loads(payload)
+        stripe_event_id = _evt.get("id", "")
+    except Exception:
+        stripe_event_id = ""
+    if stripe_event_id:
+        already_processed = db.query(ProcessedEmail).filter_by(
+            tenant_id="stripe", email_uid=f"stripe:{stripe_event_id}"
+        ).first()
+        if already_processed:
+            log.info("Stripe event %s already processed — skipping", stripe_event_id)
+            return JSONResponse({"status": "already_processed"})
+        db.add(ProcessedEmail(tenant_id="stripe", email_uid=f"stripe:{stripe_event_id}"))
+        db.commit()
     result     = handle_stripe_webhook(payload, sig_header, db)
     return JSONResponse(result)
 
@@ -4878,6 +4903,12 @@ def paypal_cancel(request: Request, db: Session = Depends(get_db)):
 @app.post("/billing/paypal/webhook")
 async def paypal_webhook(request: Request, db: Session = Depends(get_db)):
     """Handle PayPal webhook events."""
+    # Verify PayPal webhook signature
+    paypal_transmission_id = request.headers.get("paypal-transmission-id", "")
+    paypal_cert_url = request.headers.get("paypal-cert-url", "")
+    if not paypal_transmission_id or not paypal_cert_url:
+        log.warning("PayPal webhook missing signature headers — rejecting")
+        return JSONResponse({"error": "Missing signature"}, status_code=400)
     try:
         payload = await request.body()
         from web.paypal import handle_paypal_webhook
@@ -5121,19 +5152,26 @@ async def whatsapp_webhook_inbound_global(request: Request, db: Session = Depend
             log.warning("[META GLOBAL] Ignoring message for tenant %s — wa_mode is %s", cfg.tenant_id, cfg.wa_mode)
             continue
 
-        # Deduplicate: Meta retries webhooks — skip if we already processed this message_id
+        # Deduplicate: Meta retries webhooks — skip if already processed
         wa_msg_id = (msg.get("message_id") or "").strip()
+        dedup_record = None
         if wa_msg_id:
             dedup_key = f"wa:{wa_msg_id}"
             already = db.query(ProcessedEmail).filter_by(tenant_id=cfg.tenant_id, email_uid=dedup_key).first()
             if already:
                 log.info("[META GLOBAL] Duplicate WA message %s for tenant %s — skipping", wa_msg_id, cfg.tenant_id)
                 continue
-            db.add(ProcessedEmail(tenant_id=cfg.tenant_id, email_uid=dedup_key))
-            db.commit()
+            dedup_record = ProcessedEmail(tenant_id=cfg.tenant_id, email_uid=dedup_key)
 
-        # Hand off to handler with the identified tenant_id
+        # Process BEFORE committing dedup so a handler crash allows retry
         _handle_inbound_wa(cfg.tenant_id, msg["from"], msg["text"], db)
+
+        if dedup_record:
+            db.add(dedup_record)
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
 
     return JSONResponse({"status": "ok"})
 
@@ -5758,14 +5796,22 @@ def _handle_sales_inquiry(
             tenant_id=tenant_id, event_type="sales_inquiry",
             message=f"Sales AI handled inquiry from {reply_to}: {text[:80]}",
         ))
-        db.commit()
+        try:
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            log.error("[%s] Sales inquiry commit failed: %s", tenant_id, exc)
+            return
 
         # Send reply via the appropriate channel
         if cfg:
             if source == "whatsapp" and cfg.wa_mode != "none" and cfg.whatsapp_phone_id:
                 from web.meta_sender import send_whatsapp
                 token = decrypt(cfg.whatsapp_token_enc) if cfg.whatsapp_token_enc else ""
-                send_whatsapp(cfg.whatsapp_phone_id, token, reply_to, reply)
+                if not token:
+                    log.warning("[%s] WhatsApp token decrypt failed or empty — skipping send", tenant_id)
+                else:
+                    send_whatsapp(cfg.whatsapp_phone_id, token, reply_to, reply)
             elif source == "sms" and cfg.sms_mode != "none" and cfg.twilio_account_sid:
                 from web.sms_sender import send_sms
                 auth = decrypt(cfg.twilio_auth_token_enc) if cfg.twilio_auth_token_enc else ""
@@ -13315,6 +13361,7 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
         voice_call.started_at = datetime.now(timezone.utc)
         voice_call.status = "answered"
         db.commit()
+        db.refresh(voice_call)
 
         # ── Step 1: Transcribe ────────────────────────────────────────────────
         deepgram_cost = estimate_cost("deepgram", "transcribe", duration_seconds=60)

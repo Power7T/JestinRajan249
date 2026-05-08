@@ -158,8 +158,13 @@ def _maybe_satisfaction_pulse(tenant_id: str, today, now, cfg, db):
 
         if sent:
             gc.satisfaction_sent_at = now
-            db.commit()
-            log.info("[%s] Satisfaction pulse sent to %s", tenant_id, gc.guest_name)
+            try:
+                db.commit()
+            except Exception as exc:
+                db.rollback()
+                log.error("[%s] Satisfaction pulse commit failed: %s", tenant_id, exc)
+            else:
+                log.info("[%s] Satisfaction pulse sent to %s", tenant_id, gc.guest_name)
 
 
 def _save_draft(db, tenant_id: str, draft_id: str, guest_name: str,

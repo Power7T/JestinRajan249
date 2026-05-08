@@ -374,6 +374,8 @@ def _process_message(tenant_id: str, cfg: dict, msg: PMSMessage,
             )
         except RuntimeError as exc:
             log.error("[%s] PMS draft generation failed: %s", tenant_id, exc)
+            _mark_processed(db, tenant_id, integration_id, msg.message_id)
+            db.commit()
             return
 
         # ── 5. Thread metadata ───────────────────────────────────────────

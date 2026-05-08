@@ -153,9 +153,10 @@ def increment_rate_limit(
         return
 
     try:
+        # Use SELECT FOR UPDATE to prevent race condition with concurrent workers
         counter = db.query(RateLimitCounter).filter(
             RateLimitCounter.counter_id == window_key
-        ).first()
+        ).with_for_update().first()
 
         if not counter or (counter.expires_at and counter.expires_at < now):
             counter = RateLimitCounter(

@@ -145,7 +145,7 @@ class Tenant(Base):
     id:           Mapped[str]      = mapped_column(String(36), primary_key=True, default=_uuid)
     email:        Mapped[str]      = mapped_column(String(255), unique=True, index=True, nullable=False)
     password_hash: Mapped[str]     = mapped_column(String(128), nullable=False)
-    is_active:    Mapped[bool]     = mapped_column(Boolean, default=True)
+    is_active:    Mapped[bool]     = mapped_column(Boolean, default=True, server_default="true")
     created_at:   Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     # User profile
@@ -186,6 +186,7 @@ class Tenant(Base):
     voice_calls:    Mapped[list["VoiceCall"]]     = relationship("VoiceCall", back_populates="tenant")
     voice_routing_config: Mapped[Optional["VoiceRoutingConfig"]] = relationship("VoiceRoutingConfig", back_populates="tenant", uselist=False)
     routing_rules:  Mapped[list["RoutingRule"]]   = relationship("RoutingRule", back_populates="tenant")
+    property_configs: Mapped[list["PropertyConfig"]] = relationship("PropertyConfig", back_populates="tenant")
     upsell_offers:  Mapped[list["UpsellOffer"]]   = relationship("UpsellOffer", back_populates="tenant")
     sales_config:   Mapped[Optional["SalesConfig"]] = relationship("SalesConfig", back_populates="tenant", uselist=False)
     sales_conversations: Mapped[list["SalesConversation"]] = relationship("SalesConversation", back_populates="tenant")
@@ -418,7 +419,7 @@ class PropertyConfig(Base):
 
     # Relationships
     property: Mapped["Property"] = relationship("Property", back_populates="config")
-    tenant: Mapped["Tenant"] = relationship("Tenant")
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="property_configs")
 
 
 # ---------------------------------------------------------------------------
@@ -817,7 +818,7 @@ class ReservationIntakeBatch(Base):
     rows_imported:     Mapped[int]           = mapped_column(Integer, default=0)
     rows_failed:       Mapped[int]           = mapped_column(Integer, default=0)
     notes:             Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    details_json:      Mapped[dict]          = mapped_column(JSON, default=dict)
+    details_json:      Mapped[dict]          = mapped_column(JSON, default=lambda: {})
     pms_integration_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("pms_integrations.id"), nullable=True, index=True)
     created_by_member_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("team_members.id"), nullable=True, index=True)
     started_at:        Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
@@ -848,8 +849,8 @@ class AutomationRule(Base):
     is_active:   Mapped[bool]          = mapped_column(Boolean, default=True, index=True)
     priority:    Mapped[int]           = mapped_column(Integer, default=100, index=True)
     confidence_threshold: Mapped[float] = mapped_column(Float, default=0.0)
-    conditions_json: Mapped[dict]       = mapped_column(JSON, default=dict)
-    actions_json:    Mapped[dict]       = mapped_column(JSON, default=dict)
+    conditions_json: Mapped[dict]       = mapped_column(JSON, default=lambda: {})
+    actions_json:    Mapped[dict]       = mapped_column(JSON, default=lambda: {})
     last_triggered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at:      Mapped[datetime]   = mapped_column(DateTime(timezone=True), default=_now)
     updated_at:      Mapped[datetime]   = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
@@ -877,7 +878,7 @@ class TeamMember(Base):
     role:        Mapped[str]           = mapped_column(String(32), default=ROLE_MANAGER, index=True)
     is_active:   Mapped[bool]          = mapped_column(Boolean, default=True, index=True)
     property_scope: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    permissions_json: Mapped[dict]     = mapped_column(JSON, default=dict)
+    permissions_json: Mapped[dict]     = mapped_column(JSON, default=lambda: {})
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     password_hash: Mapped[Optional[str]]      = mapped_column(String(128), nullable=True)  # bcrypt; null until invite accepted
     invite_token:  Mapped[Optional[str]]      = mapped_column(String(64), nullable=True, index=True)
@@ -955,7 +956,7 @@ class GuestTimelineEvent(Base):
     event_type:  Mapped[str]           = mapped_column(String(64), index=True)
     summary:     Mapped[str]           = mapped_column(String(255))
     body:        Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    payload_json: Mapped[dict]         = mapped_column(JSON, default=dict)
+    payload_json: Mapped[dict]         = mapped_column(JSON, default=lambda: {})
     created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="timeline_events")
@@ -989,7 +990,7 @@ class ArrivalActivation(Base):
     activated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     deactivated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at:  Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    payload_json: Mapped[dict]         = mapped_column(JSON, default=dict)
+    payload_json: Mapped[dict]         = mapped_column(JSON, default=lambda: {})
     created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
     updated_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
@@ -1024,7 +1025,7 @@ class IssueTicket(Base):
     resolution_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     due_at:      Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
-    payload_json: Mapped[dict]         = mapped_column(JSON, default=dict)
+    payload_json: Mapped[dict]         = mapped_column(JSON, default=lambda: {})
     created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, index=True)
     updated_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
@@ -1062,7 +1063,7 @@ class TenantKpiSnapshot(Base):
     automation_rate_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     edit_rate_pct:      Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     saved_hours:        Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    payload_json:       Mapped[dict]   = mapped_column(JSON, default=dict)
+    payload_json:       Mapped[dict]   = mapped_column(JSON, default=lambda: {})
     created_at:         Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="kpi_snapshots")
@@ -1090,8 +1091,8 @@ class VoiceCall(Base):
     status: Mapped[str] = mapped_column(String(32), default="ringing", index=True)  # ringing / answered / completed / failed
 
     # Conversation history (JSON arrays)
-    guest_messages: Mapped[list] = mapped_column(JSON, default=list)
-    ai_responses: Mapped[list] = mapped_column(JSON, default=list)
+    guest_messages: Mapped[list] = mapped_column(JSON, default=lambda: [])
+    ai_responses: Mapped[list] = mapped_column(JSON, default=lambda: [])
 
     # Analytics
     full_transcript: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -1101,7 +1102,7 @@ class VoiceCall(Base):
     recording_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
 
     # Guest contact info
-    guest_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    guest_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     guest_language: Mapped[str] = mapped_column(String(16), default="en")
 
     # Post-call feedback
@@ -1124,7 +1125,7 @@ class VoiceCall(Base):
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="voice_calls")
     guest_contact: Mapped[Optional["GuestContact"]] = relationship("GuestContact", back_populates="voice_calls")
     reservation: Mapped[Optional["Reservation"]] = relationship("Reservation")
-    knowledge_gaps: Mapped[list["VoiceKnowledgeGap"]] = relationship("VoiceKnowledgeGap", back_populates="call", cascade="all, delete-orphan")
+    knowledge_gaps: Mapped[list["VoiceKnowledgeGap"]] = relationship("VoiceKnowledgeGap", back_populates="call", cascade="save-update, merge")
 
 
 # ---------------------------------------------------------------------------
