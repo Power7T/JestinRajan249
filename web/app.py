@@ -412,7 +412,7 @@ def _voice_scheduled_calls_job():
                 prop = cfg.property_names or "our property"
                 checkin_time = cfg.check_in_time or "3:00 PM"
                 message = (
-                    f"Hello {guest.guest_name.split()[0]}! This is a friendly reminder "
+                    f"Hello {_first_name(guest.guest_name)}! This is a friendly reminder "
                     f"from {prop}. Your check-in is today at {checkin_time}. "
                     f"If you have any questions, feel free to call this number anytime. "
                     f"We look forward to hosting you!"
@@ -477,7 +477,7 @@ def _voice_scheduled_calls_job():
                     continue
 
                 guest_name = call.guest_contact.guest_name if call.guest_contact else "Guest"
-                message = f"Hi {guest_name.split()[0]}! This is your scheduled callback from us. How can we help?"
+                message = f"Hi {_first_name(guest_name)}! This is your scheduled callback from us. How can we help?"
 
                 try:
                     voice_id = cfg.voice_elevenlabs_voice_id if cfg else None
@@ -2804,6 +2804,12 @@ def _execute_draft(
 # _queue_baileys_outbound and _pop_baileys_outbound removed — Baileys integration discontinued
 
 
+def _first_name(full_name: Optional[str], fallback: str = "Guest") -> str:
+    """Safely extract first name from a full name string."""
+    name = (full_name or "").strip()
+    return name.split()[0] if name and name.lower() not in ("unknown", "reserved") else fallback
+
+
 def _normalize_phone(phone: str) -> str:
     """Normalize phone number for comparison (remove spaces, dashes, etc.)."""
     return ''.join(c for c in phone if c.isdigit())
@@ -3057,9 +3063,7 @@ a 1
             # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, help_text, db)
 
     else:
-        # Unknown command (Baileys integration removed)
-        pass
-            # _queue_baileys_outbound(tenant_id, cfg.whatsapp_number, "❓ Unknown command. Type 'h' or 'help'", db)
+        log.debug("[%s] Unknown WhatsApp host command: %s", tenant_id, command[:50])
 
 
 def _send_host_notification(tenant_id: str, notify_phone: str, text: str, guest_name: str, guest_message: str, channel: str, db: Session):
@@ -4035,9 +4039,11 @@ def _save_voice_ai_settings(
 @app.post("/api/tenant/delete")
 def api_gdpr_delete_tenant(
     req: Request,
+    csrf_token: str = Form(None),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(get_current_tenant_id)
 ):
+    validate_csrf(req, csrf_token)
     """
     GDPR Delete Route (Fixes #21)
     Wipes the current tenant's entire database state.
@@ -9703,10 +9709,12 @@ async def admin_voice_ai_save(
     voice_elevenlabs_voice_id_custom: str = Form(""),
     voice_elevenlabs_stability: str = Form(""),
     voice_elevenlabs_similarity: str = Form(""),
+    csrf_token: str = Form(None),
     db: Session = Depends(get_db),
 ):
     """Save Voice AI configuration"""
     admin = _require_admin(request, db)
+    validate_csrf(request, csrf_token)
     sys_conf = load_system_config(db, create_if_missing=True) or SystemConfig()
 
     # Update API Keys (only if provided and not masked)
@@ -13241,9 +13249,9 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         property_name = (tenant.config.property_names or "our property") if tenant.config else "our property"
         guest_name_for_greeting = None
         if guest_contact:
-            guest_name_for_greeting = guest_contact.guest_name.split()[0]
+            guest_name_for_greeting = _first_name(guest_contact.guest_name) or None
         elif reservation:
-            guest_name_for_greeting = reservation.guest_name.split()[0]
+            guest_name_for_greeting = _first_name(reservation.guest_name) or None
 
         if guest_name_for_greeting:
             greeting = f"Hello {guest_name_for_greeting}, welcome back to {property_name}! How can I help you today?"
