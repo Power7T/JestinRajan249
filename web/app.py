@@ -65,7 +65,7 @@ import urllib.error
 import uvicorn
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, Header, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import (
-    HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse, Response
+    HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse, Response, PlainTextResponse
 )
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -15213,6 +15213,11 @@ async def sales_ai_close_conv(
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+def robots_txt():
+    return "User-agent: *\nDisallow: /admin\nDisallow: /api/\nAllow: /\n"
+
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))

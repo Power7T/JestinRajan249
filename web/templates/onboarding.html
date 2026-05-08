@@ -59,7 +59,7 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 
   <div class="wizard-header">
     <h1>Get live in 2 steps</h1>
-    <p>Takes under 2 minutes. Refine AI quality anytime in Settings.</p>
+    <p>Takes 2 minutes. You can always change these settings later from the Settings page.</p>
   </div>
 
   <!-- Progress bar — 2 steps -->
@@ -83,7 +83,8 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 ────────────────────────────────────────────────────────── -->
 {% if step == 1 %}
 <div class="card">
-  <h2 style="margin-bottom:1.5rem">Step 1 — Name your property</h2>
+  <h2 style="margin-bottom:0.5rem">Step 1 — Name your property</h2>
+  <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:1.5rem">This is how your property appears to guests in AI replies. You can change it later.</p>
 
   <!-- Quick-start CTA -->
   <form method="post" action="/onboarding/quick-start" style="margin-bottom:1.5rem">
@@ -209,9 +210,9 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 {% if step == 6 %}
 <div class="card" style="text-align:center;padding:4rem 2rem;max-width:560px;margin:0 auto;">
   <div style="font-size:4rem;margin-bottom:1.5rem">🎉</div>
-  <h2 style="font-size:1.8rem;margin-bottom:1rem;color:#FFF;letter-spacing:-0.5px;">You're live!</h2>
+  <h2 style="font-size:1.8rem;margin-bottom:1rem;color:#FFF;letter-spacing:-0.5px;">You're all set!</h2>
   <p style="color:#8d909e;margin-bottom:2.5rem;font-size:1.05rem;line-height:1.6;max-width:380px;margin-left:auto;margin-right:auto;">
-    HostAI is active for your property. Head to the dashboard to see incoming messages and drafts.
+    HostAI is now active for your property. When guests message you, the AI will draft replies for your review — all in one place.
   </p>
   <a href="/dashboard" class="btn btn-primary" style="font-size:1.1rem;padding:14px 36px;border-radius:0.75rem;box-shadow:0 8px 24px rgba(91,141,239,0.25);">
     Go to Dashboard →

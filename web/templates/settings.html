@@ -33,7 +33,7 @@
     <div class="hub-card-head">
       <div>
         <div class="hub-card-title">Properties</div>
-        <p class="hub-card-copy">Property identity, guest guide, house rules, welcome message, escalation contact, and document uploads.</p>
+        <p class="hub-card-copy">Your property name, house rules, FAQ, and welcome message — this is what the AI learns about your property.</p>
       </div>
       <span class="chip {% if cfg.property_names %}good{% else %}warn{% endif %}">{% if cfg.property_names %}Configured{% else %}Needs setup{% endif %}</span>
     </div>
@@ -49,7 +49,7 @@
     <div class="hub-card-head">
       <div>
         <div class="hub-card-title">Communications</div>
-        <p class="hub-card-copy">Connect WhatsApp and SMS so HostAI can send and receive guest messages.</p>
+        <p class="hub-card-copy">Connect WhatsApp or SMS so the AI can send and receive guest messages on your behalf.</p>
       </div>
       <span class="chip {% if channel_ready %}good{% else %}warn{% endif %}">{% if channel_ready %}Channel ready{% else %}Not connected{% endif %}</span>
     </div>
@@ -65,7 +65,7 @@
     <div class="hub-card-head">
       <div>
         <div class="hub-card-title">Automations</div>
-        <p class="hub-card-copy">Automation rules, review flow, satisfaction pulse, quick replies, and upsell offers in one focused place.</p>
+        <p class="hub-card-copy">Set up automatic replies, guest satisfaction surveys, and review requests.</p>
       </div>
       <span class="chip {% if automation_rules|length or cfg.satisfaction_pulse_enabled or cfg.review_request_enabled or cfg.upsell_enabled %}good{% else %}warn{% endif %}">
         {% if automation_rules|length or cfg.satisfaction_pulse_enabled or cfg.review_request_enabled or cfg.upsell_enabled %}Active{% else %}Quiet{% endif %}
@@ -83,7 +83,7 @@
     <div class="hub-card-head">
       <div>
         <div class="hub-card-title">Integrations</div>
-        <p class="hub-card-copy">Connect your Airbnb iCal link and property management system so HostAI knows your bookings.</p>
+        <p class="hub-card-copy">Link your Airbnb calendar or property management system so the AI knows your booking schedule.</p>
       </div>
       <span class="chip {% if cfg.ical_urls or pms_integrations|length %}good{% else %}warn{% endif %}">
         {% if cfg.ical_urls or pms_integrations|length %}Connected{% else %}Not connected{% endif %}
@@ -100,7 +100,7 @@
     <div class="hub-card-head">
       <div>
         <div class="hub-card-title">Team & Access</div>
-        <p class="hub-card-copy">Invite co-hosts, cleaners, and managers. Control what each person can see and do.</p>
+        <p class="hub-card-copy">Invite co-hosts and cleaners — control what each person can view and do.</p>
       </div>
       <span class="chip {% if team_members|length %}good{% else %}warn{% endif %}">{% if team_members|length %}Staffed{% else %}No team yet{% endif %}</span>
     </div>

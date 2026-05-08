@@ -138,7 +138,7 @@ body {
 <div class="mb-12 relative">
 <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
 <h1 class="text-5xl font-extrabold tracking-tight text-white mb-2 font-headline">Dashboard</h1>
-<p class="text-slate-400 font-medium">Welcome back{% if tenant %}, {{ tenant.first_name or tenant.email.split('@')[0] | title }}{% endif %}. {% if drafts %}Your AI agents have drafted {{ drafts|length }} response{{ 's' if drafts|length != 1 else '' }} awaiting review.{% else %}All caught up — no pending drafts.{% endif %}</p>
+<p class="text-slate-400 font-medium">Welcome back{% if tenant %}, {{ tenant.first_name or tenant.email.split('@')[0] | title }}{% endif %}. {% if drafts|length == 1 %}Your AI drafted 1 response — review and approve it below.{% elif drafts|length > 1 %}Your AI drafted {{ drafts|length }} responses — review and send them below.{% else %}All caught up — no messages waiting for your review.{% endif %}</p>
 </div>
 
 {% if setup_alerts %}
@@ -370,9 +370,14 @@ body {
 {% else %}
 <div class="glass-card rounded-3xl p-16 flex flex-col items-center justify-center text-center border border-dashed border-white/10">
   <span class="material-symbols-outlined text-5xl text-primary mb-4" style="font-variation-settings: 'FILL' 1;">task_alt</span>
-  <h3 class="text-xl font-bold text-white mb-2">Inbox Zero!</h3>
-  <p class="text-slate-400 text-sm mb-6">{% if cfg and cfg.onboarding_complete %}No pending drafts — all caught up!{% else %}Complete your setup to start receiving AI drafts.{% endif %}</p>
-  {% if cfg and not cfg.onboarding_complete %}
+  <h3 class="text-xl font-bold text-white mb-2">{% if cfg and cfg.onboarding_complete %}Inbox Zero!{% else %}Almost ready!{% endif %}</h3>
+  <p class="text-slate-400 text-sm mb-6">{% if cfg and cfg.onboarding_complete %}No pending drafts — you're all caught up.{% else %}Complete your setup to start receiving AI drafts.{% endif %}</p>
+  {% if cfg and cfg.onboarding_complete %}
+  <div class="mt-2 p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-left max-w-sm">
+    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">What happens next?</p>
+    <p class="text-slate-400 text-sm leading-relaxed">When guests message you on WhatsApp or SMS, the AI drafts a reply and it appears here for your review before sending.</p>
+  </div>
+  {% else %}
   <a href="/onboarding" class="bg-primary text-on-primary font-bold px-6 py-3 rounded-xl text-sm hover:scale-105 transition-all">Complete Setup →</a>
   {% endif %}
 </div>
