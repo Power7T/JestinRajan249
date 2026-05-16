@@ -660,7 +660,11 @@ def stop_all_workers():
 
 def restart_worker(tenant_id: str):
     """Call after a tenant updates their settings."""
-    _start_tenant(tenant_id)
+    try:
+        _start_tenant(tenant_id)
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger(__name__).warning("restart_worker failed for %s: %s", tenant_id, exc)
 
 
 def worker_status(tenant_id: str) -> dict:

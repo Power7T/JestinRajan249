@@ -10865,8 +10865,10 @@ async def voice_ai_voice_message(request: Request, audio: UploadFile = File(...)
         tenant = _require_auth(request, db)
         from web.integrations.voice import VoiceAIService
 
-        # Read audio file
-        audio_bytes = await audio.read()
+        # Read audio file — cap at 10 MB to prevent DoS
+        audio_bytes = await audio.read(10 * 1024 * 1024 + 1)
+        if len(audio_bytes) > 10 * 1024 * 1024:
+            return JSONResponse({"error": "Audio file too large (max 10 MB)"}, status_code=413)
 
         # Step 1: Upload audio to S3/R2 to get URL for transcription
         audio_url = await VoiceAIService.upload_to_r2(audio_bytes, f"voice-chat-{uuid4()}.wav")
@@ -11026,13 +11028,6 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
             tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
         except Exception:
             pass
-        if not tenant:
-            try:
-                tenant_id = init_data.get("tenant_id")
-                if tenant_id:
-                    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
-            except Exception:
-                pass
         if not tenant:
             await websocket.send_json({"type": "error", "message": "No authenticated tenant found"})
             await websocket.close()
