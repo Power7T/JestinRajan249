@@ -248,7 +248,21 @@
 
 {% block workspace_scripts %}
 <style nonce="{{ request.state.csp_nonce }}">
-/* ── Time picker wrapper ─────────────────────────────────────────── */
+/* ── Property type select — restore dropdown arrow Tailwind forms strips ── */
+#property-type-select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238d909e' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 38px !important;
+  cursor: pointer;
+}
+#property-type-select:focus {
+  border-color: #5B8DEF;
+}
+
+/* ── Time picker — restore native spinner Tailwind forms removes ───── */
 .time-picker-wrap {
   position: relative;
   display: flex;
@@ -261,31 +275,47 @@
   font-size: 18px;
   pointer-events: none;
   user-select: none;
+  z-index: 1;
 }
 .time-picker-wrap input[type="time"] {
+  -webkit-appearance: auto;
+  appearance: auto;
   padding-left: 38px !important;
   cursor: pointer;
   width: 100%;
+  color-scheme: dark;
 }
 .time-picker-wrap input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(60%) sepia(10%) saturate(300%) hue-rotate(200deg);
   cursor: pointer;
   opacity: 0.7;
+  margin-right: 4px;
 }
 .time-picker-wrap input[type="time"]:hover::-webkit-calendar-picker-indicator {
   opacity: 1;
 }
 
-/* ── Inline PDF upload strip ─────────────────────────────────────── */
+/* ── Building fields reveal ───────────────────────────────────────── */
+#building-fields {
+  margin-top: -0.5rem;
+  padding: 1rem;
+  background: rgba(91,141,239,.06);
+  border: 1px solid rgba(91,141,239,.18);
+  border-radius: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Inline PDF upload strip ──────────────────────────────────────── */
 .pdf-upload-strip {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 6px;
+  margin-top: -0.6rem;
+  margin-bottom: 1rem;
   padding: 10px 14px;
   background: rgba(255,255,255,.03);
   border: 1px dashed rgba(255,255,255,.12);
-  border-radius: 8px;
+  border-radius: 0 0 8px 8px;
   font-size: 13px;
   color: #8d909e;
 }
@@ -301,10 +331,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.pdf-upload-strip .pdf-status strong {
-  color: #e3e1eb;
-  font-weight: 500;
-}
+.pdf-upload-strip .pdf-status strong { color: #e3e1eb; font-weight: 500; }
 .pdf-upload-strip label.upload-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -320,12 +347,8 @@
   cursor: pointer;
   transition: background .15s;
 }
-.pdf-upload-strip label.upload-btn:hover {
-  background: rgba(93,142,241,.25);
-}
-.pdf-upload-strip label.upload-btn input[type="file"] {
-  display: none;
-}
+.pdf-upload-strip label.upload-btn:hover { background: rgba(93,142,241,.25); }
+.pdf-upload-strip label.upload-btn input[type="file"] { display: none; }
 .pdf-uploading {
   display: none;
   align-items: center;
@@ -344,42 +367,44 @@
 </style>
 
 <script nonce="{{ request.state.csp_nonce }}">
-/* Building section toggle */
-(function () {
-  var sel = document.getElementById('property-type-select');
-  var box = document.getElementById('building-fields');
+document.addEventListener('DOMContentLoaded', function () {
+
+  /* ── Property type → building fields toggle ── */
+  var sel       = document.getElementById('property-type-select');
+  var box       = document.getElementById('building-fields');
   var unitsInput = document.getElementById('building-total-units');
-  function toggle() {
+
+  function toggleBuilding() {
     var isBuilding = sel.value === 'building';
-    box.style.display = isBuilding ? 'block' : 'none';
+    box.style.display  = isBuilding ? 'block' : 'none';
     unitsInput.required = isBuilding;
   }
-  sel.addEventListener('change', toggle);
-  toggle();
-})();
+  sel.addEventListener('change', toggleBuilding);
+  toggleBuilding(); /* run once on load to restore saved state */
 
-/* PDF inline upload */
-function submitPdf(fileInput, kind) {
-  if (!fileInput.files || !fileInput.files[0]) return;
-  var file = fileInput.files[0];
-  if (file.size > 10 * 1024 * 1024) {
-    alert('PDF must be under 10 MB.');
-    fileInput.value = '';
-    return;
-  }
-  var hiddenInput = document.getElementById('hidden-' + kind + '-file');
-  var form = document.getElementById('form-upload-' + kind);
-  var spin = document.getElementById('spin-' + kind);
+  /* ── PDF inline upload ── */
+  window.submitPdf = function (fileInput, kind) {
+    if (!fileInput.files || !fileInput.files[0]) return;
+    var file = fileInput.files[0];
+    if (file.size > 10 * 1024 * 1024) {
+      alert('PDF must be under 10 MB.');
+      fileInput.value = '';
+      return;
+    }
+    var hiddenInput = document.getElementById('hidden-' + kind + '-file');
+    var form        = document.getElementById('form-upload-' + kind);
+    var spin        = document.getElementById('spin-' + kind);
+    var strip       = document.getElementById('strip-' + kind);
 
-  var dt = new DataTransfer();
-  dt.items.add(file);
-  hiddenInput.files = dt.files;
+    var dt = new DataTransfer();
+    dt.items.add(file);
+    hiddenInput.files = dt.files;
 
-  var strip = document.getElementById('strip-' + kind);
-  strip.querySelector('.upload-btn').style.display = 'none';
-  spin.style.display = 'inline-flex';
+    strip.querySelector('.upload-btn').style.display = 'none';
+    spin.style.display = 'inline-flex';
+    form.submit();
+  };
 
-  form.submit();
-}
+});
 </script>
 {% endblock %}
