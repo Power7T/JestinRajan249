@@ -288,6 +288,9 @@ def db_migrate():
         ("team_members", "expertise_areas",           "TEXT",    "NULL"),
         ("team_members", "max_concurrent_tasks",      "INTEGER", "10"),
         ("team_members", "is_available_for_assignment","BOOLEAN", false_default),
+        # Building/multi-unit property support
+        ("tenant_configs", "building_total_units",    "INTEGER",      "NULL"),
+        ("tenant_configs", "building_name",           "VARCHAR(255)", "NULL"),
     ]
     inspector = inspect(engine)
     existing_tables = set(inspector.get_table_names())

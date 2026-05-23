@@ -209,11 +209,13 @@ class TenantConfig(Base):
     data_retention_days: Mapped[int]      = mapped_column(Integer, nullable=False, server_default="30")
 
     # Onboarding — property details (filled during wizard)
-    property_type:       Mapped[Optional[str]] = mapped_column(String(64), nullable=True)   # apartment/villa/bnb/hotel
+    property_type:       Mapped[Optional[str]] = mapped_column(String(64), nullable=True)   # apartment/villa/building/etc
     property_city:       Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     check_in_time:       Mapped[Optional[str]] = mapped_column(String(32), nullable=True)   # e.g. "15:00"
     check_out_time:      Mapped[Optional[str]] = mapped_column(String(32), nullable=True)   # e.g. "11:00"
     max_guests:          Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    building_total_units: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)     # only set when property_type == "building"
+    building_name:       Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # complex/building name
     house_rules:         Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     pet_policy:          Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     refund_policy:       Mapped[Optional[str]] = mapped_column(Text, nullable=True)

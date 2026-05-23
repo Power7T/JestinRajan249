@@ -39,7 +39,42 @@
       </div>
       <div>
         <label>Property type</label>
-        <input type="text" name="property_type" value="{{ cfg.property_type or '' }}" placeholder="Villa / Apartment / Hotel">
+        <select name="property_type" id="property-type-select">
+          <option value="">— select —</option>
+          {% set _pt = (cfg.property_type or '')|lower %}
+          {% for opt in [
+            ("Apartment",       "apartment"),
+            ("Villa",           "villa"),
+            ("House",           "house"),
+            ("Cottage",         "cottage"),
+            ("Bungalow",        "bungalow"),
+            ("Studio",          "studio"),
+            ("Condo",           "condo"),
+            ("Townhouse",       "townhouse"),
+            ("Chalet",          "chalet"),
+            ("Penthouse",       "penthouse"),
+            ("Hotel / Resort",  "hotel"),
+            ("Entire Building", "building"),
+            ("Other",           "other"),
+          ] %}
+          <option value="{{ opt[1] }}" {% if _pt == opt[1] %}selected{% endif %}>{{ opt[0] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    {# Building-specific fields — shown only when type = building #}
+    <div id="building-fields" style="display:{% if (cfg.property_type or '')|lower == 'building' %}block{% else %}none{% endif %};">
+      <div class="form-row">
+        <div>
+          <label>Building / complex name <span style="font-weight:400;opacity:.6">(optional)</span></label>
+          <input type="text" name="building_name" value="{{ cfg.building_name or '' }}" placeholder="Sunset Residences, Tower B">
+        </div>
+        <div>
+          <label>Total units in building</label>
+          <input type="number" min="2" name="building_total_units" value="{{ cfg.building_total_units or '' }}" placeholder="12" id="building-total-units">
+          <p class="help-text">How many rentable units are in this building? Used to route guest queries to the right room.</p>
+        </div>
       </div>
     </div>
 
@@ -60,8 +95,8 @@
 
     <div class="form-row">
       <div>
-        <label>Max guests</label>
-        <input type="number" min="1" name="max_guests" value="{{ cfg.max_guests or '' }}" placeholder="4">
+        <label>Max guests <span style="font-weight:400;opacity:.6">(optional)</span></label>
+        <input type="number" min="1" name="max_guests" value="{{ cfg.max_guests or '' }}" placeholder="Leave blank if not applicable">
       </div>
       <div>
         <label>Quiet hours</label>
@@ -173,4 +208,19 @@
     </div>
   </div>
 </section>
+
+<script nonce="{{ request.state.csp_nonce }}">
+(function () {
+  var sel = document.getElementById('property-type-select');
+  var box = document.getElementById('building-fields');
+  var unitsInput = document.getElementById('building-total-units');
+  function toggle() {
+    var isBuilding = sel.value === 'building';
+    box.style.display = isBuilding ? 'block' : 'none';
+    unitsInput.required = isBuilding;
+  }
+  sel.addEventListener('change', toggle);
+  toggle();
+})();
+</script>
 {% endblock %}

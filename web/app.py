@@ -3839,6 +3839,11 @@ async def properties_save(
     max_guests = str(form_data.get("max_guests", "")).strip()
     cfg.max_guests = int(max_guests) if max_guests.isdigit() else None
 
+    building_total_units = str(form_data.get("building_total_units", "")).strip()
+    cfg.building_total_units = int(building_total_units) if building_total_units.isdigit() else None
+    building_name = str(form_data.get("building_name", "")).strip()
+    cfg.building_name = building_name or None
+
     _maybe_refresh_nearby_places(cfg, tenant_id, previous_maps_url=previous_maps_url, db=db)
 
     db.add(ActivityLog(tenant_id=tenant_id, event_type="properties_saved", message="Property settings updated"))
