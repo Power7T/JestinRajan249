@@ -795,6 +795,32 @@ def _get_tenant(tenant_id: str, db: Session) -> Tenant:
     return t
 
 
+def _normalize_hhmm(t: str | None) -> str:
+    """Return a HH:MM string safe for <input type="time"> value attribute.
+
+    Handles existing records that store 12-hour strings like '3:00 PM' or
+    '11:00 AM' (set by onboarding defaults).  Returns '' for unrecognised input
+    so the browser shows an empty picker instead of a validation error.
+    """
+    if not t:
+        return ""
+    t = t.strip()
+    import re as _re2
+    if _re2.match(r"^\d{1,2}:\d{2}(:\d{2})?$", t):
+        h, m = t.split(":")[:2]
+        return f"{int(h):02d}:{m}"
+    try:
+        from datetime import datetime as _dt
+        for fmt in ("%I:%M %p", "%I %p", "%H:%M"):
+            try:
+                return _dt.strptime(t, fmt).strftime("%H:%M")
+            except ValueError:
+                pass
+    except Exception:
+        pass
+    return ""
+
+
 def _get_or_create_config(tenant_id: str, db: Session) -> TenantConfig:
     cfg = load_tenant_config(db, tenant_id, create_if_missing=True)
     if not cfg:
@@ -3776,17 +3802,19 @@ def properties_page(request: Request, db: Session = Depends(get_db)):
     elif request.query_params.get("saved") == "rules":
         saved_message = "House rules upload saved."
 
-    return templates.TemplateResponse(
-        "properties.html",
-        _workspace_context(
-            request,
-            db,
-            tenant_id,
-            page_key="properties",
-            saved_message=saved_message,
-            error_message="Uploaded PDF exceeded the size limit." if request.query_params.get("error") == "file_too_large" else None,
-        ),
+    ctx = _workspace_context(
+        request,
+        db,
+        tenant_id,
+        page_key="properties",
+        saved_message=saved_message,
+        error_message="Uploaded PDF exceeded the size limit." if request.query_params.get("error") == "file_too_large" else None,
     )
+    # Normalize stored time values to HH:MM for type="time" inputs — old records
+    # may have "3:00 PM" / "11:00 AM" from onboarding defaults which browsers reject.
+    ctx["check_in_hhmm"]  = _normalize_hhmm(ctx["cfg"].check_in_time)
+    ctx["check_out_hhmm"] = _normalize_hhmm(ctx["cfg"].check_out_time)
+    return templates.TemplateResponse("properties.html", ctx)
 
 
 @app.post("/properties")

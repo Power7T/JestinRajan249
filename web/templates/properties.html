@@ -4,103 +4,6 @@
 {% block page_heading %}Properties{% endblock %}
 {% block page_subtitle %}Property profile, stay rules, guest guide, uploads, and the context your AI uses to answer like an operator instead of a generic chatbot.{% endblock %}
 
-{% block head %}
-<style nonce="{{ request.state.csp_nonce }}">
-/* ── Time picker wrapper ─────────────────────────────────────────── */
-.time-picker-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.time-picker-wrap .time-icon {
-  position: absolute;
-  left: 12px;
-  color: #8d909e;
-  font-size: 18px;
-  pointer-events: none;
-  user-select: none;
-}
-.time-picker-wrap input[type="time"] {
-  padding-left: 38px !important;
-  cursor: pointer;
-  width: 100%;
-}
-.time-picker-wrap input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: invert(60%) sepia(10%) saturate(300%) hue-rotate(200deg);
-  cursor: pointer;
-  opacity: 0.7;
-}
-.time-picker-wrap input[type="time"]:hover::-webkit-calendar-picker-indicator {
-  opacity: 1;
-}
-
-/* ── Inline PDF upload strip ─────────────────────────────────────── */
-.pdf-upload-strip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 6px;
-  padding: 10px 14px;
-  background: rgba(255,255,255,.03);
-  border: 1px dashed rgba(255,255,255,.12);
-  border-radius: 8px;
-  font-size: 13px;
-  color: #8d909e;
-}
-.pdf-upload-strip .pdf-icon {
-  font-size: 20px;
-  color: #5d8ef1;
-  flex-shrink: 0;
-}
-.pdf-upload-strip .pdf-status {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pdf-upload-strip .pdf-status strong {
-  color: #e3e1eb;
-  font-weight: 500;
-}
-.pdf-upload-strip label.upload-btn {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  background: rgba(93,142,241,.15);
-  border: 1px solid rgba(93,142,241,.35);
-  border-radius: 6px;
-  color: #aec6ff;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background .15s;
-}
-.pdf-upload-strip label.upload-btn:hover {
-  background: rgba(93,142,241,.25);
-}
-.pdf-upload-strip label.upload-btn input[type="file"] {
-  display: none;
-}
-.pdf-uploading {
-  display: none;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #aec6ff;
-}
-.pdf-spinner {
-  width: 14px; height: 14px;
-  border: 2px solid rgba(174,198,255,.3);
-  border-top-color: #aec6ff;
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-</style>
-{% endblock %}
 
 {% block workspace_content %}
 <div class="metric-grid">
@@ -187,14 +90,14 @@
         <label>Check-in time</label>
         <div class="time-picker-wrap">
           <span class="material-symbols-outlined time-icon">schedule</span>
-          <input type="time" name="check_in_time" value="{{ cfg.check_in_time or '' }}">
+          <input type="time" name="check_in_time" value="{{ check_in_hhmm }}">
         </div>
       </div>
       <div>
         <label>Check-out time</label>
         <div class="time-picker-wrap">
           <span class="material-symbols-outlined time-icon">schedule</span>
-          <input type="time" name="check_out_time" value="{{ cfg.check_out_time or '' }}">
+          <input type="time" name="check_out_time" value="{{ check_out_hhmm }}">
         </div>
       </div>
     </div>
@@ -341,6 +244,105 @@
   <input type="file" name="faq_pdf" id="hidden-faq-file" accept=".pdf">
 </form>
 
+{% endblock %}
+
+{% block workspace_scripts %}
+<style nonce="{{ request.state.csp_nonce }}">
+/* ── Time picker wrapper ─────────────────────────────────────────── */
+.time-picker-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.time-picker-wrap .time-icon {
+  position: absolute;
+  left: 12px;
+  color: #8d909e;
+  font-size: 18px;
+  pointer-events: none;
+  user-select: none;
+}
+.time-picker-wrap input[type="time"] {
+  padding-left: 38px !important;
+  cursor: pointer;
+  width: 100%;
+}
+.time-picker-wrap input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(60%) sepia(10%) saturate(300%) hue-rotate(200deg);
+  cursor: pointer;
+  opacity: 0.7;
+}
+.time-picker-wrap input[type="time"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
+/* ── Inline PDF upload strip ─────────────────────────────────────── */
+.pdf-upload-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,.03);
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #8d909e;
+}
+.pdf-upload-strip .pdf-icon {
+  font-size: 20px;
+  color: #5d8ef1;
+  flex-shrink: 0;
+}
+.pdf-upload-strip .pdf-status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdf-upload-strip .pdf-status strong {
+  color: #e3e1eb;
+  font-weight: 500;
+}
+.pdf-upload-strip label.upload-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  background: rgba(93,142,241,.15);
+  border: 1px solid rgba(93,142,241,.35);
+  border-radius: 6px;
+  color: #aec6ff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+}
+.pdf-upload-strip label.upload-btn:hover {
+  background: rgba(93,142,241,.25);
+}
+.pdf-upload-strip label.upload-btn input[type="file"] {
+  display: none;
+}
+.pdf-uploading {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #aec6ff;
+}
+.pdf-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(174,198,255,.3);
+  border-top-color: #aec6ff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
 <script nonce="{{ request.state.csp_nonce }}">
 /* Building section toggle */
 (function () {
@@ -369,12 +371,10 @@ function submitPdf(fileInput, kind) {
   var form = document.getElementById('form-upload-' + kind);
   var spin = document.getElementById('spin-' + kind);
 
-  // Transfer file to hidden form input via DataTransfer
   var dt = new DataTransfer();
   dt.items.add(file);
   hiddenInput.files = dt.files;
 
-  // Show spinner, hide upload button
   var strip = document.getElementById('strip-' + kind);
   strip.querySelector('.upload-btn').style.display = 'none';
   spin.style.display = 'inline-flex';
