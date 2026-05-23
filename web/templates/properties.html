@@ -4,6 +4,104 @@
 {% block page_heading %}Properties{% endblock %}
 {% block page_subtitle %}Property profile, stay rules, guest guide, uploads, and the context your AI uses to answer like an operator instead of a generic chatbot.{% endblock %}
 
+{% block head %}
+<style nonce="{{ request.state.csp_nonce }}">
+/* ── Time picker wrapper ─────────────────────────────────────────── */
+.time-picker-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.time-picker-wrap .time-icon {
+  position: absolute;
+  left: 12px;
+  color: #8d909e;
+  font-size: 18px;
+  pointer-events: none;
+  user-select: none;
+}
+.time-picker-wrap input[type="time"] {
+  padding-left: 38px !important;
+  cursor: pointer;
+  width: 100%;
+}
+.time-picker-wrap input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(60%) sepia(10%) saturate(300%) hue-rotate(200deg);
+  cursor: pointer;
+  opacity: 0.7;
+}
+.time-picker-wrap input[type="time"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
+/* ── Inline PDF upload strip ─────────────────────────────────────── */
+.pdf-upload-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,.03);
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #8d909e;
+}
+.pdf-upload-strip .pdf-icon {
+  font-size: 20px;
+  color: #5d8ef1;
+  flex-shrink: 0;
+}
+.pdf-upload-strip .pdf-status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdf-upload-strip .pdf-status strong {
+  color: #e3e1eb;
+  font-weight: 500;
+}
+.pdf-upload-strip label.upload-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  background: rgba(93,142,241,.15);
+  border: 1px solid rgba(93,142,241,.35);
+  border-radius: 6px;
+  color: #aec6ff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+}
+.pdf-upload-strip label.upload-btn:hover {
+  background: rgba(93,142,241,.25);
+}
+.pdf-upload-strip label.upload-btn input[type="file"] {
+  display: none;
+}
+.pdf-uploading {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #aec6ff;
+}
+.pdf-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(174,198,255,.3);
+  border-top-color: #aec6ff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
 {% block workspace_content %}
 <div class="metric-grid">
   <div class="metric-card">
@@ -26,6 +124,7 @@
 <form method="post" action="/properties">
   <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
 
+  {# ── Property profile ─────────────────────────────────────────── #}
   <section class="form-section" id="property-profile">
     <h2>Property profile</h2>
     <label>Property name(s)</label>
@@ -82,14 +181,21 @@
     <input type="url" name="google_maps_url" value="{{ cfg.google_maps_url or '' }}" placeholder="https://maps.google.com/?q=...">
     <p class="help-text">Used for directions, nearby place answers, and auto-filling local recommendations.</p>
 
+    {# ── Check-in / Check-out time pickers ─────────────────────── #}
     <div class="form-row">
       <div>
         <label>Check-in time</label>
-        <input type="time" name="check_in_time" value="{{ cfg.check_in_time or '' }}">
+        <div class="time-picker-wrap">
+          <span class="material-symbols-outlined time-icon">schedule</span>
+          <input type="time" name="check_in_time" value="{{ cfg.check_in_time or '' }}">
+        </div>
       </div>
       <div>
         <label>Check-out time</label>
-        <input type="time" name="check_out_time" value="{{ cfg.check_out_time or '' }}">
+        <div class="time-picker-wrap">
+          <span class="material-symbols-outlined time-icon">schedule</span>
+          <input type="time" name="check_out_time" value="{{ cfg.check_out_time or '' }}">
+        </div>
       </div>
     </div>
 
@@ -105,6 +211,7 @@
     </div>
   </section>
 
+  {# ── Stay policies ────────────────────────────────────────────── #}
   <section class="form-section" id="stay-policies">
     <h2>Stay policies</h2>
     <p class="help-text">These are the policy rails the assistant should never contradict.</p>
@@ -149,10 +256,31 @@
     </div>
   </section>
 
+  {# ── Guest guide and AI context ───────────────────────────────── #}
   <section class="form-section" id="knowledge-base">
     <h2>Guest guide and AI context</h2>
+
+    {# House rules with inline PDF upload #}
     <label>House rules</label>
-    <textarea name="house_rules" placeholder="List the rules guests need to follow during the stay.">{{ cfg.house_rules or '' }}</textarea>
+    <textarea name="house_rules" id="ta-house-rules" placeholder="List the rules guests need to follow during the stay.">{{ cfg.house_rules or '' }}</textarea>
+    <div class="pdf-upload-strip" id="strip-rules">
+      <span class="material-symbols-outlined pdf-icon">picture_as_pdf</span>
+      <span class="pdf-status">
+        {% if cfg.house_rules %}
+          <strong>{{ cfg.house_rules|length }} characters</strong> currently stored — upload a new PDF to replace
+        {% else %}
+          No house rules yet — or <strong>upload a PDF</strong> and the AI will extract the text automatically
+        {% endif %}
+      </span>
+      <span class="pdf-uploading" id="spin-rules">
+        <span class="pdf-spinner"></span> Extracting…
+      </span>
+      <label class="upload-btn">
+        <span class="material-symbols-outlined" style="font-size:15px">upload_file</span>
+        Choose PDF
+        <input type="file" accept=".pdf" onchange="submitPdf(this,'rules')">
+      </label>
+    </div>
 
     <label>Amenities</label>
     <textarea name="amenities" placeholder="List the amenities available to guests.">{{ cfg.amenities or '' }}</textarea>
@@ -160,13 +288,33 @@
     <label>Nearby recommendations</label>
     <textarea name="nearby_restaurants" placeholder="Restaurants, cafes, markets, and nearby points of interest.">{{ cfg.nearby_restaurants or '' }}</textarea>
 
+    {# FAQ with inline PDF upload #}
     <label>FAQ / guest guide</label>
-    <textarea name="faq" placeholder="Questions guests ask most often and the answers you want HostAI to use.">{{ cfg.faq or '' }}</textarea>
+    <textarea name="faq" id="ta-faq" placeholder="Questions guests ask most often and the answers you want HostAI to use.">{{ cfg.faq or '' }}</textarea>
+    <div class="pdf-upload-strip" id="strip-faq">
+      <span class="material-symbols-outlined pdf-icon">picture_as_pdf</span>
+      <span class="pdf-status">
+        {% if cfg.faq %}
+          <strong>{{ cfg.faq|length }} characters</strong> currently stored — upload a new PDF to replace
+        {% else %}
+          No FAQ yet — or <strong>upload a PDF</strong> (guest guide, info pack, welcome book) and the AI reads it automatically
+        {% endif %}
+      </span>
+      <span class="pdf-uploading" id="spin-faq">
+        <span class="pdf-spinner"></span> Extracting…
+      </span>
+      <label class="upload-btn">
+        <span class="material-symbols-outlined" style="font-size:15px">upload_file</span>
+        Choose PDF
+        <input type="file" accept=".pdf" onchange="submitPdf(this,'faq')">
+      </label>
+    </div>
 
     <label>Custom instructions for HostAI</label>
     <textarea name="custom_instructions" placeholder="Tone, escalation, response rules, and any property-specific operating principles.">{{ cfg.custom_instructions or '' }}</textarea>
   </section>
 
+  {# ── Guest messaging ──────────────────────────────────────────── #}
   <section class="form-section" id="guest-messaging">
     <h2>Guest messaging</h2>
     <label>Custom welcome message</label>
@@ -183,33 +331,18 @@
   </div>
 </form>
 
-<section class="form-section">
-  <h2>Property context uploads</h2>
-  <p class="help-text">Upload PDFs to extract and populate structured context without pasting large documents by hand.</p>
-
-  <div class="workspace-grid">
-    <div class="card">
-      <h3>House rules PDF</h3>
-      <p class="help-text">{% if cfg.house_rules %}{{ cfg.house_rules|length }} characters currently stored.{% else %}No house rules PDF uploaded yet.{% endif %}</p>
-      <form method="post" action="/properties/upload-house-rules#knowledge-base" enctype="multipart/form-data">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <input type="file" name="rules_pdf" accept=".pdf">
-        <button type="submit" class="btn btn-outline">Upload house rules</button>
-      </form>
-    </div>
-    <div class="card">
-      <h3>FAQ / guest info PDF</h3>
-      <p class="help-text">{% if cfg.faq %}{{ cfg.faq|length }} characters currently stored.{% else %}No FAQ PDF uploaded yet.{% endif %}</p>
-      <form method="post" action="/properties/upload-faq#knowledge-base" enctype="multipart/form-data">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-        <input type="file" name="faq_pdf" accept=".pdf">
-        <button type="submit" class="btn btn-outline">Upload FAQ</button>
-      </form>
-    </div>
-  </div>
-</section>
+{# Hidden upload forms — submitted programmatically by submitPdf() #}
+<form id="form-upload-rules" method="post" action="/properties/upload-house-rules#knowledge-base" enctype="multipart/form-data" style="display:none">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <input type="file" name="rules_pdf" id="hidden-rules-file" accept=".pdf">
+</form>
+<form id="form-upload-faq" method="post" action="/properties/upload-faq#knowledge-base" enctype="multipart/form-data" style="display:none">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <input type="file" name="faq_pdf" id="hidden-faq-file" accept=".pdf">
+</form>
 
 <script nonce="{{ request.state.csp_nonce }}">
+/* Building section toggle */
 (function () {
   var sel = document.getElementById('property-type-select');
   var box = document.getElementById('building-fields');
@@ -222,5 +355,31 @@
   sel.addEventListener('change', toggle);
   toggle();
 })();
+
+/* PDF inline upload */
+function submitPdf(fileInput, kind) {
+  if (!fileInput.files || !fileInput.files[0]) return;
+  var file = fileInput.files[0];
+  if (file.size > 10 * 1024 * 1024) {
+    alert('PDF must be under 10 MB.');
+    fileInput.value = '';
+    return;
+  }
+  var hiddenInput = document.getElementById('hidden-' + kind + '-file');
+  var form = document.getElementById('form-upload-' + kind);
+  var spin = document.getElementById('spin-' + kind);
+
+  // Transfer file to hidden form input via DataTransfer
+  var dt = new DataTransfer();
+  dt.items.add(file);
+  hiddenInput.files = dt.files;
+
+  // Show spinner, hide upload button
+  var strip = document.getElementById('strip-' + kind);
+  strip.querySelector('.upload-btn').style.display = 'none';
+  spin.style.display = 'inline-flex';
+
+  form.submit();
+}
 </script>
 {% endblock %}
