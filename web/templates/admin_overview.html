@@ -40,20 +40,8 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
   <div class="absolute -top-48 -right-48 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
   
   <div class="mb-10 pt-4">
-    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">Admin Overview</h1>
-    <p class="text-slate-400 text-sm">Platform-wide metrics and tenant health</p>
-    
-    <!-- Admin Subnav -->
-    <div class="flex items-center gap-6 mt-6 border-b border-white/10 overflow-x-auto pb-1 whitespace-nowrap">
-      <a href="/admin" class="admin-tab active">Overview</a>
-      <a href="/admin/system" class="admin-tab">System Health</a>
-      <a href="/admin/ai" class="admin-tab">AI Engine</a>
-      <a href="/admin/voice-ai" class="admin-tab">Voice AI</a>
-      <a href="/admin/costs" class="admin-tab">Profitability</a>
-      <a href="/admin/health_api" class="admin-tab">API Health</a>
-      <a href="/admin/voice-analytics" class="admin-tab">Voice Analytics</a>
-      <a href="/admin/voice-routing" class="admin-tab">Voice Routing</a>
-    </div>
+    <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">Platform Overview</h1>
+    <p class="text-slate-400 text-sm">{% if total_tenants == 0 %}No tenants yet — share signup link to get started.{% elif total_tenants == 1 %}1 tenant signed up so far.{% else %}{{ total_tenants }} tenants, ${{ mrr }} MRR · health snapshot below.{% endif %}</p>
   </div>
 
   <!-- Key Metrics -->

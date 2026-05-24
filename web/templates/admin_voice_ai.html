@@ -48,15 +48,6 @@ select.compat-input { appearance: auto; cursor: pointer; }
     <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">☎️ Voice AI Configuration</h1>
     <p class="text-slate-400 text-sm">Configure voice models, test live calling, manage STT/TTS settings</p>
 
-    <!-- Admin Subnav -->
-    <div class="flex items-center gap-6 mt-6 border-b border-white/10 overflow-x-auto pb-1 whitespace-nowrap">
-      <a href="/admin" class="admin-tab">Overview</a>
-      <a href="/admin/system" class="admin-tab">System Health</a>
-      <a href="/admin/ai" class="admin-tab">AI Engine</a>
-      <a href="/admin/voice-ai" class="admin-tab active">Voice AI</a>
-      <a href="/admin/costs" class="admin-tab">Profitability</a>
-      <a href="/admin/health_api" class="admin-tab">API Health</a>
-    </div>
   </div>
 
   {% if schema_drift or request.query_params.get("msg") == "schema_sync_required" %}

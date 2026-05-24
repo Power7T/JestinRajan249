@@ -42,19 +42,6 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
     <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2 font-['Plus_Jakarta_Sans']">Knowledge Gap Tickets</h1>
     <p class="text-slate-400 text-sm">Unanswered questions unresolved for &gt;24 hours</p>
 
-    <!-- Admin Subnav -->
-    <div class="flex items-center gap-6 mt-6 border-b border-white/10 overflow-x-auto pb-1 whitespace-nowrap">
-      <a href="/admin" class="admin-tab">Overview</a>
-      <a href="/admin/system" class="admin-tab">System Health</a>
-      <a href="/admin/ai" class="admin-tab">AI Engine</a>
-      <a href="/admin/voice-ai" class="admin-tab">Voice AI</a>
-      <a href="/admin/costs" class="admin-tab">Profitability</a>
-      <a href="/admin/health_api" class="admin-tab">API Health</a>
-      <a href="/admin/voice-analytics" class="admin-tab">Voice Analytics</a>
-      <a href="/admin/voice-routing" class="admin-tab">Voice Routing</a>
-      <a href="/admin/voice-calls" class="admin-tab">Call Archive</a>
-      <a href="/admin/voice-tickets" class="admin-tab active">Tickets</a>
-    </div>
   </div>
 
   {% if request.query_params.get('msg') == 'resolved' %}
