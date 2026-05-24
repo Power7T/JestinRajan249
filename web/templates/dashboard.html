@@ -137,8 +137,8 @@ body {
 <!-- Page Title Hero -->
 <div class="mb-12 relative">
 <div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
-<h1 class="text-5xl font-extrabold tracking-tight text-white mb-2 font-headline">Dashboard</h1>
-<p class="text-slate-400 font-medium">Welcome back{% if tenant %}, {{ tenant.first_name or tenant.email.split('@')[0] | title }}{% endif %}. {% if drafts|length == 1 %}Your AI drafted 1 response — review and approve it below.{% elif drafts|length > 1 %}Your AI drafted {{ drafts|length }} responses — review and send them below.{% else %}All caught up — no messages waiting for your review.{% endif %}</p>
+<h1 class="text-5xl font-extrabold tracking-tight text-white mb-2 font-headline">{% if cfg and not cfg.onboarding_complete %}Welcome{% if tenant and tenant.first_name %}, {{ tenant.first_name }}{% endif %}{% else %}Home{% endif %}</h1>
+<p class="text-slate-400 font-medium">{% if cfg and not cfg.onboarding_complete %}Let's get you set up — takes 2 minutes.{% elif drafts|length == 1 %}1 message is waiting for your review.{% elif drafts|length > 1 %}{{ drafts|length }} messages are waiting for your review.{% else %}You're all caught up. We'll let you know when guests message.{% endif %}</p>
 </div>
 
 {% if setup_alerts %}
@@ -214,6 +214,11 @@ body {
   </div>
 </div>
 {% endif %}
+
+{# Show full KPI/analytics bars only when the user has activity worth showing. New users see a single focused metric instead. #}
+{% set _show_full_kpis = (cfg and cfg.onboarding_complete) and (drafts|length > 0 or upcoming_count > 0 or month_revenue > 0) %}
+
+{% if _show_full_kpis %}
 <!-- KPI Row -->
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
 <div class="glass-card p-6 rounded-2xl flex flex-col gap-4">
@@ -276,18 +281,30 @@ body {
 </div>
 <div class="px-8 py-6 flex flex-col gap-1 flex-1 text-right border-none">
 <a class="text-primary font-bold hover:underline inline-flex items-center gap-2 group" href="/reservations">
-                    All Reservations 
+                    All Reservations
                     <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
 </a>
 </div>
 </div>
+{% elif cfg and cfg.onboarding_complete %}
+<!-- Single focused metric for active-but-quiet accounts -->
+<div class="glass-card rounded-2xl p-8 mb-12 flex items-center gap-6">
+  <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+    <span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings:'FILL' 1">task_alt</span>
+  </div>
+  <div class="flex-1 min-w-0">
+    <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Waiting for guests</p>
+    <p class="text-white text-lg font-bold">You're all set. The next guest message will appear here.</p>
+  </div>
+</div>
+{% endif %}
 <!-- Dashboard Main Grid -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
 <!-- AI Drafts Section -->
 <div class="lg:col-span-2 space-y-8">
 <div class="flex items-center justify-between mb-2">
-<h2 class="text-2xl font-extrabold text-white tracking-tight">Pending AI Drafts</h2>
-<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">{{ drafts|length }} PENDING</span>
+<h2 class="text-2xl font-extrabold text-white tracking-tight">{% if drafts %}Messages to review{% else %}Your inbox{% endif %}</h2>
+{% if drafts %}<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">{{ drafts|length }} waiting</span>{% endif %}
 </div>
 
 <!-- Bulk Actions Toolbar (hidden by default) -->
@@ -426,12 +443,13 @@ body {
 </div>
 </div>
 <!-- AI Context Map -->
+{% if ctx_map and ctx_map.overall > 0 %}
 <div class="glass-card rounded-3xl p-6 border-primary/10">
 <div class="flex items-center justify-between mb-4">
-<h3 class="font-bold text-white">AI Context Map</h3>
+<h3 class="font-bold text-white">AI Knowledge</h3>
 <span class="material-symbols-outlined text-primary">hub</span>
 </div>
-<p class="text-slate-400 text-xs mb-6 leading-relaxed">Your AI understands {{ ctx_map.overall }}% of your property details and house rules.</p>
+<p class="text-slate-400 text-xs mb-6 leading-relaxed">Your AI knows {{ ctx_map.overall }}% of your property — the more it knows, the better the replies.</p>
 <div class="space-y-4">
 <div>
 <div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
@@ -461,10 +479,23 @@ body {
 </div>
 </div>
 </div>
-<a href="/settings" class="w-full mt-8 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm transition-all border border-white/5 flex items-center justify-center">
+<a href="/properties" class="w-full mt-8 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm transition-all border border-white/5 flex items-center justify-center">
+  Add more details →
+</a>
+</div>
+{% else %}
+<!-- Empty Context Map → CTA card -->
+<div class="glass-card rounded-3xl p-6 border-primary/10">
+<div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings:'FILL' 1">lightbulb</span>
+</div>
+<h3 class="font-bold text-white text-base mb-2">Teach your AI</h3>
+<p class="text-slate-400 text-xs mb-6 leading-relaxed">Add your check-in time, Wi-Fi, and house rules so the AI answers guests like you would.</p>
+<a href="/properties" class="w-full py-3 rounded-xl bg-gradient-to-r from-[#5B8DEF] to-[#aec6ff] text-[#002e6b] font-bold text-sm transition-all flex items-center justify-center hover:scale-[1.02]">
   Add property details →
 </a>
 </div>
+{% endif %}
 </div>
 </div>
 </main>

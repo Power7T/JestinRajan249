@@ -146,11 +146,17 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
     <textarea name="ical_urls" rows="2" placeholder="https://www.airbnb.com/calendar/ical/...ics">{{ cfg.ical_urls or '' }}</textarea>
     <p class="help-text" style="margin-top:-0.5rem">Paste one URL per line if you have multiple properties.</p>
 
-    <details style="margin-bottom:1rem">
-      <summary>How to find your iCal URL</summary>
-      <div style="padding:0.75rem 0 0.25rem;color:var(--text-2);font-size:0.84rem;line-height:1.8">
-        Airbnb → your listing → <strong>Calendar</strong> → <strong>Availability settings</strong> → scroll down → <strong>Export Calendar</strong> → copy the <code>.ics</code> link.
-      </div>
+    <details open style="margin-bottom:1rem;background:rgba(91,141,239,0.06);border:1px solid rgba(91,141,239,0.15);border-radius:0.75rem;padding:1rem 1.1rem">
+      <summary style="font-weight:700;color:#aec6ff">📍 How to find your Airbnb iCal URL</summary>
+      <ol style="padding:0.85rem 0 0.25rem 1.25rem;color:var(--text-2);font-size:0.85rem;line-height:1.85;margin:0">
+        <li>Open <strong>Airbnb</strong> and go to your listing</li>
+        <li>Click <strong>Calendar</strong> at the top</li>
+        <li>Click <strong>Availability settings</strong> (sidebar)</li>
+        <li>Scroll down to <strong>Sync calendars</strong></li>
+        <li>Click <strong>Export Calendar</strong> and copy the link</li>
+        <li>Paste it above — that's it</li>
+      </ol>
+      <p style="margin:0.85rem 0 0;font-size:0.78rem;color:var(--text-3);font-style:italic">Don't have an Airbnb listing yet? Skip this step and add it later from Settings.</p>
     </details>
 
     <!-- iCal test -->

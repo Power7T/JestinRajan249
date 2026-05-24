@@ -15,96 +15,46 @@
 
   <nav class="flex-1 px-4 space-y-0.5 pb-4">
     {% set p = request.url.path %}
+    {% set _more_paths = ['/guest-contacts','/upsells','/sales-ai','/voice-calls','/voice-calls/gaps','/analytics/roi','/activity','/vendors/workflow','/workflow','/ops','/team'] %}
+    {% set _more_open = p in _more_paths or p.startswith('/sales-ai') %}
 
-    {# ── DAILY USE ── #}
+    {# ── DAILY ── #}
     <div class="pt-1 pb-1 px-2">
       <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Daily</p>
     </div>
     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/dashboard' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/dashboard">
-      <span class="material-symbols-outlined text-[1.1rem]">dashboard</span><span class="text-sm">Dashboard</span>
+      <span class="material-symbols-outlined text-[1.1rem]">dashboard</span><span class="text-sm">Home</span>
     </a>
     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/conversations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/conversations">
-      <span class="material-symbols-outlined text-[1.1rem]">forum</span><span class="text-sm">Conversations</span>
+      <span class="material-symbols-outlined text-[1.1rem]">forum</span><span class="text-sm">Messages</span>
     </a>
     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/reservations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/reservations">
-      <span class="material-symbols-outlined text-[1.1rem]">event_available</span><span class="text-sm">Reservations</span>
-    </a>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/guest-contacts' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/guest-contacts">
-      <span class="material-symbols-outlined text-[1.1rem]">contacts</span><span class="text-sm">Guests</span>
-    </a>
-
-    {# ── AUTOMATE ── #}
-    <div class="pt-3 pb-1 px-2">
-      <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Automate</p>
-    </div>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/automations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/automations">
-      <span class="material-symbols-outlined text-[1.1rem]">bolt</span><span class="text-sm">Automations</span>
-    </a>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/communications' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/communications">
-      <span class="material-symbols-outlined text-[1.1rem]">chat</span><span class="text-sm">Messaging Channels</span>
-    </a>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p in ['/voice-calls', '/voice-calls/gaps'] %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/voice-calls">
-      <span class="material-symbols-outlined text-[1.1rem]">phone_in_talk</span><span class="text-sm">Voice AI</span>
-    </a>
-    {% if p in ['/voice-calls', '/voice-calls/gaps'] %}
-    <a class="flex items-center gap-3 pl-10 pr-3 py-2 rounded-xl {% if p == '/voice-calls/gaps' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-500 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 text-xs" href="/voice-calls/gaps">
-      <span class="material-symbols-outlined text-[0.95rem]">psychology_alt</span>Unanswered Questions
-    </a>
-    {% endif %}
-
-    {# ── REVENUE ── #}
-    <div class="pt-3 pb-1 px-2">
-      <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Revenue</p>
-    </div>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/upsells' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/upsells" title="Offer add-ons to guests already booked — early check-in, welcome baskets, experiences">
-      <span class="material-symbols-outlined text-[1.1rem]">sell</span><span class="text-sm">Upsells</span>
-      <span class="ml-auto text-[0.55rem] font-bold uppercase tracking-wide text-emerald-400/60 bg-emerald-400/8 px-1.5 py-0.5 rounded">Guests</span>
-    </a>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p.startswith('/sales-ai') %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/sales-ai" title="AI converts new booking inquiries into confirmed reservations">
-      <span class="material-symbols-outlined text-[1.1rem]">storefront</span><span class="text-sm">Sales AI</span>
-      <span class="ml-auto text-[0.55rem] font-bold uppercase tracking-wide text-[#5B8DEF]/60 bg-[#5B8DEF]/8 px-1.5 py-0.5 rounded">Leads</span>
-    </a>
-
-    {# ── ANALYTICS ── #}
-    <div class="pt-3 pb-1 px-2">
-      <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Insights</p>
-    </div>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/analytics">
-      <span class="material-symbols-outlined text-[1.1rem]">analytics</span><span class="text-sm">Analytics</span>
-    </a>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/analytics/roi">
-      <span class="material-symbols-outlined text-[1.1rem]">trending_up</span><span class="text-sm">Revenue & ROI</span>
-    </a>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/activity">
-      <span class="material-symbols-outlined text-[1.1rem]">history</span><span class="text-sm">Activity Log</span>
-    </a>
-
-    {# ── OPERATIONS ── #}
-    <div class="pt-3 pb-1 px-2">
-      <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Operations</p>
-    </div>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/properties' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/properties">
-      <span class="material-symbols-outlined text-[1.1rem]">home_work</span><span class="text-sm">Properties</span>
-    </a>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/vendors/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/vendors/workflow">
-      <span class="material-symbols-outlined text-[1.1rem]">handyman</span><span class="text-sm">Vendors</span>
-    </a>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/workflow">
-      <span class="material-symbols-outlined text-[1.1rem]">account_tree</span><span class="text-sm">Workflow</span>
-    </a>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/ops">
-      <span class="material-symbols-outlined text-[1.1rem]">checklist</span><span class="text-sm">Task Queue</span>
+      <span class="material-symbols-outlined text-[1.1rem]">event_available</span><span class="text-sm">Calendar</span>
     </a>
 
     {# ── SETUP ── #}
     <div class="pt-3 pb-1 px-2">
       <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Setup</p>
     </div>
+    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/properties' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/properties">
+      <span class="material-symbols-outlined text-[1.1rem]">home_work</span><span class="text-sm">Properties</span>
+    </a>
+    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/communications' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/communications">
+      <span class="material-symbols-outlined text-[1.1rem]">chat</span><span class="text-sm">Channels</span>
+    </a>
     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/integrations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/integrations">
       <span class="material-symbols-outlined text-[1.1rem]">sync_alt</span><span class="text-sm">Integrations</span>
     </a>
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/team' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/team">
-      <span class="material-symbols-outlined text-[1.1rem]">groups</span><span class="text-sm">Team & Access</span>
+    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/automations' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/automations">
+      <span class="material-symbols-outlined text-[1.1rem]">bolt</span><span class="text-sm">Automations</span>
+    </a>
+
+    {# ── GROW ── #}
+    <div class="pt-3 pb-1 px-2">
+      <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">Grow</p>
+    </div>
+    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/analytics' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/analytics">
+      <span class="material-symbols-outlined text-[1.1rem]">analytics</span><span class="text-sm">Analytics</span>
     </a>
 
     {# ── ACCOUNT ── #}
@@ -117,8 +67,54 @@
     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/billing' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/billing">
       <span class="material-symbols-outlined text-[1.1rem]">credit_card</span><span class="text-sm">Billing</span>
     </a>
+
+    {# ── MORE (collapsible advanced features) ── #}
+    <div class="pt-3 pb-1 px-2">
+      <button type="button" id="more-toggle" class="w-full flex items-center justify-between px-1 py-1 hover:opacity-80 transition-opacity">
+        <p class="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-slate-600">More</p>
+        <span id="more-chevron" class="material-symbols-outlined text-slate-600 text-base transition-transform {% if _more_open %}rotate-180{% endif %}">expand_more</span>
+      </button>
+    </div>
+    <div id="more-items" class="{% if not _more_open %}hidden{% endif %} space-y-0.5">
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/guest-contacts' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/guest-contacts">
+        <span class="material-symbols-outlined text-[1.1rem]">contacts</span><span class="text-sm">Guests</span>
+      </a>
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/upsells' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/upsells">
+        <span class="material-symbols-outlined text-[1.1rem]">sell</span><span class="text-sm">Upsells</span>
+      </a>
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p.startswith('/sales-ai') %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/sales-ai">
+        <span class="material-symbols-outlined text-[1.1rem]">storefront</span><span class="text-sm">Inquiries</span>
+      </a>
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p in ['/voice-calls', '/voice-calls/gaps'] %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/voice-calls">
+        <span class="material-symbols-outlined text-[1.1rem]">phone_in_talk</span><span class="text-sm">Phone Calls</span>
+      </a>
+      {% if p in ['/voice-calls', '/voice-calls/gaps'] %}
+      <a class="flex items-center gap-3 pl-10 pr-3 py-2 rounded-xl {% if p == '/voice-calls/gaps' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-500 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200 text-xs" href="/voice-calls/gaps">
+        <span class="material-symbols-outlined text-[0.95rem]">psychology_alt</span>Unanswered Questions
+      </a>
+      {% endif %}
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/analytics/roi' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/analytics/roi">
+        <span class="material-symbols-outlined text-[1.1rem]">trending_up</span><span class="text-sm">Revenue & ROI</span>
+      </a>
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/activity' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/activity">
+        <span class="material-symbols-outlined text-[1.1rem]">history</span><span class="text-sm">Activity Log</span>
+      </a>
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/vendors/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/vendors/workflow">
+        <span class="material-symbols-outlined text-[1.1rem]">handyman</span><span class="text-sm">Vendors</span>
+      </a>
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/workflow' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/workflow">
+        <span class="material-symbols-outlined text-[1.1rem]">account_tree</span><span class="text-sm">Workflow</span>
+      </a>
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/ops' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/ops">
+        <span class="material-symbols-outlined text-[1.1rem]">checklist</span><span class="text-sm">Tasks</span>
+      </a>
+      <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p == '/team' %}text-[#5B8DEF] bg-[#5B8DEF]/10 font-semibold{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-all duration-200" href="/team">
+        <span class="material-symbols-outlined text-[1.1rem]">groups</span><span class="text-sm">Team & Access</span>
+      </a>
+    </div>
+
     {% if tenant is defined and tenant and is_admin(tenant.email) %}
-    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p.startswith('/admin') %}text-rose-400 bg-rose-400/10 font-bold{% else %}text-rose-400/70 hover:text-rose-300 hover:bg-white/5{% endif %} transition-all duration-200 mt-1 border border-rose-400/10 rounded-xl" href="/admin">
+    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {% if p.startswith('/admin') %}text-rose-400 bg-rose-400/10 font-bold{% else %}text-rose-400/70 hover:text-rose-300 hover:bg-white/5{% endif %} transition-all duration-200 mt-3 border border-rose-400/10 rounded-xl" href="/admin">
       <span class="material-symbols-outlined text-[1.1rem]">admin_panel_settings</span><span class="text-sm">Admin Panel</span>
     </a>
     {% endif %}
@@ -145,3 +141,24 @@
   </div>
 
 </aside>
+
+<script nonce="{{ request.state.csp_nonce }}">
+(function() {
+  var moreBtn = document.getElementById('more-toggle');
+  var moreItems = document.getElementById('more-items');
+  var moreChevron = document.getElementById('more-chevron');
+  if (!moreBtn || !moreItems) return;
+  // Remember user preference across pages
+  var KEY = 'hostai_sidebar_more_open';
+  var saved = localStorage.getItem(KEY);
+  if (saved === 'true' && moreItems.classList.contains('hidden')) {
+    moreItems.classList.remove('hidden');
+    if (moreChevron) moreChevron.classList.add('rotate-180');
+  }
+  moreBtn.addEventListener('click', function() {
+    var isHidden = moreItems.classList.toggle('hidden');
+    if (moreChevron) moreChevron.classList.toggle('rotate-180', !isHidden);
+    localStorage.setItem(KEY, String(!isHidden));
+  });
+})();
+</script>
