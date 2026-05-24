@@ -14,14 +14,12 @@ branch_labels = None
 depends_on = None
 
 def upgrade() -> None:
-    # VoiceCall.guest_email index
-    op.create_index("ix_voice_calls_guest_email", "voice_calls", ["guest_email"])
-    # AutomationRule.priority index
-    op.create_index("ix_automation_rules_priority", "automation_rules", ["priority"])
-    # Tenant.is_active server default
+    # Idempotent: production may already have these from prior partial runs / manual fixes.
+    op.execute("CREATE INDEX IF NOT EXISTS ix_voice_calls_guest_email ON voice_calls (guest_email)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_automation_rules_priority ON automation_rules (priority)")
     op.alter_column("tenants", "is_active", server_default="true")
 
 def downgrade() -> None:
     op.alter_column("tenants", "is_active", server_default=None)
-    op.drop_index("ix_automation_rules_priority", table_name="automation_rules")
-    op.drop_index("ix_voice_calls_guest_email", table_name="voice_calls")
+    op.execute("DROP INDEX IF EXISTS ix_automation_rules_priority")
+    op.execute("DROP INDEX IF EXISTS ix_voice_calls_guest_email")
