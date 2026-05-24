@@ -61,7 +61,7 @@ tailwind.config = {
         {% endif %}
       </a>
       {% if not tenant.voice_enabled %}
-      <a href="/voice-calls?tab=settings#voice-ai-setup" class="flex items-center gap-2 px-4 py-2 bg-[#5B8DEF]/20 text-[#5B8DEF] rounded-xl text-sm font-semibold hover:bg-[#5B8DEF]/30 transition-colors">
+      <a href="/voice-calls?tab=settings#voice-ai-setup" data-tab-target="settings" class="flex items-center gap-2 px-4 py-2 bg-[#5B8DEF]/20 text-[#5B8DEF] rounded-xl text-sm font-semibold hover:bg-[#5B8DEF]/30 transition-colors">
         <span class="material-symbols-outlined text-base">settings</span>
         Enable Voice AI
       </a>
@@ -76,19 +76,21 @@ tailwind.config = {
 
   <div class="mb-6 flex items-center justify-between gap-4">
     <div class="inline-flex items-center gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
-      <a href="/voice-calls?tab=panel" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab == 'panel' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+      <a href="/voice-calls?tab=panel" data-tab-target="panel" class="tab-link px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab == 'panel' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
         Voice AI Panel
       </a>
-      <a href="/voice-calls?tab=test" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-1.5 {% if tab == 'test' %}bg-green-500/20 text-green-300{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+      <a href="/voice-calls?tab=test" data-tab-target="test" class="tab-link px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-1.5 {% if tab == 'test' %}bg-green-500/20 text-green-300{% else %}text-slate-300 hover:bg-white/10{% endif %}">
         <span class="material-symbols-outlined text-sm">phone_in_talk</span>
         AI Test Call
       </a>
-      <a href="/voice-calls?tab=settings#voice-ai-setup" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab == 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+      <a href="/voice-calls?tab=settings#voice-ai-setup" data-tab-target="settings" data-tab-target="settings" class="tab-link px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab == 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
         Voice AI Settings
       </a>
     </div>
     <div class="text-xs text-slate-500 hidden md:block">
-      {% if tab == 'test' %}Test your Voice AI with your real property context{% elif tab == 'settings' %}Configure Twilio and Voice settings{% else %}Call logs and analytics{% endif %}
+      <span data-tab-desc="panel"{% if tab != 'panel' %} style="display:none"{% endif %}>Call logs and analytics</span>
+      <span data-tab-desc="test"{% if tab != 'test' %} style="display:none"{% endif %}>Test your Voice AI with your real property context</span>
+      <span data-tab-desc="settings"{% if tab != 'settings' %} style="display:none"{% endif %}>Configure Twilio and Voice settings</span>
     </div>
   </div>
 
@@ -116,7 +118,7 @@ tailwind.config = {
   </div>
   {% endif %}
 
-  {% if tab == 'settings' %}
+  <div data-tab-pane="settings" {% if tab != 'settings' %}style="display:none"{% endif %}>
   <div id="voice-ai-setup" class="glass-card rounded-3xl p-6 mb-8 border border-[#5B8DEF]/15">
     <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
       <div>
@@ -342,9 +344,9 @@ tailwind.config = {
       </div>
     </form>
   </div>
-  {% endif %}
+  </div><!-- /tab-pane settings -->
 
-  {% if tab == 'test' %}
+  <div data-tab-pane="test" {% if tab != 'test' %}style="display:none"{% endif %}>
   <input type="hidden" name="csrf_token" id="test-csrf" value="{{ request.state.csrf_token }}">
   <!-- ── AI Test Call Section ─────────────────────────────────────── -->
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
@@ -377,7 +379,7 @@ tailwind.config = {
             {% if value %}
             <span class="text-xs text-emerald-400 font-semibold truncate max-w-[120px]" title="{{ value }}">✓ Set</span>
             {% else %}
-            <a href="/voice-calls?tab=settings#field-{{ field_id }}" class="text-xs text-amber-400 font-semibold hover:text-amber-300 transition-colors whitespace-nowrap">+ Add</a>
+            <a href="/voice-calls?tab=settings#field-{{ field_id }}" data-tab-target="settings" class="text-xs text-amber-400 font-semibold hover:text-amber-300 transition-colors whitespace-nowrap">+ Add</a>
             {% endif %}
           </div>
           {% endfor %}
@@ -509,7 +511,7 @@ tailwind.config = {
           <p class="text-xs text-slate-500 mb-3 font-semibold">Pre-detected missing fields:</p>
           <div class="flex flex-wrap gap-2">
             {% for f in missing_fields %}
-            <a href="/voice-calls?tab=settings#field-{{ f }}"
+            <a href="/voice-calls?tab=settings#field-{{ f }}" data-tab-target="settings"
                class="px-3 py-1.5 rounded-lg bg-amber-400/10 border border-amber-400/25 text-amber-300 text-xs font-semibold hover:bg-amber-400/20 transition-colors">
               + {{ f | replace('_', ' ') | title }}
             </a>
@@ -518,19 +520,19 @@ tailwind.config = {
         </div>
         {% endif %}
         <div class="mt-4 pt-4 border-t border-white/5 flex gap-3">
-          <a href="/voice-calls?tab=settings#property-knowledge" class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-400/15 text-amber-300 rounded-xl text-xs font-bold hover:bg-amber-400/25 transition-colors">
+          <a href="/voice-calls?tab=settings#property-knowledge" data-tab-target="settings" class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-400/15 text-amber-300 rounded-xl text-xs font-bold hover:bg-amber-400/25 transition-colors">
             <span class="material-symbols-outlined text-sm">edit_note</span>Answer Questions
           </a>
-          <a href="/voice-calls?tab=settings" class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white/5 text-slate-300 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors">
+          <a href="/voice-calls?tab=settings" data-tab-target="settings" class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white/5 text-slate-300 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors">
             <span class="material-symbols-outlined text-sm">phone</span>Voice Settings
           </a>
         </div>
       </div>
     </div>
   </div>
-  {% endif %}
+  </div><!-- /tab-pane test -->
 
-  {% if tab == 'panel' %}
+  <div data-tab-pane="panel" {% if tab != 'panel' %}style="display:none"{% endif %}>
   <!-- Stats Row -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="glass-card rounded-2xl p-5">
@@ -728,7 +730,7 @@ tailwind.config = {
         Once guests call your Twilio number, AI-powered conversations will appear here with full transcripts.
       </p>
       {% if not tenant.voice_enabled %}
-      <a href="/voice-calls?tab=settings#voice-ai-setup" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors mb-3">
+      <a href="/voice-calls?tab=settings#voice-ai-setup" data-tab-target="settings" class="flex items-center gap-2 px-5 py-2.5 bg-[#5B8DEF] text-white rounded-xl text-sm font-semibold hover:bg-[#4a7de0] transition-colors mb-3">
         <span class="material-symbols-outlined text-base">settings</span>
         Set Up Voice AI
       </a>
@@ -737,13 +739,63 @@ tailwind.config = {
     </div>
     {% endif %}
   </div>
-  {% endif %}
+  </div><!-- /tab-pane panel -->
 </main>
 {%- endblock %}
 {%- endblock %}
 
 {%- block scripts %}
 <script nonce="{{ request.state.csp_nonce }}">
+// Client-side tab switching — instant, no full page reload
+(function() {
+  function activateTab(target) {
+    document.querySelectorAll('[data-tab-pane]').forEach(function(pane) {
+      pane.style.display = pane.getAttribute('data-tab-pane') === target ? '' : 'none';
+    });
+    document.querySelectorAll('[data-tab-desc]').forEach(function(el) {
+      el.style.display = el.getAttribute('data-tab-desc') === target ? '' : 'none';
+    });
+    document.querySelectorAll('.tab-link').forEach(function(link) {
+      var isActive = link.getAttribute('data-tab-target') === target;
+      // Reset to inactive state
+      link.classList.remove('bg-[#5B8DEF]/20', 'text-[#aec6ff]', 'bg-green-500/20', 'text-green-300');
+      link.classList.add('text-slate-300', 'hover:bg-white/10');
+      if (isActive) {
+        link.classList.remove('text-slate-300', 'hover:bg-white/10');
+        if (target === 'test') {
+          link.classList.add('bg-green-500/20', 'text-green-300');
+        } else {
+          link.classList.add('bg-[#5B8DEF]/20', 'text-[#aec6ff]');
+        }
+      }
+    });
+  }
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('[data-tab-target]');
+    if (!link) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+    e.preventDefault();
+    var target = link.getAttribute('data-tab-target');
+    var hash = link.hash || '';
+    activateTab(target);
+    var url = new URL(window.location.href);
+    url.searchParams.set('tab', target);
+    url.hash = hash;
+    history.pushState({tab: target}, '', url.toString());
+    if (hash) {
+      setTimeout(function() {
+        var el = document.querySelector(hash);
+        if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+      }, 30);
+    }
+  });
+  window.addEventListener('popstate', function() {
+    var url = new URL(window.location.href);
+    var tab = url.searchParams.get('tab') || 'panel';
+    activateTab(tab);
+  });
+})();
+
 function toggleTranscript(id) {
   const el = document.getElementById('transcript-' + id);
   if (el) el.classList.toggle('hidden');
@@ -981,7 +1033,7 @@ function hAddGap(text) {
     item.className = 'flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-400/8 border border-amber-400/20';
     item.innerHTML = '<span class="text-amber-400 mt-0.5 flex-shrink-0">⚠</span>'
       + '<div class="flex-1 min-w-0"><p class="text-xs text-amber-100">' + text.replace(/</g,'&lt;') + '</p>'
-      + '<a href="/voice-calls?tab=settings#property-knowledge" class="text-[0.65rem] text-[#5B8DEF] hover:underline mt-1 block">→ Fill in Voice AI Settings</a></div>';
+      + '<a href="/voice-calls?tab=settings#property-knowledge" data-tab-target="settings" class="text-[0.65rem] text-[#5B8DEF] hover:underline mt-1 block">→ Fill in Voice AI Settings</a></div>';
     listEl.appendChild(item);
   }
 }

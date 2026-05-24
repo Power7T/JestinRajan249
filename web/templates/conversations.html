@@ -122,10 +122,10 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
   <!-- Tab Switcher -->
   <div class="mb-6 flex items-center justify-between gap-4">
     <div class="inline-flex items-center gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
-      <a href="/conversations?tab=panel" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab != 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+      <a href="/conversations?tab=panel" data-tab-target="panel" class="tab-link px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab != 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
         Conversations Panel
       </a>
-      <a href="/conversations?tab=settings" class="px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab == 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+      <a href="/conversations?tab=settings" data-tab-target="settings" class="tab-link px-4 py-2 rounded-xl text-sm font-semibold transition-colors {% if tab == 'settings' %}bg-[#5B8DEF]/20 text-[#aec6ff]{% else %}text-slate-300 hover:bg-white/10{% endif %}">
         Messaging Settings
       </a>
     </div>
@@ -150,7 +150,7 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
   <!-- ════════════════════════════════════════════════
        TAB 1: CONVERSATIONS PANEL
        ════════════════════════════════════════════════ -->
-  {% if tab != 'settings' %}
+  <div data-tab-pane="panel" {% if tab == 'settings' %}style="display:none"{% endif %}>
   <div class="glass-card rounded-3xl overflow-hidden" style="height: calc(100vh - 260px);">
     <div class="flex h-full">
 
@@ -260,12 +260,12 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
       </div>
     </div>
   </div>
-  {% endif %}
+  </div><!-- /tab-pane panel -->
 
   <!-- ════════════════════════════════════════════════
        TAB 2: MESSAGING SETTINGS
        ════════════════════════════════════════════════ -->
-  {% if tab == 'settings' %}
+  <div data-tab-pane="settings" {% if tab != 'settings' %}style="display:none"{% endif %}>
 
   <!-- ── WhatsApp Meta Cloud API ───────────────────── -->
   <div class="glass-card rounded-3xl p-6 mb-8 border border-[#5B8DEF]/15">
@@ -649,7 +649,7 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
     </div>
   </div>
 
-  {% endif %}
+  </div><!-- /tab-pane settings -->
 
 </main>
 
@@ -699,6 +699,46 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
 <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
 
 <script nonce="{{ request.state.csp_nonce }}">
+// Client-side tab switching — instant, no full page reload
+(function() {
+  function activateTab(target) {
+    document.querySelectorAll('[data-tab-pane]').forEach(function(pane) {
+      pane.style.display = pane.getAttribute('data-tab-pane') === target ? '' : 'none';
+    });
+    document.querySelectorAll('.tab-link').forEach(function(link) {
+      var isActive = link.getAttribute('data-tab-target') === target;
+      link.classList.toggle('bg-[#5B8DEF]/20', isActive);
+      link.classList.toggle('text-[#aec6ff]', isActive);
+      link.classList.toggle('text-slate-300', !isActive);
+      link.classList.toggle('hover:bg-white/10', !isActive);
+    });
+  }
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('[data-tab-target]');
+    if (!link) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+    e.preventDefault();
+    var target = link.getAttribute('data-tab-target');
+    var hash = link.hash || '';
+    activateTab(target);
+    var url = new URL(window.location.href);
+    url.searchParams.set('tab', target);
+    url.hash = hash;
+    history.pushState({tab: target}, '', url.toString());
+    if (hash) {
+      setTimeout(function() {
+        var el = document.querySelector(hash);
+        if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+      }, 30);
+    }
+  });
+  window.addEventListener('popstate', function() {
+    var url = new URL(window.location.href);
+    var tab = url.searchParams.get('tab') || 'panel';
+    activateTab(tab);
+  });
+})();
+
 async function selectConversation(element, threadKey, guestName, guestPhone) {
   document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
   element.classList.add('active');
