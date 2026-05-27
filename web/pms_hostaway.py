@@ -8,6 +8,7 @@ Docs:        https://api.hostaway.com/
 """
 
 import logging
+import time
 from datetime import datetime, date, timezone
 from typing import Optional
 
@@ -33,6 +34,30 @@ class HostawayAdapter(PMSAdapter):
         self._base = base_url.rstrip("/") if base_url else _BASE
         self._token: Optional[str] = None
         self._token_expires: Optional[datetime] = None
+
+    # ── retry helper ─────────────────────────────────────────────────────
+
+    def _req(self, method: str, url: str, **kwargs) -> requests.Response:
+        """Make an HTTP request, retrying up to 2 times on network errors (not 4xx)."""
+        last_exc: Exception = RuntimeError("no attempts made")
+        for attempt in range(3):
+            try:
+                resp = requests.request(method, url, **kwargs)
+                if resp.status_code < 500:
+                    return resp
+                if attempt < 2:
+                    time.sleep(1.5 ** attempt)
+                    continue
+                return resp
+            except requests.exceptions.ConnectionError as exc:
+                last_exc = exc
+                if attempt < 2:
+                    time.sleep(1.5 ** attempt)
+            except requests.exceptions.Timeout as exc:
+                last_exc = exc
+                if attempt < 2:
+                    time.sleep(1.5 ** attempt)
+        raise last_exc
 
     # ── auth ──────────────────────────────────────────────────────────────
 
@@ -153,10 +178,11 @@ class HostawayAdapter(PMSAdapter):
                 log.warning("Hostaway: no conversation found for reservation %s", reservation_id)
                 return False
             conv_id = convs[0].get("id")
-            send_resp = requests.post(
+            send_resp = self._req(
+                "POST",
                 f"{self._base}/v1/conversations/{conv_id}/messages",
                 headers=self._headers(),
-                json={"body": text},
+                json={"message": text, "type": "message"},
                 timeout=15,
             )
             send_resp.raise_for_status()

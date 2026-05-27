@@ -67,7 +67,7 @@ class LodgifyAdapter(PMSAdapter):
             resp.raise_for_status()
             data = resp.json()
             # Lodgify wraps in {"items": [...], "total": N}
-            convs = data.get("items") or data if isinstance(data, list) else []
+            convs = data.get("items", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
             if not convs:
                 break
             for conv in convs:
@@ -135,7 +135,7 @@ class LodgifyAdapter(PMSAdapter):
         page = 1
         while True:
             resp = requests.get(
-                f"{self._base}/v2/booking",
+                f"{self._base}/v2/reservations",
                 headers=self._headers(),
                 params={
                     "date_from": from_date.isoformat(),
@@ -148,7 +148,7 @@ class LodgifyAdapter(PMSAdapter):
             )
             resp.raise_for_status()
             data = resp.json()
-            rows = data.get("items") or (data if isinstance(data, list) else [])
+            rows = data.get("items", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
             if not rows:
                 break
             for r in rows:

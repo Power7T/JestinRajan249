@@ -63,3 +63,6 @@ apscheduler>=3.10.0,<4.0.0
 
 # Metrics
 prometheus_client>=0.20.0,<1.0.0
+
+# Browser automation (vision PMS agent)
+playwright>=1.44.0,<2.0.0

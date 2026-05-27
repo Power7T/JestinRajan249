@@ -8,6 +8,7 @@ Docs:        https://open-api.guesty.com/
 """
 
 import logging
+import time
 from datetime import datetime, date, timezone
 from typing import Optional
 
@@ -36,6 +37,31 @@ class GuestyAdapter(PMSAdapter):
         self._base = base_url.rstrip("/") if base_url else _BASE
         self._token: Optional[str] = None
         self._token_expires: Optional[datetime] = None
+
+    # ── retry helper ─────────────────────────────────────────────────────
+
+    def _req(self, method: str, url: str, **kwargs) -> requests.Response:
+        """Make an HTTP request, retrying up to 2 times on network errors (not 4xx)."""
+        last_exc: Exception = RuntimeError("no attempts made")
+        for attempt in range(3):
+            try:
+                resp = requests.request(method, url, **kwargs)
+                # Don't retry on 4xx client errors
+                if resp.status_code < 500:
+                    return resp
+                if attempt < 2:
+                    time.sleep(1.5 ** attempt)
+                    continue
+                return resp
+            except requests.exceptions.ConnectionError as exc:
+                last_exc = exc
+                if attempt < 2:
+                    time.sleep(1.5 ** attempt)
+            except requests.exceptions.Timeout as exc:
+                last_exc = exc
+                if attempt < 2:
+                    time.sleep(1.5 ** attempt)
+        raise last_exc
 
     # ── auth ──────────────────────────────────────────────────────────────
 
@@ -86,10 +112,18 @@ class GuestyAdapter(PMSAdapter):
         messages: list[PMSMessage] = []
         skip = 0
         while True:
-            resp = requests.get(
+            resp = self._req(
+                "GET",
                 f"{self._base}/v1/conversations",
                 headers=self._headers(),
-                params={"createdAt[gte]": since_iso, "limit": 50, "skip": skip},
+                # Include both newly created AND recently updated conversations
+                # so we don't miss new messages in older conversation threads
+                params={
+                    "createdAt[gte]": since_iso,
+                    "updatedAt[gte]": since_iso,
+                    "limit": 50,
+                    "skip": skip,
+                },
                 timeout=15,
             )
             resp.raise_for_status()

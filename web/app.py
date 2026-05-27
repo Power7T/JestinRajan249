@@ -13447,12 +13447,16 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         from twilio.twiml.voice_response import VoiceResponse
         response = VoiceResponse()
         response.say(greeting)
-        response.record(
+        gather = response.gather(
+            input="speech",
             action=f"/api/calls/process-speech?call_id={voice_call.id}",
             method="POST",
-            max_length=60,
-            play_beep=True,
+            speech_timeout="auto",
+            language="en-US",
+            timeout=8,
         )
+        gather.say("Go ahead, I'm listening.")
+        response.say("Sorry, I didn't catch that. Please call back and try again.")
         response.hangup()
         return Response(str(response), media_type="application/xml")
 
@@ -13473,6 +13477,8 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
     try:
         form_data    = await request.form()
         recording_url = form_data.get("RecordingUrl", "")
+        # Gather (speech) mode: transcript comes directly as SpeechResult
+        speech_result = form_data.get("SpeechResult", "").strip()
 
         log.info(f"[VOICE] Processing speech call_id={call_id}")
 
@@ -13500,8 +13506,15 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
             r.hangup()
             return Response(str(r), media_type="application/xml")
 
-        guest_message, confidence = await VoiceAIService.transcribe_audio(recording_url)
-        log.info(f"[VOICE] Transcribed: '{guest_message}' (conf={confidence:.2f})")
+        if speech_result:
+            # Twilio Gather already transcribed — use directly (no Deepgram needed)
+            guest_message = speech_result
+            confidence = float(form_data.get("Confidence", "0.9") or "0.9")
+            log.info(f"[VOICE] Gather transcript: '{guest_message}' (conf={confidence:.2f})")
+        else:
+            # Fallback: recording URL (old Record webhook) — transcribe via Deepgram
+            guest_message, confidence = await VoiceAIService.transcribe_audio(recording_url)
+            log.info(f"[VOICE] Deepgram transcript: '{guest_message}' (conf={confidence:.2f})")
 
         # Log Deepgram cost (approximately 1 minute = $0.0043)
         log_api_usage(
@@ -13517,7 +13530,8 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
             from twilio.twiml.voice_response import VoiceResponse
             r = VoiceResponse()
             r.say("Sorry, I didn't catch that. Please try again.")
-            r.record(action=f"/api/calls/process-speech?call_id={call_id}", method="POST", max_length=60, play_beep=True)
+            gather2 = r.gather(input="speech", action=f"/api/calls/process-speech?call_id={call_id}", method="POST", speech_timeout="auto", language="en-US", timeout=8)
+            gather2.say("Please go ahead and speak.")
             r.hangup()
             return Response(str(r), media_type="application/xml")
 
@@ -13820,12 +13834,16 @@ async def process_speech(request: Request, call_id: str, db: Session = Depends(g
             r.play(audio_url)
         else:
             r.say(ai_text)
-        r.record(
+        gather3 = r.gather(
+            input="speech",
             action=f"/api/calls/process-speech?call_id={call_id}",
             method="POST",
-            max_length=60,
-            play_beep=True,
+            speech_timeout="auto",
+            language="en-US",
+            timeout=10,
         )
+        gather3.say("Is there anything else I can help with?")
+        r.say("Thank you for calling. Have a great stay!")
         r.hangup()
         return Response(str(r), media_type="application/xml")
 

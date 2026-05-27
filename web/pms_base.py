@@ -74,4 +74,16 @@ def make_adapter(pms_type: str, api_key: str,
     if pms_type == "generic":
         from web.pms_generic import GenericAdapter
         return GenericAdapter(api_key, account_id, base_url)
+    if pms_type == "beds24":
+        from web.pms_beds24 import Beds24Adapter
+        return Beds24Adapter(api_key, account_id, base_url)
+    if pms_type == "smoobu":
+        from web.pms_smoobu import SmoobuAdapter
+        return SmoobuAdapter(api_key, account_id, base_url)
+    if pms_type == "tokeet":
+        from web.pms_tokeet import TokeetAdapter
+        return TokeetAdapter(api_key, account_id, base_url)
+    if pms_type == "vision":
+        from web.pms_vision import VisionPMSAdapter
+        return VisionPMSAdapter(api_key, account_id, base_url)
     raise ValueError(f"Unknown PMS type: {pms_type!r}")
