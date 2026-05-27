@@ -777,5 +777,67 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+
+// ── SSE real-time draft notifications ─────────────────────────────────────
+(function initSSE() {
+  if (!window.EventSource) return; // browser doesn't support SSE
+  var retryDelay = 3000;
+  var maxDelay   = 60000;
+  var es;
+
+  function connect() {
+    es = new EventSource('/api/sse/drafts');
+
+    es.onmessage = function(evt) {
+      if (!evt.data || evt.data.trim() === '') return;
+      try {
+        var payload = JSON.parse(evt.data);
+        if (payload.type === 'refresh' || payload.draft_id) {
+          // Show a subtle toast then reload the pending-drafts section
+          showSSEToast(payload);
+          // Debounced page reload (wait 800ms in case multiple events arrive)
+          clearTimeout(window._sseReloadTimer);
+          window._sseReloadTimer = setTimeout(function() {
+            window.location.reload();
+          }, 800);
+        }
+      } catch(e) { /* keepalive comment — ignore */ }
+      retryDelay = 3000; // reset backoff on successful message
+    };
+
+    es.onerror = function() {
+      es.close();
+      retryDelay = Math.min(retryDelay * 2, maxDelay);
+      setTimeout(connect, retryDelay);
+    };
+  }
+
+  function showSSEToast(payload) {
+    var existing = document.getElementById('sse-toast');
+    if (existing) existing.remove();
+    var toast = document.createElement('div');
+    toast.id = 'sse-toast';
+    var guestName = (payload.guest_name || 'A guest');
+    toast.innerHTML = '<span class="material-symbols-outlined text-[1rem] text-[#5B8DEF]">notifications</span>' +
+                      '<span>' + guestName + ' sent a new message — refreshing…</span>';
+    toast.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;align-items:center;gap:0.5rem;' +
+                          'background:rgba(26,27,34,0.95);border:1px solid rgba(91,141,239,0.3);color:#e3e1eb;' +
+                          'font-size:0.82rem;padding:0.65rem 1rem;border-radius:0.75rem;' +
+                          'box-shadow:0 4px 24px rgba(0,0,0,0.4);backdrop-filter:blur(12px);' +
+                          'animation:slideIn 0.2s ease;';
+    document.body.appendChild(toast);
+    setTimeout(function() { if (toast.parentNode) toast.remove(); }, 4000);
+  }
+
+  // Inject animation keyframe once
+  if (!document.getElementById('sse-style')) {
+    var s = document.createElement('style');
+    s.id = 'sse-style';
+    s.textContent = '@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}';
+    document.head.appendChild(s);
+  }
+
+  connect();
+})();
 </script>
 {% endblock %}

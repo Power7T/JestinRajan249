@@ -174,40 +174,70 @@ body {
     <div class="flex-1 h-px bg-outline-variant/20"></div>
   </div>
 </div>
-<!-- Form Header -->
-<div class="w-full mb-4">
-<span class="text-on-surface-variant/60 font-label font-bold text-[10px] tracking-[0.15rem] uppercase block mb-4 border-b border-outline-variant/10 pb-2">Sign in with email</span>
+<!-- Tab switcher: Host / Team Member -->
+<div class="w-full mb-5">
+  <div id="login-tabs" class="flex rounded-xl bg-surface-container-lowest p-1 gap-1">
+    <button type="button" id="tab-host" onclick="switchLoginTab('host')"
+      class="flex-1 text-xs font-bold py-2 rounded-lg transition-all tab-active">
+      Host Login
+    </button>
+    <button type="button" id="tab-member" onclick="switchLoginTab('member')"
+      class="flex-1 text-xs font-bold py-2 rounded-lg transition-all tab-inactive">
+      Team Member
+    </button>
+  </div>
 </div>
-<!-- Login Form -->
-<!-- inner form removed --><div class="w-full space-y-5">
-<!-- Email Input -->
+<!-- HOST login panel -->
+<div id="panel-host" class="w-full space-y-5">
 <div class="space-y-1.5">
 <div class="relative group">
 <input name="email" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Email address" type="email" required/>
 </div>
 </div>
-<!-- Password Input -->
 <div class="space-y-1.5">
 <div class="relative group">
 <input name="password" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Password" type="password" required/>
-<button class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 group/btn" type="button">
+<button class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 group/btn" type="button" onclick="togglePw(this)">
 <span class="material-symbols-outlined text-on-surface-variant/50 text-lg group-hover/btn:text-primary transition-colors">visibility</span>
 <span class="text-[10px] font-label font-bold uppercase tracking-wider text-on-surface-variant/50 group-hover/btn:text-primary transition-colors">Show</span>
 </button>
 </div>
 </div>
-<!-- Forgot Password -->
 <div class="flex justify-end">
 <a class="text-primary text-[11px] font-medium hover:text-primary-fixed-dim transition-colors" href="/forgot-password">Forgot password?</a>
 </div>
-<!-- Submit Button -->
 <button class="group relative w-full bg-gradient-to-r from-primary-container to-primary-fixed-dim py-3.5 rounded-lg flex items-center justify-center gap-2 overflow-hidden transition-all hover:shadow-[0_0_20px_rgba(174,198,255,0.3)] active:scale-[0.98]" type="submit">
 <span class="text-on-primary-container font-headline font-bold text-sm">Sign in</span>
 <span class="material-symbols-outlined text-on-primary-container text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
 </button>
 </div>
+<!-- TEAM MEMBER login panel -->
+<div id="panel-member" class="w-full space-y-5 hidden">
+  <p class="text-slate-400 text-xs text-center">Sign in with your team credentials assigned by your host.</p>
+  <form method="post" action="/team/login" class="space-y-5" id="team-login-form">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div class="space-y-1.5">
+      <div class="relative group">
+        <input name="email" id="team-email" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Team email address" type="email"/>
+      </div>
+    </div>
+    <div class="space-y-1.5">
+      <div class="relative group">
+        <input name="password" id="team-password" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Password" type="password"/>
+        <button class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 group/btn" type="button" onclick="togglePw(this)">
+          <span class="material-symbols-outlined text-on-surface-variant/50 text-lg group-hover/btn:text-primary transition-colors">visibility</span>
+          <span class="text-[10px] font-label font-bold uppercase tracking-wider text-on-surface-variant/50 group-hover/btn:text-primary transition-colors">Show</span>
+        </button>
+      </div>
+    </div>
+    <button type="submit" class="group relative w-full bg-gradient-to-r from-primary-container to-primary-fixed-dim py-3.5 rounded-lg flex items-center justify-center gap-2 overflow-hidden transition-all hover:shadow-[0_0_20px_rgba(174,198,255,0.3)] active:scale-[0.98]">
+      <span class="text-on-primary-container font-headline font-bold text-sm">Sign in as team member</span>
+      <span class="material-symbols-outlined text-on-primary-container text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
+    </button>
+  </form>
+</div>
 <!-- Bottom Links -->
-<div class="mt-8 flex flex-col items-center gap-4">
+<div class="mt-8 flex flex-col items-center gap-4" id="host-bottom-links">
 <a class="text-on-surface-variant text-sm hover:text-on-surface transition-colors flex items-center gap-1.5 group" href="/signup">
                     Don't have an account? <span class="text-primary font-semibold group-hover:underline underline-offset-4 decoration-primary/30">Create one →</span>
 </a>
@@ -227,5 +257,53 @@ body {
 </div>
 </div>
 </form>
+<style>
+  .tab-active { background: rgba(93,142,241,0.15); color: #aec6ff; }
+  .tab-inactive { color: rgba(195,198,212,0.4); }
+  .tab-inactive:hover { color: rgba(195,198,212,0.7); }
+</style>
+<script nonce="{{ request.state.csp_nonce }}">
+function switchLoginTab(tab) {
+  var hostPanel   = document.getElementById('panel-host');
+  var memberPanel = document.getElementById('panel-member');
+  var hostTab     = document.getElementById('tab-host');
+  var memberTab   = document.getElementById('tab-member');
+  var hostLinks   = document.getElementById('host-bottom-links');
+  if (tab === 'member') {
+    hostPanel.classList.add('hidden');
+    memberPanel.classList.remove('hidden');
+    hostTab.className   = 'flex-1 text-xs font-bold py-2 rounded-lg transition-all tab-inactive';
+    memberTab.className = 'flex-1 text-xs font-bold py-2 rounded-lg transition-all tab-active';
+    if (hostLinks) hostLinks.classList.add('hidden');
+    // make host form fields non-required while team tab is active
+    document.querySelector('#panel-host input[name="email"]').required = false;
+    document.querySelector('#panel-host input[name="password"]').required = false;
+  } else {
+    memberPanel.classList.add('hidden');
+    hostPanel.classList.remove('hidden');
+    hostTab.className   = 'flex-1 text-xs font-bold py-2 rounded-lg transition-all tab-active';
+    memberTab.className = 'flex-1 text-xs font-bold py-2 rounded-lg transition-all tab-inactive';
+    if (hostLinks) hostLinks.classList.remove('hidden');
+    document.querySelector('#panel-host input[name="email"]').required = true;
+    document.querySelector('#panel-host input[name="password"]').required = true;
+  }
+}
+
+function togglePw(btn) {
+  var inp = btn.closest('.relative').querySelector('input');
+  if (!inp) return;
+  var isHidden = inp.type === 'password';
+  inp.type = isHidden ? 'text' : 'password';
+  var icon = btn.querySelector('.material-symbols-outlined');
+  var label = btn.querySelector('span:last-child');
+  if (icon)  icon.textContent  = isHidden ? 'visibility_off' : 'visibility';
+  if (label) label.textContent = isHidden ? 'Hide' : 'Show';
+}
+
+// Auto-switch to team tab if show_team_tab was set by server
+{% if show_team_tab %}
+document.addEventListener('DOMContentLoaded', function() { switchLoginTab('member'); });
+{% endif %}
+</script>
 {%- endblock %}
 {%- endblock %}

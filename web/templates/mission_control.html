@@ -168,6 +168,10 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #08090F; 
 <h1 class="text-3xl font-extrabold tracking-tight text-white">Overview</h1>
 <p class="text-slate-400 text-sm mt-1">Manage properties, handle escalations, and batch operations</p>
 </div>
+<div id="mc-live-indicator" class="hidden text-xs text-[#5B8DEF] bg-[#5B8DEF]/10 border border-[#5B8DEF]/20 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+  <span class="w-1.5 h-1.5 rounded-full bg-[#5B8DEF] animate-pulse inline-block"></span>
+  <span></span>
+</div>
 </div>
 
 <!-- Content -->
@@ -320,8 +324,43 @@ View Property
 // Mission Control initialization
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Mission Control dashboard loaded');
-  // TODO: Add real-time updates via SSE or WebSocket
+  initMissionControlSSE();
 });
+
+function initMissionControlSSE() {
+  if (!window.EventSource) return;
+  var retryDelay = 3000;
+  var maxDelay = 60000;
+  var es;
+
+  function connect() {
+    es = new EventSource('/api/sse/drafts');
+    es.onmessage = function(evt) {
+      if (!evt.data || evt.data.trim() === '') return;
+      try {
+        var payload = JSON.parse(evt.data);
+        if (payload.type === 'refresh' || payload.draft_id) {
+          // Show indicator then reload
+          var indicator = document.getElementById('mc-live-indicator');
+          if (indicator) {
+            var span = indicator.querySelector('span:last-child');
+            if (span) span.textContent = 'New activity — refreshing…';
+            indicator.classList.remove('hidden');
+          }
+          clearTimeout(window._mcReloadTimer);
+          window._mcReloadTimer = setTimeout(function() { window.location.reload(); }, 1000);
+        }
+      } catch(e) {}
+      retryDelay = 3000;
+    };
+    es.onerror = function() {
+      es.close();
+      retryDelay = Math.min(retryDelay * 2, maxDelay);
+      setTimeout(connect, retryDelay);
+    };
+  }
+  connect();
+}
 </script>
 
 <style>

@@ -109,12 +109,30 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
     <div style="flex:1;height:1px;background:var(--border)"></div>
   </div>
 
-  <form method="post" action="/onboarding">
+  <!-- Airbnb listing import -->
+  <div style="margin-bottom:1.5rem">
+    <label style="text-transform:none;font-size:0.8rem;color:var(--text-2);font-weight:600;letter-spacing:0">
+      <span style="font-size:0.85rem">🔗</span> Auto-fill from Airbnb listing <span style="color:var(--text-3);font-weight:400">(optional)</span>
+    </label>
+    <div style="display:flex;gap:0.5rem;align-items:flex-start">
+      <input type="url" id="import-url" placeholder="https://www.airbnb.com/rooms/12345…"
+             style="font-size:0.84rem;margin-bottom:0;flex:1">
+      <button type="button" id="import-btn" onclick="importListing()"
+              class="btn btn-outline btn-sm" style="white-space:nowrap;flex-shrink:0;height:2.25rem;margin-top:0">
+        <span id="import-btn-text">Import</span>
+        <span id="import-spinner" style="display:none" class="material-symbols-outlined" style="font-size:1rem;animation:spin 0.8s linear infinite">autorenew</span>
+      </button>
+    </div>
+    <p class="help-text" style="margin-bottom:0">Paste your Airbnb listing URL to pre-fill your property name automatically.</p>
+    <div id="import-result" style="margin-top:0.5rem"></div>
+  </div>
+
+  <form method="post" action="/onboarding" id="step1-form">
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <input type="hidden" name="step" value="1">
 
     <label>Property name</label>
-    <input type="text" name="property_names" value="{{ cfg.property_names or '' }}" placeholder="Beach House, City Flat" style="font-size:1rem">
+    <input type="text" name="property_names" id="property-names-input" value="{{ cfg.property_names or '' }}" placeholder="Beach House, City Flat" style="font-size:1rem">
     <p class="help-text">What HostAI calls your property in guest conversations. You can change this anytime.</p>
 
     <div class="step-nav" style="border-top:none;padding-top:0;margin-top:0.5rem">
@@ -122,6 +140,45 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
       <button type="submit" class="btn btn-primary" style="font-size:0.95rem;padding:0.55rem 1.5rem">Continue →</button>
     </div>
   </form>
+  <script nonce="{{ request.state.csp_nonce }}">
+  async function importListing() {
+    var url = document.getElementById('import-url').value.trim();
+    if (!url) { alert('Please paste an Airbnb listing URL first.'); return; }
+    var btn = document.getElementById('import-btn');
+    var btnText = document.getElementById('import-btn-text');
+    var spinner = document.getElementById('import-spinner');
+    var result = document.getElementById('import-result');
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    spinner.style.display = 'inline-block';
+    result.innerHTML = '<span style="font-size:0.78rem;color:var(--text-3)">Fetching listing details…</span>';
+    try {
+      var resp = await fetch('/onboarding/import-listing', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({url: url})
+      });
+      var data = await resp.json();
+      if (data.error) {
+        result.innerHTML = '<span style="color:#ffb4ab;font-size:0.78rem">⚠ ' + data.error + '</span>';
+      } else {
+        if (data.title) {
+          document.getElementById('property-names-input').value = data.title;
+        }
+        result.innerHTML = '<span style="color:#27c93f;font-size:0.78rem">✓ Property details imported successfully!</span>';
+      }
+    } catch(e) {
+      result.innerHTML = '<span style="color:#ffb4ab;font-size:0.78rem">⚠ Could not connect — please enter property name manually.</span>';
+    } finally {
+      btn.disabled = false;
+      btnText.style.display = '';
+      spinner.style.display = 'none';
+    }
+  }
+  </script>
+  <style nonce="{{ request.state.csp_nonce }}">
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </div>
 {% endif %}
 
@@ -161,13 +218,40 @@ details summary{cursor:pointer;font-size:0.84rem;color:#5B8DEF;font-weight:600;}
 
     <!-- iCal test -->
     <div id="ical-test-area" style="margin-bottom:0.75rem"></div>
-    <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:1.5rem"
+    <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:0.5rem"
             hx-post="/test/ical"
             hx-include="[name='ical_urls']"
             hx-target="#ical-test-area"
-            hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'>
+            hx-vals='{"csrf_token":"{{ request.state.csrf_token }}"}'
+            hx-on::after-request="checkIcalResult()">
       Test calendar URL
     </button>
+
+    <!-- iCal troubleshooting — shown only on error -->
+    <div id="ical-tips" style="display:none;margin-bottom:1.5rem;background:rgba(255,189,46,0.06);border:1px solid rgba(255,189,46,0.2);border-radius:0.75rem;padding:1rem 1.1rem">
+      <p style="font-size:0.82rem;font-weight:700;color:#ffbd2e;margin-bottom:0.6rem">⚠ iCal URL not working? Try these:</p>
+      <ol style="padding-left:1.2rem;color:var(--text-2);font-size:0.8rem;line-height:2;margin:0">
+        <li>Make sure you copied the <strong>full URL</strong> — it should start with <code style="color:#aec6ff;font-size:0.75rem">https://www.airbnb.com/calendar/ical/</code></li>
+        <li>The URL must end in <code style="color:#aec6ff;font-size:0.75rem">.ics</code></li>
+        <li>In Airbnb, go to your listing → <strong>Calendar</strong> → <strong>Availability settings</strong> → scroll to <strong>Sync calendars</strong> → click <strong>Export Calendar</strong></li>
+        <li>Do <strong>not</strong> use the "Import" URL — only the <strong>Export</strong> link works</li>
+        <li>If you just generated the link, wait 30 seconds and try again</li>
+        <li>On mobile? Copy the full link by long-pressing on it</li>
+      </ol>
+      <p style="margin-top:0.6rem;font-size:0.78rem;color:var(--text-3)">Still not working? <a href="/dashboard" style="color:#5B8DEF">Skip this step</a> and add the calendar from Settings later.</p>
+    </div>
+    <script nonce="{{ request.state.csp_nonce }}">
+    function checkIcalResult() {
+      var area = document.getElementById('ical-test-area');
+      var tips = document.getElementById('ical-tips');
+      if (!area || !tips) return;
+      var hasError = area.innerText.toLowerCase().includes('error') ||
+                     area.innerText.toLowerCase().includes('fail') ||
+                     area.innerText.toLowerCase().includes('invalid') ||
+                     area.innerText.toLowerCase().includes('could not');
+      tips.style.display = hasError ? 'block' : 'none';
+    }
+    </script>
 
     <!-- Activation checklist -->
     <div class="form-section" style="margin-bottom:1.5rem">
