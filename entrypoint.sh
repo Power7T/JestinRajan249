@@ -79,11 +79,12 @@ fi
 echo ""
 echo "Step 3: Starting uvicorn..."
 PORT=${PORT:-8000}
-echo "[Uvicorn] Starting on 0.0.0.0:$PORT with 2 workers"
+WORKERS=${WORKERS:-2}
+echo "[Uvicorn] Starting on 0.0.0.0:$PORT with $WORKERS workers"
 exec uvicorn web.app:app \
     --host 0.0.0.0 \
     --port $PORT \
-    --workers 2 \
+    --workers $WORKERS \
     --loop uvloop \
     --http h11 \
     --timeout-keep-alive 30 \

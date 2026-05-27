@@ -291,6 +291,9 @@ if not _APP_BASE_URL_RAW or _APP_BASE_URL_RAW == "https://your-domain.com":
             "Email verification links and password-reset emails will be broken without it."
         )
     _APP_BASE_URL_RAW = _APP_BASE_URL_RAW or "http://localhost:8000"
+# Auto-prepend https:// if the value was set without a scheme (common Railway misconfiguration)
+if _APP_BASE_URL_RAW and not _APP_BASE_URL_RAW.startswith(("http://", "https://")):
+    _APP_BASE_URL_RAW = "https://" + _APP_BASE_URL_RAW
 APP_BASE_URL = _APP_BASE_URL_RAW
 INBOUND_EMAIL_DOMAIN = os.getenv("INBOUND_EMAIL_DOMAIN", "inbound.hostai.local").strip().lower()
 GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "").strip()
