@@ -136,7 +136,7 @@ body {
   {{ error }}
 </div>
 {%- endif %}
-<form method="post" action="/login">
+<form method="post" action="/login" id="login-form">
 <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
 <!-- Ambient Background Orbs -->
 <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none">
@@ -211,30 +211,31 @@ body {
 <span class="material-symbols-outlined text-on-primary-container text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
 </button>
 </div>
-<!-- TEAM MEMBER login panel -->
+<!-- TEAM MEMBER login panel (no nested <form> — shares outer form with dynamic action) -->
 <div id="panel-member" class="w-full space-y-5 hidden">
   <p class="text-slate-400 text-xs text-center">Sign in with your team credentials assigned by your host.</p>
-  <form method="post" action="/team/login" class="space-y-5" id="team-login-form">
-    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-    <div class="space-y-1.5">
-      <div class="relative group">
-        <input name="email" id="team-email" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Team email address" type="email"/>
-      </div>
+  <div class="space-y-1.5">
+    <div class="relative group">
+      <input name="email" id="team-email" disabled
+             class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30"
+             placeholder="Team email address" type="email"/>
     </div>
-    <div class="space-y-1.5">
-      <div class="relative group">
-        <input name="password" id="team-password" class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30" placeholder="Password" type="password"/>
-        <button class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 group/btn" type="button" onclick="togglePw(this)">
-          <span class="material-symbols-outlined text-on-surface-variant/50 text-lg group-hover/btn:text-primary transition-colors">visibility</span>
-          <span class="text-[10px] font-label font-bold uppercase tracking-wider text-on-surface-variant/50 group-hover/btn:text-primary transition-colors">Show</span>
-        </button>
-      </div>
+  </div>
+  <div class="space-y-1.5">
+    <div class="relative group">
+      <input name="password" id="team-password" disabled
+             class="w-full bg-surface-container-lowest text-on-surface text-sm rounded-lg px-4 py-3.5 outline-none border-none ring-1 ring-outline-variant/10 focus:ring-primary/40 focus:bg-surface-container-low transition-all placeholder:text-on-surface-variant/30"
+             placeholder="Password" type="password"/>
+      <button class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 group/btn" type="button" onclick="togglePw(this)">
+        <span class="material-symbols-outlined text-on-surface-variant/50 text-lg group-hover/btn:text-primary transition-colors">visibility</span>
+        <span class="text-[10px] font-label font-bold uppercase tracking-wider text-on-surface-variant/50 group-hover/btn:text-primary transition-colors">Show</span>
+      </button>
     </div>
-    <button type="submit" class="group relative w-full bg-gradient-to-r from-primary-container to-primary-fixed-dim py-3.5 rounded-lg flex items-center justify-center gap-2 overflow-hidden transition-all hover:shadow-[0_0_20px_rgba(174,198,255,0.3)] active:scale-[0.98]">
-      <span class="text-on-primary-container font-headline font-bold text-sm">Sign in as team member</span>
-      <span class="material-symbols-outlined text-on-primary-container text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
-    </button>
-  </form>
+  </div>
+  <button type="submit" class="group relative w-full bg-gradient-to-r from-primary-container to-primary-fixed-dim py-3.5 rounded-lg flex items-center justify-center gap-2 overflow-hidden transition-all hover:shadow-[0_0_20px_rgba(174,198,255,0.3)] active:scale-[0.98]">
+    <span class="text-on-primary-container font-headline font-bold text-sm">Sign in as team member</span>
+    <span class="material-symbols-outlined text-on-primary-container text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
+  </button>
 </div>
 <!-- Bottom Links -->
 <div class="mt-8 flex flex-col items-center gap-4" id="host-bottom-links">
@@ -264,28 +265,45 @@ body {
 </style>
 <script nonce="{{ request.state.csp_nonce }}">
 function switchLoginTab(tab) {
+  var form        = document.getElementById('login-form');
   var hostPanel   = document.getElementById('panel-host');
   var memberPanel = document.getElementById('panel-member');
   var hostTab     = document.getElementById('tab-host');
   var memberTab   = document.getElementById('tab-member');
   var hostLinks   = document.getElementById('host-bottom-links');
+
+  var hostEmail    = document.querySelector('#panel-host input[name="email"]');
+  var hostPassword = document.querySelector('#panel-host input[name="password"]');
+  var teamEmail    = document.getElementById('team-email');
+  var teamPassword = document.getElementById('team-password');
+
   if (tab === 'member') {
+    // Switch form target to team login route
+    form.action = '/team/login';
+    // Show member panel, hide host panel
     hostPanel.classList.add('hidden');
     memberPanel.classList.remove('hidden');
     hostTab.className   = 'flex-1 text-xs font-bold py-2 rounded-lg transition-all tab-inactive';
     memberTab.className = 'flex-1 text-xs font-bold py-2 rounded-lg transition-all tab-active';
     if (hostLinks) hostLinks.classList.add('hidden');
-    // make host form fields non-required while team tab is active
-    document.querySelector('#panel-host input[name="email"]').required = false;
-    document.querySelector('#panel-host input[name="password"]').required = false;
+    // Disable host inputs so they are NOT submitted; enable team inputs
+    hostEmail.disabled    = true;
+    hostPassword.disabled = true;
+    teamEmail.disabled    = false;
+    teamPassword.disabled = false;
   } else {
+    // Switch form target back to host login route
+    form.action = '/login';
     memberPanel.classList.add('hidden');
     hostPanel.classList.remove('hidden');
     hostTab.className   = 'flex-1 text-xs font-bold py-2 rounded-lg transition-all tab-active';
     memberTab.className = 'flex-1 text-xs font-bold py-2 rounded-lg transition-all tab-inactive';
     if (hostLinks) hostLinks.classList.remove('hidden');
-    document.querySelector('#panel-host input[name="email"]').required = true;
-    document.querySelector('#panel-host input[name="password"]').required = true;
+    // Re-enable host inputs; disable team inputs
+    hostEmail.disabled    = false;
+    hostPassword.disabled = false;
+    teamEmail.disabled    = true;
+    teamPassword.disabled = true;
   }
 }
 
