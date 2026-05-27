@@ -2314,6 +2314,26 @@ def dashboard(request: Request,
     overall_pct = _ctx_pct(checkin_fields + local_fields + rules_fields)
     ctx_map = {"checkin": checkin_pct, "local": local_pct, "rules": rules_pct, "overall": overall_pct}
 
+    # Auto-sent today — show hosts what the AI handled autonomously
+    try:
+        today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+        auto_sent_today = (
+            rdb.query(Draft)
+            .filter(
+                Draft.tenant_id == tenant_id,
+                Draft.status == "auto_sent",
+                Draft.created_at >= today_start,
+            )
+            .order_by(Draft.created_at.desc())
+            .limit(20)
+            .all()
+        )
+        auto_sent_today_count = len(auto_sent_today)
+    except Exception as exc:
+        log.warning("[%s] Failed to load auto_sent_today: %s", tenant_id, exc)
+        auto_sent_today = []
+        auto_sent_today_count = 0
+
     # Show one-time tour overlay after onboarding completion (cookie-based)
     show_tour = request.cookies.get("show_tour") == "1"
     response  = templates.TemplateResponse("dashboard.html", {
@@ -2358,6 +2378,11 @@ def dashboard(request: Request,
         "setup_alerts":  _get_setup_alerts(cfg, tenant, all_reservations),
         "ctx_map":       ctx_map,
         "onboarding_step": cfg.onboarding_step if cfg else 0,
+        # Autonomous sending
+        "auto_sent_today":       auto_sent_today,
+        "auto_sent_today_count": auto_sent_today_count,
+        "auto_send_enabled":     getattr(cfg, "auto_send_enabled", False),
+        "auto_send_threshold":   getattr(cfg, "auto_send_threshold", 0.85),
     })
     if show_tour:
         response.delete_cookie("show_tour")
@@ -2713,8 +2738,14 @@ def _execute_draft(
     *,
     reservation: Optional[Reservation] = None,
     automation_rule: Optional[AutomationRule] = None,
+    auto_send: bool = False,
 ):
-    """Send reply via the appropriate channel and mark the final delivery state."""
+    """Send reply via the appropriate channel and mark the final delivery state.
+
+    When auto_send=True the draft is marked "auto_sent" (AI-initiated) rather
+    than "approved" (host-initiated), and the activity / timeline entries
+    reflect that distinction.
+    """
     if draft.status != "pending":
         return
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
@@ -2827,24 +2858,45 @@ def _execute_draft(
         db.commit()
         return
 
-    draft.status = "approved"
-    draft.approved_at = datetime.now(timezone.utc)
-    if reservation:
-        reservation.last_host_reply_at = draft.approved_at
-    db.add(ActivityLog(tenant_id=tenant_id, event_type="draft_approved",
-                       message=f"Draft approved: {draft.guest_name}"))
-    _record_timeline_event(
-        db,
-        tenant_id,
-        reservation,
-        "draft_approved",
-        f"Reply sent for {draft.guest_name}",
-        channel=_draft_channel(draft),
-        direction="outbound",
-        body=final_text,
-        draft=draft,
-        automation_rule=automation_rule,
-    )
+    now = datetime.now(timezone.utc)
+    if auto_send:
+        draft.status = "auto_sent"
+        draft.approved_at = now
+        if reservation:
+            reservation.last_host_reply_at = now
+        db.add(ActivityLog(tenant_id=tenant_id, event_type="draft_auto_sent",
+                           message=f"Auto-sent to {draft.guest_name}: {draft.draft[:80]}"))
+        _record_timeline_event(
+            db,
+            tenant_id,
+            reservation,
+            "guest_message_sent",
+            f"Auto-response to {draft.guest_name}",
+            channel=_draft_channel(draft),
+            direction="outbound",
+            body=final_text,
+            draft=draft,
+            payload_json={"auto_sent": True, "confidence": draft.confidence},
+        )
+    else:
+        draft.status = "approved"
+        draft.approved_at = now
+        if reservation:
+            reservation.last_host_reply_at = now
+        db.add(ActivityLog(tenant_id=tenant_id, event_type="draft_approved",
+                           message=f"Draft approved: {draft.guest_name}"))
+        _record_timeline_event(
+            db,
+            tenant_id,
+            reservation,
+            "draft_approved",
+            f"Reply sent for {draft.guest_name}",
+            channel=_draft_channel(draft),
+            direction="outbound",
+            body=final_text,
+            draft=draft,
+            automation_rule=automation_rule,
+        )
     db.commit()
 
 
@@ -4506,6 +4558,38 @@ def settings_language(
     return RedirectResponse("/settings?saved=language", status_code=302)
 
 
+@app.post("/settings/auto-send")
+def settings_auto_send(
+    request: Request,
+    auto_send_enabled: str = Form("off"),
+    auto_send_threshold: str = Form("0.85"),
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Save autonomous sending toggle + confidence threshold."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    cfg = _get_or_create_config(tenant_id, db)
+    cfg.auto_send_enabled = (auto_send_enabled == "on")
+    try:
+        threshold = float(auto_send_threshold)
+        threshold = max(0.70, min(0.99, threshold))  # clamp to sane range
+    except (ValueError, TypeError):
+        threshold = 0.85
+    cfg.auto_send_threshold = threshold
+    db.commit()
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="settings_changed",
+        message=f"Auto-send {'enabled' if cfg.auto_send_enabled else 'disabled'} (threshold={threshold:.0%})",
+    ))
+    db.commit()
+    return RedirectResponse("/settings?saved=auto_send", status_code=302)
+
+
 @app.post("/automations/rules")
 @app.post("/settings/automation")
 def automation_rule_add(
@@ -5577,63 +5661,57 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                            message=f"{source.upper()} from {reply_to}: {text[:80]}"))
         db.commit()
 
-        # Fix #8: sync auto_send_eligible with actual auto-send conditions
-        is_negative   = draft.guest_sentiment == "negative"
-        is_routine    = draft.msg_type == "routine"
-        should_auto_send = is_routine and not is_negative
+        # ── Autonomous sending decision ─────────────────────────────────────
+        # Safety rules (hard-coded — these NEVER auto-send regardless of setting):
+        #   1. First message from this guest (build trust first)
+        #   2. Negative / upset sentiment
+        #   3. Complaint or refund keywords
+        #   4. Price / money discussion
+        #   5. Policy conflicts flagged by classifier
+        is_negative     = draft.guest_sentiment == "negative"
+        is_routine      = draft.msg_type == "routine"
+        is_first_msg    = (guest_message_index or 0) == 0
+        _text_lower     = text.lower()
+        has_complaint   = any(kw in _text_lower for kw in (
+            "complaint", "refund", "unhappy", "disgusting", "terrible",
+            "awful", "unacceptable", "lawsuit", "attorney", "lawyer",
+            "police", "filthy", "broken", "dangerous",
+        ))
+        has_money_talk  = any(kw in _text_lower for kw in (
+            "price", "charge", "charged", "overcharged", "invoice",
+            "receipt", "discount", "compensation", "reimburse",
+        ))
+        safe_to_auto = (
+            is_routine
+            and not is_negative
+            and not is_first_msg
+            and not has_complaint
+            and not has_money_talk
+            and not policy_conflicts
+        )
 
-        # Keep auto_send_eligible consistent with what we actually do
-        draft.auto_send_eligible = should_auto_send
+        # Host-configurable threshold (defaults off / 0.85 if column missing on old rows)
+        _cfg            = _get_or_create_config(tenant_id, db)
+        _threshold      = getattr(_cfg, "auto_send_threshold", 0.85) or 0.85
+        _auto_enabled   = getattr(_cfg, "auto_send_enabled",   False) or False
+        above_threshold = (draft.confidence or 0.0) >= _threshold
+
+        should_auto_send = _auto_enabled and safe_to_auto and above_threshold
+
+        # Persist eligibility flag (used for analytics / dashboard stats)
+        draft.auto_send_eligible = safe_to_auto and above_threshold
+        db.commit()
 
         if should_auto_send:
-            draft.final_text  = draft.draft
-            draft.updated_at  = datetime.now(timezone.utc)
-
-            # Fix #1: only mark auto_sent AFTER confirmed delivery
-            _cfg = _get_or_create_config(tenant_id, db)
-            wa_delivered = False
-            if _cfg.wa_mode == "meta_cloud" and _cfg.whatsapp_phone_id and _cfg.whatsapp_token_enc:
-                try:
-                    from web.meta_sender import send_whatsapp
-                    from web.crypto import decrypt as _decrypt
-                    _token = _decrypt(_cfg.whatsapp_token_enc)
-                    _to = reply_to.replace("+", "").strip()
-                    wa_delivered = send_whatsapp(_cfg.whatsapp_phone_id, _token, _to, draft.final_text)
-                    if wa_delivered:
-                        log.info("[%s] Auto-sent WhatsApp reply to %s", tenant_id, reply_to[-4:])
-                    else:
-                        log.warning("[%s] Auto-send WhatsApp failed for %s — falling back to pending", tenant_id, reply_to[-4:])
-                except Exception as _wa_err:
-                    log.error("[%s] Auto-send WhatsApp error: %s", tenant_id, _wa_err)
-
-            if wa_delivered:
-                draft.status = "auto_sent"
-                db.add(ActivityLog(
-                    tenant_id=tenant_id,
-                    event_type="draft_auto_sent",
-                    message=f"Auto-sent to {guest_name}: {draft.draft[:80]}"
-                ))
-                db.commit()
-                log.info("[%s] Auto-sent routine reply to %s", tenant_id, guest_name)
-                _record_timeline_event(
-                    db, tenant_id, reservation,
-                    "guest_message_sent",
-                    f"Auto-response to {guest_name}",
-                    channel=source, direction="outbound",
-                    body=draft.final_text, draft=draft,
-                    payload_json={"auto_sent": True, "confidence": draft.confidence},
-                )
-                db.commit()
-            else:
-                # Delivery failed — keep as pending so host sees it
-                draft.status = "pending"
-                db.add(ActivityLog(
-                    tenant_id=tenant_id,
-                    event_type="draft_auto_send_failed",
-                    message=f"Auto-send failed for {guest_name} — moved to pending review",
-                ))
-                db.commit()
-                # Notify host that delivery failed and they need to reply manually
+            log.info(
+                "[%s] Auto-sending to %s (confidence=%.2f >= threshold=%.2f)",
+                tenant_id, guest_name, draft.confidence or 0.0, _threshold,
+            )
+            _execute_draft(draft, draft.draft, tenant_id, db,
+                           reservation=reservation, auto_send=True)
+            # If _execute_draft marked it failed, fall through to notify host
+            if draft.status == "failed":
+                log.warning("[%s] Auto-send delivery failed for %s — notifying host", tenant_id, guest_name)
                 _notify_host_pending(cfg, tenant_id, guest_name, text, source,
                                      is_negative=False, send_failed=True, db=db)
         else:
@@ -5656,11 +5734,13 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
             except Exception:
                 pass  # non-critical
 
-            # Fix #5+#6: always notify for negative/complex, respect setting for routine
+            # Always notify for negative/complex; respect notify setting for routine
             _notify_host_pending(cfg, tenant_id, guest_name, text, source,
                                  is_negative=is_negative, send_failed=False, db=db)
 
-            log.info("[%s] Pending review: %s (%s, sentiment=%s)", tenant_id, guest_name, draft.msg_type, draft.guest_sentiment)
+            log.info("[%s] Pending review: %s (%s, sentiment=%s, confidence=%.2f)",
+                     tenant_id, guest_name, draft.msg_type, draft.guest_sentiment,
+                     draft.confidence or 0.0)
 
         # Check for upsell opportunities on every inbound message
         _check_upsell_opportunity(tenant_id, text, guest_contact, cfg, db)

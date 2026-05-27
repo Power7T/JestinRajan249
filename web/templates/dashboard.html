@@ -496,6 +496,58 @@ body {
 </a>
 </div>
 {% endif %}
+
+<!-- ── Auto-sent Today ──────────────────────────────────────────────────── -->
+{% if auto_send_enabled or auto_sent_today_count > 0 %}
+<div class="glass-card rounded-3xl p-6 border-primary/10">
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-2">
+      <span class="material-symbols-outlined text-[#5B8DEF] text-lg" style="font-variation-settings:'FILL' 1">auto_awesome</span>
+      <h3 class="font-bold text-white text-sm">AI Auto-sent Today</h3>
+    </div>
+    {% if auto_send_enabled %}
+    <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Live
+    </span>
+    {% else %}
+    <a href="/settings#auto-send" class="text-[10px] text-slate-500 hover:text-[#5B8DEF] transition-colors">Enable →</a>
+    {% endif %}
+  </div>
+
+  {% if auto_sent_today %}
+  <div class="text-center mb-4">
+    <span class="text-3xl font-black text-[#5B8DEF]">{{ auto_sent_today_count }}</span>
+    <p class="text-slate-500 text-xs mt-0.5">replies sent without you</p>
+  </div>
+  <div class="space-y-2 max-h-48 overflow-y-auto">
+    {% for d in auto_sent_today %}
+    <div class="flex items-start gap-2 py-2 border-b border-white/5 last:border-0">
+      <span class="material-symbols-outlined text-emerald-400 text-sm mt-0.5" style="font-variation-settings:'FILL' 1">check_circle</span>
+      <div class="flex-1 min-w-0">
+        <p class="text-slate-300 text-xs font-medium truncate">{{ d.guest_name }}</p>
+        <p class="text-slate-600 text-[11px] truncate">{{ d.draft[:60] if d.draft else '—' }}{% if d.draft and d.draft|length > 60 %}…{% endif %}</p>
+      </div>
+      <span class="text-slate-600 text-[10px] flex-shrink-0">
+        {% if d.confidence %}<span class="text-[#5B8DEF]">{{ (d.confidence * 100)|int }}%</span>{% endif %}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% elif auto_send_enabled %}
+  <div class="text-center py-4">
+    <span class="material-symbols-outlined text-3xl text-slate-700 mb-2 inline-block">schedule_send</span>
+    <p class="text-slate-500 text-xs">No auto-sends yet today</p>
+    <p class="text-slate-600 text-[11px] mt-1">AI will auto-send when confidence ≥ {{ (auto_send_threshold * 100)|int }}%</p>
+  </div>
+  {% else %}
+  <div class="text-center py-4">
+    <p class="text-slate-400 text-xs mb-3">Let AI handle routine messages automatically — no approval needed.</p>
+    <a href="/settings" class="inline-block px-4 py-2 rounded-xl bg-[#5B8DEF]/10 hover:bg-[#5B8DEF]/20 text-[#5B8DEF] text-xs font-semibold border border-[#5B8DEF]/20 transition-colors">Enable Auto-send →</a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 </div>
 </div>
 </main>

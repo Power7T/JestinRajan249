@@ -339,6 +339,10 @@ class TenantConfig(Base):
     ical_last_error_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     ical_last_success_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Autonomous sending — AI auto-sends messages above the confidence threshold
+    auto_send_enabled:   Mapped[bool]  = mapped_column(Boolean, nullable=False, server_default="false", default=False)
+    auto_send_threshold: Mapped[float] = mapped_column(Float,   nullable=False, server_default="0.85",  default=0.85)
+
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="config")
 
 

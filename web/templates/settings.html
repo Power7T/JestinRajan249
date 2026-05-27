@@ -166,6 +166,90 @@
   </form>
 </section>
 
+<!-- ── Autonomous Sending ─────────────────────────────────────────────── -->
+<section class="hub-card">
+  <div class="hub-card-head">
+    <div>
+      <div class="hub-card-title">Autonomous Sending</div>
+      <p class="hub-card-copy">
+        When enabled, HostAI automatically sends replies it's confident about — no approval needed.
+        Messages below the threshold, or flagged as negative/complaint/first-contact, always wait for your review.
+      </p>
+    </div>
+    <span class="chip {% if cfg.auto_send_enabled %}good{% else %}neutral{% endif %}">
+      {% if cfg.auto_send_enabled %}Active{% else %}Off{% endif %}
+    </span>
+  </div>
+
+  {% if request.query_params.get('saved') == 'auto_send' %}
+  <div class="alert alert-success mb-3 text-sm">✓ Auto-send settings saved.</div>
+  {% endif %}
+
+  <form method="POST" action="/settings/auto-send" class="mt-4 space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+    <!-- Toggle -->
+    <label class="flex items-center gap-3 cursor-pointer select-none">
+      <div class="relative">
+        <input type="checkbox" name="auto_send_enabled" value="on" class="sr-only peer"
+               {% if cfg.auto_send_enabled %}checked{% endif %}
+               onchange="document.getElementById('as-threshold-row').style.opacity = this.checked ? '1' : '0.4'">
+        <div class="w-11 h-6 bg-slate-700 peer-checked:bg-[#5B8DEF] rounded-full transition-colors"></div>
+        <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5 shadow"></div>
+      </div>
+      <span class="text-sm text-slate-200 font-medium">Enable autonomous sending</span>
+    </label>
+
+    <!-- Confidence threshold slider -->
+    <div id="as-threshold-row" class="space-y-2 transition-opacity" style="opacity: {% if cfg.auto_send_enabled %}1{% else %}0.4{% endif %}">
+      <div class="flex items-center justify-between">
+        <label class="text-xs text-slate-500 font-medium uppercase tracking-wider">Confidence threshold</label>
+        <span id="as-threshold-label" class="text-sm font-mono text-[#5B8DEF] font-semibold">
+          {{ (cfg.auto_send_threshold * 100) | int }}%
+        </span>
+      </div>
+      <input
+        type="range" name="auto_send_threshold" min="70" max="99" step="1"
+        value="{{ (cfg.auto_send_threshold * 100) | int }}"
+        class="w-full h-2 rounded-full appearance-none cursor-pointer accent-[#5B8DEF] bg-slate-700"
+        oninput="document.getElementById('as-threshold-label').textContent = this.value + '%';
+                 document.getElementById('as-threshold-hidden').value = (this.value / 100).toFixed(2);"
+      >
+      <input type="hidden" id="as-threshold-hidden" name="auto_send_threshold"
+             value="{{ cfg.auto_send_threshold }}">
+      <p class="text-[11px] text-slate-600">
+        AI must be at least this confident before sending automatically. 85% is a safe starting point.
+        Increase to 95%+ to only auto-send when the AI is near-certain.
+      </p>
+    </div>
+
+    <!-- Safety rules notice -->
+    <div class="bg-[#0d0e14] border border-white/8 rounded-xl p-3 text-xs text-slate-500 space-y-1">
+      <p class="text-slate-400 font-medium mb-1.5">🔒 Always requires your approval:</p>
+      <p>• First message from a new guest</p>
+      <p>• Negative or upset sentiment detected</p>
+      <p>• Complaint / refund / legal keywords</p>
+      <p>• Price or charge discussions</p>
+      <p>• Policy conflicts flagged by AI</p>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-sm">Save Auto-send Settings</button>
+  </form>
+
+  <!-- Fix: the hidden input with the same name causes duplicate; use JS to disable the range input on submit -->
+  <script>
+    (function() {
+      var form = document.querySelector('form[action="/settings/auto-send"]');
+      if (!form) return;
+      form.addEventListener('submit', function() {
+        // Disable the range element so only the hidden input is submitted
+        var rangeEl = form.querySelector('input[type="range"]');
+        if (rangeEl) rangeEl.disabled = true;
+      });
+    })();
+  </script>
+</section>
+
 <section class="hub-card">
   <div class="hub-card-head">
     <div>
