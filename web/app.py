@@ -2590,6 +2590,21 @@ def _get_setup_alerts(cfg, tenant, reservations: list) -> list[dict]:
             "tab": "properties",
         })
 
+    # 8. Autonomous sending available but not enabled — show once channels are connected
+    channels_ready = (
+        (cfg.wa_mode or "none") not in ("none", "") or
+        (cfg.sms_mode or "none") not in ("none", "")
+    )
+    if channels_ready and not getattr(cfg, "auto_send_enabled", False):
+        alerts.append({
+            "level": "info",
+            "icon": "auto_awesome",
+            "message": "Auto-send is off — AI drafts routine replies but waits for you. Enable it and stop approving messages one by one.",
+            "cta": "Enable auto-send",
+            "link": "/settings#auto-send",
+            "tab": None,
+        })
+
     return alerts
 
 

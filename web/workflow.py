@@ -621,6 +621,13 @@ def build_activation_checklist(
             "detail": "At least one outbound guest channel is configured.",
             "cta": "/communications",
         },
+        {
+            "key": "auto_send",
+            "label": "Autonomous sending enabled",
+            "complete": bool(getattr(config, "auto_send_enabled", False)),
+            "detail": "AI sends high-confidence routine replies without your approval.",
+            "cta": "/settings#auto-send",
+        },
     ]
     return items
 
