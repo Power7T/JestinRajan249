@@ -126,8 +126,54 @@ If the message is just a question or thanks, set has_action=false."""
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Policy helpers
 # ---------------------------------------------------------------------------
+
+# Defaults applied when the host has not configured a policy
+_POLICY_DEFAULTS = {
+    "late_checkout": {
+        "same_unit_free":    "free",           # allow at no charge
+        "alt_unit_pricing":  "charge_alt_rate", # quote alternative at its own rate
+        "no_unit_available": "deny",
+        "flat_fee_amount":   0,
+        "flat_fee_currency": "USD",
+    },
+    "early_checkin": {
+        "same_unit_free":    "free",
+        "alt_unit_pricing":  "charge_alt_rate",
+        "no_unit_available": "deny",
+        "flat_fee_amount":   0,
+        "flat_fee_currency": "USD",
+    },
+}
+
+
+def _get_policy(cfg: Optional[TenantConfig], action_type: str) -> dict:
+    """
+    Return the host-configured outcome policy for this action_type.
+    Falls back to _POLICY_DEFAULTS if the host has not set anything.
+    """
+    defaults = _POLICY_DEFAULTS.get(action_type, {})
+    if not cfg:
+        return defaults
+    raw = getattr(cfg, "action_policies", None)
+    if not raw:
+        return defaults
+    try:
+        policies = json.loads(raw)
+        host_policy = policies.get(action_type, {})
+        # Merge: host values override defaults
+        merged = {**defaults, **host_policy}
+        return merged
+    except Exception:
+        return defaults
+
+
+def _fmt_fee(amount: float, currency: str) -> str:
+    symbols = {"USD": "$", "GBP": "£", "EUR": "€", "AUD": "A$", "CAD": "C$"}
+    sym = symbols.get((currency or "USD").upper(), currency + " ")
+    return f"{sym}{amount:.0f}"
+
 
 def is_auto_approved(cfg: TenantConfig, action_type: str) -> bool:
     """Check whether this tenant has whitelisted this action type for autonomous execution."""
@@ -315,31 +361,51 @@ def _build_alternative_offer_text(
     current_unit: str,
     current_rate: Optional[float],
     alternatives: list[dict],
+    alt_mode: str = "charge_alt_rate",
+    flat_fee_amount: float = 0,
+    flat_fee_currency: str = "USD",
 ) -> str:
     """
-    Build a human-readable offer message for guest-facing reply.
-    Every alternative is quoted at its own rate — nothing is free.
+    Build a human-readable offer list for guest-facing reply.
+    Pricing shown depends on the host's alt_unit_pricing policy:
+      charge_alt_rate — each unit quoted at its own rate
+      waive_extra     — guest pays their current rate (host absorbs difference)
+      flat_fee        — single flat fee regardless of unit
+      approval_required — pricing TBC
     """
     if not alternatives:
         return ""
 
     lines = []
-    for alt in alternatives[:3]:  # max 3 options
+    for alt in alternatives[:3]:
         name = alt["listing_name"] or alt["unit_identifier"]
-        rate = alt["est_nightly_rate"]
-        if rate is None:
-            lines.append(f"• {name} — rate available on request")
-        else:
-            rate_str = f"${rate:.0f}/night"
-            if current_rate:
-                diff = rate - current_rate
-                if diff > 1:
-                    rate_str += f" (+${diff:.0f} vs your current unit)"
-                elif diff < -1:
-                    rate_str += f" (${abs(diff):.0f} less than your current unit)"
-                else:
-                    rate_str += " (same rate as your current unit)"
-            lines.append(f"• {name} — {rate_str}")
+        alt_rate = alt["est_nightly_rate"]
+
+        if alt_mode == "waive_extra":
+            rate_str = (
+                f"{_fmt_fee(current_rate, flat_fee_currency)}/night (your current rate — we cover the difference)"
+                if current_rate else "same rate as your current booking"
+            )
+        elif alt_mode == "flat_fee":
+            rate_str = f"flat {_fmt_fee(flat_fee_amount, flat_fee_currency)} fee"
+        elif alt_mode == "approval_required":
+            rate_str = "pricing to be confirmed by host"
+        else:  # charge_alt_rate
+            if alt_rate is None:
+                rate_str = "rate on request"
+            elif current_rate and abs(alt_rate - current_rate) < 1:
+                rate_str = f"{_fmt_fee(alt_rate, flat_fee_currency)}/night (same as your current unit)"
+            elif current_rate and alt_rate > current_rate:
+                rate_str = (
+                    f"{_fmt_fee(alt_rate, flat_fee_currency)}/night "
+                    f"(+{_fmt_fee(alt_rate - current_rate, flat_fee_currency)} vs your current unit)"
+                )
+            else:
+                rate_str = f"{_fmt_fee(alt_rate, flat_fee_currency)}/night" + (
+                    f" ({_fmt_fee(current_rate - alt_rate, flat_fee_currency)} less than your current unit)"
+                    if current_rate else ""
+                )
+        lines.append(f"• {name} — {rate_str}")
 
     return "\n".join(lines)
 
@@ -363,6 +429,9 @@ def execute_action(db: Session, action: GuestAction) -> bool:
     Returns True if the PMS write succeeded (or an alternative was found and
     communicated). Returns False only if the action truly failed with no path.
     """
+    # Load tenant config for policy lookups
+    cfg = db.query(TenantConfig).filter_by(tenant_id=action.tenant_id).first()
+
     adapter, integration = _get_pms_adapter(db, action.tenant_id)
     if not adapter:
         action.status = "failed"
@@ -389,6 +458,7 @@ def execute_action(db: Session, action: GuestAction) -> bool:
     try:
         # ── Late checkout ──────────────────────────────────────────────────
         if action.action_type == "late_checkout":
+            policy = _get_policy(cfg, "late_checkout")
             requested_time_str = params.get("requested_time") or "13:00"
             requested_t = _parse_hhmm(requested_time_str) or time(13, 0)
 
@@ -397,36 +467,76 @@ def execute_action(db: Session, action: GuestAction) -> bool:
             if hasattr(checkout_date, "date"):
                 checkout_date = checkout_date.date()
 
-            # Build datetime for conflict check (checkout_date at requested time)
             requested_dt = datetime.combine(checkout_date, requested_t)
-
-            # Step 1: is the same unit free until requested checkout?
             unit_free = _unit_is_free_after(db, action.tenant_id, unit, requested_dt) if unit else True
 
             if unit_free:
-                # No conflict — apply directly
-                ok = adapter.update_reservation(pms_res_id, {"checkout_time": requested_time_str})
-                if ok:
-                    result = {
-                        "checkout_time": requested_time_str,
-                        "applied": True,
-                        "guest_reply": (
-                            f"Great news! I've updated your checkout to {requested_time_str}. "
-                            f"Enjoy the extra time — just leave the keys as instructed when you're ready. 🙂"
-                        ),
-                    }
-                else:
-                    # PMS rejected it (API error)
+                # ── Same unit is free — apply policy ──────────────────────
+                mode = policy.get("same_unit_free", "free")
+
+                if mode == "approval_required":
+                    # Host wants to decide manually
                     result = {
                         "applied": False,
-                        "error": "PMS rejected the update",
+                        "reason": "pending_host_approval",
                         "guest_reply": (
-                            "I wasn't able to update your checkout time directly — "
-                            "I've flagged this for the host to confirm with you shortly."
+                            f"I've sent your late checkout request ({requested_time_str}) to the host for approval. "
+                            f"You'll hear back shortly! 🙂"
                         ),
                     }
+                    ok = False  # stays pending
+
+                elif mode == "flat_fee":
+                    fee_amt  = float(policy.get("flat_fee_amount") or 0)
+                    fee_curr = policy.get("flat_fee_currency") or "USD"
+                    fee_str  = _fmt_fee(fee_amt, fee_curr)
+                    # Apply the time change, quote the fee in the reply
+                    pms_ok = adapter.update_reservation(pms_res_id, {"checkout_time": requested_time_str})
+                    ok = pms_ok
+                    if pms_ok:
+                        result = {
+                            "checkout_time": requested_time_str,
+                            "applied": True,
+                            "fee_charged": fee_amt,
+                            "fee_currency": fee_curr,
+                            "guest_reply": (
+                                f"Done! Your checkout has been extended to {requested_time_str}. "
+                                f"A late checkout fee of {fee_str} will be added to your booking. "
+                                f"Enjoy the extra time! 🙂"
+                            ),
+                        }
+                    else:
+                        result = {
+                            "applied": False,
+                            "guest_reply": (
+                                "I wasn't able to update your checkout time — "
+                                "I've flagged this for the host to sort out with you shortly."
+                            ),
+                        }
+
+                else:  # "free" — default
+                    pms_ok = adapter.update_reservation(pms_res_id, {"checkout_time": requested_time_str})
+                    ok = pms_ok
+                    if pms_ok:
+                        result = {
+                            "checkout_time": requested_time_str,
+                            "applied": True,
+                            "guest_reply": (
+                                f"Great news! Your checkout has been extended to {requested_time_str} — "
+                                f"no extra charge. Enjoy the extra time! 🙂"
+                            ),
+                        }
+                    else:
+                        result = {
+                            "applied": False,
+                            "guest_reply": (
+                                "I wasn't able to update your checkout time directly — "
+                                "I've flagged this for the host to confirm with you shortly."
+                            ),
+                        }
+
             else:
-                # Same unit is blocked — find alternatives
+                # ── Same unit is blocked — find alternatives ───────────────
                 current_rate = _nightly_rate(reservation)
                 guests = reservation.guests_count or 1
                 alternatives = _find_alternative_units(
@@ -434,84 +544,159 @@ def execute_action(db: Session, action: GuestAction) -> bool:
                 )
 
                 if alternatives:
-                    offer_text = _build_alternative_offer_text(unit, current_rate, alternatives)
-                    result = {
-                        "applied": False,
-                        "reason": "same_unit_blocked",
-                        "alternatives_found": len(alternatives),
-                        "alternatives": alternatives,
-                        "guest_reply": (
-                            f"Unfortunately your current unit ({unit}) has another guest "
-                            f"checking in that afternoon, so I can't extend your checkout there.\n\n"
-                            f"However, we have the following units available:\n{offer_text}\n\n"
-                            f"Would you like me to arrange a move to one of these? "
-                            f"Just let me know which suits you and I'll sort it."
-                        ),
-                    }
-                    ok = True  # we handled it — alternatives offered
+                    alt_mode     = policy.get("alt_unit_pricing", "charge_alt_rate")
+                    fee_amt      = float(policy.get("flat_fee_amount") or 0)
+                    fee_curr     = policy.get("flat_fee_currency") or "USD"
+                    offer_lines  = []
+
+                    for alt in alternatives[:3]:
+                        name     = alt["listing_name"] or alt["unit_identifier"]
+                        alt_rate = alt["est_nightly_rate"]
+
+                        if alt_mode == "waive_extra":
+                            # Host absorbs price difference — guest pays their current rate
+                            rate_str = (
+                                f"{_fmt_fee(current_rate, fee_curr)}/night (your current rate — we'll cover the difference)"
+                                if current_rate else "rate on request"
+                            )
+                        elif alt_mode == "flat_fee":
+                            rate_str = f"flat {_fmt_fee(fee_amt, fee_curr)} late-checkout fee"
+                        elif alt_mode == "approval_required":
+                            rate_str = "pricing subject to host confirmation"
+                        else:  # charge_alt_rate
+                            if alt_rate is None:
+                                rate_str = "rate on request"
+                            elif current_rate and abs(alt_rate - current_rate) < 1:
+                                rate_str = f"{_fmt_fee(alt_rate, fee_curr)}/night (same as your current unit)"
+                            elif current_rate and alt_rate > current_rate:
+                                rate_str = f"{_fmt_fee(alt_rate, fee_curr)}/night (+{_fmt_fee(alt_rate - current_rate, fee_curr)} vs your unit)"
+                            else:
+                                rate_str = f"{_fmt_fee(alt_rate, fee_curr)}/night" + (
+                                    f" ({_fmt_fee(current_rate - alt_rate, fee_curr)} less than your current unit)"
+                                    if current_rate else ""
+                                )
+                        offer_lines.append(f"• {name} — {rate_str}")
+
+                    offer_text = "\n".join(offer_lines)
+
+                    if alt_mode == "approval_required":
+                        result = {
+                            "applied": False,
+                            "reason": "same_unit_blocked_pending_approval",
+                            "alternatives_found": len(alternatives),
+                            "alternatives": alternatives,
+                            "guest_reply": (
+                                f"Your unit ({unit}) has another guest arriving that afternoon. "
+                                f"I've passed your request to the host — they'll confirm availability "
+                                f"and pricing for an alternative unit shortly."
+                            ),
+                        }
+                        ok = False
+                    else:
+                        result = {
+                            "applied": False,
+                            "reason": "same_unit_blocked",
+                            "alt_mode": alt_mode,
+                            "alternatives_found": len(alternatives),
+                            "alternatives": alternatives,
+                            "guest_reply": (
+                                f"Your unit ({unit}) has another guest arriving that afternoon, "
+                                f"so I can't extend your checkout there.\n\n"
+                                f"However, we have these units available:\n{offer_text}\n\n"
+                                f"Would you like me to arrange a move? Just say which one suits you."
+                            ),
+                        }
+                        ok = True  # alternatives offered — handled
+
                 else:
-                    # No unit free anywhere
-                    result = {
-                        "applied": False,
-                        "reason": "no_alternatives",
-                        "guest_reply": (
-                            f"I'm sorry — your unit ({unit}) has another guest arriving that afternoon "
-                            f"and we don't have any other units free at that time. "
-                            f"I've notified the host who will get back to you shortly. "
-                            f"Apologies for the inconvenience!"
-                        ),
-                    }
+                    # No alternative anywhere
+                    no_avail_mode = policy.get("no_unit_available", "deny")
+                    if no_avail_mode == "escalate":
+                        result = {
+                            "applied": False,
+                            "reason": "no_alternatives_escalated",
+                            "guest_reply": (
+                                f"Your unit ({unit}) has another guest arriving and we don't have "
+                                f"other units free right now. I've escalated this to the host — "
+                                f"they'll get back to you very shortly to find a solution."
+                            ),
+                        }
+                    else:  # deny
+                        result = {
+                            "applied": False,
+                            "reason": "no_alternatives",
+                            "guest_reply": (
+                                f"I'm sorry — your unit ({unit}) has another guest arriving that afternoon "
+                                f"and we don't have any other units free at that time. "
+                                f"Apologies for the inconvenience!"
+                            ),
+                        }
                     ok = False
 
         # ── Early check-in ─────────────────────────────────────────────────
         elif action.action_type == "early_checkin":
+            policy = _get_policy(cfg, "early_checkin")
             requested_time_str = params.get("requested_time") or "13:00"
-            requested_t = _parse_hhmm(requested_time_str) or time(13, 0)
 
             unit = reservation.unit_identifier or ""
             checkin_date = reservation.checkin if reservation.checkin else date.today()
             if hasattr(checkin_date, "date"):
                 checkin_date = checkin_date.date()
 
-            # Check if previous reservation on same unit checks out before requested time
-            requested_dt = datetime.combine(checkin_date, requested_t)
+            # Try the PMS first — it knows if the unit is truly ready
+            pms_ok = adapter.update_reservation(pms_res_id, {"checkin_time": requested_time_str})
 
-            # Look for a reservation on same unit that checks OUT on checkin_date
-            # (previous guest may still be there)
-            prev_res = (
-                db.query(Reservation)
-                .filter(
-                    Reservation.tenant_id == action.tenant_id,
-                    Reservation.unit_identifier == unit,
-                    Reservation.status == "confirmed",
-                    Reservation.checkout == checkin_date,
-                )
-                .first()
-                if unit else None
-            )
+            if pms_ok:
+                mode = policy.get("same_unit_free", "free")
+                if mode == "flat_fee":
+                    fee_amt  = float(policy.get("flat_fee_amount") or 0)
+                    fee_curr = policy.get("flat_fee_currency") or "USD"
+                    fee_str  = _fmt_fee(fee_amt, fee_curr)
+                    result = {
+                        "checkin_time": requested_time_str,
+                        "applied": True,
+                        "fee_charged": fee_amt,
+                        "guest_reply": (
+                            f"Done! Early check-in at {requested_time_str} is confirmed. "
+                            f"An early check-in fee of {fee_str} will be added to your booking. "
+                            f"See you soon! 🏠"
+                        ),
+                    }
+                elif mode == "approval_required":
+                    result = {
+                        "applied": False,
+                        "reason": "pending_host_approval",
+                        "guest_reply": (
+                            f"I've sent your early check-in request ({requested_time_str}) to the host for approval. "
+                            f"You'll hear back very shortly!"
+                        ),
+                    }
+                    # Revert — approval not yet given
+                    adapter.update_reservation(pms_res_id, {"checkin_time": ""})
+                    pms_ok = False
+                else:  # free
+                    result = {
+                        "checkin_time": requested_time_str,
+                        "applied": True,
+                        "guest_reply": (
+                            f"Done! Early check-in at {requested_time_str} is confirmed — "
+                            f"no extra charge. We'll have the unit ready for you. See you soon! 🏠"
+                        ),
+                    }
+                ok = pms_ok
 
-            # If previous guest checks out at standard time (11:00) and requested
-            # early check-in is after that, it's probably fine — apply it.
-            # If there's a prev guest or no unit data, still try the PMS (it will reject if conflict)
-            ok = adapter.update_reservation(pms_res_id, {"checkin_time": requested_time_str})
-            if ok:
-                result = {
-                    "checkin_time": requested_time_str,
-                    "applied": True,
-                    "guest_reply": (
-                        f"Done! I've arranged your early check-in for {requested_time_str}. "
-                        f"We'll make sure the unit is ready for you. See you soon! 🏠"
-                    ),
-                }
             else:
-                # PMS rejected — check alternatives
+                # PMS rejected — unit not ready, look for alternatives
                 current_rate = _nightly_rate(reservation)
                 guests = reservation.guests_count or 1
                 alternatives = _find_alternative_units(
                     db, action.tenant_id, unit, checkin_date, guests
                 )
                 if alternatives:
-                    offer_text = _build_alternative_offer_text(unit, current_rate, alternatives)
+                    alt_mode = policy.get("alt_unit_pricing", "charge_alt_rate")
+                    offer_text = _build_alternative_offer_text(unit, current_rate, alternatives, alt_mode,
+                                                               policy.get("flat_fee_amount", 0),
+                                                               policy.get("flat_fee_currency", "USD"))
                     result = {
                         "applied": False,
                         "reason": "unit_not_ready",
@@ -520,21 +705,25 @@ def execute_action(db: Session, action: GuestAction) -> bool:
                         "guest_reply": (
                             f"Early check-in to your unit isn't available at {requested_time_str} — "
                             f"it's still being prepared.\n\n"
-                            f"We do have these other units available from earlier:\n{offer_text}\n\n"
+                            f"We have these other units ready earlier:\n{offer_text}\n\n"
                             f"Would any of these work for you?"
                         ),
                     }
                     ok = True
                 else:
+                    no_avail_mode = policy.get("no_unit_available", "deny")
                     result = {
                         "applied": False,
                         "reason": "no_alternatives",
                         "guest_reply": (
                             f"I wasn't able to arrange early check-in at {requested_time_str} — "
-                            f"the unit is still being prepared and we don't have an alternative available earlier. "
-                            f"I've let the host know and they'll confirm the earliest possible time with you."
+                            f"the unit is still being prepared and no alternatives are available earlier. "
+                            + ("I've escalated this to the host who will get back to you shortly."
+                               if no_avail_mode == "escalate" else
+                               "Your standard check-in time still applies.")
                         ),
                     }
+                    ok = False
 
         # ── Extra guest ────────────────────────────────────────────────────
         elif action.action_type == "extra_guest":

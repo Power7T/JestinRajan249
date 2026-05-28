@@ -154,6 +154,245 @@
   </form>
 </section>
 
+<section class="form-section" id="action-policies">
+  <h2>Guest request outcome rules</h2>
+  <p class="help-text">
+    Decide in advance what happens when a guest asks for a late checkout or early check-in.
+    These rules run automatically — no back-and-forth needed.
+  </p>
+  {% if request.query_params.get('saved') == 'action_policies' %}
+  <div class="alert alert-success" style="margin-bottom:1rem;">✓ Outcome rules saved.</div>
+  {% endif %}
+
+  {% set ap = {} %}
+  {% if cfg.action_policies %}
+    {% set ap = cfg.action_policies | tojson | safe %}
+  {% endif %}
+
+  <form method="post" action="/automations/action-policies">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+    {# ── Parse existing policies from JSON ── #}
+    {% set lc = {} %}{% set ec = {} %}
+    {% if cfg.action_policies %}
+      {% set _parsed = cfg.action_policies %}
+      {# Jinja can't parse JSON natively — values are passed via data-attrs and read by JS below #}
+    {% endif %}
+
+    {# ── LATE CHECKOUT ───────────────────────────────────────── #}
+    <div class="card" style="margin-bottom:1.5rem;">
+      <h3 style="font-size:0.95rem;font-weight:600;color:#e3e1eb;margin-bottom:1rem;">
+        🕐 Late checkout
+      </h3>
+
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
+        When the same unit is free until requested time
+      </label>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 1rem;">
+        <label class="policy-radio">
+          <input type="radio" name="lc_same_unit" value="free" checked> Allow — no charge
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="lc_same_unit" value="flat_fee"> Charge a flat fee
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="lc_same_unit" value="approval_required"> Ask me first
+        </label>
+      </div>
+      <div id="lc-same-fee" style="display:none;margin-bottom:1rem;">
+        <label class="help-text" style="font-size:0.78rem;">Late checkout flat fee</label>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <input type="number" name="lc_flat_fee_amount" min="0" step="1" value="0"
+                 style="width:90px;padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;">
+          <select name="lc_flat_fee_currency"
+                  style="padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;">
+            <option value="USD">USD $</option>
+            <option value="GBP">GBP £</option>
+            <option value="EUR">EUR €</option>
+            <option value="AUD">AUD A$</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
+        When another unit is available (next guest on same unit)
+      </label>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 1rem;">
+        <label class="policy-radio">
+          <input type="radio" name="lc_alt_unit" value="charge_alt_rate" checked>
+          Charge that unit's own rate
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="lc_alt_unit" value="waive_extra">
+          Guest pays their current rate (I cover the difference)
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="lc_alt_unit" value="flat_fee">
+          Charge the flat fee above
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="lc_alt_unit" value="approval_required">
+          Ask me first
+        </label>
+      </div>
+
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
+        When no unit is available at all
+      </label>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 0;">
+        <label class="policy-radio">
+          <input type="radio" name="lc_no_avail" value="deny" checked>
+          Politely decline — nothing available
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="lc_no_avail" value="escalate">
+          Escalate to me — I'll handle it
+        </label>
+      </div>
+    </div>
+
+    {# ── EARLY CHECK-IN ──────────────────────────────────────── #}
+    <div class="card" style="margin-bottom:1.5rem;">
+      <h3 style="font-size:0.95rem;font-weight:600;color:#e3e1eb;margin-bottom:1rem;">
+        🌅 Early check-in
+      </h3>
+
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
+        When the unit is ready early
+      </label>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 1rem;">
+        <label class="policy-radio">
+          <input type="radio" name="ec_same_unit" value="free" checked> Allow — no charge
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="ec_same_unit" value="flat_fee"> Charge a flat fee
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="ec_same_unit" value="approval_required"> Ask me first
+        </label>
+      </div>
+      <div id="ec-same-fee" style="display:none;margin-bottom:1rem;">
+        <label class="help-text" style="font-size:0.78rem;">Early check-in flat fee</label>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <input type="number" name="ec_flat_fee_amount" min="0" step="1" value="0"
+                 style="width:90px;padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;">
+          <select name="ec_flat_fee_currency"
+                  style="padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;">
+            <option value="USD">USD $</option>
+            <option value="GBP">GBP £</option>
+            <option value="EUR">EUR €</option>
+            <option value="AUD">AUD A$</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
+        When another unit is available but theirs isn't ready yet
+      </label>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 1rem;">
+        <label class="policy-radio">
+          <input type="radio" name="ec_alt_unit" value="charge_alt_rate" checked>
+          Charge that unit's own rate
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="ec_alt_unit" value="waive_extra">
+          Guest pays their current rate (I cover the difference)
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="ec_alt_unit" value="flat_fee">
+          Charge the flat fee above
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="ec_alt_unit" value="approval_required">
+          Ask me first
+        </label>
+      </div>
+
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
+        When no unit is available early
+      </label>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 0;">
+        <label class="policy-radio">
+          <input type="radio" name="ec_no_avail" value="deny" checked>
+          Politely decline — standard check-in time applies
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="ec_no_avail" value="escalate">
+          Escalate to me — I'll handle it
+        </label>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save outcome rules</button>
+  </form>
+
+  {# Restore saved values from cfg.action_policies #}
+  <script>
+  (function() {
+    var raw = {{ cfg.action_policies | tojson if cfg.action_policies else '"{}"' }};
+    var ap;
+    try { ap = JSON.parse(typeof raw === 'string' ? raw : JSON.stringify(raw)); } catch(e) { ap = {}; }
+    var lc = ap.late_checkout  || {};
+    var ec = ap.early_checkin  || {};
+
+    function setRadio(name, val) {
+      var els = document.querySelectorAll('input[name="' + name + '"]');
+      els.forEach(function(el) { if(el.value === val) el.checked = true; });
+    }
+    function setVal(name, val) {
+      var el = document.querySelector('[name="' + name + '"]');
+      if(el && val !== undefined) el.value = val;
+    }
+
+    if(lc.same_unit_free)    setRadio('lc_same_unit', lc.same_unit_free);
+    if(lc.alt_unit_pricing)  setRadio('lc_alt_unit',  lc.alt_unit_pricing);
+    if(lc.no_unit_available) setRadio('lc_no_avail',  lc.no_unit_available);
+    if(lc.flat_fee_amount)   setVal('lc_flat_fee_amount', lc.flat_fee_amount);
+    if(lc.flat_fee_currency) setVal('lc_flat_fee_currency', lc.flat_fee_currency);
+
+    if(ec.same_unit_free)    setRadio('ec_same_unit', ec.same_unit_free);
+    if(ec.alt_unit_pricing)  setRadio('ec_alt_unit',  ec.alt_unit_pricing);
+    if(ec.no_unit_available) setRadio('ec_no_avail',  ec.no_unit_available);
+    if(ec.flat_fee_amount)   setVal('ec_flat_fee_amount', ec.flat_fee_amount);
+    if(ec.flat_fee_currency) setVal('ec_flat_fee_currency', ec.flat_fee_currency);
+
+    // Toggle flat-fee inputs
+    function toggleFee(radioName, containerId) {
+      document.querySelectorAll('input[name="' + radioName + '"]').forEach(function(el) {
+        el.addEventListener('change', function() {
+          document.getElementById(containerId).style.display =
+            (el.value === 'flat_fee' && el.checked) ? 'block' : 'none';
+        });
+      });
+      // initial state
+      var checked = document.querySelector('input[name="' + radioName + '"]:checked');
+      if(checked && checked.value === 'flat_fee')
+        document.getElementById(containerId).style.display = 'block';
+    }
+    toggleFee('lc_same_unit', 'lc-same-fee');
+    toggleFee('ec_same_unit', 'ec-same-fee');
+  })();
+  </script>
+
+  <style>
+    .policy-radio {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      color: #cbd5e1; font-size: 0.84rem;
+      cursor: pointer; transition: border-color .15s;
+    }
+    .policy-radio:has(input:checked) {
+      border-color: #5B8DEF;
+      background: rgba(91,141,239,0.12);
+      color: #e3e1eb;
+    }
+    .policy-radio input[type=radio] { accent-color: #5B8DEF; }
+  </style>
+</section>
+
 <section class="form-section" id="rules">
   <h2>Automation rules</h2>
   <p class="help-text">Use rules to decide what can auto-send safely and what should stay in review.</p>

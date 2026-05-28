@@ -359,6 +359,21 @@ class TenantConfig(Base):
     # Agentic actions — comma-separated action types the AI may execute without host approval
     action_auto_approve:  Mapped[str] = mapped_column(Text, nullable=False, server_default="", default="")
 
+    # Agentic action outcome policies — JSON blob, keyed by scenario.
+    # Controls what the system does when a guest requests late checkout / early checkin / etc.
+    # Schema (all fields optional, system uses defaults when absent):
+    # {
+    #   "late_checkout": {
+    #     "same_unit_free":   "free" | "flat_fee" | "approval_required",
+    #     "alt_unit_pricing": "charge_alt_rate" | "waive_extra" | "flat_fee" | "approval_required",
+    #     "no_unit_available": "deny" | "escalate",
+    #     "flat_fee_amount":  30,          -- used when mode is "flat_fee"
+    #     "flat_fee_currency": "USD"
+    #   },
+    #   "early_checkin": { ... same structure ... }
+    # }
+    action_policies: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="config")
 
 

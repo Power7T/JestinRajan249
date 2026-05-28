@@ -4342,6 +4342,65 @@ async def automations_auto_approve_save(
     return RedirectResponse("/automations?saved=auto_approve#auto-approve", status_code=303)
 
 
+@app.post("/automations/action-policies")
+async def automations_action_policies_save(
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Save host-configured outcome rules for late checkout / early checkin."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    cfg = _get_or_create_config(tenant_id, db)
+    form = await request.form()
+
+    def _radio(name: str, allowed: tuple, default: str) -> str:
+        v = (form.get(name) or "").strip()
+        return v if v in allowed else default
+
+    def _flt(name: str, default: float = 0.0) -> float:
+        try:
+            return max(0.0, float(form.get(name) or 0))
+        except (ValueError, TypeError):
+            return default
+
+    def _cur(name: str) -> str:
+        v = (form.get(name) or "USD").strip().upper()
+        return v if v in ("USD", "GBP", "EUR", "AUD", "CAD") else "USD"
+
+    _unit_modes    = ("free", "flat_fee", "approval_required")
+    _alt_modes     = ("charge_alt_rate", "waive_extra", "flat_fee", "approval_required")
+    _noavail_modes = ("deny", "escalate")
+
+    policies = {
+        "late_checkout": {
+            "same_unit_free":    _radio("lc_same_unit", _unit_modes, "free"),
+            "alt_unit_pricing":  _radio("lc_alt_unit",  _alt_modes, "charge_alt_rate"),
+            "no_unit_available": _radio("lc_no_avail",  _noavail_modes, "deny"),
+            "flat_fee_amount":   _flt("lc_flat_fee_amount"),
+            "flat_fee_currency": _cur("lc_flat_fee_currency"),
+        },
+        "early_checkin": {
+            "same_unit_free":    _radio("ec_same_unit", _unit_modes, "free"),
+            "alt_unit_pricing":  _radio("ec_alt_unit",  _alt_modes, "charge_alt_rate"),
+            "no_unit_available": _radio("ec_no_avail",  _noavail_modes, "deny"),
+            "flat_fee_amount":   _flt("ec_flat_fee_amount"),
+            "flat_fee_currency": _cur("ec_flat_fee_currency"),
+        },
+    }
+
+    cfg.action_policies = json.dumps(policies)
+    db.add(ActivityLog(
+        tenant_id=tenant_id, event_type="action_policies_saved",
+        message=f"Action outcome policies updated",
+    ))
+    db.commit()
+    return RedirectResponse("/automations?saved=action_policies#action-policies", status_code=303)
+
+
 @app.post("/actions/{action_id}/approve")
 def action_approve(action_id: int, request: Request,
                    csrf_token: str = Form(None),
