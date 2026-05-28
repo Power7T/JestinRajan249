@@ -153,6 +153,11 @@ tailwind.config = {
         .channel-whatsapp { background: #25d366/20; color: #25d366; }
         .channel-sms { background: #00daf3/20; color: #00daf3; }
         .channel-email { background: #ffb960/20; color: #ffb960; }
+        .cap-highlight { border: 1px solid rgba(91,141,239,0.45); box-shadow: 0 0 45px rgba(91,141,239,0.18); }
+        .faq-item summary { cursor: pointer; list-style: none; }
+        .faq-item summary::-webkit-details-marker { display: none; }
+        .faq-icon { transition: transform 0.25s ease; }
+        .faq-item[open] .faq-icon { transform: rotate(45deg); }
 </style>
 {%- endblock %}
 
@@ -174,7 +179,8 @@ tailwind.config = {
     
     <!-- Links (Center) — hidden on mobile -->
     <div class="hidden md:flex flex-1 justify-center items-center gap-10 font-['Plus_Jakarta_Sans'] font-semibold text-sm">
-        <a class="text-white hover:text-[#5B8DEF] transition-colors" href="/#features">Features</a>
+        <a class="text-slate-400 hover:text-white transition-colors" href="/#how">How it works</a>
+        <a class="text-slate-400 hover:text-white transition-colors" href="/#features">Features</a>
         <a class="text-slate-400 hover:text-white transition-colors" href="/pricing">Pricing</a>
     </div>
 
@@ -191,38 +197,30 @@ tailwind.config = {
 <div class="absolute bottom-[20%] right-[-5%] w-[40%] h-[40%] bg-secondary-container/5 rounded-full blur-[100px] pointer-events-none"></div>
 <!-- Hero Section -->
 <section class="max-w-7xl mx-auto px-8 text-center relative z-10">
-<div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container-low border border-outline-variant/20 mb-8 shadow-lg">
+<div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container-low border border-[#5B8DEF]/25 mb-8 shadow-lg">
 <span class="w-2 h-2 rounded-full bg-[#5B8DEF] animate-pulse shadow-[0_0_8px_#5B8DEF]"></span>
-<span class="text-label-sm font-bold tracking-widest uppercase text-on-surface-variant text-[10px]">v2.0 Now Live</span>
+<span class="text-label-sm font-bold tracking-widest uppercase text-on-surface-variant text-[10px]">New · Voice AI now answers guest calls</span>
 </div>
-<h1 class="font-headline font-extrabold text-5xl md:text-[80px] leading-[1.1] text-white mb-6 tracking-tight">
-                Never miss a guest <br/>
-<span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container drop-shadow-lg">message again.</span>
+<h1 class="font-headline font-extrabold text-5xl md:text-[80px] leading-[1.05] text-white mb-6 tracking-tight">
+                Your guests get instant answers.<br/>
+<span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container drop-shadow-lg">You get your evenings back.</span>
 </h1>
-<p class="max-w-2xl mx-auto text-on-surface-variant text-lg md:text-xl leading-relaxed mb-10">
-                Automated AI that handles 95% of guest questions instantly. Available 24/7 across Email, WhatsApp, Airbnb, and SMS.
+<p class="max-w-2xl mx-auto text-on-surface-variant text-lg md:text-xl leading-relaxed mb-9">
+                HostAI answers every guest message — and now every phone call — in seconds, around the clock. Faster replies climb the Airbnb rankings and protect your Superhost status, while you approve answers or let it run on autopilot.
             </p>
-<!-- Checkmarks -->
-<div class="flex flex-wrap justify-center items-center gap-8 mb-12">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-[#5B8DEF] text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-semibold text-on-surface">95% Automated</span>
-</div>
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-[#5B8DEF] text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-semibold text-on-surface">2 Second Response</span>
-</div>
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-[#5B8DEF] text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-<span class="text-sm font-semibold text-on-surface">24/7 Coverage</span>
-</div>
-</div>
 <!-- Hero CTAs -->
-<div class="flex flex-col sm:flex-row items-center justify-center gap-5 mb-24">
-<a href="/signup" class="w-full sm:w-auto px-8 py-4 bg-[#5B8DEF] rounded-xl font-bold text-white shadow-[0_0_25px_rgba(91,141,239,0.3)] hover:shadow-[0_0_40px_rgba(91,141,239,0.5)] hover:bg-[#3B6DDF] transition-all active:scale-95 text-center">Get Started</a>
-<a href="/pricing" class="w-full sm:w-auto px-8 py-4 text-white font-bold bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg backdrop-blur-sm">
-                    View Pricing
+<div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-5">
+<a href="/signup" class="w-full sm:w-auto px-8 py-4 bg-[#5B8DEF] rounded-xl font-bold text-white shadow-[0_0_25px_rgba(91,141,239,0.3)] hover:shadow-[0_0_40px_rgba(91,141,239,0.5)] hover:bg-[#3B6DDF] transition-all active:scale-95 text-center">Start free — no credit card</a>
+<a href="#how" class="w-full sm:w-auto px-8 py-4 text-white font-bold bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg backdrop-blur-sm">
+<span class="material-symbols-outlined text-xl" data-icon="play_circle">play_circle</span>
+                    See how it works
                 </a>
+</div>
+<!-- Trust line -->
+<div class="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 mb-16 text-sm text-on-surface-variant">
+<span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[#5B8DEF] text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span> Free plan · paid from $19/mo</span>
+<span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[#5B8DEF] text-lg" style="font-variation-settings: 'FILL' 1;">bolt</span> Live in under 5 minutes</span>
+<span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[#5B8DEF] text-lg" style="font-variation-settings: 'FILL' 1;">verified_user</span> You approve every reply</span>
 </div>
 <!-- Product Demo Container — Interactive Dashboard Animation -->
 <div class="relative max-w-5xl mx-auto mt-6">
@@ -555,81 +553,222 @@ window.addEventListener('load', () => {
 });
 </script>
 </section>
-<!-- Social Proof -->
-<section class="py-24 max-w-7xl mx-auto px-8">
+<!-- Channel strip (honest: these are the channels we connect to, not customer logos) -->
+<section class="py-20 max-w-7xl mx-auto px-8">
 <div class="flex flex-col items-center">
-<div class="flex items-center gap-1 mb-4">
-<span class="material-symbols-outlined text-tertiary" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-tertiary" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-tertiary" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-tertiary" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined text-tertiary" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="ml-2 text-on-surface font-bold">4.9/5</span>
-<span class="text-on-surface-variant ml-1">from 1,200+ hosts</span>
+<p class="text-on-surface-variant text-xs md:text-sm font-bold uppercase tracking-[0.25em] mb-8">Works across every channel your guests already use</p>
+<div class="flex flex-wrap justify-center items-center gap-x-10 gap-y-5 opacity-80">
+<span class="text-xl md:text-2xl font-bold tracking-tight text-white/70">Airbnb</span>
+<span class="text-xl md:text-2xl font-bold tracking-tight text-white/70">Booking.com</span>
+<span class="text-xl md:text-2xl font-bold tracking-tight text-white/70">Vrbo</span>
+<span class="text-xl md:text-2xl font-bold tracking-tight text-white/70">WhatsApp</span>
+<span class="text-xl md:text-2xl font-bold tracking-tight text-white/70">SMS</span>
+<span class="text-xl md:text-2xl font-bold tracking-tight text-white/70">Email</span>
 </div>
-<div class="flex flex-wrap justify-center items-center gap-12 opacity-40 grayscale hover:grayscale-0 transition-all">
-<span class="text-2xl font-bold tracking-tighter text-white">Airbnb</span>
-<span class="text-2xl font-bold tracking-tighter text-white">Booking.com</span>
-<span class="text-2xl font-bold tracking-tighter text-white">Vrbo</span>
-<span class="text-2xl font-bold tracking-tighter text-white">Expedia</span>
-</div>
+<p class="text-slate-500 text-sm mt-7">One inbox for all of them — synced with your calendar or PMS. No more switching tabs.</p>
 </div>
 </section>
-<!-- Features Section -->
-<section id="features" class="py-32 max-w-7xl mx-auto px-8">
+<!-- How it works -->
+<section id="how" class="py-24 max-w-6xl mx-auto px-8">
+<div class="text-center mb-16">
+<span class="text-[#aec6ff] text-sm font-bold uppercase tracking-[0.2em]">How it works</span>
+<h2 class="text-4xl md:text-5xl font-headline font-extrabold text-white mt-4 mb-4">Up and running before your next check-in</h2>
+<p class="text-on-surface-variant text-lg max-w-2xl mx-auto">No engineers. No migration project. Most hosts are live in under five minutes.</p>
+</div>
 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-<!-- Feature 1 -->
-<div class="glass-card p-10 rounded-2xl group hover:bg-surface-container-low transition-all">
-<div class="w-14 h-14 rounded-xl bg-primary-container/20 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-<span class="material-symbols-outlined text-primary text-3xl" data-icon="auto_awesome">auto_awesome</span>
+<div class="glass-card p-8 rounded-2xl">
+<div class="w-12 h-12 rounded-full bg-[#5B8DEF]/15 border border-[#5B8DEF]/30 flex items-center justify-center text-[#aec6ff] font-extrabold text-lg mb-6">1</div>
+<h3 class="text-xl font-bold text-white mb-3">Connect your listings</h3>
+<p class="text-on-surface-variant leading-relaxed">Add a property and paste your calendar link, or connect your PMS. Your reservations sync automatically.</p>
 </div>
-<div class="flex items-center gap-3 mb-4">
-<h3 class="text-xl font-bold text-white">AI Drafts</h3>
-<span class="bg-tertiary-container/20 text-tertiary text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest border border-tertiary/20">AI</span>
+<div class="glass-card p-8 rounded-2xl">
+<div class="w-12 h-12 rounded-full bg-[#5B8DEF]/15 border border-[#5B8DEF]/30 flex items-center justify-center text-[#aec6ff] font-extrabold text-lg mb-6">2</div>
+<h3 class="text-xl font-bold text-white mb-3">Tell it about your place</h3>
+<p class="text-on-surface-variant leading-relaxed">WiFi, check-in, parking, house rules, local tips — set it once and the AI answers exactly like you would.</p>
 </div>
-<p class="text-on-surface-variant leading-relaxed">
-                        Intelligent responses generated in real-time based on your specific house rules, local guides, and previous guest interactions.
-                    </p>
-</div>
-<!-- Feature 2 -->
-<div class="glass-card p-10 rounded-2xl group hover:bg-surface-container-low transition-all">
-<div class="w-14 h-14 rounded-xl bg-secondary-container/20 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-<span class="material-symbols-outlined text-secondary-fixed-dim text-3xl" data-icon="dynamic_feed">dynamic_feed</span>
-</div>
-<h3 class="text-xl font-bold text-white mb-4">Multi-Channel</h3>
-<p class="text-on-surface-variant leading-relaxed">
-                        One unified inbox for all your listings. Manage WhatsApp, Airbnb, SMS, and Email conversations without switching tabs.
-                    </p>
-</div>
-<!-- Feature 3 -->
-<div class="glass-card p-10 rounded-2xl group hover:bg-surface-container-low transition-all">
-<div class="w-14 h-14 rounded-xl bg-primary-container/20 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-<span class="material-symbols-outlined text-primary text-3xl" data-icon="psychology_alt">psychology_alt</span>
-</div>
-<h3 class="text-xl font-bold text-white mb-4">Smart Context</h3>
-<p class="text-on-surface-variant leading-relaxed">
-                        The AI understands check-in times, Wi-Fi passwords, and parking instructions to provide accurate, helpful answers every time.
-                    </p>
+<div class="glass-card p-8 rounded-2xl">
+<div class="w-12 h-12 rounded-full bg-[#5B8DEF]/15 border border-[#5B8DEF]/30 flex items-center justify-center text-[#aec6ff] font-extrabold text-lg mb-6">3</div>
+<h3 class="text-xl font-bold text-white mb-3">Approve, or go autopilot</h3>
+<p class="text-on-surface-variant leading-relaxed">Review drafts in one tap, or let HostAI auto-answer the routine questions while you sleep.</p>
 </div>
 </div>
 </section>
-<!-- CTA Section -->
-<section class="py-32 relative">
-<div class="max-w-5xl mx-auto px-8">
-<div class="glass-card rounded-[2rem] p-16 text-center overflow-hidden relative">
-<div class="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[80px] -mr-32 -mt-32"></div>
-<h2 class="text-4xl font-headline font-extrabold text-white mb-6">Ready to automate your hosting?</h2>
-<p class="text-on-surface-variant text-lg mb-10 max-w-xl mx-auto">
-                        Join 1,200+ hosts who save an average of 15 hours per week on guest communication.
-                    </p>
-<div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-<a href="/signup" class="inline-block px-10 py-4 bg-[#5B8DEF] text-white font-bold rounded-xl shadow-[0_0_25px_rgba(91,141,239,0.4)] hover:bg-[#3B6DDF] transition-all">
-                            Get Started Free
-                        </a>
-<a href="/pricing" class="inline-block px-10 py-4 bg-white/10 border border-white/20 text-white font-bold rounded-xl hover:bg-white/20 transition-colors">
-                            Explore Pricing Plans
-                        </a>
+<!-- You stay in control -->
+<section class="py-20 max-w-6xl mx-auto px-8">
+<div class="glass-card rounded-[2rem] p-10 md:p-14 grid md:grid-cols-2 gap-12 items-center">
+<div>
+<span class="text-[#aec6ff] text-sm font-bold uppercase tracking-[0.2em]">You stay in control</span>
+<h2 class="text-3xl md:text-4xl font-headline font-extrabold text-white mt-4 mb-5">It never goes rogue. You always have the final say.</h2>
+<p class="text-on-surface-variant text-lg leading-relaxed mb-7">The biggest worry with AI is that it'll say something wrong to a guest. HostAI is built so that can't happen behind your back.</p>
+<ul class="space-y-4">
+<li class="flex gap-3"><span class="material-symbols-outlined text-[#5B8DEF] flex-shrink-0" style="font-variation-settings: 'FILL' 1;">check_circle</span><span class="text-on-surface">Every reply is a draft until you approve it — or you pick exactly which routine questions it can send on its own.</span></li>
+<li class="flex gap-3"><span class="material-symbols-outlined text-[#5B8DEF] flex-shrink-0" style="font-variation-settings: 'FILL' 1;">check_circle</span><span class="text-on-surface">It learns your tone and house rules, so answers sound like you — not a robot.</span></li>
+<li class="flex gap-3"><span class="material-symbols-outlined text-[#5B8DEF] flex-shrink-0" style="font-variation-settings: 'FILL' 1;">check_circle</span><span class="text-on-surface">Anything sensitive or unusual gets flagged and handed straight to you.</span></li>
+<li class="flex gap-3"><span class="material-symbols-outlined text-[#5B8DEF] flex-shrink-0" style="font-variation-settings: 'FILL' 1;">check_circle</span><span class="text-on-surface">Edit any draft in one tap. You're always the host.</span></li>
+</ul>
 </div>
+<!-- Mini approve mock -->
+<div class="relative">
+<div class="glass-card rounded-2xl p-5 border border-[#5B8DEF]/20 shadow-[0_0_40px_rgba(91,141,239,0.15)]">
+<div class="flex items-center gap-2 mb-4">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#5B8DEF] to-[#aec6ff] flex items-center justify-center text-[#002e6b] font-extrabold text-xs">J</div>
+<div><div class="text-white font-bold text-sm">James · Airbnb</div><div class="text-slate-500 text-[10px]">Lakeside Cottage</div></div>
+</div>
+<div class="bg-[#5B8DEF] text-white text-sm rounded-lg rounded-bl-sm px-3 py-2 mb-3 max-w-[85%]">Can we check out a bit late on Sunday?</div>
+<div class="text-[10px] uppercase tracking-wider text-[#aec6ff] font-bold mb-1.5">AI draft</div>
+<div class="bg-[#aec6ff]/10 border border-[#aec6ff]/25 text-[#dbe5ff] text-sm rounded-lg px-3 py-2 mb-4">Hi James! A 1pm late checkout works for Sunday — enjoy your last morning by the lake. 🌅 Want me to add it for $25?</div>
+<div class="flex gap-2">
+<div class="flex-1 py-2 rounded-xl text-center font-bold text-[11px] text-[#002e6b] bg-gradient-to-r from-[#5B8DEF] to-[#aec6ff]">✓ Approve &amp; send</div>
+<div class="px-3 py-2 rounded-xl border border-white/10 text-slate-400 text-[11px] font-bold">Edit</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Capabilities -->
+<section id="features" class="py-24 max-w-7xl mx-auto px-8">
+<div class="text-center mb-16">
+<span class="text-[#aec6ff] text-sm font-bold uppercase tracking-[0.2em]">Everything in one place</span>
+<h2 class="text-4xl md:text-5xl font-headline font-extrabold text-white mt-4 mb-4">More than a chatbot. Your whole front desk.</h2>
+<p class="text-on-surface-variant text-lg max-w-2xl mx-auto">From the first question to the five-star review, HostAI handles the guest-facing work so you don't have to.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Voice AI (highlighted) -->
+<div class="glass-card cap-highlight p-8 rounded-2xl group">
+<div class="flex items-center justify-between mb-6">
+<div class="w-14 h-14 rounded-xl bg-[#5B8DEF]/20 flex items-center justify-center group-hover:scale-110 transition-transform"><span class="material-symbols-outlined text-primary text-3xl" data-icon="call">call</span></div>
+<span class="bg-[#5B8DEF]/20 text-[#aec6ff] text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest border border-[#5B8DEF]/30">New</span>
+</div>
+<h3 class="text-xl font-bold text-white mb-3">Voice AI</h3>
+<p class="text-on-surface-variant leading-relaxed">Guests call, HostAI picks up — 24/7. It answers common questions out loud and routes anything urgent straight to you. Most tools can't touch the phone. Yours can.</p>
+</div>
+<!-- AI drafts -->
+<div class="glass-card p-8 rounded-2xl group hover:bg-surface-container-low transition-all">
+<div class="w-14 h-14 rounded-xl bg-primary-container/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><span class="material-symbols-outlined text-primary text-3xl" data-icon="auto_awesome">auto_awesome</span></div>
+<h3 class="text-xl font-bold text-white mb-3">AI Message Drafts</h3>
+<p class="text-on-surface-variant leading-relaxed">Instant, on-brand replies built from your house rules, local tips, and past conversations — drafted in about two seconds.</p>
+</div>
+<!-- One inbox -->
+<div class="glass-card p-8 rounded-2xl group hover:bg-surface-container-low transition-all">
+<div class="w-14 h-14 rounded-xl bg-secondary-container/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><span class="material-symbols-outlined text-secondary-fixed-dim text-3xl" data-icon="dynamic_feed">dynamic_feed</span></div>
+<h3 class="text-xl font-bold text-white mb-3">One Inbox, Every Channel</h3>
+<p class="text-on-surface-variant leading-relaxed">Airbnb, Booking.com, Vrbo, WhatsApp, SMS, and email together. Stop hunting across apps to find one thread.</p>
+</div>
+<!-- Knows your property -->
+<div class="glass-card p-8 rounded-2xl group hover:bg-surface-container-low transition-all">
+<div class="w-14 h-14 rounded-xl bg-primary-container/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><span class="material-symbols-outlined text-primary text-3xl" data-icon="psychology_alt">psychology_alt</span></div>
+<h3 class="text-xl font-bold text-white mb-3">Knows Your Property</h3>
+<p class="text-on-surface-variant leading-relaxed">Check-in times, WiFi, parking, the tricky shower knob — accurate answers without copy-pasting the same thing again.</p>
+</div>
+<!-- Automations -->
+<div class="glass-card p-8 rounded-2xl group hover:bg-surface-container-low transition-all">
+<div class="w-14 h-14 rounded-xl bg-secondary-container/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><span class="material-symbols-outlined text-secondary-fixed-dim text-3xl" data-icon="bolt">bolt</span></div>
+<h3 class="text-xl font-bold text-white mb-3">Automations &amp; Autopilot</h3>
+<p class="text-on-surface-variant leading-relaxed">Set rules for the repetitive stuff so it handles itself. You step in only when something actually needs you.</p>
+</div>
+<!-- Upsells -->
+<div class="glass-card p-8 rounded-2xl group hover:bg-surface-container-low transition-all">
+<div class="w-14 h-14 rounded-xl bg-tertiary-container/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><span class="material-symbols-outlined text-tertiary text-3xl" data-icon="payments">payments</span></div>
+<h3 class="text-xl font-bold text-white mb-3">Upsells That Pay For It</h3>
+<p class="text-on-surface-variant leading-relaxed">Offer early check-in, late checkout, and extras at the perfect moment — turning routine questions into real revenue.</p>
+</div>
+</div>
+</section>
+<!-- Why it matters / Superhost -->
+<section class="py-24 max-w-6xl mx-auto px-8">
+<div class="text-center mb-14">
+<h2 class="text-4xl md:text-5xl font-headline font-extrabold text-white mb-5 max-w-3xl mx-auto leading-tight">Fast replies aren't just nice. They're how you win on Airbnb.</h2>
+<p class="text-on-surface-variant text-lg max-w-2xl mx-auto">Response speed is one of the few levers you fully control — and it compounds straight into bookings.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="glass-card p-8 rounded-2xl text-center">
+<div class="w-14 h-14 rounded-xl bg-primary-container/20 flex items-center justify-center mx-auto mb-6"><span class="material-symbols-outlined text-primary text-3xl" data-icon="trending_up">trending_up</span></div>
+<h3 class="text-xl font-bold text-white mb-3">Climb the rankings</h3>
+<p class="text-on-surface-variant leading-relaxed">Airbnb rewards fast, consistent responses with better search placement. HostAI replies in seconds, every time.</p>
+</div>
+<div class="glass-card p-8 rounded-2xl text-center">
+<div class="w-14 h-14 rounded-xl bg-secondary-container/20 flex items-center justify-center mx-auto mb-6"><span class="material-symbols-outlined text-secondary-fixed-dim text-3xl" data-icon="verified">verified</span></div>
+<h3 class="text-xl font-bold text-white mb-3">Protect Superhost status</h3>
+<p class="text-on-surface-variant leading-relaxed">Response rate and response time are Superhost requirements. HostAI keeps them green — automatically.</p>
+</div>
+<div class="glass-card p-8 rounded-2xl text-center">
+<div class="w-14 h-14 rounded-xl bg-tertiary-container/20 flex items-center justify-center mx-auto mb-6"><span class="material-symbols-outlined text-tertiary text-3xl" data-icon="payments">payments</span></div>
+<h3 class="text-xl font-bold text-white mb-3">Earn more per stay</h3>
+<p class="text-on-surface-variant leading-relaxed">Well-timed offers for early check-in and late checkout turn ordinary messages into extra revenue.</p>
+</div>
+</div>
+<p class="text-center text-on-surface-variant text-lg mt-12">And the part you'll feel first: <span class="text-white font-semibold">no more answering "what's the WiFi?" at 2&nbsp;a.m.</span></p>
+</section>
+<!-- Founder note (honest trust-builder). Personalize: swap in your name + a real photo to make this far more convincing. -->
+<section class="py-16 max-w-3xl mx-auto px-8">
+<div class="glass-card rounded-[2rem] p-10 md:p-14 relative overflow-hidden">
+<span class="material-symbols-outlined text-[#5B8DEF] text-6xl absolute top-6 left-8 opacity-15 select-none">format_quote</span>
+<span class="inline-flex items-center gap-2 rounded-full border border-[#5B8DEF]/25 bg-[#5B8DEF]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#aec6ff] mb-6">Early access</span>
+<p class="text-white text-lg md:text-xl leading-relaxed mb-6 relative z-10">HostAI started because hosting shouldn't mean being on call 24/7. We're onboarding hosts one at a time and building this hand-in-hand with the people who use it. Join now and your feedback shapes what we ship next — plus you lock in early-access pricing for good.</p>
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 rounded-full bg-gradient-to-br from-[#5B8DEF] to-[#aec6ff] flex items-center justify-center text-[#002e6b] font-extrabold">H</div>
+<div><div class="text-white font-bold text-sm">The HostAI Team</div><div class="text-slate-500 text-xs">Founders</div></div>
+</div>
+</div>
+</section>
+<!-- Security & trust. Keep only claims true for your setup; add SOC 2 / GDPR badges once you have them. -->
+<section class="py-16 max-w-5xl mx-auto px-8">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+<div class="p-6"><span class="material-symbols-outlined text-[#5B8DEF] text-3xl mb-3" data-icon="lock">lock</span><h4 class="text-white font-bold mb-2">Encrypted &amp; private</h4><p class="text-on-surface-variant text-sm">Your data and your guests' data travel over secure, encrypted connections.</p></div>
+<div class="p-6"><span class="material-symbols-outlined text-[#5B8DEF] text-3xl mb-3" data-icon="block">block</span><h4 class="text-white font-bold mb-2">Never sold</h4><p class="text-on-surface-variant text-sm">We don't sell your data — to advertisers or anyone else. Ever.</p></div>
+<div class="p-6"><span class="material-symbols-outlined text-[#5B8DEF] text-3xl mb-3" data-icon="settings_backup_restore">settings_backup_restore</span><h4 class="text-white font-bold mb-2">You're in charge</h4><p class="text-on-surface-variant text-sm">Export or delete your data anytime. And you approve what goes out to guests.</p></div>
+</div>
+</section>
+<!-- FAQ / objection handling -->
+<section class="py-24 max-w-3xl mx-auto px-8">
+<div class="text-center mb-14">
+<span class="text-[#aec6ff] text-sm font-bold uppercase tracking-[0.2em]">FAQ</span>
+<h2 class="text-4xl md:text-5xl font-headline font-extrabold text-white mt-4">Questions hosts ask us</h2>
+</div>
+<div class="space-y-4">
+<details class="faq-item glass-card rounded-xl px-6 py-5">
+<summary class="flex items-center justify-between gap-4 text-white font-bold text-lg">Will it actually sound like me, or robotic?<span class="material-symbols-outlined faq-icon text-[#5B8DEF] flex-shrink-0">add</span></summary>
+<p class="text-on-surface-variant leading-relaxed mt-4">It learns your tone, house rules, and past replies, so drafts read like something you'd write. You set the voice, and you can edit any message before it sends.</p>
+</details>
+<details class="faq-item glass-card rounded-xl px-6 py-5">
+<summary class="flex items-center justify-between gap-4 text-white font-bold text-lg">What if the AI gets something wrong?<span class="material-symbols-outlined faq-icon text-[#5B8DEF] flex-shrink-0">add</span></summary>
+<p class="text-on-surface-variant leading-relaxed mt-4">You stay in control. Review and approve replies, or only auto-send the question types you trust. Anything it's unsure about gets flagged for you instead of sent.</p>
+</details>
+<details class="faq-item glass-card rounded-xl px-6 py-5">
+<summary class="flex items-center justify-between gap-4 text-white font-bold text-lg">How long does setup take?<span class="material-symbols-outlined faq-icon text-[#5B8DEF] flex-shrink-0">add</span></summary>
+<p class="text-on-surface-variant leading-relaxed mt-4">Most hosts are live in under five minutes. Add a property, paste your calendar link, and tell it about your place. No engineering required.</p>
+</details>
+<details class="faq-item glass-card rounded-xl px-6 py-5">
+<summary class="flex items-center justify-between gap-4 text-white font-bold text-lg">Which platforms and channels does it work with?<span class="material-symbols-outlined faq-icon text-[#5B8DEF] flex-shrink-0">add</span></summary>
+<p class="text-on-surface-variant leading-relaxed mt-4">Airbnb, Booking.com, Vrbo, WhatsApp, SMS, and email today — all in one inbox, synced with your calendar or PMS.</p>
+</details>
+<details class="faq-item glass-card rounded-xl px-6 py-5">
+<summary class="flex items-center justify-between gap-4 text-white font-bold text-lg">Does it really answer phone calls?<span class="material-symbols-outlined faq-icon text-[#5B8DEF] flex-shrink-0">add</span></summary>
+<p class="text-on-surface-variant leading-relaxed mt-4">Yes. Voice AI picks up guest calls 24/7, answers the common questions out loud, and routes anything urgent straight to you.</p>
+</details>
+<details class="faq-item glass-card rounded-xl px-6 py-5">
+<summary class="flex items-center justify-between gap-4 text-white font-bold text-lg">Is it really free to start?<span class="material-symbols-outlined faq-icon text-[#5B8DEF] flex-shrink-0">add</span></summary>
+<p class="text-on-surface-variant leading-relaxed mt-4">Yes — start on the Free plan with no credit card. Paid plans begin at $19/mo when you're ready, and you can cancel anytime.</p>
+</details>
+<details class="faq-item glass-card rounded-xl px-6 py-5">
+<summary class="flex items-center justify-between gap-4 text-white font-bold text-lg">I manage several properties — does that work?<span class="material-symbols-outlined faq-icon text-[#5B8DEF] flex-shrink-0">add</span></summary>
+<p class="text-on-surface-variant leading-relaxed mt-4">Absolutely. Add unlimited properties, each with its own details, instructions, and inbox.</p>
+</details>
+</div>
+</section>
+<!-- Final CTA -->
+<section class="py-28 relative">
+<div class="max-w-5xl mx-auto px-8">
+<div class="glass-card rounded-[2rem] p-12 md:p-16 text-center overflow-hidden relative">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[80px] -mr-32 -mt-32"></div>
+<div class="absolute bottom-0 left-0 w-64 h-64 bg-secondary-container/10 blur-[80px] -ml-32 -mb-32"></div>
+<h2 class="text-4xl md:text-5xl font-headline font-extrabold text-white mb-5 relative z-10">Try it on your own listings tonight.</h2>
+<p class="text-on-surface-variant text-lg mb-10 max-w-xl mx-auto relative z-10">Connect a property, ask it a real guest question, and watch it reply in seconds. Free to start — keep it only if it earns its place.</p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-4 relative z-10">
+<a href="/signup" class="inline-block px-10 py-4 bg-[#5B8DEF] text-white font-bold rounded-xl shadow-[0_0_25px_rgba(91,141,239,0.4)] hover:bg-[#3B6DDF] transition-all">Start free — no credit card</a>
+<a href="/pricing" class="inline-block px-10 py-4 bg-white/10 border border-white/20 text-white font-bold rounded-xl hover:bg-white/20 transition-colors">See pricing</a>
+</div>
+<p class="text-slate-500 text-sm mt-6 relative z-10">Free plan · Live in under 5 minutes · Cancel anytime</p>
 </div>
 </div>
 </section>
