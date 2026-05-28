@@ -179,14 +179,16 @@ class VoiceStreamSession:
                 return
             log.info("[STREAM] [%s] AI: %s (end_call=%s)", self.call_id, response_text[:80], end_call)
 
-            # 2b) Trigger PMS action in background if the AI detected one
-            if action_type and self.tenant_id:
-                asyncio.create_task(self._execute_voice_action(transcript, action_type))
-
-            # 3) TTS + stream back
+            # 3) TTS — speak initial acknowledgement immediately so guest isn't left waiting
             await self._speak(response_text)
 
-            # 4) End the call if AI said goodbye
+            # 4) Execute PMS action and speak the REAL result back (sequential, not background)
+            #    e.g. "Great news — your checkout is extended to 2pm!"
+            #    or   "Your unit is taken, but Unit B is available at £120/night..."
+            if action_type and self.tenant_id:
+                await self._execute_voice_action(transcript, action_type)
+
+            # 5) End the call if AI said goodbye
             if end_call:
                 self.call_ended = True
                 log.info("[STREAM] [%s] AI ended the call gracefully", self.call_id)
@@ -260,22 +262,86 @@ class VoiceStreamSession:
             log.warning("[STREAM] _hangup failed: %s", exc)
 
     async def _execute_voice_action(self, transcript: str, action_type: str):
-        """Background: detect action intent from transcript and execute it via PMS."""
+        """
+        Run the full action pipeline and speak the result back to the guest.
+
+        Flow (mirrors text/WhatsApp _handle_guest_inbound_message Phase 3):
+          1. detect_action_intent(transcript) — get params (requested_time etc.)
+          2. create_action() — persists GuestAction row with host policy check
+          3. execute_action() — checks availability, applies policy, finds alternatives
+          4. result_json["guest_reply"] — speak that back via TTS
+        """
         try:
             from web.actions import detect_action_intent, create_action, execute_action, is_auto_approved
             from web.db import SessionLocal
-            log.info("[STREAM] executing voice action type=%s for tenant=%s", action_type, self.tenant_id)
-            intent = await detect_action_intent(self.tenant_id, transcript)
-            if not intent or intent.get("action") == "none":
-                # Voice AI said action, use the action_type it returned directly
-                intent = {"action": action_type, "params": {}, "confidence": 0.8}
+            from web.models import TenantConfig, Reservation, GuestContact
+
+            log.info("[STREAM] voice action pipeline: type=%s tenant=%s", action_type, self.tenant_id)
+
+            # Step 1 — re-detect intent to extract params (time, guest count, etc.)
+            intent = detect_action_intent(transcript)
+            if not intent:
+                # Voice AI already confirmed the type — use it with empty params
+                intent = {"action_type": action_type, "params": {}, "confidence": 0.8}
+
             with SessionLocal() as db:
-                guest_action = create_action(db, self.tenant_id, None, intent, source="voice")
-                if guest_action and is_auto_approved(intent.get("action", ""), self.tenant_id, db):
-                    await execute_action(guest_action, db)
-                    log.info("[STREAM] voice action executed: %s", action_type)
+                cfg = db.query(TenantConfig).filter_by(tenant_id=self.tenant_id).first()
+
+                # Step 2 — find the reservation this caller belongs to
+                reservation = None
+                try:
+                    from web.models import VoiceCall
+                    vc = db.query(VoiceCall).filter_by(id=self.call_id).first()
+                    if vc and vc.guest_phone:
+                        contact = db.query(GuestContact).filter_by(
+                            tenant_id=self.tenant_id,
+                            guest_phone=vc.guest_phone,
+                        ).first()
+                        if contact and contact.reservation_id:
+                            reservation = db.query(Reservation).filter_by(
+                                id=contact.reservation_id
+                            ).first()
+                except Exception as _re:
+                    log.debug("[STREAM] reservation lookup: %s", _re)
+
+                # Step 3 — create GuestAction row (policy decides approval requirement)
+                guest_action = create_action(
+                    db,
+                    self.tenant_id,
+                    intent.get("action_type", action_type),
+                    intent.get("params") or {},
+                    reservation,
+                    None,   # no draft_id on voice calls
+                    cfg,
+                )
+
+                if not guest_action:
+                    return
+
+                # Step 4 — execute if auto-approved, otherwise queue for host
+                if is_auto_approved(cfg, guest_action.action_type):
+                    execute_action(db, guest_action)
+                    log.info("[STREAM] voice action executed: %s status=%s",
+                             action_type, guest_action.status)
+
+                    # Step 5 — speak the result back to the guest
+                    reply = (guest_action.result_json or {}).get("guest_reply", "")
+                    if reply:
+                        await self._speak(reply)
+                    elif guest_action.status == "failed":
+                        await self._speak(
+                            "I wasn't able to process that change directly. "
+                            "I've flagged it for the host who will follow up with you shortly."
+                        )
+                else:
+                    # Not auto-approved — host needs to confirm
+                    await self._speak(
+                        "I've sent that request to the host for approval. "
+                        "You'll receive confirmation shortly."
+                    )
+
         except Exception as exc:
-            log.warning("[STREAM] _execute_voice_action failed: %s", exc)
+            log.warning("[STREAM] _execute_voice_action failed: %s", exc, exc_info=True)
 
     async def _speak(self, text: str):
         """Synthesize to audio and stream back as μ-law chunks."""
