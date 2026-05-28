@@ -252,34 +252,50 @@ PROPERTY INFO:
 SENDABLE INFO (what you can text/WhatsApp to the guest during this call):
 {json.dumps(sendable_info, ensure_ascii=False)}
 
+AGENTIC ACTIONS — these are things you CAN DO directly. When a guest asks for any
+of these, respond confidently that you will handle it and set action_type accordingly.
+NEVER say "I don't have that info" or "I'll let the host know" for these — they are
+actions you execute, not information you look up:
+  • Late checkout (staying past checkout time) → action_type: "late_checkout"
+    Say: "Absolutely! I'm arranging a late checkout for you now."
+  • Early check-in (arriving before check-in time) → action_type: "early_checkin"
+    Say: "Let me sort that early check-in for you right away."
+  • Extending stay / more nights / changing checkout date → action_type: "late_checkout"
+    Say: "I'll process that extension for you now."
+  • Adding an extra guest → action_type: "extra_guest"
+    Say: "I'll update your reservation to add the extra guest."
+  • Logging a special request or note → action_type: "add_note"
+    Say: "Got it — I've noted that for you."
+
+CALL END — if the guest says goodbye, ends the call, thanks and hangs up, or says
+"end the call", "bye", "that's all", "hang up", etc.:
+  Set end_call to true. Give a warm closing line (under 15 words). Do NOT keep asking
+  how you can help after the guest has clearly said goodbye.
+
 RULES:
 1. Keep voice replies under 80 words — natural, conversational, no bullet points.
 2. If the guest asks you to "send", "text", "WhatsApp", "share", or "message" any specific info, set send.content with the relevant details formatted nicely with emojis.
 3. If nothing should be sent, set send to null.
 4. Respond in the same language the guest is speaking.
 5. If the guest mentions wanting a callback ("call me back", "ring me later", etc.), acknowledge and say you'll arrange it.
-6. When referencing property amenities or rules, personalize to the guest's room/unit if known. E.g., "The WiFi password for your room is..." or "Parking for your unit is...".
-7. IMPORTANT: If the guest asks a specific question you genuinely cannot answer from the property info above, set unknown to true and unanswered_question to exactly what the guest asked. Tell them: "I don't have that info right now, but I'll make sure the host is aware and can update their listing."
-8. Only set unknown=true for real knowledge gaps (missing facts about the property). Do NOT set it for greetings, chit-chat, or questions you can answer.
-
-AGENTIC CAPABILITIES — you are connected to the property management system and CAN
-handle the following requests directly. NEVER say you cannot do these or ask the guest
-to contact the host manually:
-- Late checkout → "Absolutely! I'm arranging that for you now."
-- Early check-in → "Let me check and sort that out for you."
-- Extending the stay / changing checkout date → "I'll process that extension right away."
-- Adding extra guests → "I'll update your reservation now."
-- Logging a special request → "I've noted that — all sorted."
-Set action_type to the relevant type when one of these is requested.
+6. When referencing property amenities or rules, personalize to the guest's room/unit if known.
+7. IMPORTANT: Only set unknown=true when the guest asks about a specific fact about the property that is genuinely missing from the property info above (e.g. the pool opening hours when no hours are listed). Do NOT set unknown=true for: agentic actions (late checkout etc.), greetings, chit-chat, general questions you can answer, or anything in the AGENTIC ACTIONS section above.
 
 RESPONSE FORMAT — always respond with valid JSON only, no markdown:
-{{"voice": "<what you say out loud>", "send": null, "unknown": false, "unanswered_question": null, "action_type": null}}
-or when sending info:
-{{"voice": "<what you say>", "send": {{"type": "<wifi|location|checkin|checkout|house_rules|menu|restaurants|parking|faq>", "content": "<formatted text>"}}, "unknown": false, "unanswered_question": null, "action_type": null}}
-or when taking a reservation action (late_checkout / early_checkin / extend_stay / add_guest / add_note):
-{{"voice": "Absolutely! I'm taking care of that right now.", "send": null, "unknown": false, "unanswered_question": null, "action_type": "<late_checkout|early_checkin|extend_stay|add_guest|add_note>"}}
-or when you don't know:
-{{"voice": "I don't have that info right now, but I'll let the host know so they can update their listing.", "send": null, "unknown": true, "unanswered_question": "<the specific question the guest asked>", "action_type": null}}"""
+Standard reply:
+{{"voice": "<what you say>", "send": null, "unknown": false, "unanswered_question": null, "action_type": null, "end_call": false}}
+
+When sending info to guest's phone:
+{{"voice": "<what you say>", "send": {{"type": "<wifi|location|checkin|checkout|house_rules|menu|restaurants|parking|faq>", "content": "<formatted text>"}}, "unknown": false, "unanswered_question": null, "action_type": null, "end_call": false}}
+
+When taking a reservation action — IMPORTANT use this for ANY request to extend stay, late checkout, early checkin, add guest:
+{{"voice": "Absolutely! I'm taking care of that for you right now.", "send": null, "unknown": false, "unanswered_question": null, "action_type": "late_checkout", "end_call": false}}
+
+When ending the call:
+{{"voice": "Thank you for calling! Have a wonderful stay.", "send": null, "unknown": false, "unanswered_question": null, "action_type": null, "end_call": true}}
+
+When genuinely missing property info:
+{{"voice": "I don't have that detail right now, but I'll make sure the host is aware.", "send": null, "unknown": true, "unanswered_question": "<exact question>", "action_type": null, "end_call": false}}"""
 
             import asyncio
 
@@ -343,12 +359,16 @@ or when you don't know:
                 voice_text          = data.get("voice", "Sorry, I couldn't process that.")
                 send_action         = data.get("send")          # None | {"type", "content"}
                 unanswered_question = data.get("unanswered_question") if data.get("unknown") else None
-                action_type         = data.get("action_type")  # None | "late_checkout" | "early_checkin" | etc.
-                # Attach action_type to send_action payload so callers can trigger PMS write-back
-                if action_type:
+                action_type         = data.get("action_type")  # None | "late_checkout" | etc.
+                end_call            = bool(data.get("end_call", False))
+                # Pack action_type and end_call into send_action so callers get them
+                if action_type or end_call:
                     send_action = send_action or {}
                     if isinstance(send_action, dict):
-                        send_action["action_type"] = action_type
+                        if action_type:
+                            send_action["action_type"] = action_type
+                        if end_call:
+                            send_action["end_call"] = True
                 return (voice_text, send_action, unanswered_question)
 
             try:

@@ -94,13 +94,21 @@ body { background:#08090F; font-family:'Plus Jakarta Sans',sans-serif; color:#e3
           <p class="text-sm font-semibold text-[#aec6ff]">Check-in Time</p>
           <p class="text-xs text-slate-500 mt-0.5">Test property info</p>
         </button>
-        <button onclick="setMessage('What are the house rules?')" class="quick-btn">
-          <p class="text-sm font-semibold text-[#aec6ff]">House Rules</p>
-          <p class="text-xs text-slate-500 mt-0.5">Test policy question</p>
+        <button onclick="setMessage('Can I get a late checkout?')" class="quick-btn">
+          <p class="text-sm font-semibold text-[#34d399]">Late Checkout ⏰</p>
+          <p class="text-xs text-slate-500 mt-0.5">Test action request</p>
         </button>
-        <button onclick="setMessage('Is there parking available?')" class="quick-btn">
-          <p class="text-sm font-semibold text-[#aec6ff]">Parking</p>
-          <p class="text-xs text-slate-500 mt-0.5">Test amenity question</p>
+        <button onclick="setMessage('I want to extend my stay by 2 nights')" class="quick-btn">
+          <p class="text-sm font-semibold text-[#34d399]">Extend Stay 📅</p>
+          <p class="text-xs text-slate-500 mt-0.5">Test stay extension</p>
+        </button>
+        <button onclick="setMessage('Can I check in early, around 11am?')" class="quick-btn">
+          <p class="text-sm font-semibold text-[#34d399]">Early Check-in 🌅</p>
+          <p class="text-xs text-slate-500 mt-0.5">Test early arrival</p>
+        </button>
+        <button onclick="setMessage('End the call')" class="quick-btn">
+          <p class="text-sm font-semibold text-[#f87171]">End Call 📞</p>
+          <p class="text-xs text-slate-500 mt-0.5">Test call termination</p>
         </button>
       </div>
     </div>
@@ -128,17 +136,7 @@ function setMessage(text) {
   document.getElementById('messageInput').focus();
 }
 
-function addMessage(text, isGuest = true) {
-  const container = document.getElementById('chatContainer');
-  const empty = container.querySelector('.text-slate-500');
-  if (empty) container.innerHTML = '';
-
-  const bubble = document.createElement('div');
-  bubble.className = `message-bubble ${isGuest ? 'message-guest' : 'message-ai'}`;
-  bubble.textContent = text;
-  container.appendChild(bubble);
-  container.scrollTop = container.scrollHeight;
-}
+// addMessage is defined below with action badge support — stub kept for reference
 
 function showTyping() {
   const container = document.getElementById('chatContainer');
@@ -164,7 +162,7 @@ async function sendMessage() {
   sendBtn.disabled = true;
   input.disabled = true;
 
-  addMessage(message, true);
+  addMessage(message, true, null);
   conversationHistory.push({ role: 'user', text: message });
   input.value = '';
   showTyping();
@@ -184,22 +182,94 @@ async function sendMessage() {
 
     if (response.ok) {
       const data = await response.json();
-      addMessage(data.response, false);
+      addMessage(data.response, false, data.action_type);
       conversationHistory.push({ role: 'assistant', text: data.response });
       if (data.model_used) document.getElementById('modelUsed').textContent = data.model_used;
+
+      // Handle call end
+      if (data.end_call) {
+        endCall();
+        return; // don't re-enable inputs
+      }
     } else {
       const err = await response.json();
-      addMessage(`Error: ${err.error || 'Failed to get response'}`, false);
+      addMessage(`Error: ${err.error || 'Failed to get response'}`, false, null);
     }
   } catch (error) {
     hideTyping();
-    addMessage(`Error: ${error.message}`, false);
+    addMessage(`Error: ${error.message}`, false, null);
   } finally {
-    sendBtn.disabled = false;
-    input.disabled = false;
-    input.focus();
+    if (!callEnded) {
+      sendBtn.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
   }
 }
+
+let callEnded = false;
+
+function endCall() {
+  if (callEnded) return;
+  callEnded = true;
+
+  // Show ended banner in chat
+  const container = document.getElementById('chatContainer');
+  const banner = document.createElement('div');
+  banner.style.cssText = 'text-align:center;padding:0.75rem;margin:0.5rem 0;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:0.5rem;color:#f87171;font-size:0.8rem;font-weight:600;';
+  banner.textContent = '📞 Call ended';
+  container.appendChild(banner);
+  container.scrollTop = container.scrollHeight;
+
+  // Disable inputs
+  document.getElementById('messageInput').disabled = true;
+  document.getElementById('messageInput').placeholder = 'Call has ended';
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('sendBtn').style.opacity = '0.4';
+
+  // Show restart button
+  const restartBtn = document.createElement('button');
+  restartBtn.textContent = '🔄 Start new call';
+  restartBtn.style.cssText = 'margin-top:0.75rem;width:100%;padding:0.6rem;background:rgba(174,198,255,0.1);border:1px solid rgba(174,198,255,0.2);border-radius:0.5rem;color:#aec6ff;font-size:0.85rem;cursor:pointer;';
+  restartBtn.onclick = () => location.reload();
+  document.getElementById('messageInput').parentElement.parentElement.appendChild(restartBtn);
+}
+
+function addMessage(text, isGuest, actionType) {
+  const container = document.getElementById('chatContainer');
+  const empty = container.querySelector('.text-slate-500');
+  if (empty) container.innerHTML = '';
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = `display:flex;flex-direction:column;align-items:${isGuest ? 'flex-end' : 'flex-start'};margin-bottom:0.75rem;`;
+
+  const bubble = document.createElement('div');
+  bubble.className = `message-bubble ${isGuest ? 'message-guest' : 'message-ai'}`;
+  bubble.style.marginBottom = '0';
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+
+  // Action badge
+  if (!isGuest && actionType) {
+    const badge = document.createElement('div');
+    const labels = {
+      late_checkout: '⏰ Late checkout action triggered',
+      early_checkin: '🌅 Early check-in action triggered',
+      extra_guest:   '👥 Extra guest update triggered',
+      add_note:      '📝 Note logged to reservation',
+      extend_stay:   '📅 Stay extension triggered',
+    };
+    badge.textContent = labels[actionType] || '⚡ Action triggered: ' + actionType;
+    badge.style.cssText = 'font-size:0.7rem;color:#34d399;margin-top:0.25rem;padding:0.2rem 0.5rem;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.2);border-radius:0.4rem;';
+    wrap.appendChild(badge);
+  }
+
+  container.appendChild(wrap);
+  container.scrollTop = container.scrollHeight;
+}
+
+// Override the original addMessage calls that don't use the new signature
+// (keep original simple addMessage for guest bubbles without badge)
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('messageInput').focus();

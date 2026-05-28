@@ -59,6 +59,7 @@ class VoiceStreamSession:
         self.audio_frames   = 0
         self.is_speaking    = False
         self.is_responding  = False
+        self.call_ended     = False   # set True when AI detects goodbye
         self.conversation_history: list[dict] = []
         self.tenant_id: Optional[str] = None
         self.cfg = None
@@ -99,6 +100,8 @@ class VoiceStreamSession:
 
     async def on_media(self, payload_b64: str):
         """Called when Twilio sends a 20 ms audio frame."""
+        if self.call_ended:
+            return  # ignore audio after AI has said goodbye
         if self.is_responding:
             # AI is currently speaking — track barge-in attempts (interrupt detection)
             return
@@ -170,11 +173,11 @@ class VoiceStreamSession:
             self.conversation_history.append({"text": transcript, "ts": datetime.now(timezone.utc).isoformat()})
 
             # 2) LLM response
-            response_text, action_type = await self._llm(transcript)
+            response_text, action_type, end_call = await self._llm(transcript)
             if not response_text:
                 self.is_responding = False
                 return
-            log.info("[STREAM] [%s] AI: %s", self.call_id, response_text[:80])
+            log.info("[STREAM] [%s] AI: %s (end_call=%s)", self.call_id, response_text[:80], end_call)
 
             # 2b) Trigger PMS action in background if the AI detected one
             if action_type and self.tenant_id:
@@ -182,6 +185,13 @@ class VoiceStreamSession:
 
             # 3) TTS + stream back
             await self._speak(response_text)
+
+            # 4) End the call if AI said goodbye
+            if end_call:
+                self.call_ended = True
+                log.info("[STREAM] [%s] AI ended the call gracefully", self.call_id)
+                # Send Twilio stop event to hang up
+                await self._hangup()
         except Exception as exc:
             log.error("[STREAM] _process_turn error: %s", exc, exc_info=True)
         finally:
@@ -214,8 +224,8 @@ class VoiceStreamSession:
             log.warning("[STREAM] STT failed: %s", exc)
             return ("", 0.0)
 
-    async def _llm(self, transcript: str) -> tuple[str, Optional[str]]:
-        """Run the LLM to generate a reply. Returns (text, action_type)."""
+    async def _llm(self, transcript: str) -> tuple[str, Optional[str], bool]:
+        """Run the LLM to generate a reply. Returns (text, action_type, end_call)."""
         try:
             from web.integrations.voice import VoiceAIService
             ai_text, send_action, _gap = await VoiceAIService.generate_response(
@@ -226,14 +236,28 @@ class VoiceStreamSession:
             )
             if ai_text:
                 self.conversation_history.append({"role": "assistant", "text": ai_text})
-            # action_type is stashed inside send_action dict when voice AI detects an action
             action_type = None
+            end_call = False
             if isinstance(send_action, dict):
                 action_type = send_action.get("action_type")
-            return (ai_text or "").strip(), action_type
+                end_call = bool(send_action.get("end_call", False))
+            return (ai_text or "").strip(), action_type, end_call
         except Exception as exc:
             log.warning("[STREAM] LLM failed: %s", exc)
-            return "", None
+            return "", None, False
+
+    async def _hangup(self):
+        """Tell Twilio to hang up the call by sending a clear/stop message then closing."""
+        try:
+            # Send a Twilio Media Streams "clear" to stop any queued audio, then close
+            await self.websocket.send_text(json.dumps({
+                "event": "clear",
+                "streamSid": self.stream_sid,
+            }))
+            await asyncio.sleep(0.5)  # give TTS audio time to finish playing
+            await self.websocket.close()
+        except Exception as exc:
+            log.warning("[STREAM] _hangup failed: %s", exc)
 
     async def _execute_voice_action(self, transcript: str, action_type: str):
         """Background: detect action intent from transcript and execute it via PMS."""

@@ -11440,11 +11440,20 @@ async def host_voice_chat_message(request: Request, db: Session = Depends(get_db
             except:
                 response_text = response
 
+        # Extract end_call and action_type from send_action payload
+        end_call = False
+        action_type_detected = None
+        if isinstance(send_action, dict):
+            end_call = bool(send_action.get("end_call", False))
+            action_type_detected = send_action.get("action_type")
+
         return JSONResponse({
             "response": response_text,
             "model_used": llm_model,
             "send_action": send_action,
-            "unanswered": unanswered
+            "unanswered": unanswered,
+            "end_call": end_call,
+            "action_type": action_type_detected,
         })
 
     except Exception as e:
