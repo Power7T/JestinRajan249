@@ -6137,7 +6137,10 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
         # Only run when reservation exists (we need something to act against)
         if reservation is not None:
             try:
-                from web.actions import detect_action_intent, create_action, execute_action, is_auto_approved
+                from web.actions import (
+                    detect_action_intent, create_action, execute_action,
+                    is_auto_approved, dispatch_action_reply,
+                )
                 intent = detect_action_intent(text)
                 if intent and intent.get("action_type") in ("late_checkout", "early_checkin", "extra_guest", "add_note"):
                     action_row = create_action(
@@ -6149,6 +6152,8 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                              tenant_id, intent["action_type"], is_auto_approved(cfg, intent["action_type"]))
                     if is_auto_approved(cfg, intent["action_type"]):
                         execute_action(db, action_row)
+                        # Send the result back to the guest (confirmation or alternative offer)
+                        dispatch_action_reply(db, action_row)
             except Exception as _act_exc:
                 log.warning("[%s] Action detection failed: %s", tenant_id, _act_exc)
 
