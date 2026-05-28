@@ -379,6 +379,11 @@ class TenantConfig(Base):
     # link with guests before WhatsApp/Twilio are configured.
     chat_token: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, unique=True, index=True)
 
+    # Email ingestion — forwarding-based inbound email processing
+    email_ingest_mode:    Mapped[Optional[str]] = mapped_column(String(32), nullable=True, default="none")   # none | forwarding
+    inbound_email_alias:  Mapped[Optional[str]] = mapped_column(String(128), nullable=True)                  # e.g. "host-abc" in host-abc@inbound.hostai.local
+    last_inbound_email_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="config")
 
 

@@ -291,6 +291,10 @@ def db_migrate():
         # Building/multi-unit property support
         ("tenant_configs", "building_total_units",    "INTEGER",      "NULL"),
         ("tenant_configs", "building_name",           "VARCHAR(255)", "NULL"),
+        # Email ingestion
+        ("tenant_configs", "email_ingest_mode",       "VARCHAR(32)",  "'none'"),
+        ("tenant_configs", "inbound_email_alias",     "VARCHAR(128)", "NULL"),
+        ("tenant_configs", "last_inbound_email_at",   datetime_type,  "NULL"),
     ]
     inspector = inspect(engine)
     existing_tables = set(inspector.get_table_names())

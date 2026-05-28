@@ -70,7 +70,7 @@ from fastapi.responses import (
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
@@ -1544,6 +1544,8 @@ def login_post(
                         samesite="strict", secure=is_secure, max_age=TOKEN_HOURS * 3600)
         return resp
     except HTTPException as exc:
+        if exc.status_code in (403, 429):
+            raise  # let exception handlers deal with CSRF and rate limit errors
         log.warning("Login HTTPException [%s]: %s", exc.status_code, exc.detail)
         return templates.TemplateResponse("login.html",
                                           {"request": request, "error": exc.detail})
@@ -1607,7 +1609,12 @@ def signup_post(
         verification_sent_at=datetime.now(timezone.utc),
     )
     db.add(tenant)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return templates.TemplateResponse("signup.html",
+                                          {"request": request, "error": "Email already registered"})
     db.refresh(tenant)
     # Capture primitive values immediately after refresh, before any call that
     # may open a sub-session (load_tenant_config) and expire this object.
@@ -3335,6 +3342,8 @@ def _ensure_effortless_defaults(tenant: Tenant, cfg: TenantConfig, db: Session) 
         cfg.custom_instructions = _recommended_custom_instructions()
     if not cfg.escalation_email:
         cfg.escalation_email = tenant.email
+    if not getattr(cfg, "email_ingest_mode", None) or cfg.email_ingest_mode == "none":
+        cfg.email_ingest_mode = "forwarding"
 
     owner = (
         db.query(TeamMember)
@@ -5922,6 +5931,131 @@ async def sms_webhook_inbound(tenant_id: str, request: Request, db: Session = De
     return HTMLResponse("<Response/>")   # TwiML empty response
 
 
+# ---------------------------------------------------------------------------
+# Forwarding-based inbound email webhook
+# ---------------------------------------------------------------------------
+
+_INBOUND_EMAIL_DOMAIN = "inbound.hostai.local"
+
+
+def _extract_guest_name_from_email(subject: str, body: str) -> str:
+    """
+    Heuristically extract a guest name from Airbnb/Booking.com forwarded emails.
+    Handles patterns like:
+      - Subject: "Jane sent you a message"
+      - Subject: "New message from Jane Doe"
+      - Body first line: "Jane Doe sent you a message"
+    """
+    import re
+    for text in (subject, body.split("\n")[0] if body else ""):
+        m = re.match(r"^(.+?)\s+sent you", text, re.IGNORECASE)
+        if m:
+            return m.group(1).strip().split()[0]  # first name only
+        m = re.match(r"^New message from (.+)", text, re.IGNORECASE)
+        if m:
+            return m.group(1).strip().split()[0]
+    return "Guest"
+
+
+@app.post("/email/inbound")
+async def email_inbound_webhook(request: Request, db: Session = Depends(get_db)):
+    """
+    Receive forwarding-based inbound emails and create AI drafts.
+
+    Parses the inbound email's recipient alias to identify the tenant, then
+    runs the classifier and creates a Draft so the host sees it in the inbox.
+    """
+    # Secret header validation
+    expected_secret = os.getenv("INBOUND_PARSE_WEBHOOK_SECRET", "")
+    if expected_secret:
+        provided = request.headers.get("X-Inbound-Webhook-Secret", "")
+        if not hmac.compare_digest(expected_secret, provided):
+            raise HTTPException(status_code=403, detail="Invalid webhook secret")
+
+    try:
+        form = await request.form()
+        form_data = dict(form)
+    except Exception as e:
+        log.warning("Email inbound: form parse error: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid form data")
+
+    recipient = form_data.get("recipient", "")
+    sender    = form_data.get("sender", "")
+    subject   = form_data.get("subject", "")
+    body      = form_data.get("text", form_data.get("body", ""))
+    message_id = form_data.get("message-id", "")
+
+    # Extract alias from recipient (e.g. "alias@inbound.hostai.local" → "alias")
+    alias = recipient.split("@")[0].strip().lower() if "@" in recipient else recipient.strip().lower()
+    if not alias:
+        return JSONResponse({"status": "ignored", "reason": "no recipient alias"})
+
+    cfg = db.query(TenantConfig).filter(
+        TenantConfig.inbound_email_alias == alias
+    ).first()
+    if not cfg:
+        log.info("Email inbound: no tenant found for alias '%s'", alias)
+        return JSONResponse({"status": "ignored", "reason": "unknown alias"})
+
+    tenant_id = cfg.tenant_id
+
+    # Deduplication by message-id
+    if message_id:
+        dedup_key = f"email:{message_id}"
+        if db.query(ProcessedEmail).filter_by(tenant_id=tenant_id, email_uid=dedup_key).first():
+            log.info("[%s] Duplicate email %s — skipping", tenant_id, message_id)
+            return JSONResponse({"status": "ok", "note": "duplicate"})
+        db.add(ProcessedEmail(tenant_id=tenant_id, email_uid=dedup_key))
+        db.commit()
+
+    guest_name = _extract_guest_name_from_email(subject, body)
+    # Use the email body as the guest's "message" (strip forwarding headers)
+    lines = body.strip().splitlines()
+    # Drop the first line if it's the "X sent you a message" header
+    if lines and re.search(r"sent you a message", lines[0], re.IGNORECASE):
+        lines = lines[1:]
+    guest_message = "\n".join(lines).strip() or body.strip()
+
+    try:
+        from web.classifier import generate_draft, classify_message_with_confidence
+        msg_type, confidence, _ = classify_message_with_confidence(guest_message)
+
+        from web.tenant_config_store import load_tenant_config
+        full_cfg = load_tenant_config(db, tenant_id)
+        property_context = full_cfg.house_rules or "" if full_cfg else ""
+
+        draft_text = generate_draft(
+            guest_name, guest_message, msg_type,
+            property_context=property_context,
+            tenant_id=tenant_id,
+        )
+
+        draft = Draft(
+            id=secrets.token_hex(8),
+            tenant_id=tenant_id,
+            source="email",
+            guest_name=guest_name,
+            message=guest_message,
+            reply_to=sender,
+            msg_type=msg_type,
+            draft=draft_text,
+            confidence=confidence,
+        )
+        db.add(draft)
+        # Update last inbound email timestamp
+        if hasattr(cfg, "last_inbound_email_at"):
+            cfg.last_inbound_email_at = datetime.now(timezone.utc)
+        db.commit()
+        log.info("[%s] Email inbound from %s → draft %s created", tenant_id, sender, draft.id)
+
+    except Exception as exc:
+        db.rollback()
+        log.error("[%s] Email inbound draft creation failed: %s", tenant_id, exc, exc_info=True)
+        return JSONResponse({"status": "error", "detail": str(exc)}, status_code=500)
+
+    return JSONResponse({"status": "ok", "draft_id": draft.id})
+
+
 @app.post("/whatsapp/twilio/inbound/{tenant_id}")
 async def twilio_whatsapp_inbound(tenant_id: str, request: Request, db: Session = Depends(get_db)):
     """Receive inbound WhatsApp messages from Twilio (same format as SMS webhook)."""
@@ -6159,24 +6293,38 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
     if not is_guest_whitelisted(tenant_id, reply_to, db):
         guest_contact = get_guest_contact_for_phone(tenant_id, reply_to, db)
         if not guest_contact:
-            # Phase 5 — try to handle this as a direct booking inquiry first
-            try:
-                from web.booking_inquiry import handle_inquiry_message
-                if handle_inquiry_message(db, tenant_id, source, reply_to, text, cfg):
-                    log.info(f"[{tenant_id}] Inbound from {reply_to} handled as booking inquiry")
-                    return
-            except Exception as _inq_exc:
-                log.warning(f"[{tenant_id}] booking inquiry handler failed: {_inq_exc}")
-
-            # Not a known guest — check if Sales AI should handle this as a pre-booking inquiry
-            sales_cfg = db.query(SalesConfig).filter_by(tenant_id=tenant_id, is_enabled=True).first()
-            if sales_cfg:
-                _handle_sales_inquiry(tenant_id, source, reply_to, text, sales_cfg, db)
+            # Fallback: check if there's a matching reservation by phone number.
+            # This allows hosts who have entered reservations manually (without
+            # creating a GuestContact) to still receive AI-drafted replies.
+            reservation_match = _find_reservation_for_guest_context(
+                tenant_id, db, guest_phone=reply_to
+            )
+            if reservation_match:
+                log.info(
+                    "[%s] Inbound from %s matched reservation %s (no GuestContact) — proceeding",
+                    tenant_id, reply_to[-4:] if reply_to else "", reservation_match.id
+                )
+                # Fall through to draft creation below
             else:
-                log.warning(f"[{tenant_id}] Inbound from unregistered guest {reply_to} ({source}) — rejecting")
-            return
-        # Guest contact found but outside check-in window — allow but log
-        log.info(f"[{tenant_id}] Message from {guest_contact.guest_name} outside check-in window")
+                # Phase 5 — try to handle this as a direct booking inquiry first
+                try:
+                    from web.booking_inquiry import handle_inquiry_message
+                    if handle_inquiry_message(db, tenant_id, source, reply_to, text, cfg):
+                        log.info(f"[{tenant_id}] Inbound from {reply_to} handled as booking inquiry")
+                        return
+                except Exception as _inq_exc:
+                    log.warning(f"[{tenant_id}] booking inquiry handler failed: {_inq_exc}")
+
+                # Not a known guest — check if Sales AI should handle this as a pre-booking inquiry
+                sales_cfg = db.query(SalesConfig).filter_by(tenant_id=tenant_id, is_enabled=True).first()
+                if sales_cfg:
+                    _handle_sales_inquiry(tenant_id, source, reply_to, text, sales_cfg, db)
+                else:
+                    log.warning(f"[{tenant_id}] Inbound from unregistered guest {reply_to} ({source}) — rejecting")
+                return
+        else:
+            # Guest contact found but outside check-in window — allow but log
+            log.info(f"[{tenant_id}] Message from {guest_contact.guest_name} outside check-in window")
     else:
         guest_contact = get_guest_contact_for_phone(tenant_id, reply_to, db)
 
@@ -12200,10 +12348,10 @@ async def websocket_voice_ai_live(websocket: WebSocket, db: Session = Depends(ge
         if session_voice:
             log.info(f"Session voice override: {session_voice}")
 
-        # ElevenLabs voice: prefer tenant setting over system default
+        # ElevenLabs voice: prefer system-selected voice (admin panel) over per-tenant default
         voice_id = (
-            (tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None)
-            or getattr(sys_conf, "voice_elevenlabs_voice_id", None)
+            getattr(sys_conf, "voice_elevenlabs_voice_id", None)
+            or (tenant_config_obj.voice_elevenlabs_voice_id if tenant_config_obj else None)
             or "EXAVITQu4vr4xnSDxMaL"  # Rachel (default)
         )
 
@@ -13358,8 +13506,12 @@ def checkin_portal(token: str, request: Request, db: Session = Depends(get_db)):
     if not res:
         raise HTTPException(status_code=404, detail="Check-in link not found or expired")
 
-    # Verify token hasn't expired
-    if res.checkin_token_expires_at and datetime.now(timezone.utc) > res.checkin_token_expires_at:
+    # Verify token hasn't expired (SQLite stores naive datetimes; coerce to UTC for comparison)
+    _expires = res.checkin_token_expires_at
+    if _expires:
+        if _expires.tzinfo is None:
+            _expires = _expires.replace(tzinfo=timezone.utc)
+    if _expires and datetime.now(timezone.utc) > _expires:
         raise HTTPException(status_code=404, detail="Check-in link has expired")
 
     cfg = db.query(TenantConfig).filter_by(tenant_id=res.tenant_id).first()

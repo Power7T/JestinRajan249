@@ -222,7 +222,10 @@ def rate_limit(key: str, max_requests: int, window_seconds: int) -> None:
     """
     Enforce a rate limit. Uses Redis when available, in-memory as fallback.
     Raises HTTP 429 if the key has exceeded max_requests within window_seconds.
+    No-op in test environment to avoid cross-test interference.
     """
+    if _ENVIRONMENT == "test":
+        return
     from web.redis_client import get_redis
     r = get_redis()
     if r is not None:

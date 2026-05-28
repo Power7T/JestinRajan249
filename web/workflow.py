@@ -559,6 +559,9 @@ def derive_dashboard_kpis(
 def build_activation_checklist(
     config: Any,
     reservations: Iterable[Any] = (),
+    *,
+    inbound_email_address: Optional[str] = None,
+    inbound_webhook_url: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """
     Build a step-by-step activation checklist for the onboarding/dashboard UX.
@@ -572,6 +575,8 @@ def build_activation_checklist(
     escalation_email = _text(config, "escalation_email").strip()
     wa_mode = _text(config, "wa_mode").strip().lower()
     sms_mode = _text(config, "sms_mode").strip().lower()
+    email_ingest_mode = _text(config, "email_ingest_mode").strip().lower()
+    anthropic_api_key = _text(config, "anthropic_api_key_enc").strip()
 
     reservations_with_context = [
         res for res in reservation_rows
@@ -620,6 +625,20 @@ def build_activation_checklist(
             "complete": bool(wa_mode != "none" or sms_mode != "none"),
             "detail": "At least one outbound guest channel is configured.",
             "cta": "/communications",
+        },
+        {
+            "key": "claude",
+            "label": "AI engine connected",
+            "complete": bool(anthropic_api_key),
+            "detail": "Claude API key is configured so the AI can draft replies.",
+            "cta": "/settings#ai",
+        },
+        {
+            "key": "email_intake",
+            "label": "Inbound email connected",
+            "complete": bool(email_ingest_mode and email_ingest_mode != "none"),
+            "detail": "Forwarding-based email ingestion is configured so guest emails create AI drafts.",
+            "cta": "/settings#email",
         },
         {
             "key": "auto_send",

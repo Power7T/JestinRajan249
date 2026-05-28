@@ -26,6 +26,7 @@ def _default_for_column(column) -> object | None:
 
 
 def _tenant_config_defaults(tenant_id: str) -> TenantConfig:
+    import uuid as _uuid_mod
     cfg = TenantConfig(tenant_id=tenant_id)
     for column in TenantConfig.__table__.columns:
         if getattr(cfg, column.key, None) is not None:
@@ -33,6 +34,10 @@ def _tenant_config_defaults(tenant_id: str) -> TenantConfig:
         default = _default_for_column(column)
         if default is not None:
             setattr(cfg, column.key, default)
+    # Ensure non-nullable UUID fields are explicitly set (their lambdas require
+    # an execution context that _default_for_column cannot provide).
+    if not cfg.internal_token:
+        cfg.internal_token = str(_uuid_mod.uuid4())
     return cfg
 
 

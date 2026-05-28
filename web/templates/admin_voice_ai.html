@@ -960,6 +960,22 @@ function playNextChunk() {
   playChunkWithAudioElement(new Uint8Array(buffer));
 }
 
+function validateAudioBuffer(buffer) {
+  // Use AudioContext.decodeAudioData as a diagnostic probe to verify the
+  // browser can handle the audio format before committing to playback.
+  if (!audioContext || !buffer || !buffer.byteLength) return;
+  audioContext.decodeAudioData(buffer.slice(0), function() {
+    // Successfully decoded — format is supported
+  }, function(err) {
+    showVoicePlaybackIssue(
+      'warning',
+      'Audio format may be unsupported',
+      'Browser could not decode the TTS audio stream: ' + (err && err.message ? err.message : 'codec error'),
+      'Audio decode probe failed'
+    );
+  });
+}
+
 function playChunkWithAudioElement(chunk) {
   var blob = new Blob([chunk], { type: 'audio/mpeg' }); // Google TTS / ElevenLabs both return MP3
   var url = URL.createObjectURL(blob);

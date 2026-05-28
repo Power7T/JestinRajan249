@@ -7,8 +7,9 @@ Each test gets a fresh DB via the `db` fixture.
 import os
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Point at SQLite before importing the app so DATABASE_URL is set
 os.environ.setdefault("DATABASE_URL",           "sqlite:///:memory:")
@@ -28,33 +29,76 @@ from web.db import Base, get_db  # noqa: E402
 from web.app import app           # noqa: E402
 
 # ---------------------------------------------------------------------------
-# SQLite test engine (each test session gets a fresh in-memory DB)
+# SQLite test engine — StaticPool ensures a single shared in-memory database
+# so all sessions (app code + test fixtures) operate on the same data.
 # ---------------------------------------------------------------------------
 TEST_ENGINE = create_engine(
     "sqlite:///:memory:",
     connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=TEST_ENGINE)
 
 
+def _seed_plan_configs(session) -> None:
+    """Insert default PlanConfig rows (idempotent)."""
+    from web.models import PlanConfig
+    plans = [
+        {"plan_key": "starter", "display_name": "Starter", "base_fee_usd": 20.0, "per_unit_fee_usd": 10.0, "min_units": 1, "max_units": 5},
+        {"plan_key": "growth",  "display_name": "Growth",  "base_fee_usd": 20.0, "per_unit_fee_usd":  9.0, "min_units": 6, "max_units": 10},
+        {"plan_key": "pro",     "display_name": "Pro",     "base_fee_usd": 20.0, "per_unit_fee_usd":  8.0, "min_units": 11, "max_units": 50},
+    ]
+    for plan_data in plans:
+        if not session.query(PlanConfig).filter_by(plan_key=plan_data["plan_key"]).first():
+            session.add(PlanConfig(**plan_data))
+    session.commit()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def create_tables():
-    """Create all tables once per test session."""
+    """Create all tables once per test session and seed initial data."""
     Base.metadata.create_all(bind=TEST_ENGINE)
+    seed = TestingSessionLocal()
+    try:
+        _seed_plan_configs(seed)
+    finally:
+        seed.close()
     yield
     Base.metadata.drop_all(bind=TEST_ENGINE)
 
 
+def _truncate_all_tables(engine) -> None:
+    """Delete all rows from every table in dependency-safe order."""
+    with engine.begin() as conn:
+        # Disable FK enforcement in SQLite so we can truncate in any order
+        conn.execute(text("PRAGMA foreign_keys = OFF"))
+        for table in Base.metadata.sorted_tables:
+            conn.execute(table.delete())
+        conn.execute(text("PRAGMA foreign_keys = ON"))
+
+
 @pytest.fixture()
 def db():
-    """Provide a fresh DB session per test, rolled back after each test."""
-    connection = TEST_ENGINE.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
+    """
+    Provide a per-test DB session.
+
+    Before yielding: nothing (tables already exist from create_tables).
+    After yielding: truncate all rows so the next test starts clean,
+    then re-seed the plan configs that are expected to always be present.
+
+    Using StaticPool + per-test cleanup avoids all the nested-transaction
+    complexity that SQLAlchemy 2.0 + SQLite makes tricky with rollback-based
+    isolation.
+    """
+    session = TestingSessionLocal()
     yield session
     session.close()
-    transaction.rollback()
-    connection.close()
+    _truncate_all_tables(TEST_ENGINE)
+    seed = TestingSessionLocal()
+    try:
+        _seed_plan_configs(seed)
+    finally:
+        seed.close()
 
 
 @pytest.fixture()
