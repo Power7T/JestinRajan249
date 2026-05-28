@@ -5931,6 +5931,41 @@ def _notify_host_pending(cfg, tenant_id: str, guest_name: str, text: str, source
     _send_host_notification(tenant_id, notify_phone, notify_text, guest_name, text, source, db)
 
 
+def _notify_host_extension_done(tenant_id: str, cfg, action_row, guest_name: str, source: str, db: Session):
+    """
+    Notify the host when a stay extension has been confirmed with the guest.
+    Gives them everything they need to collect payment directly.
+    """
+    notify_phone = (cfg.host_notify_phone or cfg.whatsapp_number) if cfg else None
+    if not notify_phone:
+        return
+    result  = action_row.result_json or {}
+    params  = action_row.params_json or {}
+    extra_n = result.get("extra_nights") or params.get("extra_nights") or "?"
+    new_date = result.get("checkout_date") or params.get("new_checkout_date") or "?"
+    nightly  = result.get("nightly_rate")
+    total    = result.get("total_cost") or result.get("fee_charged")
+    fee_curr = result.get("fee_currency") or "USD"
+    nights_label = f"{extra_n} night{'s' if str(extra_n) != '1' else ''}"
+
+    lines = [
+        f"✅ Stay extension confirmed",
+        f"",
+        f"Guest: {guest_name}",
+        f"Extension: {nights_label} → new checkout {new_date}",
+    ]
+    if total:
+        from web.actions import _fmt_fee
+        lines.append(f"Amount to collect: {_fmt_fee(float(total), fee_curr)}")
+        if nightly:
+            lines.append(f"Rate: {_fmt_fee(float(nightly), fee_curr)}/night × {extra_n}")
+    else:
+        lines.append(f"Amount: arrange at your standard nightly rate")
+    lines += ["", "→ Please arrange payment directly with the guest"]
+
+    _send_host_notification(tenant_id, notify_phone, "\n".join(lines), guest_name, "", source, db)
+
+
 def _notify_host_pending_action(tenant_id: str, cfg, action_row, guest_name: str, guest_msg: str, source: str, db: Session):
     """
     Alert the host when a guest action is waiting for their approval or escalation.
@@ -6268,11 +6303,13 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                              tenant_id, intent["action_type"], is_auto_approved(cfg, intent["action_type"]))
                     if is_auto_approved(cfg, intent["action_type"]):
                         execute_action(db, action_row)
-                        # After execution, check if policy still requires host approval
-                        # (e.g. approval_required mode in same_unit_free policy)
                         result_json = action_row.result_json or {}
+                        # If policy still required host approval (e.g. approval_required mode)
                         if result_json.get("reason", "").startswith("pending_host_approval"):
                             _notify_host_pending_action(tenant_id, cfg, action_row, guest_name, text, source, db)
+                        # If stay extension completed successfully — notify host to collect payment
+                        elif intent["action_type"] == "extend_stay" and result_json.get("applied"):
+                            _notify_host_extension_done(tenant_id, cfg, action_row, guest_name, source, db)
                         # The policy-driven result IS the only reply — suppress the generic
                         # AI draft so the guest only receives one coherent message that
                         # reflects the host's actual configured outcome (free / flat_fee /

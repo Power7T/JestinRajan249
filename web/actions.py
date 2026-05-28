@@ -1054,8 +1054,8 @@ def execute_action(db: Session, action: GuestAction) -> bool:
                             "fee_charged": total_fee,
                             "fee_currency": fee_curr,
                             "guest_reply": (
-                                f"Done! Your stay has been extended by {nights_label} to {new_date_label}. "
-                                f"An additional charge of {fee_str} ({per_str}/night) will be added to your booking. "
+                                f"Your stay has been extended by {nights_label} to {new_date_label} — all confirmed! "
+                                f"The host will be in touch shortly to arrange payment of {fee_str} ({per_str}/night). "
                                 f"Enjoy the extra time! 🙂"
                             ),
                         }
@@ -1073,9 +1073,9 @@ def execute_action(db: Session, action: GuestAction) -> bool:
                     if nightly and total_cost:
                         cost_str  = _fmt_fee(total_cost, fee_curr)
                         night_str = _fmt_fee(nightly, fee_curr)
-                        cost_msg  = f"An additional charge of {cost_str} ({night_str}/night × {extra_nights}) will be added to your booking."
+                        payment_note = f"The host will be in touch to arrange payment of {cost_str} ({night_str}/night × {extra_nights})."
                     else:
-                        cost_msg = "The additional nights will be charged at your booking rate."
+                        payment_note = "The host will be in touch shortly to arrange payment for the additional nights."
                     pms_ok = adapter.update_reservation(pms_res_id, {"checkout_date": str(new_checkout)})
                     ok = pms_ok
                     if pms_ok:
@@ -1084,9 +1084,10 @@ def execute_action(db: Session, action: GuestAction) -> bool:
                             "extra_nights": extra_nights,
                             "applied": True,
                             "nightly_rate": nightly,
+                            "total_cost": total_cost if nightly else None,
                             "guest_reply": (
-                                f"Done! Your stay has been extended by {nights_label} to {new_date_label}. "
-                                f"{cost_msg} Enjoy the extra time! 🙂"
+                                f"Your stay has been extended by {nights_label} to {new_date_label} — all confirmed! "
+                                f"{payment_note} Enjoy the extra time! 🙂"
                             ),
                         }
                     else:
