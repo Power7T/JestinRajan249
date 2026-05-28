@@ -29,6 +29,10 @@ class GuestyAdapter(PMSAdapter):
     Guesty Open API adapter.
     api_key format: "<client_id>|||<client_secret>"
     """
+    SUPPORTS_UPDATE_RESERVATION = True
+    SUPPORTS_BLOCK_DATES        = True
+    SUPPORTS_AVAILABILITY       = True
+    SUPPORTS_ADD_NOTE           = True
 
     def __init__(self, api_key: str, account_id: str = "", base_url: str = ""):
         parts = api_key.split("|||", 1)
@@ -235,6 +239,99 @@ class GuestyAdapter(PMSAdapter):
                 break
             skip += 50
         return results
+
+    # ── Phase 3: Agentic actions ─────────────────────────────────────────
+
+    def update_reservation(self, reservation_id: str, changes: dict) -> bool:
+        """PATCH /v1/reservations/{id}. Maps logical changes to Guesty field names."""
+        if not reservation_id or not changes:
+            return False
+        payload: dict = {}
+        if "checkout_time" in changes:
+            payload["checkOutTime"] = str(changes["checkout_time"])
+        if "checkin_time" in changes:
+            payload["checkInTime"] = str(changes["checkin_time"])
+        if "guests_count" in changes:
+            payload["guestsCount"] = int(changes["guests_count"])
+        if "checkout" in changes:
+            payload["checkOut"] = str(changes["checkout"])
+        if "checkin" in changes:
+            payload["checkIn"] = str(changes["checkin"])
+        if not payload:
+            return False
+        try:
+            resp = requests.patch(
+                f"{self._base}/v1/reservations/{reservation_id}",
+                headers=self._headers(),
+                json=payload,
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            log.error("Guesty update_reservation failed for %s: %s", reservation_id, exc)
+            return False
+
+    def add_note(self, reservation_id: str, note: str) -> bool:
+        """Append an internal note to a reservation (uses Guesty notes endpoint)."""
+        if not reservation_id or not note:
+            return False
+        try:
+            resp = requests.post(
+                f"{self._base}/v1/reservations/{reservation_id}/notes",
+                headers=self._headers(),
+                json={"content": note, "type": "internal"},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            log.error("Guesty add_note failed for %s: %s", reservation_id, exc)
+            return False
+
+    def block_dates(self, listing_id: str, from_date: date, to_date: date, reason: str = "") -> bool:
+        """Block availability via Guesty calendar API."""
+        if not listing_id:
+            return False
+        try:
+            resp = requests.put(
+                f"{self._base}/v1/listings/{listing_id}/calendar",
+                headers=self._headers(),
+                json={
+                    "from": from_date.isoformat(),
+                    "to":   to_date.isoformat(),
+                    "status": "unavailable",
+                    "note": reason or "Blocked via HostAI",
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            log.error("Guesty block_dates failed for listing %s: %s", listing_id, exc)
+            return False
+
+    def get_availability(self, listing_id: str, from_date: date, to_date: date) -> bool:
+        """Check if the listing is available across the date range."""
+        if not listing_id:
+            return False
+        try:
+            resp = requests.get(
+                f"{self._base}/v1/listings/{listing_id}/calendar",
+                headers=self._headers(),
+                params={"from": from_date.isoformat(), "to": to_date.isoformat()},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            days = resp.json() if isinstance(resp.json(), list) else resp.json().get("data", [])
+            # Available if every day is "available"
+            for d in days or []:
+                if (d.get("status") or "").lower() != "available":
+                    return False
+            return True
+        except Exception as exc:
+            log.error("Guesty get_availability failed for listing %s: %s", listing_id, exc)
+            return False
 
 
 def _parse_date(val) -> Optional[date]:

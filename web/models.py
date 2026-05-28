@@ -343,6 +343,22 @@ class TenantConfig(Base):
     auto_send_enabled:   Mapped[bool]  = mapped_column(Boolean, nullable=False, server_default="false", default=False)
     auto_send_threshold: Mapped[float] = mapped_column(Float,   nullable=False, server_default="0.85",  default=0.85)
 
+    # Proactive messaging — auto-send timed guest messages around the stay
+    proactive_enabled:          Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
+    proactive_pre_arrival_h:    Mapped[int]  = mapped_column(Integer, nullable=False, server_default="24", default=24)
+    proactive_mid_stay_day:     Mapped[int]  = mapped_column(Integer, nullable=False, server_default="2",  default=2)
+    proactive_review_delay_days: Mapped[int] = mapped_column(Integer, nullable=False, server_default="2",  default=2)
+    proactive_triggers:         Mapped[str]  = mapped_column(Text, nullable=False,
+                                                server_default="pre_arrival,checkin_day,mid_stay,checkout,review_request",
+                                                default="pre_arrival,checkin_day,mid_stay,checkout,review_request")
+
+    # Feedback learning loop — AI improves from host draft edits
+    ai_learning_notes:    Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ai_corrections_count: Mapped[int]           = mapped_column(Integer, nullable=False, server_default="0", default=0)
+
+    # Agentic actions — comma-separated action types the AI may execute without host approval
+    action_auto_approve:  Mapped[str] = mapped_column(Text, nullable=False, server_default="", default="")
+
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="config")
 
 
@@ -678,6 +694,8 @@ class Reservation(Base):
 
     # Proactive message state flags (prevent re-sending)
     pre_arrival_sent:     Mapped[bool]          = mapped_column(Boolean, default=False)
+    checkin_day_msg_sent: Mapped[bool]          = mapped_column(Boolean, default=False, server_default="false")
+    mid_stay_msg_sent:    Mapped[bool]          = mapped_column(Boolean, default=False, server_default="false")
     checkout_msg_sent:    Mapped[bool]          = mapped_column(Boolean, default=False)
     review_reminder_sent: Mapped[bool]          = mapped_column(Boolean, default=False)
     cleaner_brief_sent:   Mapped[bool]          = mapped_column(Boolean, default=False)
@@ -894,6 +912,11 @@ class TeamMember(Base):
     expertise_areas: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Comma-separated: maintenance, billing, guest_relations, voice_support
     max_concurrent_tasks: Mapped[int] = mapped_column(Integer, default=10)  # Workload limit
     is_available_for_assignment: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+    # ========== OPERATIONS TASK DISPATCH ==========
+    task_types:     Mapped[str]           = mapped_column(Text, nullable=False, server_default="", default="")  # comma-separated: maintenance,cleaning,supply
+    notify_phone:   Mapped[Optional[str]] = mapped_column(String(32), nullable=True)   # phone for task dispatch alerts (falls back to .phone)
+    notify_channel: Mapped[str]           = mapped_column(String(16), nullable=False, server_default="sms", default="sms")  # sms | whatsapp
 
     created_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
     updated_at:  Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
@@ -1566,3 +1589,143 @@ class SalesMessage(Base):
     created_at:      Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
     conversation: Mapped["SalesConversation"] = relationship("SalesConversation", back_populates="messages")
+
+
+# ===========================================================================
+# Phase 1 — Proactive Messaging
+# ===========================================================================
+
+class ProactiveMessage(Base):
+    """A scheduled, AI-generated message sent around a guest's stay."""
+    __tablename__ = "proactive_messages"
+    __table_args__ = (
+        UniqueConstraint("reservation_id", "trigger_type", name="uq_proactive_res_trigger"),
+    )
+
+    id:             Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:      Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    reservation_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
+    trigger_type:   Mapped[str]           = mapped_column(String(32), index=True)  # pre_arrival/checkin_day/mid_stay/checkout/review_request
+    scheduled_at:   Mapped[datetime]      = mapped_column(DateTime(timezone=True), index=True)
+    sent_at:        Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    status:         Mapped[str]           = mapped_column(String(16), default="pending", index=True)  # pending/sent/skipped/failed
+    channel:        Mapped[Optional[str]] = mapped_column(String(16), nullable=True)  # whatsapp/sms
+    message_text:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    draft_id:       Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("drafts.id"), nullable=True)
+    error_reason:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at:     Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ===========================================================================
+# Phase 2 — Feedback Learning Loop
+# ===========================================================================
+
+class DraftCorrection(Base):
+    """Records when a host edits an AI draft, for learning the host's style."""
+    __tablename__ = "draft_corrections"
+
+    id:             Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:      Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    draft_id:       Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("drafts.id"), nullable=True)
+    original_text:  Mapped[str]           = mapped_column(Text)
+    corrected_text: Mapped[str]           = mapped_column(Text)
+    guest_message:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    msg_type:       Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    sentiment:      Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    created_at:     Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
+# ===========================================================================
+# Phase 3 — Agentic Actions (PMS write-back)
+# ===========================================================================
+
+class GuestAction(Base):
+    """A guest-requested action the AI detected and may execute against the PMS."""
+    __tablename__ = "guest_actions"
+
+    id:              Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:       Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    reservation_id:  Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
+    draft_id:        Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("drafts.id"), nullable=True)
+    action_type:     Mapped[str]           = mapped_column(String(64), index=True)  # late_checkout/early_checkin/extra_guest/add_note/block_dates
+    params_json:     Mapped[dict]          = mapped_column(JSON, default=lambda: {})
+    status:          Mapped[str]           = mapped_column(String(16), default="pending", index=True)  # pending/approved/rejected/executed/failed
+    result_json:     Mapped[dict]          = mapped_column(JSON, default=lambda: {})
+    requires_approval: Mapped[bool]        = mapped_column(Boolean, default=True)
+    executed_at:     Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at:      Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
+# ===========================================================================
+# Phase 4 — Staff Task Dispatch
+# ===========================================================================
+
+class OperationsTask(Base):
+    """An operational task (maintenance, cleaning, etc.) dispatched to a team member."""
+    __tablename__ = "operations_tasks"
+
+    id:              Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:       Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    reservation_id:  Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
+    draft_id:        Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("drafts.id"), nullable=True)
+    assigned_to:     Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("team_members.id"), nullable=True, index=True)
+    task_type:       Mapped[str]           = mapped_column(String(32), index=True)  # maintenance/cleaning/supply/security/other
+    priority:        Mapped[str]           = mapped_column(String(16), default="normal", index=True)  # low/normal/high/urgent
+    title:           Mapped[str]           = mapped_column(Text)
+    description:     Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status:          Mapped[str]           = mapped_column(String(16), default="open", index=True)  # open/assigned/in_progress/resolved/cancelled
+    sla_minutes:     Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    guest_phone:     Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)  # to notify guest on resolution
+    guest_name:      Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    guest_channel:   Mapped[Optional[str]] = mapped_column(String(16), nullable=True)  # whatsapp/sms — how to reach guest
+    assigned_at:     Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at:     Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolution_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    guest_notified:  Mapped[bool]          = mapped_column(Boolean, default=False)
+    escalated:       Mapped[bool]          = mapped_column(Boolean, default=False)
+    created_at:      Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
+# ===========================================================================
+# Phase 5 — Direct Booking / Inquiries
+# ===========================================================================
+
+class BookingInquiry(Base):
+    """A pre-booking inquiry from a prospective (not-yet-confirmed) guest."""
+    __tablename__ = "booking_inquiries"
+
+    id:              Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:       Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    channel:         Mapped[str]           = mapped_column(String(16), index=True)  # voice/whatsapp/sms/widget
+    contact_phone:   Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    contact_email:   Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    contact_name:    Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    requested_dates_json: Mapped[dict]     = mapped_column(JSON, default=lambda: {})  # {checkin, checkout, guests}
+    listing_id:      Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    listing_name:    Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    status:          Mapped[str]           = mapped_column(String(16), default="open", index=True)  # open/quoted/booked/lost
+    quoted_price:    Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    availability_checked: Mapped[bool]     = mapped_column(Boolean, default=False)
+    is_available:    Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    notes:           Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at:      Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    updated_at:      Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+# ===========================================================================
+# Phase 7 — Vision PMS session persistence
+# ===========================================================================
+
+class VisionPMSSession(Base):
+    """Stores an encrypted browser session (cookies) so the vision agent avoids re-login."""
+    __tablename__ = "vision_pms_sessions"
+
+    id:             Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    integration_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("pms_integrations.id"), nullable=True, index=True)
+    tenant_id:      Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    cookies_enc:    Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # AES-encrypted JSON array of cookies
+    last_url:       Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    last_used_at:   Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    valid_until:    Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    awaiting_otp:   Mapped[bool]          = mapped_column(Boolean, default=False)   # set when 2FA detected
+    created_at:     Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)

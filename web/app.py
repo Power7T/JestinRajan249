@@ -607,6 +607,33 @@ async def lifespan(app: FastAPI):
             name="Upsell Mid-Stay Trigger",
             replace_existing=True,
         )
+        # Phase 1 — proactive messaging (pre-arrival, mid-stay, checkout, review)
+        from web.proactive import proactive_messaging_job
+        scheduler.add_job(
+            proactive_messaging_job,
+            CronTrigger(minute="*/30", timezone="UTC"),  # Every 30 minutes
+            id="proactive_messaging",
+            name="Proactive guest messaging",
+            replace_existing=True,
+        )
+        # Phase 2 — weekly synthesis of host style notes from corrections
+        from web.feedback_learning import synthesize_learning_notes_job
+        scheduler.add_job(
+            synthesize_learning_notes_job,
+            CronTrigger(day_of_week="mon", hour=3, minute=0, timezone="UTC"),  # Monday 03:00 UTC
+            id="feedback_learning_synthesis",
+            name="AI style synthesis from host corrections",
+            replace_existing=True,
+        )
+        # Phase 4 — SLA escalation for overdue operations tasks
+        from web.ops_dispatch import sla_escalation_job
+        scheduler.add_job(
+            sla_escalation_job,
+            CronTrigger(minute="*/15", timezone="UTC"),  # Every 15 minutes
+            id="ops_sla_escalation",
+            name="Operations task SLA escalation",
+            replace_existing=True,
+        )
         # Add APScheduler event listeners for job failures (Failure gap fix #5)
         from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED
 
@@ -2651,6 +2678,13 @@ def edit_draft(draft_id: str, request: Request, edited_text: str = Form(...),
     if not draft:
         raise HTTPException(status_code=404, detail="Draft not found")
 
+    # Phase 2 — capture the correction for the learning loop
+    try:
+        from web.feedback_learning import record_correction
+        record_correction(db, tenant_id, draft, edited_text)
+    except Exception as _learn_exc:
+        log.warning("[LEARNING] capture failed: %s", _learn_exc)
+
     _execute_draft(draft, edited_text.strip(), tenant_id, db)
     redirect_to = "/dashboard"
     selected_property = request.query_params.get("property", "").strip()
@@ -4063,6 +4097,169 @@ async def automations_preferences_save(
     db.commit()
     worker_manager.restart_worker(tenant_id)
     return RedirectResponse("/automations?saved=1#preferences", status_code=303)
+
+
+@app.get("/operations", response_class=HTMLResponse)
+def operations_page(request: Request, db: Session = Depends(get_db)):
+    """Show open and recently resolved operations tasks."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    from web.models import OperationsTask as _OT
+    open_tasks = (
+        db.query(_OT)
+        .filter(_OT.tenant_id == tenant_id, _OT.status.in_(("open", "assigned", "in_progress")))
+        .order_by(_OT.priority.desc(), _OT.created_at.desc())
+        .all()
+    )
+    recent_resolved = (
+        db.query(_OT)
+        .filter(_OT.tenant_id == tenant_id, _OT.status == "resolved")
+        .order_by(_OT.resolved_at.desc().nullslast())
+        .limit(20).all()
+    )
+    ctx = _workspace_context(request, db, tenant_id, page_key="operations")
+    ctx["open_tasks"] = open_tasks
+    ctx["recent_resolved"] = recent_resolved
+    return templates.TemplateResponse("operations.html", ctx)
+
+
+@app.post("/operations/{task_id}/resolve")
+def operations_resolve(task_id: int, request: Request,
+                       note: str = Form(""),
+                       csrf_token: str = Form(None),
+                       db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    from web.models import OperationsTask as _OT
+    task = db.query(_OT).filter_by(id=task_id, tenant_id=tenant_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task.status = "resolved"
+    task.resolved_at = datetime.now(timezone.utc)
+    task.resolution_note = (note or "Resolved by host")[:500]
+    db.commit()
+    # Notify guest if not already
+    if task.guest_phone and task.guest_channel and not task.guest_notified:
+        cfg = _get_or_create_config(tenant_id, db)
+        msg = "All taken care of. Thanks for your patience!"
+        try:
+            if _send_voice_message(cfg, task.guest_phone, msg, task.guest_channel):
+                task.guest_notified = True
+                db.commit()
+        except Exception:
+            pass
+    return RedirectResponse("/operations", status_code=302)
+
+
+@app.post("/automations/auto-approve")
+async def automations_auto_approve_save(
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Save which agentic action types HostAI can execute without host approval."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    cfg = _get_or_create_config(tenant_id, db)
+    form = await request.form()
+    allowed = []
+    valid = ("late_checkout", "early_checkin", "extra_guest", "add_note")
+    for v in (form.getlist("auto_approve") if hasattr(form, "getlist") else []):
+        if v in valid:
+            allowed.append(v)
+    cfg.action_auto_approve = ",".join(allowed)
+    db.add(ActivityLog(
+        tenant_id=tenant_id, event_type="action_auto_approve_saved",
+        message=f"Auto-approved actions: {cfg.action_auto_approve or '(none)'}",
+    ))
+    db.commit()
+    return RedirectResponse("/automations?saved=auto_approve#auto-approve", status_code=303)
+
+
+@app.post("/actions/{action_id}/approve")
+def action_approve(action_id: int, request: Request,
+                   csrf_token: str = Form(None),
+                   db: Session = Depends(get_db)):
+    """Host approves a pending guest action — execute it now."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    from web.models import GuestAction
+    from web.actions import execute_action
+    action = db.query(GuestAction).filter_by(id=action_id, tenant_id=tenant_id).first()
+    if not action:
+        raise HTTPException(status_code=404, detail="Action not found")
+    if action.status != "pending":
+        return RedirectResponse("/dashboard", status_code=302)
+    action.status = "approved"
+    db.commit()
+    execute_action(db, action)
+    return RedirectResponse("/dashboard", status_code=302)
+
+
+@app.post("/actions/{action_id}/reject")
+def action_reject(action_id: int, request: Request,
+                  csrf_token: str = Form(None),
+                  db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    from web.models import GuestAction
+    action = db.query(GuestAction).filter_by(id=action_id, tenant_id=tenant_id).first()
+    if not action:
+        raise HTTPException(status_code=404, detail="Action not found")
+    action.status = "rejected"
+    db.commit()
+    return RedirectResponse("/dashboard", status_code=302)
+
+
+@app.post("/automations/proactive")
+async def automations_proactive_save(
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Save proactive messaging settings (enabled, triggers, timing)."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    rate_limit(f"automations:{tenant_id}", max_requests=30, window_seconds=3600)
+    cfg = _get_or_create_config(tenant_id, db)
+    form = await request.form()
+    cfg.proactive_enabled = form.get("proactive_enabled") == "on"
+    triggers = form.getlist("triggers") if hasattr(form, "getlist") else (
+        [v for k, v in form.multi_items() if k == "triggers"] if hasattr(form, "multi_items") else []
+    )
+    if triggers:
+        cfg.proactive_triggers = ",".join(t for t in triggers if t in
+                                         ("pre_arrival", "checkin_day", "mid_stay", "checkout", "review_request"))
+    try:
+        cfg.proactive_pre_arrival_h = max(1, min(72, int(form.get("proactive_pre_arrival_h") or 24)))
+        cfg.proactive_mid_stay_day = max(1, min(14, int(form.get("proactive_mid_stay_day") or 2)))
+        cfg.proactive_review_delay_days = max(0, min(14, int(form.get("proactive_review_delay_days") or 2)))
+    except (ValueError, TypeError):
+        pass
+    db.add(ActivityLog(
+        tenant_id=tenant_id,
+        event_type="proactive_settings_saved",
+        message=f"Proactive {'enabled' if cfg.proactive_enabled else 'disabled'}, triggers={cfg.proactive_triggers}",
+    ))
+    db.commit()
+    return RedirectResponse("/automations?saved=proactive#proactive", status_code=303)
 
 
 @app.get("/integrations", response_class=HTMLResponse)
@@ -5507,6 +5704,15 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
         _handle_host_command(tenant_id, text.strip(), db)
         return
 
+    # Phase 4 — check if this is a team-member reply resolving an ops task
+    try:
+        from web.ops_dispatch import resolve_task_by_reply
+        if resolve_task_by_reply(db, tenant_id, reply_to, text):
+            log.info("[%s] Inbound from %s resolved an ops task", tenant_id, reply_to[-4:] if reply_to else "")
+            return
+    except Exception as _ops_exc:
+        log.warning("[%s] ops resolve check failed: %s", tenant_id, _ops_exc)
+
     # Check guest whitelisting (GuestContact system)
     from web.guest_contact_service import is_guest_whitelisted, get_guest_contact_for_phone
     if not is_guest_whitelisted(tenant_id, reply_to, db):
@@ -5759,6 +5965,35 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
 
         # Check for upsell opportunities on every inbound message
         _check_upsell_opportunity(tenant_id, text, guest_contact, cfg, db)
+
+        # Phase 3 — agentic action detection
+        # Only run when reservation exists (we need something to act against)
+        if reservation is not None:
+            try:
+                from web.actions import detect_action_intent, create_action, execute_action, is_auto_approved
+                intent = detect_action_intent(text)
+                if intent and intent.get("action_type") in ("late_checkout", "early_checkin", "extra_guest", "add_note"):
+                    action_row = create_action(
+                        db, tenant_id,
+                        intent["action_type"], intent.get("params") or {},
+                        reservation, draft.id, cfg,
+                    )
+                    log.info("[%s] Action detected: %s (auto_approve=%s)",
+                             tenant_id, intent["action_type"], is_auto_approved(cfg, intent["action_type"]))
+                    if is_auto_approved(cfg, intent["action_type"]):
+                        execute_action(db, action_row)
+            except Exception as _act_exc:
+                log.warning("[%s] Action detection failed: %s", tenant_id, _act_exc)
+
+        # Phase 4 — operations task dispatch
+        try:
+            from web.ops_dispatch import maybe_dispatch_from_message
+            maybe_dispatch_from_message(
+                db, tenant_id, cfg, draft, reservation,
+                guest_name=guest_name, guest_phone=reply_to, channel=source,
+            )
+        except Exception as _ops_exc:
+            log.warning("[%s] Ops dispatch failed: %s", tenant_id, _ops_exc)
 
         _apply_automation_if_matched(db, tenant_id, draft, reservation)
 

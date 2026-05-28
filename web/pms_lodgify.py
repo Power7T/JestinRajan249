@@ -24,6 +24,8 @@ class LodgifyAdapter(PMSAdapter):
     Lodgify API v2 adapter.
     api_key: plain Lodgify API key (used as X-ApiKey header)
     """
+    SUPPORTS_UPDATE_RESERVATION = True
+    SUPPORTS_ADD_NOTE           = True
 
     def __init__(self, api_key: str, account_id: str = "", base_url: str = ""):
         self._api_key = api_key.strip()
@@ -167,6 +169,53 @@ class LodgifyAdapter(PMSAdapter):
                 break
             page += 1
         return results
+
+    # ── Phase 3: Agentic actions ─────────────────────────────────────────
+
+    def update_reservation(self, reservation_id: str, changes: dict) -> bool:
+        if not reservation_id or not changes:
+            return False
+        payload: dict = {}
+        if "checkout" in changes:
+            payload["departure"] = str(changes["checkout"])
+        if "checkin" in changes:
+            payload["arrival"] = str(changes["checkin"])
+        if "guests_count" in changes:
+            payload["people_count"] = int(changes["guests_count"])
+        if "checkout_time" in changes:
+            payload["departure_time"] = str(changes["checkout_time"])
+        if "checkin_time" in changes:
+            payload["arrival_time"] = str(changes["checkin_time"])
+        if not payload:
+            return False
+        try:
+            resp = requests.put(
+                f"{self._base}/v2/reservations/{reservation_id}",
+                headers=self._headers(),
+                json=payload,
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            log.error("Lodgify update_reservation failed for %s: %s", reservation_id, exc)
+            return False
+
+    def add_note(self, reservation_id: str, note: str) -> bool:
+        if not reservation_id or not note:
+            return False
+        try:
+            resp = requests.post(
+                f"{self._base}/v2/reservations/{reservation_id}/notes",
+                headers=self._headers(),
+                json={"content": note[:1000]},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            log.error("Lodgify add_note failed for %s: %s", reservation_id, exc)
+            return False
 
 
 def _parse_date(val) -> Optional[date]:

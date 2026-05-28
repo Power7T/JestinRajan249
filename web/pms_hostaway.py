@@ -26,6 +26,8 @@ class HostawayAdapter(PMSAdapter):
     Hostaway API adapter.
     api_key format: "<client_id>|||<client_secret>"
     """
+    SUPPORTS_UPDATE_RESERVATION = True
+    SUPPORTS_ADD_NOTE           = True
 
     def __init__(self, api_key: str, account_id: str = "", base_url: str = ""):
         parts = api_key.split("|||", 1)
@@ -225,6 +227,53 @@ class HostawayAdapter(PMSAdapter):
                 break
             offset += 50
         return results
+
+    # ── Phase 3: Agentic actions ─────────────────────────────────────────
+
+    def update_reservation(self, reservation_id: str, changes: dict) -> bool:
+        if not reservation_id or not changes:
+            return False
+        payload: dict = {}
+        if "checkout" in changes:
+            payload["departureDate"] = str(changes["checkout"])
+        if "checkin" in changes:
+            payload["arrivalDate"] = str(changes["checkin"])
+        if "guests_count" in changes:
+            payload["adults"] = int(changes["guests_count"])
+        if "checkout_time" in changes:
+            payload["departureTime"] = str(changes["checkout_time"])
+        if "checkin_time" in changes:
+            payload["arrivalTime"] = str(changes["checkin_time"])
+        if not payload:
+            return False
+        try:
+            resp = requests.put(
+                f"{self._base}/v1/reservations/{reservation_id}",
+                headers=self._headers(),
+                json=payload,
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            log.error("Hostaway update_reservation failed for %s: %s", reservation_id, exc)
+            return False
+
+    def add_note(self, reservation_id: str, note: str) -> bool:
+        if not reservation_id or not note:
+            return False
+        try:
+            resp = requests.put(
+                f"{self._base}/v1/reservations/{reservation_id}",
+                headers=self._headers(),
+                json={"customFieldValues": [{"name": "HostAI Note", "value": note[:1000]}]},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            log.error("Hostaway add_note failed for %s: %s", reservation_id, exc)
+            return False
 
 
 def _parse_date(val) -> Optional[date]:

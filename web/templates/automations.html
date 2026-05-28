@@ -58,6 +58,102 @@
   </form>
 </section>
 
+<!-- ── Phase 1: Proactive Messaging ──────────────────────────────────── -->
+<section class="form-section" id="proactive">
+  <h2>Proactive guest messaging</h2>
+  <p class="help-text">HostAI automatically sends the right message at the right moment — no approval needed. Pre-arrival, check-in day, mid-stay, checkout, and review request.</p>
+  {% if request.query_params.get('saved') == 'proactive' %}
+  <div class="alert alert-success" style="margin-bottom:1rem;">✓ Proactive messaging settings saved.</div>
+  {% endif %}
+  <form method="post" action="/automations/proactive">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+    {% set active_triggers = (cfg.proactive_triggers or '').split(',') %}
+
+    <div class="card" style="margin-bottom:1rem;">
+      <label style="display:flex;align-items:center;gap:0.7rem;text-transform:none;letter-spacing:0;font-size:0.92rem;color:#e3e1eb;">
+        <input type="checkbox" name="proactive_enabled" {% if cfg.proactive_enabled %}checked{% endif %}>
+        Enable proactive messaging
+      </label>
+      <p class="help-text">Turn the whole system on or off. Individual triggers below let you fine-tune which moments are covered.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+      <h3 style="font-size:0.9rem;color:#e3e1eb;margin-bottom:0.5rem;">Triggers</h3>
+      <label style="display:flex;align-items:center;gap:0.5rem;color:#e3e1eb;font-size:0.88rem;margin-bottom:0.4rem;">
+        <input type="checkbox" name="triggers" value="pre_arrival" {% if 'pre_arrival' in active_triggers %}checked{% endif %}>
+        Pre-arrival (sent before check-in)
+      </label>
+      <label style="display:flex;align-items:center;gap:0.5rem;color:#e3e1eb;font-size:0.88rem;margin-bottom:0.4rem;">
+        <input type="checkbox" name="triggers" value="checkin_day" {% if 'checkin_day' in active_triggers %}checked{% endif %}>
+        Check-in day (morning of arrival)
+      </label>
+      <label style="display:flex;align-items:center;gap:0.5rem;color:#e3e1eb;font-size:0.88rem;margin-bottom:0.4rem;">
+        <input type="checkbox" name="triggers" value="mid_stay" {% if 'mid_stay' in active_triggers %}checked{% endif %}>
+        Mid-stay check-in
+      </label>
+      <label style="display:flex;align-items:center;gap:0.5rem;color:#e3e1eb;font-size:0.88rem;margin-bottom:0.4rem;">
+        <input type="checkbox" name="triggers" value="checkout" {% if 'checkout' in active_triggers %}checked{% endif %}>
+        Checkout reminder (morning of departure)
+      </label>
+      <label style="display:flex;align-items:center;gap:0.5rem;color:#e3e1eb;font-size:0.88rem;margin-bottom:0.4rem;">
+        <input type="checkbox" name="triggers" value="review_request" {% if 'review_request' in active_triggers %}checked{% endif %}>
+        Review request (after checkout)
+      </label>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+      <div>
+        <label>Pre-arrival lead (hours)</label>
+        <input type="number" name="proactive_pre_arrival_h" min="1" max="72" value="{{ cfg.proactive_pre_arrival_h or 24 }}">
+      </div>
+      <div>
+        <label>Mid-stay day</label>
+        <input type="number" name="proactive_mid_stay_day" min="1" max="14" value="{{ cfg.proactive_mid_stay_day or 2 }}">
+      </div>
+      <div>
+        <label>Review request delay (days)</label>
+        <input type="number" name="proactive_review_delay_days" min="0" max="14" value="{{ cfg.proactive_review_delay_days or 2 }}">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save proactive settings</button>
+  </form>
+</section>
+
+<!-- ── Phase 3: Autonomous Actions ──────────────────────────────────── -->
+<section class="form-section" id="auto-approve">
+  <h2>Autonomous actions</h2>
+  <p class="help-text">When HostAI detects a guest is asking for a specific change (late checkout, early check-in, extra guest, etc.), it can execute the change in your PMS automatically — or queue it for your approval.</p>
+  {% if request.query_params.get('saved') == 'auto_approve' %}
+  <div class="alert alert-success" style="margin-bottom:1rem;">✓ Autonomous action settings saved.</div>
+  {% endif %}
+  <form method="post" action="/automations/auto-approve">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    {% set auto_actions = (cfg.action_auto_approve or '').split(',') %}
+    <div class="card" style="margin-bottom:1rem;">
+      <label style="display:flex;align-items:center;gap:0.5rem;color:#e3e1eb;font-size:0.88rem;margin-bottom:0.4rem;">
+        <input type="checkbox" name="auto_approve" value="late_checkout" {% if 'late_checkout' in auto_actions %}checked{% endif %}>
+        Late checkout requests
+      </label>
+      <label style="display:flex;align-items:center;gap:0.5rem;color:#e3e1eb;font-size:0.88rem;margin-bottom:0.4rem;">
+        <input type="checkbox" name="auto_approve" value="early_checkin" {% if 'early_checkin' in auto_actions %}checked{% endif %}>
+        Early check-in requests
+      </label>
+      <label style="display:flex;align-items:center;gap:0.5rem;color:#e3e1eb;font-size:0.88rem;margin-bottom:0.4rem;">
+        <input type="checkbox" name="auto_approve" value="extra_guest" {% if 'extra_guest' in auto_actions %}checked{% endif %}>
+        Adding an extra guest
+      </label>
+      <label style="display:flex;align-items:center;gap:0.5rem;color:#e3e1eb;font-size:0.88rem;margin-bottom:0.4rem;">
+        <input type="checkbox" name="auto_approve" value="add_note" {% if 'add_note' in auto_actions %}checked{% endif %}>
+        Logging guest notes
+      </label>
+      <p class="help-text">Anything not checked above will appear as a pending action card on your dashboard for one-click approval.</p>
+    </div>
+    <button type="submit" class="btn btn-primary">Save autonomous action settings</button>
+  </form>
+</section>
+
 <section class="form-section" id="rules">
   <h2>Automation rules</h2>
   <p class="help-text">Use rules to decide what can auto-send safely and what should stay in review.</p>

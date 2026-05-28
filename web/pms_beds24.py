@@ -28,6 +28,8 @@ class Beds24Adapter(PMSAdapter):
     Beds24 API v2 adapter.
     api_key: Beds24 refresh_token (long-lived credential).
     """
+    SUPPORTS_UPDATE_RESERVATION = True
+    SUPPORTS_ADD_NOTE           = True
 
     def __init__(self, api_key: str, account_id: str = "", base_url: str = ""):
         self._refresh_token = api_key.strip()
@@ -244,6 +246,53 @@ class Beds24Adapter(PMSAdapter):
                 break
             page += 1
         return results
+
+    # ── Phase 3: Agentic actions ─────────────────────────────────────────
+
+    def update_reservation(self, reservation_id: str, changes: dict) -> bool:
+        if not reservation_id or not changes:
+            return False
+        payload: dict = {"id": reservation_id}
+        if "checkout" in changes:
+            payload["departure"] = str(changes["checkout"])
+        if "checkin" in changes:
+            payload["arrival"] = str(changes["checkin"])
+        if "guests_count" in changes:
+            payload["numAdult"] = int(changes["guests_count"])
+        if "checkout_time" in changes:
+            payload["departureTime"] = str(changes["checkout_time"])
+        if "checkin_time" in changes:
+            payload["arrivalTime"] = str(changes["checkin_time"])
+        if len(payload) == 1:
+            return False  # only id, no changes
+        try:
+            resp = requests.post(
+                f"{self._base}/v2/bookings",
+                headers=self._headers(),
+                json=[payload],   # Beds24 expects an array for batch updates
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            log.error("Beds24 update_reservation failed for %s: %s", reservation_id, exc)
+            return False
+
+    def add_note(self, reservation_id: str, note: str) -> bool:
+        if not reservation_id or not note:
+            return False
+        try:
+            resp = requests.post(
+                f"{self._base}/v2/bookings",
+                headers=self._headers(),
+                json=[{"id": reservation_id, "notes": note[:1000]}],
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            log.error("Beds24 add_note failed for %s: %s", reservation_id, exc)
+            return False
 
 
 def _parse_date(val) -> Optional[date]:

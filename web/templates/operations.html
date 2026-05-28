@@ -1,0 +1,95 @@
+{% extends "workspace_shell.html" %}
+
+{% block page_title %}Operations{% endblock %}
+{% block page_heading %}Operations{% endblock %}
+{% block page_subtitle %}Tasks dispatched to your team when guests report issues. HostAI auto-routes maintenance, cleaning, supply, and security tasks; team members can resolve by replying "DONE" to the dispatch SMS.{% endblock %}
+
+{% block workspace_content %}
+<div class="metric-grid">
+  <div class="metric-card">
+    <div class="metric-value">{{ open_tasks|length }}</div>
+    <div class="metric-label">Open tasks</div>
+    <div class="metric-note">Active or assigned tasks waiting on a team member.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{{ open_tasks|selectattr('priority', 'equalto', 'urgent')|list|length }}</div>
+    <div class="metric-label">Urgent</div>
+    <div class="metric-note">Security or emergency-level tasks needing immediate attention.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{{ recent_resolved|length }}</div>
+    <div class="metric-label">Resolved recently</div>
+    <div class="metric-note">Most recent 20 closed tasks.</div>
+  </div>
+</div>
+
+<section class="form-section">
+  <h2>Open tasks</h2>
+  {% if not open_tasks %}
+    <div class="card empty-state">
+      <p>No open tasks. When guests message about maintenance, cleaning, supplies, or security, HostAI will dispatch them here.</p>
+    </div>
+  {% else %}
+  <div class="card-stack">
+    {% for task in open_tasks %}
+    <div class="card priority-{{ task.priority }}" style="border-left:4px solid
+        {% if task.priority == 'urgent' %}#ef4444
+        {% elif task.priority == 'high' %}#f59e0b
+        {% else %}#5B8DEF{% endif %};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+        <div style="flex:1;min-width:220px;">
+          <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.4rem;">
+            <span class="chip">#{{ task.id }}</span>
+            <span class="chip">{{ task.task_type | title }}</span>
+            <span class="chip
+                {% if task.priority == 'urgent' %}danger
+                {% elif task.priority == 'high' %}warn
+                {% else %}info{% endif %}">{{ task.priority | upper }}</span>
+            {% if task.escalated %}<span class="chip danger">ESCALATED</span>{% endif %}
+          </div>
+          <p style="color:#e3e1eb;font-weight:600;margin-bottom:0.25rem;">{{ task.title }}</p>
+          <p style="color:#94a3b8;font-size:0.85rem;">{{ task.description[:240] if task.description else '' }}</p>
+          <p style="color:#64748b;font-size:0.8rem;margin-top:0.5rem;">
+            Guest: {{ task.guest_name or 'Unknown' }}
+            {% if task.created_at %} &middot; {{ task.created_at.strftime('%b %d, %H:%M') }}{% endif %}
+            {% if task.sla_minutes %} &middot; SLA {{ task.sla_minutes }} min{% endif %}
+          </p>
+        </div>
+        <form method="post" action="/operations/{{ task.id }}/resolve" style="display:flex;flex-direction:column;gap:0.4rem;min-width:200px;">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <input type="text" name="note" placeholder="Resolution note (optional)" style="font-size:0.85rem;">
+          <button type="submit" class="btn btn-primary btn-sm">Mark resolved</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="form-section">
+  <h2>Recently resolved</h2>
+  {% if not recent_resolved %}
+    <p class="help-text">Resolved tasks will appear here.</p>
+  {% else %}
+  <div class="card-stack">
+    {% for task in recent_resolved %}
+    <div class="card" style="opacity:0.8;">
+      <div style="display:flex;justify-content:space-between;gap:1rem;">
+        <div>
+          <span class="chip success">RESOLVED</span>
+          <span class="chip">#{{ task.id }}</span>
+          <span class="chip">{{ task.task_type | title }}</span>
+          <p style="color:#e3e1eb;margin-top:0.4rem;">{{ task.title }}</p>
+          {% if task.resolution_note %}<p style="color:#94a3b8;font-size:0.85rem;">{{ task.resolution_note }}</p>{% endif %}
+        </div>
+        <div style="text-align:right;color:#64748b;font-size:0.8rem;">
+          {% if task.resolved_at %}{{ task.resolved_at.strftime('%b %d, %H:%M') }}{% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -26,6 +26,8 @@ class SmoobuAdapter(PMSAdapter):
     Smoobu API adapter.
     api_key: plain Smoobu API key (sent as Api-Key header).
     """
+    SUPPORTS_UPDATE_RESERVATION = True
+    SUPPORTS_ADD_NOTE           = True
 
     def __init__(self, api_key: str, account_id: str = "", base_url: str = ""):
         self._api_key = api_key.strip()
@@ -206,6 +208,49 @@ class SmoobuAdapter(PMSAdapter):
                 status=str(r.get("type") or r.get("status") or "confirmed").lower(),
             ))
         return results
+
+    # ── Phase 3: Agentic actions ─────────────────────────────────────────
+
+    def update_reservation(self, reservation_id: str, changes: dict) -> bool:
+        if not reservation_id or not changes:
+            return False
+        payload: dict = {}
+        if "checkout" in changes:
+            payload["check-out"] = str(changes["checkout"])
+        if "checkin" in changes:
+            payload["check-in"] = str(changes["checkin"])
+        if "guests_count" in changes:
+            payload["adults"] = int(changes["guests_count"])
+        if not payload:
+            return False
+        try:
+            resp = requests.put(
+                f"{self._base}/reservations/{reservation_id}",
+                headers=self._headers(),
+                json=payload,
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            log.error("Smoobu update_reservation failed for %s: %s", reservation_id, exc)
+            return False
+
+    def add_note(self, reservation_id: str, note: str) -> bool:
+        if not reservation_id or not note:
+            return False
+        try:
+            resp = requests.put(
+                f"{self._base}/reservations/{reservation_id}",
+                headers=self._headers(),
+                json={"notice": note[:1000]},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            log.error("Smoobu add_note failed for %s: %s", reservation_id, exc)
+            return False
 
 
 def _parse_date(val) -> Optional[date]:

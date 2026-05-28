@@ -476,6 +476,22 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
 
     system = system + "\n\n" + lang_rule + "\n\n" + _GUEST_CONTEXT_RULE
 
+    # Phase 2 — inject learned host style notes + recent correction examples
+    if tenant_id:
+        try:
+            from web.db import SessionLocal as _SL
+            from web.models import TenantConfig as _TC2
+            from web.feedback_learning import get_recent_corrections_context as _grc
+            with _SL() as _db_l:
+                _cfg_l = _db_l.query(_TC2).filter_by(tenant_id=tenant_id).first()
+                if _cfg_l and (_cfg_l.ai_learning_notes or "").strip():
+                    system = system + "\n\nHOST STYLE PREFERENCES (learned from past corrections — follow these):\n" + _cfg_l.ai_learning_notes
+                _examples = _grc(_db_l, tenant_id, msg_type=msg_type, limit=3)
+                if _examples:
+                    system = system + "\n\n" + _examples
+        except Exception:
+            pass
+
     safe_guest_name = "Guest" if guest_name else ""
     
     # Strip basic PII shapes (phone numbers and emails)

@@ -37,6 +37,13 @@ class PMSReservation:
 class PMSAdapter(ABC):
     """Abstract base class — one concrete subclass per PMS type."""
 
+    # Adapters override these to advertise what actions they actually support.
+    SUPPORTS_UPDATE_RESERVATION: bool = False
+    SUPPORTS_BLOCK_DATES:        bool = False
+    SUPPORTS_AVAILABILITY:       bool = False
+    SUPPORTS_ADD_NOTE:           bool = False
+    SUPPORTS_CREATE_BOOKING:     bool = False
+
     @abstractmethod
     def test_connection(self) -> bool:
         """Return True if credentials are valid and the API is reachable."""
@@ -56,6 +63,29 @@ class PMSAdapter(ABC):
     def get_reservations(self, from_date: date, to_date: date) -> list[PMSReservation]:
         """Return reservations with checkin date within [from_date, to_date]."""
         ...
+
+    # ── Optional agentic-action methods (Phase 3) ──
+    # Default: not supported. Adapters that can do it override.
+
+    def update_reservation(self, reservation_id: str, changes: dict) -> bool:
+        """Update fields (e.g. {"checkout": "2026-05-29T13:00"})."""
+        return False
+
+    def block_dates(self, listing_id: str, from_date: date, to_date: date, reason: str = "") -> bool:
+        """Block availability for a listing across the date range."""
+        return False
+
+    def get_availability(self, listing_id: str, from_date: date, to_date: date) -> bool:
+        """Return True if the listing is available across the range."""
+        return False
+
+    def add_note(self, reservation_id: str, note: str) -> bool:
+        """Add an internal staff note to a reservation."""
+        return False
+
+    def create_booking(self, listing_id: str, guest_info: dict, dates: dict) -> Optional[str]:
+        """Create a new booking. Returns the new reservation id on success."""
+        return None
 
 
 def make_adapter(pms_type: str, api_key: str,

@@ -35,7 +35,13 @@ class VisionPMSAdapter(PMSAdapter):
     account_id:     JSON string with optional config:
                     {"pms_name": "Opera", "capabilities": {...}, "session_cookies": [...]}
     base_url:       The login URL of the PMS web interface
+
+    Vision can do most actions, just slower than API.
     """
+    SUPPORTS_UPDATE_RESERVATION = True
+    SUPPORTS_ADD_NOTE           = True
+    SUPPORTS_BLOCK_DATES        = True
+    SUPPORTS_AVAILABILITY       = True
 
     def __init__(self, api_key: str, account_id: str = "", base_url: str = ""):
         parts = api_key.split("|||", 1)
@@ -643,6 +649,142 @@ Respond with ONLY JSON:
                 await browser.close()
 
         return reservations
+
+    # ── Phase 3: Agentic actions via vision agent ────────────────────────
+
+    def update_reservation(self, reservation_id: str, changes: dict) -> bool:
+        """Use vision agent to find a reservation and apply changes via UI clicks."""
+        return asyncio.run(self._async_update_reservation(reservation_id, changes))
+
+    async def _async_update_reservation(self, reservation_id: str, changes: dict) -> bool:
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            log.error("[VISION PMS] playwright not installed")
+            return False
+        if not reservation_id or not changes:
+            return False
+
+        change_desc = ", ".join(f'{k}={v}' for k, v in changes.items())
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+            context = await browser.new_context(viewport={"width": 1280, "height": 800})
+            page = await context.new_page()
+            try:
+                if not await self._login(page):
+                    return False
+                task = (
+                    f'Find reservation/booking "{reservation_id}" and update its fields: '
+                    f'{change_desc}. Save the changes when done.'
+                )
+                return await self._agent_loop(page, task, max_steps=_MAX_STEPS)
+            finally:
+                await browser.close()
+
+    def add_note(self, reservation_id: str, note: str) -> bool:
+        return asyncio.run(self._async_add_note(reservation_id, note))
+
+    async def _async_add_note(self, reservation_id: str, note: str) -> bool:
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            return False
+        if not reservation_id or not note:
+            return False
+        safe_note = note.replace('"', '\\"').replace('\n', ' ')[:400]
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+            context = await browser.new_context(viewport={"width": 1280, "height": 800})
+            page = await context.new_page()
+            try:
+                if not await self._login(page):
+                    return False
+                task = (
+                    f'Find reservation/booking "{reservation_id}" and add this internal staff '
+                    f'note to it: "{safe_note}". Save the note.'
+                )
+                return await self._agent_loop(page, task, max_steps=_MAX_STEPS)
+            finally:
+                await browser.close()
+
+    def block_dates(self, listing_id: str, from_date: date, to_date: date, reason: str = "") -> bool:
+        return asyncio.run(self._async_block_dates(listing_id, from_date, to_date, reason))
+
+    async def _async_block_dates(self, listing_id: str, from_date: date, to_date: date, reason: str = "") -> bool:
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            return False
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+            context = await browser.new_context(viewport={"width": 1280, "height": 800})
+            page = await context.new_page()
+            try:
+                if not await self._login(page):
+                    return False
+                safe_reason = (reason or "Blocked via HostAI").replace('"', "'")[:120]
+                task = (
+                    f'Open the calendar/availability view for listing "{listing_id}", '
+                    f'and block the dates from {from_date.isoformat()} to {to_date.isoformat()}. '
+                    f'Use the reason: "{safe_reason}". Save the change.'
+                )
+                return await self._agent_loop(page, task, max_steps=_MAX_STEPS)
+            finally:
+                await browser.close()
+
+    def get_availability(self, listing_id: str, from_date: date, to_date: date) -> bool:
+        return asyncio.run(self._async_get_availability(listing_id, from_date, to_date))
+
+    async def _async_get_availability(self, listing_id: str, from_date: date, to_date: date) -> bool:
+        """Take a screenshot of the calendar and ask the vision LLM if dates are free."""
+        try:
+            from playwright.async_api import async_playwright
+            import openai
+        except ImportError:
+            return False
+        key = await self._get_openrouter_key()
+        if not key:
+            return False
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+            context = await browser.new_context(viewport={"width": 1280, "height": 800})
+            page = await context.new_page()
+            try:
+                if not await self._login(page):
+                    return False
+                task = f'Open the calendar/availability view for listing "{listing_id}" showing dates around {from_date} to {to_date}'
+                if not await self._agent_loop(page, task, max_steps=6):
+                    return False
+                screenshot = await page.screenshot(type="jpeg", quality=_SCREENSHOT_QUALITY)
+                img_b64 = base64.b64encode(screenshot).decode()
+                prompt = (
+                    f"Look at this calendar/availability screen. "
+                    f"Are ALL of the dates from {from_date.isoformat()} to {to_date.isoformat()} "
+                    f"shown as available (not blocked, not booked)?\n"
+                    f'Respond with ONLY JSON: {{"available": true|false}}'
+                )
+                client = openai.OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
+                resp = client.chat.completions.create(
+                    model="google/gemini-2.5-flash",
+                    messages=[{"role": "user", "content": [
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}},
+                        {"type": "text", "text": prompt},
+                    ]}],
+                    max_tokens=50,
+                    temperature=0,
+                )
+                raw = (resp.choices[0].message.content or "").strip()
+                if raw.startswith("```"):
+                    raw = raw.split("```")[1]
+                    if raw.startswith("json"):
+                        raw = raw[4:]
+                data = json.loads(raw.strip())
+                return bool(data.get("available"))
+            except Exception as exc:
+                log.error("[VISION PMS] get_availability failed: %s", exc)
+                return False
+            finally:
+                await browser.close()
 
 
 def _parse_date(val) -> Optional[date]:
