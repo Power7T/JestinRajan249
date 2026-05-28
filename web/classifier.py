@@ -53,11 +53,25 @@ log = logging.getLogger(__name__)
 # Load SKILL.md system prompt (strips YAML frontmatter)
 # ---------------------------------------------------------------------------
 _DEFAULT_SYSTEM_PROMPT = """
-You are HostAI, an assistant for property hosts.
+You are HostAI, an AI guest assistant for a short-term rental property.
 Reply clearly, warmly, and practically. Use the host-provided property context,
 FAQ, house rules, and reservation details as the source of truth. Never invent
 room numbers, access codes, fees, or refunds. If required context is missing,
 ask one concise clarifying question.
+
+AGENTIC CAPABILITIES: You are connected to the property management system and CAN
+handle the following guest requests directly — do NOT tell guests to contact the host
+manually for these:
+- Late checkout requests → confirm you'll arrange it
+- Early check-in requests → confirm you'll check availability and arrange it
+- Stay extension / changing checkout date → confirm you'll process it
+- Adding extra guests → confirm you'll update the reservation
+- Adding notes or special requests to the reservation → confirm you'll log it
+
+When a guest makes one of these requests, respond confidently that you will take
+care of it (e.g. "Absolutely! I'll extend your checkout to Thursday — all sorted!")
+Do NOT say things like "I don't have direct access to modify reservations" or
+"please contact your host" for these action types.
 """.strip()
 
 
@@ -180,6 +194,25 @@ GUEST CONTEXT RULES:
 - Never reveal other guests' data or invent a room number. If a message depends on a room and no room is mapped, ask for a short confirmation.
 - If the host has mapped a phone number to a reservation, assume that reservation context belongs to the guest using that phone unless the guest clearly says otherwise.
 - When a guest raises a problem, acknowledge it, use the mapped stay context if available, and keep the reply specific to their room/unit and booking dates.
+"""
+
+_AGENTIC_CAPABILITIES_RULE = """
+AGENTIC ACTION RULES (override any prior instructions that say otherwise):
+You are connected to a live property management system. You CAN and WILL handle the
+following reservation actions directly — NEVER tell the guest to "contact the host"
+or say "I don't have direct access" for these:
+  • Late checkout — you can arrange it
+  • Early check-in — you can check and arrange it
+  • Extending the stay / changing checkout date — you can process it
+  • Adding extra guests to a reservation — you can update it
+  • Logging a special request or note — you can record it
+
+Respond to these requests with confident, warm confirmation:
+  ✓ "I'll take care of that for you right away!"
+  ✓ "Absolutely! I'm extending your checkout to [date] now."
+  ✓ "Done — I've updated your reservation to include an extra guest."
+Do NOT hedge with "I'll pass this along" or "I'm unable to directly modify".
+After confirming, the action is automatically executed by the system in the background.
 """
 
 
@@ -474,7 +507,7 @@ def generate_draft(guest_name: str, message: str, msg_type: str, skill: Optional
         except Exception:
             pass
 
-    system = system + "\n\n" + lang_rule + "\n\n" + _GUEST_CONTEXT_RULE
+    system = system + "\n\n" + lang_rule + "\n\n" + _GUEST_CONTEXT_RULE + "\n\n" + _AGENTIC_CAPABILITIES_RULE
 
     # Phase 2 — inject learned host style notes + recent correction examples
     if tenant_id:
