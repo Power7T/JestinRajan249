@@ -266,7 +266,19 @@
         </div>
         <div>
           <label>Listing name</label>
-          <input type="text" name="listing_name" placeholder="Sunset Villa">
+          {% set _pnames = (cfg.property_names or '') %}
+          {% if _pnames %}
+            <select name="listing_name" style="width:100%;padding:0.5rem 0.65rem;background:#1e2130;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e2e8f0;font-size:0.875rem;">
+              <option value="">— select unit —</option>
+              {% for _pn in _pnames.split(',') %}
+                {% if _pn.strip() %}
+                  <option value="{{ _pn.strip() }}">{{ _pn.strip() }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+          {% else %}
+            <input type="text" name="listing_name" placeholder="Sunset Villa">
+          {% endif %}
         </div>
         <div>
           <label>Check-in date</label>
