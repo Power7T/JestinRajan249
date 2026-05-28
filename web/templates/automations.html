@@ -145,10 +145,14 @@
         Adding an extra guest
       </label>
       <label style="display:flex;align-items:center;gap:0.5rem;color:#e3e1eb;font-size:0.88rem;margin-bottom:0.4rem;">
+        <input type="checkbox" name="auto_approve" value="extend_stay" {% if 'extend_stay' in auto_actions %}checked{% endif %}>
+        Stay extension requests (extra nights)
+      </label>
+      <label style="display:flex;align-items:center;gap:0.5rem;color:#e3e1eb;font-size:0.88rem;margin-bottom:0.4rem;">
         <input type="checkbox" name="auto_approve" value="add_note" {% if 'add_note' in auto_actions %}checked{% endif %}>
         Logging guest notes
       </label>
-      <p class="help-text">Anything not checked above will appear as a pending action card on your dashboard for one-click approval.</p>
+      <p class="help-text">Anything not checked above will appear as a pending action card on your dashboard for one-click approval. You'll also receive a notification alert when an action needs your attention.</p>
     </div>
     <button type="submit" class="btn btn-primary">Save autonomous action settings</button>
   </form>
@@ -413,6 +417,60 @@
       </div>
     </div>
 
+    {# ── EXTEND STAY ──────────────────────────────────────────────── #}
+    <div class="card" style="margin-bottom:1.5rem;">
+      <h3 style="font-size:0.95rem;font-weight:600;color:#e3e1eb;margin-bottom:0.4rem;">
+        📅 Stay extension (extra nights)
+      </h3>
+      <p class="help-text" style="margin-bottom:1rem;">When a guest wants to stay more nights — not just a late checkout time, but an actual extra day or more.</p>
+
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
+        When the unit is free for those extra nights
+      </label>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 1rem;">
+        <label class="policy-radio">
+          <input type="radio" name="es_when_available" value="charge_nightly" checked>
+          Charge their nightly rate
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="es_when_available" value="flat_fee_per_night">
+          Charge a flat fee per night
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="es_when_available" value="approval_required">
+          Ask me first
+        </label>
+      </div>
+      <div id="es-flat-fee" style="display:none;margin-bottom:1rem;">
+        <label class="help-text" style="font-size:0.78rem;">Flat fee per extra night</label>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <input type="number" name="es_flat_fee_per_night" min="0" step="1" value="0"
+                 style="width:90px;padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;">
+          <select name="es_flat_fee_currency"
+                  style="padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;">
+            <option value="USD">USD $</option>
+            <option value="GBP">GBP £</option>
+            <option value="EUR">EUR €</option>
+            <option value="AUD">AUD A$</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
+        When the unit is already booked during those nights
+      </label>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 0;">
+        <label class="policy-radio">
+          <input type="radio" name="es_no_avail" value="deny" checked>
+          Politely decline — unit unavailable
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="es_no_avail" value="escalate">
+          Escalate to me — I'll handle it
+        </label>
+      </div>
+    </div>
+
     <button type="submit" class="btn btn-primary">Save outcome rules</button>
   </form>
 
@@ -454,22 +512,30 @@
     if(ec.extra_night_fee_amount)   setVal('ec_extra_night_fee_amount',   ec.extra_night_fee_amount);
     if(ec.extra_night_fee_currency) setVal('ec_extra_night_fee_currency', ec.extra_night_fee_currency);
 
+    var es = ap.extend_stay || {};
+    if(es.when_available)    setRadio('es_when_available',    es.when_available);
+    if(es.no_unit_available) setRadio('es_no_avail',          es.no_unit_available);
+    if(es.flat_fee_per_night) setVal('es_flat_fee_per_night', es.flat_fee_per_night);
+    if(es.flat_fee_currency)  setVal('es_flat_fee_currency',  es.flat_fee_currency);
+
     // Toggle flat-fee inputs based on selected radio
-    function toggleFee(radioName, containerId) {
+    function toggleFee(radioName, containerId, triggerValue) {
+      var tv = triggerValue || 'flat_fee';
       document.querySelectorAll('input[name="' + radioName + '"]').forEach(function(el) {
         el.addEventListener('change', function() {
           document.getElementById(containerId).style.display =
-            (el.value === 'flat_fee' && el.checked) ? 'block' : 'none';
+            (el.value === tv && el.checked) ? 'block' : 'none';
         });
       });
       var checked = document.querySelector('input[name="' + radioName + '"]:checked');
-      if(checked && checked.value === 'flat_fee')
+      if(checked && checked.value === tv)
         document.getElementById(containerId).style.display = 'block';
     }
-    toggleFee('lc_same_unit',       'lc-same-fee');
-    toggleFee('lc_extra_night_mode','lc-extra-fee');
-    toggleFee('ec_same_unit',       'ec-same-fee');
-    toggleFee('ec_extra_night_mode','ec-extra-fee');
+    toggleFee('lc_same_unit',        'lc-same-fee');
+    toggleFee('lc_extra_night_mode', 'lc-extra-fee');
+    toggleFee('ec_same_unit',        'ec-same-fee');
+    toggleFee('ec_extra_night_mode', 'ec-extra-fee');
+    toggleFee('es_when_available',   'es-flat-fee', 'flat_fee_per_night');
   })();
   </script>
 

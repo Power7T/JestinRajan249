@@ -43,7 +43,7 @@ log = logging.getLogger(__name__)
 
 # Known action types — anything else is rejected
 _KNOWN_ACTIONS = {
-    "late_checkout", "early_checkin", "extra_guest",
+    "late_checkout", "early_checkin", "extend_stay", "extra_guest",
     "add_note", "block_dates", "maintenance",
 }
 
@@ -66,18 +66,23 @@ def detect_action_intent(guest_message: str) -> Optional[dict]:
 Message: "{guest_message[:400]}"
 
 Action types you can detect:
-- late_checkout: guest wants to depart later than scheduled
-- early_checkin: guest wants to arrive earlier than scheduled
+- late_checkout: guest wants to depart later than their scheduled checkout TIME (same day, different hour)
+- early_checkin: guest wants to arrive earlier than their scheduled check-in time
+- extend_stay: guest wants to stay additional NIGHTS / days, or asks to extend their booking to a later date
 - extra_guest: guest wants to add a person not in original booking
 - maintenance: guest is reporting something broken / not working
 - add_note: any other actionable request the host should record
 
+KEY DISTINCTION: late_checkout = same day, different time. extend_stay = more nights.
+
 Respond with ONLY JSON (no markdown):
 {{
   "has_action": true|false,
-  "action_type": "late_checkout|early_checkin|extra_guest|maintenance|add_note|none",
+  "action_type": "late_checkout|early_checkin|extend_stay|extra_guest|maintenance|add_note|none",
   "params": {{
-    "requested_time": "HH:MM if mentioned",
+    "requested_time": "HH:MM if mentioned (for late_checkout/early_checkin)",
+    "extra_nights": 0,
+    "new_checkout_date": "YYYY-MM-DD if a specific date is mentioned (for extend_stay)",
     "extra_guests_count": 0,
     "issue_description": "for maintenance",
     "note": "for add_note"
@@ -155,6 +160,12 @@ _POLICY_DEFAULTS = {
         "extra_night_fee_amount":  0,
         "extra_night_fee_currency":"USD",
     },
+    "extend_stay": {
+        "when_available":    "charge_nightly",   # charge_nightly | flat_fee_per_night | approval_required
+        "no_unit_available": "deny",              # deny | escalate
+        "flat_fee_per_night": 0,
+        "flat_fee_currency":  "USD",
+    },
 }
 
 
@@ -212,6 +223,7 @@ def create_action(db: Session, tenant_id: str, action_type: str, params: dict,
         _labels = {
             "late_checkout":  "late checkout request",
             "early_checkin":  "early check-in request",
+            "extend_stay":    "stay extension request",
             "extra_guest":    "additional guest request",
             "add_note":       "special request",
         }
@@ -308,6 +320,32 @@ def _unit_is_free_after(
             Reservation.unit_identifier == unit_identifier,
             Reservation.status == "confirmed",
             Reservation.checkin == conflict_day,
+        )
+        .first()
+    )
+    return conflict is None
+
+
+def _unit_is_free_window(
+    db: Session,
+    tenant_id: str,
+    unit_identifier: str,
+    from_date: date,
+    to_date: date,
+) -> bool:
+    """
+    Return True if no confirmed reservation on `unit_identifier` has a checkin
+    date that falls in [from_date, to_date).
+    Used for extend_stay to check the extra nights are unbooked.
+    """
+    conflict = (
+        db.query(Reservation)
+        .filter(
+            Reservation.tenant_id == tenant_id,
+            Reservation.unit_identifier == unit_identifier,
+            Reservation.status == "confirmed",
+            Reservation.checkin >= from_date,
+            Reservation.checkin < to_date,
         )
         .first()
     )
@@ -954,6 +992,136 @@ def execute_action(db: Session, action: GuestAction) -> bool:
                 }
             else:
                 result = {"error": "empty note", "applied": False}
+
+        # ── Extend stay ────────────────────────────────────────────────────
+        elif action.action_type == "extend_stay":
+            policy      = _get_policy(cfg, "extend_stay")
+            extra_nights_raw = params.get("extra_nights") or 1
+            try:
+                extra_nights = max(1, int(extra_nights_raw))
+            except (TypeError, ValueError):
+                extra_nights = 1
+
+            current_checkout = reservation.checkout if reservation.checkout else date.today()
+            if hasattr(current_checkout, "date"):
+                current_checkout = current_checkout.date()
+
+            # Prefer explicit new date if the guest said e.g. "until Friday"
+            new_checkout_str = params.get("new_checkout_date")
+            if new_checkout_str:
+                try:
+                    new_checkout = date.fromisoformat(new_checkout_str)
+                    extra_nights = max(1, (new_checkout - current_checkout).days)
+                except Exception:
+                    new_checkout = current_checkout + timedelta(days=extra_nights)
+            else:
+                new_checkout = current_checkout + timedelta(days=extra_nights)
+
+            unit        = reservation.unit_identifier or ""
+            unit_free   = _unit_is_free_window(db, action.tenant_id, unit, current_checkout, new_checkout) if unit else True
+            nightly     = _nightly_rate(reservation)
+            fee_curr    = policy.get("flat_fee_currency") or "USD"
+            nights_label = f"{extra_nights} night{'s' if extra_nights != 1 else ''}"
+            new_date_label = new_checkout.strftime("%B %d")
+
+            if unit_free:
+                mode = policy.get("when_available", "charge_nightly")
+
+                if mode == "approval_required":
+                    result = {
+                        "applied": False,
+                        "reason": "pending_host_approval",
+                        "guest_reply": (
+                            f"I've sent your request to extend your stay by {nights_label} "
+                            f"(until {new_date_label}) to the host for approval. "
+                            f"You'll hear back shortly! 🙂"
+                        ),
+                    }
+                    ok = False
+
+                elif mode == "flat_fee_per_night":
+                    flat_per_night = float(policy.get("flat_fee_per_night") or 0)
+                    total_fee      = flat_per_night * extra_nights
+                    fee_str        = _fmt_fee(total_fee, fee_curr)
+                    per_str        = _fmt_fee(flat_per_night, fee_curr)
+                    pms_ok = adapter.update_reservation(pms_res_id, {"checkout_date": str(new_checkout)})
+                    ok = pms_ok
+                    if pms_ok:
+                        result = {
+                            "checkout_date": str(new_checkout),
+                            "extra_nights": extra_nights,
+                            "applied": True,
+                            "fee_charged": total_fee,
+                            "fee_currency": fee_curr,
+                            "guest_reply": (
+                                f"Done! Your stay has been extended by {nights_label} to {new_date_label}. "
+                                f"An additional charge of {fee_str} ({per_str}/night) will be added to your booking. "
+                                f"Enjoy the extra time! 🙂"
+                            ),
+                        }
+                    else:
+                        result = {
+                            "applied": False,
+                            "guest_reply": (
+                                "I wasn't able to update your booking — "
+                                "I've flagged this for the host to sort out with you shortly."
+                            ),
+                        }
+
+                else:  # charge_nightly — default
+                    total_cost = (nightly or 0) * extra_nights
+                    if nightly and total_cost:
+                        cost_str  = _fmt_fee(total_cost, fee_curr)
+                        night_str = _fmt_fee(nightly, fee_curr)
+                        cost_msg  = f"An additional charge of {cost_str} ({night_str}/night × {extra_nights}) will be added to your booking."
+                    else:
+                        cost_msg = "The additional nights will be charged at your booking rate."
+                    pms_ok = adapter.update_reservation(pms_res_id, {"checkout_date": str(new_checkout)})
+                    ok = pms_ok
+                    if pms_ok:
+                        result = {
+                            "checkout_date": str(new_checkout),
+                            "extra_nights": extra_nights,
+                            "applied": True,
+                            "nightly_rate": nightly,
+                            "guest_reply": (
+                                f"Done! Your stay has been extended by {nights_label} to {new_date_label}. "
+                                f"{cost_msg} Enjoy the extra time! 🙂"
+                            ),
+                        }
+                    else:
+                        result = {
+                            "applied": False,
+                            "guest_reply": (
+                                "I wasn't able to update your booking — "
+                                "I've flagged this for the host to sort out with you shortly."
+                            ),
+                        }
+
+            else:
+                # Unit is booked during the requested extra nights
+                no_avail_mode = policy.get("no_unit_available", "deny")
+                if no_avail_mode == "escalate":
+                    result = {
+                        "applied": False,
+                        "reason": "no_unit_available_escalated",
+                        "guest_reply": (
+                            f"Unfortunately your unit is already booked during those nights, "
+                            f"so I can't extend your stay automatically. "
+                            f"I've escalated this to the host — they'll get back to you shortly to see what's possible!"
+                        ),
+                    }
+                else:  # deny
+                    result = {
+                        "applied": False,
+                        "reason": "no_unit_available",
+                        "guest_reply": (
+                            f"I'm sorry — your unit is already booked during those nights, "
+                            f"so we're unable to extend your stay by {nights_label}. "
+                            f"Apologies for the inconvenience!"
+                        ),
+                    }
+                ok = False
 
         # ── Block dates ────────────────────────────────────────────────────
         elif action.action_type == "block_dates":

@@ -4376,10 +4376,11 @@ async def automations_action_policies_save(
         v = (form.get(name) or "").strip()
         return v if _re.match(r"^\d{1,2}:\d{2}$", v) else default
 
-    _unit_modes       = ("free", "flat_fee", "approval_required")
-    _alt_modes        = ("charge_alt_rate", "waive_extra", "flat_fee", "approval_required")
-    _noavail_modes    = ("deny", "escalate")
+    _unit_modes        = ("free", "flat_fee", "approval_required")
+    _alt_modes         = ("charge_alt_rate", "waive_extra", "flat_fee", "approval_required")
+    _noavail_modes     = ("deny", "escalate")
     _extra_night_modes = ("nightly_rate", "flat_fee", "approval_required")
+    _es_avail_modes    = ("charge_nightly", "flat_fee_per_night", "approval_required")
 
     policies = {
         "late_checkout": {
@@ -4403,6 +4404,12 @@ async def automations_action_policies_save(
             "extra_night_mode":         _radio("ec_extra_night_mode", _extra_night_modes, "nightly_rate"),
             "extra_night_fee_amount":   _flt("ec_extra_night_fee_amount"),
             "extra_night_fee_currency": _cur("ec_extra_night_fee_currency"),
+        },
+        "extend_stay": {
+            "when_available":    _radio("es_when_available", _es_avail_modes, "charge_nightly"),
+            "no_unit_available": _radio("es_no_avail",       _noavail_modes,  "deny"),
+            "flat_fee_per_night": _flt("es_flat_fee_per_night"),
+            "flat_fee_currency":  _cur("es_flat_fee_currency"),
         },
     }
 
@@ -5924,6 +5931,41 @@ def _notify_host_pending(cfg, tenant_id: str, guest_name: str, text: str, source
     _send_host_notification(tenant_id, notify_phone, notify_text, guest_name, text, source, db)
 
 
+def _notify_host_pending_action(tenant_id: str, cfg, action_row, guest_name: str, guest_msg: str, source: str, db: Session):
+    """
+    Alert the host when a guest action is waiting for their approval or escalation.
+    Called both when auto-approve is OFF and when execute_action() returns approval_required.
+    """
+    notify_phone = (cfg.host_notify_phone or cfg.whatsapp_number) if cfg else None
+    if not notify_phone:
+        return
+    _action_labels = {
+        "late_checkout":  "Late checkout",
+        "early_checkin":  "Early check-in",
+        "extend_stay":    "Stay extension",
+        "extra_guest":    "Extra guest",
+        "add_note":       "Special request",
+    }
+    label = _action_labels.get(action_row.action_type, action_row.action_type.replace("_", " ").title())
+    params = action_row.params_json or {}
+    detail_parts = []
+    if params.get("requested_time"):
+        detail_parts.append(f"time: {params['requested_time']}")
+    if params.get("extra_nights"):
+        detail_parts.append(f"{params['extra_nights']} extra night(s)")
+    if params.get("new_checkout_date"):
+        detail_parts.append(f"until {params['new_checkout_date']}")
+    detail = f" ({', '.join(detail_parts)})" if detail_parts else ""
+    notify_text = (
+        f"🔔 Guest action pending your approval\n\n"
+        f"Guest: {guest_name}\n"
+        f"Request: {label}{detail}\n"
+        f"Message: \"{guest_msg[:120]}\"\n\n"
+        f"→ Approve or deny in your HostAI dashboard"
+    )
+    _send_host_notification(tenant_id, notify_phone, notify_text, guest_name, guest_msg, source, db)
+
+
 def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, text: str, db: Session):
     """Classify an inbound guest message and create a draft with thread + policy context."""
     cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
@@ -6215,7 +6257,8 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                     is_auto_approved, dispatch_action_reply,
                 )
                 intent = detect_action_intent(text)
-                if intent and intent.get("action_type") in ("late_checkout", "early_checkin", "extra_guest", "add_note"):
+                _handled_types = ("late_checkout", "early_checkin", "extend_stay", "extra_guest", "add_note")
+                if intent and intent.get("action_type") in _handled_types:
                     action_row = create_action(
                         db, tenant_id,
                         intent["action_type"], intent.get("params") or {},
@@ -6225,6 +6268,11 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                              tenant_id, intent["action_type"], is_auto_approved(cfg, intent["action_type"]))
                     if is_auto_approved(cfg, intent["action_type"]):
                         execute_action(db, action_row)
+                        # After execution, check if policy still requires host approval
+                        # (e.g. approval_required mode in same_unit_free policy)
+                        result_json = action_row.result_json or {}
+                        if result_json.get("reason", "").startswith("pending_host_approval"):
+                            _notify_host_pending_action(tenant_id, cfg, action_row, guest_name, text, source, db)
                         # The policy-driven result IS the only reply — suppress the generic
                         # AI draft so the guest only receives one coherent message that
                         # reflects the host's actual configured outcome (free / flat_fee /
@@ -6234,11 +6282,12 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                             db.commit()
                         dispatch_action_reply(db, action_row)
                     else:
-                        # Needs host approval — suppress generic draft, send pending notice
+                        # Needs host approval — suppress generic draft, send pending notice to guest
+                        # AND alert the host so they actually see it
                         if draft.status in ("pending", "auto_sent"):
                             draft.status = "suppressed_by_action"
                             db.commit()
-                        # Guest gets told the host will confirm — from result_json
+                        _notify_host_pending_action(tenant_id, cfg, action_row, guest_name, text, source, db)
                         dispatch_action_reply(db, action_row)
             except Exception as _act_exc:
                 log.warning("[%s] Action detection failed: %s", tenant_id, _act_exc)
