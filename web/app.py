@@ -855,6 +855,11 @@ def _get_or_create_config(tenant_id: str, db: Session) -> TenantConfig:
     cfg = load_tenant_config(db, tenant_id, create_if_missing=True)
     if not cfg:
         raise RuntimeError(f"Could not load tenant config for {tenant_id}")
+    # Auto-generate guest chat token on first access
+    if not cfg.chat_token:
+        import secrets as _sec
+        cfg.chat_token = _sec.token_urlsafe(12)
+        db.commit()
     return cfg
 
 
@@ -9163,6 +9168,222 @@ def ping():
     Responds in <1ms. Use /health for a full dependency check.
     """
     return JSONResponse({"ok": True})
+
+
+# ===========================================================================
+# Guest Web Chat — /guest/<token>
+# ===========================================================================
+
+def _ensure_chat_token(cfg: TenantConfig, db: Session) -> str:
+    """Auto-generate a chat_token if the tenant doesn't have one yet."""
+    if not cfg.chat_token:
+        import secrets as _sec
+        cfg.chat_token = _sec.token_urlsafe(12)
+        db.commit()
+    return cfg.chat_token
+
+
+@app.get("/guest/{token}", response_class=HTMLResponse)
+def guest_chat_page(token: str, request: Request, db: Session = Depends(get_db)):
+    """Branded guest-facing AI chat page. No login required."""
+    from web.models import WebChatSession
+    cfg = db.query(TenantConfig).filter_by(chat_token=token).first()
+    if not cfg:
+        raise HTTPException(status_code=404, detail="Chat link not found")
+    property_name = (cfg.property_names or "Your Property").split(",")[0].strip()
+    csp_nonce = getattr(request.state, "csp_nonce", "")
+    return templates.TemplateResponse("guest_chat.html", {
+        "request":       request,
+        "chat_token":    token,
+        "property_name": property_name,
+        "csp_nonce":     csp_nonce,
+    })
+
+
+@app.post("/api/guest/{token}/identify")
+async def guest_chat_identify(token: str, request: Request, db: Session = Depends(get_db)):
+    """Look up a reservation by confirmation code. Returns guest + stay summary."""
+    from web.models import WebChatSession, Reservation
+    cfg = db.query(TenantConfig).filter_by(chat_token=token).first()
+    if not cfg:
+        raise HTTPException(status_code=404)
+    body = await request.json()
+    code       = (body.get("code") or "").strip()
+    session_id = (body.get("session_id") or "").strip()
+    if not code:
+        return JSONResponse({"found": False, "error": "Please enter your confirmation code."})
+
+    # Try exact match first, then case-insensitive
+    res = (
+        db.query(Reservation)
+        .filter_by(tenant_id=cfg.tenant_id, confirmation_code=code, status="confirmed")
+        .first()
+        or db.query(Reservation)
+        .filter(
+            Reservation.tenant_id == cfg.tenant_id,
+            Reservation.status == "confirmed",
+            Reservation.confirmation_code.ilike(code),
+        )
+        .first()
+    )
+    if not res:
+        return JSONResponse({"found": False, "error": "Booking not found. Check your confirmation email."})
+
+    # Attach reservation to session
+    if session_id:
+        sess = db.query(WebChatSession).filter_by(session_token=session_id).first()
+        if not sess:
+            sess = WebChatSession(tenant_id=cfg.tenant_id, session_token=session_id)
+            db.add(sess)
+        sess.reservation_id = res.id
+        sess.last_active_at = datetime.now(timezone.utc)
+        db.commit()
+
+    checkout_str = res.checkout.strftime("%b %d") if res.checkout else None
+    checkin_str  = res.checkin.strftime("%b %d") if res.checkin else None
+    return JSONResponse({
+        "found":          True,
+        "reservation_id": res.id,
+        "guest_name":     res.guest_name,
+        "unit":           res.unit_identifier or res.listing_name or "",
+        "checkin":        checkin_str,
+        "checkout":       checkout_str,
+    })
+
+
+@app.post("/api/guest/{token}/message")
+async def guest_chat_message(token: str, request: Request, db: Session = Depends(get_db)):
+    """Process a guest message and return an AI reply."""
+    from web.models import WebChatSession, Reservation
+    from web.classifier import build_property_context, _AGENTIC_CAPABILITIES_RULE
+    from web.system_config_store import load_system_config
+    from web.crypto import decrypt
+
+    cfg = db.query(TenantConfig).filter_by(chat_token=token).first()
+    if not cfg:
+        raise HTTPException(status_code=404)
+
+    body       = await request.json()
+    user_msg   = (body.get("message") or "").strip()
+    session_id = (body.get("session_id") or "").strip()
+    res_id     = body.get("reservation_id")
+
+    if not user_msg:
+        return JSONResponse({"reply": "I didn't catch that — could you try again?"})
+
+    # Load or create session
+    sess = None
+    if session_id:
+        sess = db.query(WebChatSession).filter_by(session_token=session_id).first()
+        if not sess:
+            sess = WebChatSession(tenant_id=cfg.tenant_id, session_token=session_id)
+            db.add(sess)
+            db.flush()
+
+    # Load reservation
+    reservation = None
+    if res_id:
+        reservation = db.query(Reservation).filter_by(id=res_id, tenant_id=cfg.tenant_id).first()
+    elif sess and sess.reservation_id:
+        reservation = db.query(Reservation).filter_by(id=sess.reservation_id, tenant_id=cfg.tenant_id).first()
+
+    # Load conversation history
+    history: list[dict] = []
+    if sess and sess.messages_json:
+        try:
+            history = json.loads(sess.messages_json)
+        except Exception:
+            history = []
+
+    # Build system prompt
+    property_name = (cfg.property_names or "this property").split(",")[0].strip()
+    property_ctx  = build_property_context(cfg)
+
+    res_ctx = ""
+    if reservation:
+        checkin_s  = reservation.checkin.strftime("%B %d, %Y")  if reservation.checkin  else "unknown"
+        checkout_s = reservation.checkout.strftime("%B %d, %Y") if reservation.checkout else "unknown"
+        res_ctx = (
+            f"\nCURRENT GUEST:\n"
+            f"  Name: {reservation.guest_name}\n"
+            f"  Unit / Listing: {reservation.unit_identifier or reservation.listing_name or 'not specified'}\n"
+            f"  Check-in: {checkin_s}\n"
+            f"  Check-out: {checkout_s}\n"
+            f"  Guests: {reservation.guests_count or 1}\n"
+            f"  Booking ref: {reservation.confirmation_code}\n"
+        )
+
+    system_prompt = (
+        f"You are HostAI, the AI concierge for {property_name}. "
+        f"Reply warmly, concisely (under 80 words). Never invent codes, fees, or refunds.\n\n"
+        f"{property_ctx}\n"
+        f"{res_ctx}\n"
+        f"{_AGENTIC_CAPABILITIES_RULE}"
+    )
+
+    # Build messages for LLM
+    lm_messages = [{"role": "system", "content": system_prompt}]
+    for m in history[-12:]:
+        lm_messages.append({"role": m.get("role", "user"), "content": m.get("text", "")})
+    lm_messages.append({"role": "user", "content": user_msg})
+
+    # Call LLM
+    reply_text = "I'm having a moment — please try again shortly."
+    try:
+        import openai as _openai
+        sys_conf = load_system_config(db)
+        if sys_conf and sys_conf.openrouter_api_key_enc:
+            key    = decrypt(sys_conf.openrouter_api_key_enc) or sys_conf.openrouter_api_key_enc
+            model  = sys_conf.llm_model or "google/gemini-2.5-flash"
+            client = _openai.OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
+            resp   = client.chat.completions.create(
+                model=model, messages=lm_messages, max_tokens=300, temperature=0.75,
+            )
+            reply_text = (resp.choices[0].message.content or "").strip() or reply_text
+    except Exception as _llm_exc:
+        log.warning("[guest-chat] LLM error for token %s: %s", token, _llm_exc)
+
+    # Action detection (only when reservation is known)
+    action_type_out = None
+    if reservation:
+        try:
+            from web.actions import detect_action_intent, create_action, execute_action, is_auto_approved, dispatch_action_reply
+            intent = detect_action_intent(user_msg)
+            _handled = ("late_checkout", "early_checkin", "extend_stay", "extra_guest", "add_note")
+            if intent and intent.get("action_type") in _handled:
+                action_row = create_action(db, cfg.tenant_id, intent["action_type"], intent.get("params") or {}, reservation, None, cfg)
+                if is_auto_approved(cfg, intent["action_type"]):
+                    execute_action(db, action_row)
+                    result = action_row.result_json or {}
+                    if result.get("guest_reply"):
+                        reply_text = result["guest_reply"]
+                    action_type_out = intent["action_type"]
+                    if intent["action_type"] == "extend_stay" and result.get("applied"):
+                        _notify_host_extension_done(cfg.tenant_id, cfg, action_row, reservation.guest_name, "webchat", db)
+                    elif result.get("reason", "").startswith("pending_host_approval"):
+                        _notify_host_pending_action(cfg.tenant_id, cfg, action_row, reservation.guest_name, user_msg, "webchat", db)
+                else:
+                    dispatch_action_reply(db, action_row)
+                    result = action_row.result_json or {}
+                    if result.get("guest_reply"):
+                        reply_text = result["guest_reply"]
+                    action_type_out = intent["action_type"]
+                    _notify_host_pending_action(cfg.tenant_id, cfg, action_row, reservation.guest_name, user_msg, "webchat", db)
+        except Exception as _act_exc:
+            log.warning("[guest-chat] action detection error: %s", _act_exc)
+
+    # Persist messages (keep last 30)
+    history.append({"role": "user",      "text": user_msg,    "ts": datetime.now(timezone.utc).isoformat()})
+    history.append({"role": "assistant", "text": reply_text,  "ts": datetime.now(timezone.utc).isoformat()})
+    if len(history) > 30:
+        history = history[-30:]
+
+    if sess:
+        sess.messages_json  = json.dumps(history)
+        sess.last_active_at = datetime.now(timezone.utc)
+        db.commit()
+
+    return JSONResponse({"reply": reply_text, "action_type": action_type_out})
 
 
 @app.get("/health")

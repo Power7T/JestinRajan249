@@ -23,6 +23,98 @@
   </div>
 </div>
 
+{% set chat_url = request.url.scheme ~ '://' ~ request.url.netloc ~ '/guest/' ~ (cfg.chat_token or '') %}
+
+<section class="form-section" id="guest-chat-link">
+  <h2>🔗 Guest chat link</h2>
+  <p class="help-text">
+    Share this link with every guest — in your Airbnb welcome message, printed as a QR card at the property,
+    or in a booking confirmation email. Works instantly, even before WhatsApp or Voice AI are set up.
+    Guests enter their booking code and the AI knows their unit, dates, and details.
+  </p>
+
+  {% if request.query_params.get('saved') == 'communications' %}
+  <div class="alert alert-success" style="margin-bottom:1rem;">✓ Settings saved.</div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom:1rem;">
+    <label style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;color:#64748b;">Your permanent guest chat link</label>
+    <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;flex-wrap:wrap;">
+      <input
+        type="text" id="chatLinkInput" readonly
+        value="{{ chat_url }}"
+        style="flex:1;min-width:0;padding:0.6rem 0.85rem;background:#0d0e14;color:#aec6ff;border:1px solid rgba(91,141,239,0.3);border-radius:8px;font-size:0.85rem;font-family:monospace;outline:none;"
+        onclick="this.select()"
+      >
+      <button type="button" onclick="copyLink()" id="copyBtn"
+        style="padding:0.6rem 1rem;background:rgba(174,198,255,0.08);border:1px solid rgba(174,198,255,0.2);border-radius:8px;color:#aec6ff;font-size:0.83rem;cursor:pointer;white-space:nowrap;transition:all .15s;"
+        onmouseover="this.style.background='rgba(174,198,255,0.15)'" onmouseout="this.style.background='rgba(174,198,255,0.08)'">
+        📋 Copy
+      </button>
+      <a href="{{ chat_url }}" target="_blank"
+        style="padding:0.6rem 1rem;background:rgba(91,141,239,0.12);border:1px solid rgba(91,141,239,0.25);border-radius:8px;color:#5B8DEF;font-size:0.83rem;text-decoration:none;white-space:nowrap;">
+        ↗ Preview
+      </a>
+    </div>
+    <p class="help-text" style="margin-top:0.6rem;">Paste this into your Airbnb saved message template once — every guest gets it automatically.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem;">
+    <label style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;color:#64748b;display:block;margin-bottom:0.6rem;">QR code — print and place in your property</label>
+    <div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap;">
+      <canvas id="qrCanvas" style="border-radius:8px;background:#fff;padding:8px;"></canvas>
+      <div style="display:flex;flex-direction:column;gap:0.6rem;justify-content:center;">
+        <p style="font-size:0.82rem;color:#64748b;max-width:260px;line-height:1.5;">Guests scan this to open your AI concierge instantly — no app download, no login.</p>
+        <button type="button" onclick="downloadQR()"
+          style="padding:0.55rem 1rem;background:rgba(174,198,255,0.08);border:1px solid rgba(174,198,255,0.2);border-radius:8px;color:#aec6ff;font-size:0.82rem;cursor:pointer;">
+          ⬇ Download QR
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:0;">
+    <label style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;color:#64748b;display:block;margin-bottom:0.5rem;">Suggested Airbnb message snippet</label>
+    <div style="background:#0d0e14;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:0.75rem 1rem;font-size:0.83rem;color:#94a3b8;line-height:1.6;font-style:italic;">
+      "Need anything during your stay? Our AI concierge is available 24/7 for WiFi, check-in info, late checkout requests, and more: <span style="color:#aec6ff;">{{ chat_url }}</span>"
+    </div>
+  </div>
+</section>
+
+<script nonce="{{ request.state.csp_nonce }}">
+// QR code — generated client-side using qrcode.js
+(function loadQR() {
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  s.onload = function() {
+    new QRCode(document.getElementById('qrCanvas'), {
+      text: {{ chat_url | tojson }},
+      width: 140, height: 140,
+      colorDark: '#000000', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  };
+  document.head.appendChild(s);
+})();
+
+function copyLink() {
+  navigator.clipboard.writeText({{ chat_url | tojson }}).then(function() {
+    var btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(function(){ btn.textContent = '📋 Copy'; }, 2000);
+  });
+}
+
+function downloadQR() {
+  var canvas = document.querySelector('#qrCanvas canvas');
+  if (!canvas) { alert('QR code still loading — try again in a moment.'); return; }
+  var a = document.createElement('a');
+  a.download = 'guest-chat-qr.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+</script>
+
 <form method="post" action="/communications">
   <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
 
