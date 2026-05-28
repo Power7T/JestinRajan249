@@ -262,12 +262,24 @@ RULES:
 7. IMPORTANT: If the guest asks a specific question you genuinely cannot answer from the property info above, set unknown to true and unanswered_question to exactly what the guest asked. Tell them: "I don't have that info right now, but I'll make sure the host is aware and can update their listing."
 8. Only set unknown=true for real knowledge gaps (missing facts about the property). Do NOT set it for greetings, chit-chat, or questions you can answer.
 
+AGENTIC CAPABILITIES — you are connected to the property management system and CAN
+handle the following requests directly. NEVER say you cannot do these or ask the guest
+to contact the host manually:
+- Late checkout → "Absolutely! I'm arranging that for you now."
+- Early check-in → "Let me check and sort that out for you."
+- Extending the stay / changing checkout date → "I'll process that extension right away."
+- Adding extra guests → "I'll update your reservation now."
+- Logging a special request → "I've noted that — all sorted."
+Set action_type to the relevant type when one of these is requested.
+
 RESPONSE FORMAT — always respond with valid JSON only, no markdown:
-{{"voice": "<what you say out loud>", "send": null, "unknown": false, "unanswered_question": null}}
+{{"voice": "<what you say out loud>", "send": null, "unknown": false, "unanswered_question": null, "action_type": null}}
 or when sending info:
-{{"voice": "<what you say>", "send": {{"type": "<wifi|location|checkin|checkout|house_rules|menu|restaurants|parking|faq>", "content": "<formatted text>"}}, "unknown": false, "unanswered_question": null}}
+{{"voice": "<what you say>", "send": {{"type": "<wifi|location|checkin|checkout|house_rules|menu|restaurants|parking|faq>", "content": "<formatted text>"}}, "unknown": false, "unanswered_question": null, "action_type": null}}
+or when taking a reservation action (late_checkout / early_checkin / extend_stay / add_guest / add_note):
+{{"voice": "Absolutely! I'm taking care of that right now.", "send": null, "unknown": false, "unanswered_question": null, "action_type": "<late_checkout|early_checkin|extend_stay|add_guest|add_note>"}}
 or when you don't know:
-{{"voice": "I don't have that info right now, but I'll let the host know so they can update their listing.", "send": null, "unknown": true, "unanswered_question": "<the specific question the guest asked>"}}"""
+{{"voice": "I don't have that info right now, but I'll let the host know so they can update their listing.", "send": null, "unknown": true, "unanswered_question": "<the specific question the guest asked>", "action_type": null}}"""
 
             import asyncio
 
@@ -331,6 +343,12 @@ or when you don't know:
                 voice_text          = data.get("voice", "Sorry, I couldn't process that.")
                 send_action         = data.get("send")          # None | {"type", "content"}
                 unanswered_question = data.get("unanswered_question") if data.get("unknown") else None
+                action_type         = data.get("action_type")  # None | "late_checkout" | "early_checkin" | etc.
+                # Attach action_type to send_action payload so callers can trigger PMS write-back
+                if action_type:
+                    send_action = send_action or {}
+                    if isinstance(send_action, dict):
+                        send_action["action_type"] = action_type
                 return (voice_text, send_action, unanswered_question)
 
             try:

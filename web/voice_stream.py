@@ -170,11 +170,15 @@ class VoiceStreamSession:
             self.conversation_history.append({"text": transcript, "ts": datetime.now(timezone.utc).isoformat()})
 
             # 2) LLM response
-            response_text = await self._llm(transcript)
+            response_text, action_type = await self._llm(transcript)
             if not response_text:
                 self.is_responding = False
                 return
             log.info("[STREAM] [%s] AI: %s", self.call_id, response_text[:80])
+
+            # 2b) Trigger PMS action in background if the AI detected one
+            if action_type and self.tenant_id:
+                asyncio.create_task(self._execute_voice_action(transcript, action_type))
 
             # 3) TTS + stream back
             await self._speak(response_text)
@@ -210,11 +214,11 @@ class VoiceStreamSession:
             log.warning("[STREAM] STT failed: %s", exc)
             return ("", 0.0)
 
-    async def _llm(self, transcript: str) -> str:
-        """Run the LLM to generate a reply."""
+    async def _llm(self, transcript: str) -> tuple[str, Optional[str]]:
+        """Run the LLM to generate a reply. Returns (text, action_type)."""
         try:
             from web.integrations.voice import VoiceAIService
-            ai_text, _send_action, _gap = await VoiceAIService.generate_response(
+            ai_text, send_action, _gap = await VoiceAIService.generate_response(
                 transcript,
                 self.tenant_config_dict,
                 self.conversation_history,
@@ -222,10 +226,32 @@ class VoiceStreamSession:
             )
             if ai_text:
                 self.conversation_history.append({"role": "assistant", "text": ai_text})
-            return (ai_text or "").strip()
+            # action_type is stashed inside send_action dict when voice AI detects an action
+            action_type = None
+            if isinstance(send_action, dict):
+                action_type = send_action.get("action_type")
+            return (ai_text or "").strip(), action_type
         except Exception as exc:
             log.warning("[STREAM] LLM failed: %s", exc)
-            return ""
+            return "", None
+
+    async def _execute_voice_action(self, transcript: str, action_type: str):
+        """Background: detect action intent from transcript and execute it via PMS."""
+        try:
+            from web.actions import detect_action_intent, create_action, execute_action, is_auto_approved
+            from web.db import SessionLocal
+            log.info("[STREAM] executing voice action type=%s for tenant=%s", action_type, self.tenant_id)
+            intent = await detect_action_intent(self.tenant_id, transcript)
+            if not intent or intent.get("action") == "none":
+                # Voice AI said action, use the action_type it returned directly
+                intent = {"action": action_type, "params": {}, "confidence": 0.8}
+            with SessionLocal() as db:
+                guest_action = create_action(db, self.tenant_id, None, intent, source="voice")
+                if guest_action and is_auto_approved(intent.get("action", ""), self.tenant_id, db):
+                    await execute_action(guest_action, db)
+                    log.info("[STREAM] voice action executed: %s", action_type)
+        except Exception as exc:
+            log.warning("[STREAM] _execute_voice_action failed: %s", exc)
 
     async def _speak(self, text: str):
         """Synthesize to audio and stream back as μ-law chunks."""
