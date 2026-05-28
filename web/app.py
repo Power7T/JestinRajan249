@@ -9315,7 +9315,7 @@ def guest_chat_page(token: str, request: Request, db: Session = Depends(get_db))
     if not cfg:
         raise HTTPException(status_code=404, detail="Chat link not found")
     property_name = (cfg.property_names or "Your Property").split(",")[0].strip()
-    csp_nonce = getattr(request.state, "csp_nonce", "")
+    csp_nonce     = getattr(request.state, "csp_nonce", "")
     return templates.TemplateResponse("guest_chat.html", {
         "request":       request,
         "chat_token":    token,
@@ -9351,7 +9351,12 @@ async def guest_chat_identify(token: str, request: Request, db: Session = Depend
         .first()
     )
     if not res:
-        return JSONResponse({"found": False, "error": "Booking not found. Check your confirmation email."})
+        # Not pre-loaded — prompt guest to self-register (enter name + dates)
+        return JSONResponse({
+            "found": False,
+            "needs_registration": True,
+            "code": code,   # echoed back so the JS can pre-fill the register form
+        })
 
     # Attach reservation to session
     if session_id:

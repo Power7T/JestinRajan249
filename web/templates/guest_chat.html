@@ -73,6 +73,15 @@
     .id-skip { font-size: 0.78rem; color: #475569; cursor: pointer; text-decoration: underline; }
     .id-skip:hover { color: #94a3b8; }
     .id-error { font-size: 0.8rem; color: #f87171; text-align: center; min-height: 1em; }
+    /* host-hint shown when booking not yet added */
+    .id-hint {
+      display: none; margin-top: 0.25rem;
+      padding: 0.6rem 0.9rem;
+      background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 8px; font-size: 0.77rem; color: #fcd34d;
+      text-align: center; line-height: 1.5;
+    }
+    .id-hint.visible { display: block; }
 
     /* ── Chat screen ── */
     #chatScreen { flex: 1; display: none; flex-direction: column; overflow: hidden; }
@@ -182,6 +191,9 @@
         onkeypress="if(event.key==='Enter') identify()"
       >
       <div class="id-error" id="codeError"></div>
+      <div class="id-hint" id="codeHint">
+        Booking not added yet — ask your host to set up your details, then try again. You can still chat generally below.
+      </div>
       <button class="id-btn" id="identifyBtn" onclick="identify()">Start chat →</button>
       <div style="text-align:center;">
         <span class="id-skip" onclick="skipIdentify()">Skip — just have a general question</span>
@@ -244,6 +256,7 @@ async function identify() {
   btn.disabled = true;
   btn.textContent = 'Checking…';
   document.getElementById('codeError').textContent = '';
+  document.getElementById('codeHint').classList.remove('visible');
 
   try {
     const r = await fetch(API_BASE + '/identify', {
@@ -256,6 +269,11 @@ async function identify() {
       reservationId = d.reservation_id;
       guestName = d.guest_name;
       enterChat(d);
+    } else if (d.needs_registration) {
+      // Host hasn't added this booking yet — show a helpful hint, let guest
+      // skip to general chat rather than leaving them stuck.
+      document.getElementById('codeHint').classList.add('visible');
+      btn.disabled = false; btn.textContent = 'Start chat →';
     } else {
       document.getElementById('codeError').textContent = d.error || 'Booking not found. Check your confirmation email.';
       btn.disabled = false; btn.textContent = 'Start chat →';
