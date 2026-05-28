@@ -186,8 +186,33 @@ def is_auto_approved(cfg: TenantConfig, action_type: str) -> bool:
 def create_action(db: Session, tenant_id: str, action_type: str, params: dict,
                   reservation: Optional[Reservation], draft_id: Optional[int],
                   cfg: TenantConfig) -> GuestAction:
-    """Persist a GuestAction row. Returns the new row."""
+    """
+    Persist a GuestAction row. Returns the new row.
+
+    When the action requires host approval (not auto-approved), pre-populates
+    result_json with a guest_reply so dispatch_action_reply() can still send
+    a coherent policy-correct message: 'Your request has been sent to the host.'
+    """
     requires_approval = not is_auto_approved(cfg, action_type)
+
+    # For approval-required actions, build a pending-notice guest_reply now
+    # so the guest gets a single policy-correct message immediately.
+    initial_result: dict = {}
+    if requires_approval:
+        _labels = {
+            "late_checkout":  "late checkout request",
+            "early_checkin":  "early check-in request",
+            "extra_guest":    "additional guest request",
+            "add_note":       "special request",
+        }
+        label = _labels.get(action_type, "request")
+        initial_result = {
+            "guest_reply": (
+                f"I've sent your {label} to the host for review. "
+                f"You'll receive confirmation shortly!"
+            ),
+        }
+
     action = GuestAction(
         tenant_id=tenant_id,
         reservation_id=reservation.id if reservation else None,
@@ -196,6 +221,7 @@ def create_action(db: Session, tenant_id: str, action_type: str, params: dict,
         params_json=params or {},
         status="pending",
         requires_approval=requires_approval,
+        result_json=initial_result if initial_result else None,
     )
     db.add(action)
     db.commit()

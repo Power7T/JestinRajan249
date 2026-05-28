@@ -179,14 +179,16 @@ class VoiceStreamSession:
                 return
             log.info("[STREAM] [%s] AI: %s (end_call=%s)", self.call_id, response_text[:80], end_call)
 
-            # 3) TTS — speak initial acknowledgement immediately so guest isn't left waiting
-            await self._speak(response_text)
-
-            # 4) Execute PMS action and speak the REAL result back (sequential, not background)
-            #    e.g. "Great news — your checkout is extended to 2pm!"
-            #    or   "Your unit is taken, but Unit B is available at £120/night..."
+            # 3) TTS — when an action is detected, do NOT speak the generic LLM ack
+            #    ("Absolutely! I'm sorting that") because it ignores the host's policy.
+            #    Instead speak a brief neutral filler so the guest isn't left in silence,
+            #    then execute the action and speak the POLICY-CORRECT result only.
             if action_type and self.tenant_id:
+                await self._speak("One moment while I check that for you.")
                 await self._execute_voice_action(transcript, action_type)
+            else:
+                # No action — speak the normal LLM response
+                await self._speak(response_text)
 
             # 5) End the call if AI said goodbye
             if end_call:

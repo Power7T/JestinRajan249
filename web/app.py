@@ -6211,7 +6211,20 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
                              tenant_id, intent["action_type"], is_auto_approved(cfg, intent["action_type"]))
                     if is_auto_approved(cfg, intent["action_type"]):
                         execute_action(db, action_row)
-                        # Send the result back to the guest (confirmation or alternative offer)
+                        # The policy-driven result IS the only reply — suppress the generic
+                        # AI draft so the guest only receives one coherent message that
+                        # reflects the host's actual configured outcome (free / flat_fee /
+                        # charge_alt_rate / waive_extra / approval_required / deny).
+                        if draft.status in ("pending", "auto_sent"):
+                            draft.status = "suppressed_by_action"
+                            db.commit()
+                        dispatch_action_reply(db, action_row)
+                    else:
+                        # Needs host approval — suppress generic draft, send pending notice
+                        if draft.status in ("pending", "auto_sent"):
+                            draft.status = "suppressed_by_action"
+                            db.commit()
+                        # Guest gets told the host will confirm — from result_json
                         dispatch_action_reply(db, action_row)
             except Exception as _act_exc:
                 log.warning("[%s] Action detection failed: %s", tenant_id, _act_exc)
