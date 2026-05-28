@@ -148,15 +148,51 @@ def check_booking_confirmed(cfg: CalendarConfig, booking: dict, label: str):
     _save_draft(cfg.tenant_id, draft_id, f"{guest} — new booking",
                 "New booking confirmation", draft_text, "booking")
 
-    # Also create/upsert Reservation record from iCal event
+    # Upsert Reservation from iCal — cross-checks against manually entered reservations.
+    # iCal UIDs (e.g. "Be8b59da@airbnb.com") differ from host-typed confirmation codes
+    # (e.g. "HM1234567"), so we do a two-pass lookup:
+    #   1. Exact match on confirmation_code = iCal UID
+    #   2. Fuzzy match on (tenant, checkin, checkout, listing) to catch manual entries
+    #      for the same stay — if found, enrich that row with iCal data instead of duping.
     db = SessionLocal()
     try:
+        # Pass 1: exact UID match
         existing_res = db.query(Reservation).filter(
             Reservation.tenant_id == cfg.tenant_id,
             Reservation.confirmation_code == booking['uid']
         ).first()
 
         if not existing_res:
+            # Pass 2: same dates + listing (catches manual entries before iCal arrived)
+            existing_res = db.query(Reservation).filter(
+                Reservation.tenant_id == cfg.tenant_id,
+                Reservation.checkin == booking['checkin'],
+                Reservation.checkout == booking['checkout'],
+                Reservation.listing_name == label,
+                Reservation.status == "confirmed",
+            ).first()
+            if existing_res:
+                log.info(
+                    "[%s] iCal UID %s matches manual reservation %s by dates — enriching",
+                    cfg.tenant_id, booking['uid'], existing_res.confirmation_code,
+                )
+
+        if existing_res:
+            # Enrich: update guest_name and canonical iCal UID if it was a manual entry
+            changed = False
+            if existing_res.guest_name in (None, "Guest", "") and guest not in (None, ""):
+                existing_res.guest_name = guest
+                changed = True
+            # Stamp the iCal UID as a second reference so future syncs find it instantly
+            if existing_res.confirmation_code != booking['uid'] and not getattr(existing_res, 'ical_uid', None):
+                try:
+                    existing_res.ical_uid = booking['uid']  # type: ignore[attr-defined]
+                    changed = True
+                except Exception:
+                    pass  # column may not exist yet — safe to skip
+            if changed:
+                db.commit()
+        else:
             res = Reservation(
                 tenant_id=cfg.tenant_id,
                 confirmation_code=booking['uid'],
@@ -171,7 +207,8 @@ def check_booking_confirmed(cfg: CalendarConfig, booking: dict, label: str):
             db.commit()
             log.info("[%s] Reservation created from iCal for %s (uid=%s)", cfg.tenant_id, guest, booking['uid'])
     except Exception as exc:
-        log.error("[%s] Error creating reservation from iCal: %s", cfg.tenant_id, exc)
+        log.error("[%s] Error upserting reservation from iCal: %s", cfg.tenant_id, exc)
+        db.rollback()
     finally:
         db.close()
 
