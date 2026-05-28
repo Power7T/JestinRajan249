@@ -163,12 +163,13 @@ def check_booking_confirmed(cfg: CalendarConfig, booking: dict, label: str):
         ).first()
 
         if not existing_res:
-            # Pass 2: same dates + listing (catches manual entries before iCal arrived)
+            # Pass 2: same dates + listing (catches manual entries before iCal arrived).
+            # listing_name match is case-insensitive + trimmed so "beach house" == "Beach House".
             existing_res = db.query(Reservation).filter(
                 Reservation.tenant_id == cfg.tenant_id,
                 Reservation.checkin == booking['checkin'],
                 Reservation.checkout == booking['checkout'],
-                Reservation.listing_name == label,
+                Reservation.listing_name.ilike(label.strip()),
                 Reservation.status == "confirmed",
             ).first()
             if existing_res:
