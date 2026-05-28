@@ -1639,7 +1639,7 @@ class ProactiveMessage(Base):
     status:         Mapped[str]           = mapped_column(String(16), default="pending", index=True)  # pending/sent/skipped/failed
     channel:        Mapped[Optional[str]] = mapped_column(String(16), nullable=True)  # whatsapp/sms
     message_text:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    draft_id:       Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("drafts.id"), nullable=True)
+    draft_id:       Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("drafts.id"), nullable=True)
     error_reason:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at:     Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
 
@@ -1654,7 +1654,7 @@ class DraftCorrection(Base):
 
     id:             Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
     tenant_id:      Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
-    draft_id:       Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("drafts.id"), nullable=True)
+    draft_id:       Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("drafts.id"), nullable=True)
     original_text:  Mapped[str]           = mapped_column(Text)
     corrected_text: Mapped[str]           = mapped_column(Text)
     guest_message:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -1674,7 +1674,7 @@ class GuestAction(Base):
     id:              Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
     tenant_id:       Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
     reservation_id:  Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
-    draft_id:        Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("drafts.id"), nullable=True)
+    draft_id:        Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("drafts.id"), nullable=True)
     action_type:     Mapped[str]           = mapped_column(String(64), index=True)  # late_checkout/early_checkin/extra_guest/add_note/block_dates
     params_json:     Mapped[dict]          = mapped_column(JSON, default=lambda: {})
     status:          Mapped[str]           = mapped_column(String(16), default="pending", index=True)  # pending/approved/rejected/executed/failed
@@ -1695,7 +1695,7 @@ class OperationsTask(Base):
     id:              Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
     tenant_id:       Mapped[str]           = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
     reservation_id:  Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
-    draft_id:        Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("drafts.id"), nullable=True)
+    draft_id:        Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("drafts.id"), nullable=True)
     assigned_to:     Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("team_members.id"), nullable=True, index=True)
     task_type:       Mapped[str]           = mapped_column(String(32), index=True)  # maintenance/cleaning/supply/security/other
     priority:        Mapped[str]           = mapped_column(String(16), default="normal", index=True)  # low/normal/high/urgent

@@ -5780,7 +5780,7 @@ def admin_update_voice_pricing(voice_tier: str, request: Request,
     return RedirectResponse(f"/admin/voice-pricing?msg=updated&tier={voice_tier}", status_code=302)
 
 
-@app.get("/api/admin/voice-pricing", response_class="application/json")
+@app.get("/api/admin/voice-pricing")
 def api_get_voice_pricing(request: Request, db: Session = Depends(get_db)):
     """Get all voice pricing config (for API access)."""
     admin = _require_admin(request, db)
