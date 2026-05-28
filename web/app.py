@@ -4371,24 +4371,38 @@ async def automations_action_policies_save(
         v = (form.get(name) or "USD").strip().upper()
         return v if v in ("USD", "GBP", "EUR", "AUD", "CAD") else "USD"
 
-    _unit_modes    = ("free", "flat_fee", "approval_required")
-    _alt_modes     = ("charge_alt_rate", "waive_extra", "flat_fee", "approval_required")
-    _noavail_modes = ("deny", "escalate")
+    def _hhmm(name: str, default: str) -> str:
+        import re as _re
+        v = (form.get(name) or "").strip()
+        return v if _re.match(r"^\d{1,2}:\d{2}$", v) else default
+
+    _unit_modes       = ("free", "flat_fee", "approval_required")
+    _alt_modes        = ("charge_alt_rate", "waive_extra", "flat_fee", "approval_required")
+    _noavail_modes    = ("deny", "escalate")
+    _extra_night_modes = ("nightly_rate", "flat_fee", "approval_required")
 
     policies = {
         "late_checkout": {
-            "same_unit_free":    _radio("lc_same_unit", _unit_modes, "free"),
-            "alt_unit_pricing":  _radio("lc_alt_unit",  _alt_modes, "charge_alt_rate"),
-            "no_unit_available": _radio("lc_no_avail",  _noavail_modes, "deny"),
-            "flat_fee_amount":   _flt("lc_flat_fee_amount"),
-            "flat_fee_currency": _cur("lc_flat_fee_currency"),
+            "same_unit_free":           _radio("lc_same_unit",        _unit_modes,        "free"),
+            "alt_unit_pricing":         _radio("lc_alt_unit",         _alt_modes,         "charge_alt_rate"),
+            "no_unit_available":        _radio("lc_no_avail",         _noavail_modes,     "deny"),
+            "flat_fee_amount":          _flt("lc_flat_fee_amount"),
+            "flat_fee_currency":        _cur("lc_flat_fee_currency"),
+            "cutoff_time":              _hhmm("lc_cutoff_time",       "14:00"),
+            "extra_night_mode":         _radio("lc_extra_night_mode", _extra_night_modes, "nightly_rate"),
+            "extra_night_fee_amount":   _flt("lc_extra_night_fee_amount"),
+            "extra_night_fee_currency": _cur("lc_extra_night_fee_currency"),
         },
         "early_checkin": {
-            "same_unit_free":    _radio("ec_same_unit", _unit_modes, "free"),
-            "alt_unit_pricing":  _radio("ec_alt_unit",  _alt_modes, "charge_alt_rate"),
-            "no_unit_available": _radio("ec_no_avail",  _noavail_modes, "deny"),
-            "flat_fee_amount":   _flt("ec_flat_fee_amount"),
-            "flat_fee_currency": _cur("ec_flat_fee_currency"),
+            "same_unit_free":           _radio("ec_same_unit",        _unit_modes,        "free"),
+            "alt_unit_pricing":         _radio("ec_alt_unit",         _alt_modes,         "charge_alt_rate"),
+            "no_unit_available":        _radio("ec_no_avail",         _noavail_modes,     "deny"),
+            "flat_fee_amount":          _flt("ec_flat_fee_amount"),
+            "flat_fee_currency":        _cur("ec_flat_fee_currency"),
+            "cutoff_time":              _hhmm("ec_cutoff_time",       "10:00"),
+            "extra_night_mode":         _radio("ec_extra_night_mode", _extra_night_modes, "nightly_rate"),
+            "extra_night_fee_amount":   _flt("ec_extra_night_fee_amount"),
+            "extra_night_fee_currency": _cur("ec_extra_night_fee_currency"),
         },
     }
 

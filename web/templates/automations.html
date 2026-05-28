@@ -185,8 +185,53 @@
         🕐 Late checkout
       </h3>
 
+      <!-- Cutoff time -->
       <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
-        When the same unit is free until requested time
+        Late checkout cutoff time
+      </label>
+      <p class="help-text" style="margin:0.2rem 0 0.4rem;">Requests past this time count as an extra night, not just a late checkout.</p>
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+        <input type="time" name="lc_cutoff_time" value="14:00"
+               style="padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:0.875rem;">
+        <span style="color:#64748b;font-size:0.8rem;">default: 2:00 PM</span>
+      </div>
+
+      <!-- Extra night pricing (past cutoff) -->
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;color:#f59e0b;">
+        ⚠️ When request is past cutoff (extra night)
+      </label>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 1rem;">
+        <label class="policy-radio">
+          <input type="radio" name="lc_extra_night_mode" value="nightly_rate" checked>
+          Charge their nightly rate
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="lc_extra_night_mode" value="flat_fee">
+          Charge a custom fee
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="lc_extra_night_mode" value="approval_required">
+          Ask me first
+        </label>
+      </div>
+      <div id="lc-extra-fee" style="display:none;margin-bottom:1rem;">
+        <label class="help-text" style="font-size:0.78rem;">Extra night flat fee</label>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <input type="number" name="lc_extra_night_fee_amount" min="0" step="1" value="0"
+                 style="width:90px;padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;">
+          <select name="lc_extra_night_fee_currency"
+                  style="padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;">
+            <option value="USD">USD $</option>
+            <option value="GBP">GBP £</option>
+            <option value="EUR">EUR €</option>
+            <option value="AUD">AUD A$</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Standard late checkout (before cutoff) -->
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
+        When request is before cutoff (standard late checkout)
       </label>
       <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 1rem;">
         <label class="policy-radio">
@@ -257,8 +302,53 @@
         🌅 Early check-in
       </h3>
 
+      <!-- Cutoff time -->
       <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
-        When the unit is ready early
+        Early check-in cutoff time
+      </label>
+      <p class="help-text" style="margin:0.2rem 0 0.4rem;">Requests earlier than this time count as an extra night, not just an early check-in.</p>
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+        <input type="time" name="ec_cutoff_time" value="10:00"
+               style="padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:0.875rem;">
+        <span style="color:#64748b;font-size:0.8rem;">default: 10:00 AM</span>
+      </div>
+
+      <!-- Extra night pricing (before cutoff) -->
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;color:#f59e0b;">
+        ⚠️ When request is before cutoff (extra night)
+      </label>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 1rem;">
+        <label class="policy-radio">
+          <input type="radio" name="ec_extra_night_mode" value="nightly_rate" checked>
+          Charge their nightly rate
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="ec_extra_night_mode" value="flat_fee">
+          Charge a custom fee
+        </label>
+        <label class="policy-radio">
+          <input type="radio" name="ec_extra_night_mode" value="approval_required">
+          Ask me first
+        </label>
+      </div>
+      <div id="ec-extra-fee" style="display:none;margin-bottom:1rem;">
+        <label class="help-text" style="font-size:0.78rem;">Extra night flat fee</label>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <input type="number" name="ec_extra_night_fee_amount" min="0" step="1" value="0"
+                 style="width:90px;padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;">
+          <select name="ec_extra_night_fee_currency"
+                  style="padding:8px 10px;background:#0d0e14;color:#e3e1eb;border:1px solid rgba(255,255,255,0.1);border-radius:6px;">
+            <option value="USD">USD $</option>
+            <option value="GBP">GBP £</option>
+            <option value="EUR">EUR €</option>
+            <option value="AUD">AUD A$</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Standard early check-in (after cutoff) -->
+      <label class="help-text" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:.06em;">
+        When request is after cutoff (standard early check-in)
       </label>
       <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.4rem 0 1rem;">
         <label class="policy-radio">
@@ -344,19 +434,27 @@
       if(el && val !== undefined) el.value = val;
     }
 
-    if(lc.same_unit_free)    setRadio('lc_same_unit', lc.same_unit_free);
-    if(lc.alt_unit_pricing)  setRadio('lc_alt_unit',  lc.alt_unit_pricing);
-    if(lc.no_unit_available) setRadio('lc_no_avail',  lc.no_unit_available);
-    if(lc.flat_fee_amount)   setVal('lc_flat_fee_amount', lc.flat_fee_amount);
-    if(lc.flat_fee_currency) setVal('lc_flat_fee_currency', lc.flat_fee_currency);
+    if(lc.same_unit_free)           setRadio('lc_same_unit',        lc.same_unit_free);
+    if(lc.alt_unit_pricing)         setRadio('lc_alt_unit',          lc.alt_unit_pricing);
+    if(lc.no_unit_available)        setRadio('lc_no_avail',          lc.no_unit_available);
+    if(lc.flat_fee_amount)          setVal('lc_flat_fee_amount',     lc.flat_fee_amount);
+    if(lc.flat_fee_currency)        setVal('lc_flat_fee_currency',   lc.flat_fee_currency);
+    if(lc.cutoff_time)              setVal('lc_cutoff_time',         lc.cutoff_time);
+    if(lc.extra_night_mode)         setRadio('lc_extra_night_mode',  lc.extra_night_mode);
+    if(lc.extra_night_fee_amount)   setVal('lc_extra_night_fee_amount',   lc.extra_night_fee_amount);
+    if(lc.extra_night_fee_currency) setVal('lc_extra_night_fee_currency', lc.extra_night_fee_currency);
 
-    if(ec.same_unit_free)    setRadio('ec_same_unit', ec.same_unit_free);
-    if(ec.alt_unit_pricing)  setRadio('ec_alt_unit',  ec.alt_unit_pricing);
-    if(ec.no_unit_available) setRadio('ec_no_avail',  ec.no_unit_available);
-    if(ec.flat_fee_amount)   setVal('ec_flat_fee_amount', ec.flat_fee_amount);
-    if(ec.flat_fee_currency) setVal('ec_flat_fee_currency', ec.flat_fee_currency);
+    if(ec.same_unit_free)           setRadio('ec_same_unit',         ec.same_unit_free);
+    if(ec.alt_unit_pricing)         setRadio('ec_alt_unit',          ec.alt_unit_pricing);
+    if(ec.no_unit_available)        setRadio('ec_no_avail',          ec.no_unit_available);
+    if(ec.flat_fee_amount)          setVal('ec_flat_fee_amount',     ec.flat_fee_amount);
+    if(ec.flat_fee_currency)        setVal('ec_flat_fee_currency',   ec.flat_fee_currency);
+    if(ec.cutoff_time)              setVal('ec_cutoff_time',         ec.cutoff_time);
+    if(ec.extra_night_mode)         setRadio('ec_extra_night_mode',  ec.extra_night_mode);
+    if(ec.extra_night_fee_amount)   setVal('ec_extra_night_fee_amount',   ec.extra_night_fee_amount);
+    if(ec.extra_night_fee_currency) setVal('ec_extra_night_fee_currency', ec.extra_night_fee_currency);
 
-    // Toggle flat-fee inputs
+    // Toggle flat-fee inputs based on selected radio
     function toggleFee(radioName, containerId) {
       document.querySelectorAll('input[name="' + radioName + '"]').forEach(function(el) {
         el.addEventListener('change', function() {
@@ -364,13 +462,14 @@
             (el.value === 'flat_fee' && el.checked) ? 'block' : 'none';
         });
       });
-      // initial state
       var checked = document.querySelector('input[name="' + radioName + '"]:checked');
       if(checked && checked.value === 'flat_fee')
         document.getElementById(containerId).style.display = 'block';
     }
-    toggleFee('lc_same_unit', 'lc-same-fee');
-    toggleFee('ec_same_unit', 'ec-same-fee');
+    toggleFee('lc_same_unit',       'lc-same-fee');
+    toggleFee('lc_extra_night_mode','lc-extra-fee');
+    toggleFee('ec_same_unit',       'ec-same-fee');
+    toggleFee('ec_extra_night_mode','ec-extra-fee');
   })();
   </script>
 

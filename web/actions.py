@@ -132,18 +132,28 @@ If the message is just a question or thanks, set has_action=false."""
 # Defaults applied when the host has not configured a policy
 _POLICY_DEFAULTS = {
     "late_checkout": {
-        "same_unit_free":    "free",           # allow at no charge
-        "alt_unit_pricing":  "charge_alt_rate", # quote alternative at its own rate
-        "no_unit_available": "deny",
-        "flat_fee_amount":   0,
-        "flat_fee_currency": "USD",
+        "same_unit_free":          "free",           # allow at no charge
+        "alt_unit_pricing":        "charge_alt_rate", # quote alternative at its own rate
+        "no_unit_available":       "deny",
+        "flat_fee_amount":         0,
+        "flat_fee_currency":       "USD",
+        # Cutoff: requests past this time count as an extra night, not just a late checkout
+        "cutoff_time":             "14:00",           # HH:MM — default 2 PM
+        "extra_night_mode":        "nightly_rate",    # nightly_rate | flat_fee | approval_required
+        "extra_night_fee_amount":  0,
+        "extra_night_fee_currency":"USD",
     },
     "early_checkin": {
-        "same_unit_free":    "free",
-        "alt_unit_pricing":  "charge_alt_rate",
-        "no_unit_available": "deny",
-        "flat_fee_amount":   0,
-        "flat_fee_currency": "USD",
+        "same_unit_free":          "free",
+        "alt_unit_pricing":        "charge_alt_rate",
+        "no_unit_available":       "deny",
+        "flat_fee_amount":         0,
+        "flat_fee_currency":       "USD",
+        # Cutoff: requests earlier than this time count as an extra night
+        "cutoff_time":             "10:00",           # HH:MM — default 10 AM
+        "extra_night_mode":        "nightly_rate",
+        "extra_night_fee_amount":  0,
+        "extra_night_fee_currency":"USD",
     },
 }
 
@@ -258,6 +268,11 @@ def _parse_hhmm(t: str) -> Optional[time]:
         return time(int(h), int(m))
     except Exception:
         return None
+
+
+def _t_to_min(t: time) -> int:
+    """Convert a time object to total minutes since midnight for easy comparison."""
+    return t.hour * 60 + t.minute
 
 
 def _nightly_rate(reservation: Reservation) -> Optional[float]:
@@ -496,70 +511,154 @@ def execute_action(db: Session, action: GuestAction) -> bool:
             requested_dt = datetime.combine(checkout_date, requested_t)
             unit_free = _unit_is_free_after(db, action.tenant_id, unit, requested_dt) if unit else True
 
+            # Determine if this is "extra night" territory (request past host's cutoff)
+            cutoff_str = policy.get("cutoff_time") or "14:00"
+            cutoff_t   = _parse_hhmm(cutoff_str) or time(14, 0)
+            is_extra_night = _t_to_min(requested_t) > _t_to_min(cutoff_t)
+
             if unit_free:
-                # ── Same unit is free — apply policy ──────────────────────
-                mode = policy.get("same_unit_free", "free")
+                # ── Same unit is free ────────────────────────────────────────
+                if is_extra_night:
+                    # Request is past the cutoff — treat as an extra night charge
+                    extra_mode     = policy.get("extra_night_mode", "nightly_rate")
+                    extra_fee_amt  = float(policy.get("extra_night_fee_amount") or 0)
+                    extra_fee_curr = policy.get("extra_night_fee_currency") or "USD"
+                    nightly        = _nightly_rate(reservation)
 
-                if mode == "approval_required":
-                    # Host wants to decide manually
-                    result = {
-                        "applied": False,
-                        "reason": "pending_host_approval",
-                        "guest_reply": (
-                            f"I've sent your late checkout request ({requested_time_str}) to the host for approval. "
-                            f"You'll hear back shortly! 🙂"
-                        ),
-                    }
-                    ok = False  # stays pending
-
-                elif mode == "flat_fee":
-                    fee_amt  = float(policy.get("flat_fee_amount") or 0)
-                    fee_curr = policy.get("flat_fee_currency") or "USD"
-                    fee_str  = _fmt_fee(fee_amt, fee_curr)
-                    # Apply the time change, quote the fee in the reply
-                    pms_ok = adapter.update_reservation(pms_res_id, {"checkout_time": requested_time_str})
-                    ok = pms_ok
-                    if pms_ok:
-                        result = {
-                            "checkout_time": requested_time_str,
-                            "applied": True,
-                            "fee_charged": fee_amt,
-                            "fee_currency": fee_curr,
-                            "guest_reply": (
-                                f"Done! Your checkout has been extended to {requested_time_str}. "
-                                f"A late checkout fee of {fee_str} will be added to your booking. "
-                                f"Enjoy the extra time! 🙂"
-                            ),
-                        }
-                    else:
+                    if extra_mode == "approval_required":
                         result = {
                             "applied": False,
+                            "reason": "pending_host_approval_extra_night",
                             "guest_reply": (
-                                "I wasn't able to update your checkout time — "
-                                "I've flagged this for the host to sort out with you shortly."
+                                f"Checking out at {requested_time_str} is quite late — that's past our standard "
+                                f"late checkout window (after {cutoff_str}), so it counts as an additional night. "
+                                f"I've sent this to the host for approval. You'll hear back shortly! 🙂"
                             ),
                         }
+                        ok = False
 
-                else:  # "free" — default
-                    pms_ok = adapter.update_reservation(pms_res_id, {"checkout_time": requested_time_str})
-                    ok = pms_ok
-                    if pms_ok:
-                        result = {
+                    elif extra_mode == "flat_fee":
+                        fee_str = _fmt_fee(extra_fee_amt, extra_fee_curr)
+                        pms_ok  = adapter.update_reservation(pms_res_id, {"checkout_time": requested_time_str})
+                        ok = pms_ok
+                        if pms_ok:
+                            result = {
+                                "checkout_time": requested_time_str,
+                                "applied": True,
+                                "extra_night": True,
+                                "fee_charged": extra_fee_amt,
+                                "fee_currency": extra_fee_curr,
+                                "guest_reply": (
+                                    f"Done! Your checkout has been extended to {requested_time_str}. "
+                                    f"Since this is past {cutoff_str}, an extra-night fee of {fee_str} applies. "
+                                    f"Enjoy the extended stay! 🙂"
+                                ),
+                            }
+                        else:
+                            result = {
+                                "applied": False,
+                                "guest_reply": (
+                                    "I wasn't able to update your checkout time — "
+                                    "I've flagged this for the host to sort out with you shortly."
+                                ),
+                            }
+
+                    else:  # nightly_rate — default
+                        if nightly:
+                            rate_msg = f"an additional night charge of {_fmt_fee(nightly, extra_fee_curr or 'USD')}"
+                        else:
+                            rate_msg = "an additional night's charge at your booking rate"
+                        # Extend checkout date by 1 night
+                        next_day = checkout_date + timedelta(days=1)
+                        pms_ok = adapter.update_reservation(pms_res_id, {
                             "checkout_time": requested_time_str,
-                            "applied": True,
-                            "guest_reply": (
-                                f"Great news! Your checkout has been extended to {requested_time_str} — "
-                                f"no extra charge. Enjoy the extra time! 🙂"
-                            ),
-                        }
-                    else:
+                            "checkout_date": str(next_day),
+                        })
+                        ok = pms_ok
+                        if pms_ok:
+                            result = {
+                                "checkout_time": requested_time_str,
+                                "checkout_date": str(next_day),
+                                "applied": True,
+                                "extra_night": True,
+                                "guest_reply": (
+                                    f"Done! Your stay has been extended — checkout is now {requested_time_str} "
+                                    f"on {next_day.strftime('%B %d')}. "
+                                    f"Since you're staying past {cutoff_str}, this includes {rate_msg}. "
+                                    f"Enjoy the extra time! 🙂"
+                                ),
+                            }
+                        else:
+                            result = {
+                                "applied": False,
+                                "guest_reply": (
+                                    "I wasn't able to update your checkout — "
+                                    "I've flagged this for the host to sort out with you shortly."
+                                ),
+                            }
+
+                else:
+                    # ── Standard late checkout — apply same_unit_free policy ──
+                    mode = policy.get("same_unit_free", "free")
+
+                    if mode == "approval_required":
                         result = {
                             "applied": False,
+                            "reason": "pending_host_approval",
                             "guest_reply": (
-                                "I wasn't able to update your checkout time directly — "
-                                "I've flagged this for the host to confirm with you shortly."
+                                f"I've sent your late checkout request ({requested_time_str}) to the host for approval. "
+                                f"You'll hear back shortly! 🙂"
                             ),
                         }
+                        ok = False
+
+                    elif mode == "flat_fee":
+                        fee_amt  = float(policy.get("flat_fee_amount") or 0)
+                        fee_curr = policy.get("flat_fee_currency") or "USD"
+                        fee_str  = _fmt_fee(fee_amt, fee_curr)
+                        pms_ok = adapter.update_reservation(pms_res_id, {"checkout_time": requested_time_str})
+                        ok = pms_ok
+                        if pms_ok:
+                            result = {
+                                "checkout_time": requested_time_str,
+                                "applied": True,
+                                "fee_charged": fee_amt,
+                                "fee_currency": fee_curr,
+                                "guest_reply": (
+                                    f"Done! Your checkout has been extended to {requested_time_str}. "
+                                    f"A late checkout fee of {fee_str} will be added to your booking. "
+                                    f"Enjoy the extra time! 🙂"
+                                ),
+                            }
+                        else:
+                            result = {
+                                "applied": False,
+                                "guest_reply": (
+                                    "I wasn't able to update your checkout time — "
+                                    "I've flagged this for the host to sort out with you shortly."
+                                ),
+                            }
+
+                    else:  # "free" — default
+                        pms_ok = adapter.update_reservation(pms_res_id, {"checkout_time": requested_time_str})
+                        ok = pms_ok
+                        if pms_ok:
+                            result = {
+                                "checkout_time": requested_time_str,
+                                "applied": True,
+                                "guest_reply": (
+                                    f"Great news! Your checkout has been extended to {requested_time_str} — "
+                                    f"no extra charge. Enjoy the extra time! 🙂"
+                                ),
+                            }
+                        else:
+                            result = {
+                                "applied": False,
+                                "guest_reply": (
+                                    "I wasn't able to update your checkout time directly — "
+                                    "I've flagged this for the host to confirm with you shortly."
+                                ),
+                            }
 
             else:
                 # ── Same unit is blocked — find alternatives ───────────────
@@ -663,52 +762,115 @@ def execute_action(db: Session, action: GuestAction) -> bool:
         elif action.action_type == "early_checkin":
             policy = _get_policy(cfg, "early_checkin")
             requested_time_str = params.get("requested_time") or "13:00"
+            requested_t = _parse_hhmm(requested_time_str) or time(13, 0)
 
             unit = reservation.unit_identifier or ""
             checkin_date = reservation.checkin if reservation.checkin else date.today()
             if hasattr(checkin_date, "date"):
                 checkin_date = checkin_date.date()
 
+            # Determine if this is "extra night" territory (request is before host's cutoff)
+            cutoff_str   = policy.get("cutoff_time") or "10:00"
+            cutoff_t     = _parse_hhmm(cutoff_str) or time(10, 0)
+            is_extra_night = _t_to_min(requested_t) < _t_to_min(cutoff_t)
+
             # Try the PMS first — it knows if the unit is truly ready
             pms_ok = adapter.update_reservation(pms_res_id, {"checkin_time": requested_time_str})
 
             if pms_ok:
-                mode = policy.get("same_unit_free", "free")
-                if mode == "flat_fee":
-                    fee_amt  = float(policy.get("flat_fee_amount") or 0)
-                    fee_curr = policy.get("flat_fee_currency") or "USD"
-                    fee_str  = _fmt_fee(fee_amt, fee_curr)
-                    result = {
-                        "checkin_time": requested_time_str,
-                        "applied": True,
-                        "fee_charged": fee_amt,
-                        "guest_reply": (
-                            f"Done! Early check-in at {requested_time_str} is confirmed. "
-                            f"An early check-in fee of {fee_str} will be added to your booking. "
-                            f"See you soon! 🏠"
-                        ),
-                    }
-                elif mode == "approval_required":
-                    result = {
-                        "applied": False,
-                        "reason": "pending_host_approval",
-                        "guest_reply": (
-                            f"I've sent your early check-in request ({requested_time_str}) to the host for approval. "
-                            f"You'll hear back very shortly!"
-                        ),
-                    }
-                    # Revert — approval not yet given
-                    adapter.update_reservation(pms_res_id, {"checkin_time": ""})
-                    pms_ok = False
-                else:  # free
-                    result = {
-                        "checkin_time": requested_time_str,
-                        "applied": True,
-                        "guest_reply": (
-                            f"Done! Early check-in at {requested_time_str} is confirmed — "
-                            f"no extra charge. We'll have the unit ready for you. See you soon! 🏠"
-                        ),
-                    }
+                if is_extra_night:
+                    # Request is before the cutoff — treat as an extra night
+                    extra_mode     = policy.get("extra_night_mode", "nightly_rate")
+                    extra_fee_amt  = float(policy.get("extra_night_fee_amount") or 0)
+                    extra_fee_curr = policy.get("extra_night_fee_currency") or "USD"
+                    nightly        = _nightly_rate(reservation)
+
+                    if extra_mode == "approval_required":
+                        adapter.update_reservation(pms_res_id, {"checkin_time": ""})
+                        result = {
+                            "applied": False,
+                            "reason": "pending_host_approval_extra_night",
+                            "guest_reply": (
+                                f"Check-in at {requested_time_str} is very early — that's before our standard "
+                                f"early check-in window (before {cutoff_str}), so it counts as an additional night. "
+                                f"I've sent this to the host for approval. You'll hear back shortly! 🙂"
+                            ),
+                        }
+                        pms_ok = False
+
+                    elif extra_mode == "flat_fee":
+                        fee_str = _fmt_fee(extra_fee_amt, extra_fee_curr)
+                        result = {
+                            "checkin_time": requested_time_str,
+                            "applied": True,
+                            "extra_night": True,
+                            "fee_charged": extra_fee_amt,
+                            "fee_currency": extra_fee_curr,
+                            "guest_reply": (
+                                f"Done! Early check-in at {requested_time_str} is confirmed. "
+                                f"Since this is before {cutoff_str}, an extra-night fee of {fee_str} applies. "
+                                f"We'll have everything ready for you! 🏠"
+                            ),
+                        }
+
+                    else:  # nightly_rate
+                        prev_day = checkin_date - timedelta(days=1)
+                        if nightly:
+                            rate_msg = f"an additional night charge of {_fmt_fee(nightly, extra_fee_curr or 'USD')}"
+                        else:
+                            rate_msg = "an additional night's charge at your booking rate"
+                        # Push checkin date back by 1 night
+                        pms_ok2 = adapter.update_reservation(pms_res_id, {"checkin_date": str(prev_day)})
+                        result = {
+                            "checkin_time": requested_time_str,
+                            "checkin_date": str(prev_day),
+                            "applied": True,
+                            "extra_night": True,
+                            "guest_reply": (
+                                f"Done! Your stay now starts from {requested_time_str} "
+                                f"on {prev_day.strftime('%B %d')}. "
+                                f"Since you're arriving before {cutoff_str}, this includes {rate_msg}. "
+                                f"See you soon! 🏠"
+                            ),
+                        }
+
+                else:
+                    mode = policy.get("same_unit_free", "free")
+                    if mode == "flat_fee":
+                        fee_amt  = float(policy.get("flat_fee_amount") or 0)
+                        fee_curr = policy.get("flat_fee_currency") or "USD"
+                        fee_str  = _fmt_fee(fee_amt, fee_curr)
+                        result = {
+                            "checkin_time": requested_time_str,
+                            "applied": True,
+                            "fee_charged": fee_amt,
+                            "guest_reply": (
+                                f"Done! Early check-in at {requested_time_str} is confirmed. "
+                                f"An early check-in fee of {fee_str} will be added to your booking. "
+                                f"See you soon! 🏠"
+                            ),
+                        }
+                    elif mode == "approval_required":
+                        result = {
+                            "applied": False,
+                            "reason": "pending_host_approval",
+                            "guest_reply": (
+                                f"I've sent your early check-in request ({requested_time_str}) to the host for approval. "
+                                f"You'll hear back very shortly!"
+                            ),
+                        }
+                        # Revert — approval not yet given
+                        adapter.update_reservation(pms_res_id, {"checkin_time": ""})
+                        pms_ok = False
+                    else:  # free
+                        result = {
+                            "checkin_time": requested_time_str,
+                            "applied": True,
+                            "guest_reply": (
+                                f"Done! Early check-in at {requested_time_str} is confirmed — "
+                                f"no extra charge. We'll have the unit ready for you. See you soon! 🏠"
+                            ),
+                        }
                 ok = pms_ok
 
             else:
