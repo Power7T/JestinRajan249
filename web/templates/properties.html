@@ -234,6 +234,109 @@
   </div>
 </form>
 
+{# ── Manual Reservations ────────────────────────────────────────── #}
+<section class="form-section" id="manual-reservations">
+  <h2>📋 Reservations</h2>
+  <p class="help-text">
+    No PMS or iCal? Add reservations manually here — the AI will know your guest's name,
+    unit, and dates for personalized chat, and all autonomous actions (late checkout,
+    stay extension, etc.) will work without any external system.
+  </p>
+
+  {% if res_added %}
+  <div class="alert alert-success" style="margin-bottom:1rem;">✓ Reservation added.</div>
+  {% endif %}
+
+  <form method="post" action="/reservations/manual" style="margin-bottom:1.5rem;">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <div class="card">
+      <h3 style="font-size:0.9rem;font-weight:600;color:#e3e1eb;margin-bottom:1rem;">Add reservation</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+        <div>
+          <label>Guest name *</label>
+          <input type="text" name="guest_name" placeholder="Sarah Johnson" required>
+        </div>
+        <div>
+          <label>Guest phone</label>
+          <input type="tel" name="guest_phone" placeholder="+1 555 000 0000">
+        </div>
+        <div>
+          <label>Unit / room</label>
+          <input type="text" name="unit_identifier" placeholder="Unit 3B, Room 12, Villa A…">
+        </div>
+        <div>
+          <label>Listing name</label>
+          <input type="text" name="listing_name" placeholder="Sunset Villa">
+        </div>
+        <div>
+          <label>Check-in date</label>
+          <input type="date" name="checkin">
+        </div>
+        <div>
+          <label>Check-out date</label>
+          <input type="date" name="checkout">
+        </div>
+        <div>
+          <label>Guests</label>
+          <input type="number" name="guests_count" value="1" min="1" max="20">
+        </div>
+        <div>
+          <label>Payout (optional)</label>
+          <input type="number" name="payout_usd" step="0.01" placeholder="0.00">
+        </div>
+        <div style="grid-column:1/-1;">
+          <label>Confirmation code (leave blank to auto-generate)</label>
+          <input type="text" name="confirmation_code" placeholder="AIRBNB123, HM-XXXXXX, or leave blank">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Add reservation</button>
+    </div>
+  </form>
+
+  {% if manual_reservations %}
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table style="margin:0;">
+      <thead>
+        <tr>
+          <th>Guest</th>
+          <th>Unit</th>
+          <th>Check-in</th>
+          <th>Check-out</th>
+          <th>Ref</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in manual_reservations %}
+        <tr>
+          <td>
+            <span style="font-weight:500;color:#e3e1eb;">{{ r.guest_name }}</span>
+            {% if r.guest_phone %}<br><span style="font-size:0.75rem;color:#64748b;">{{ r.guest_phone }}</span>{% endif %}
+          </td>
+          <td style="color:#94a3b8;font-size:0.85rem;">{{ r.unit_identifier or r.listing_name or '—' }}</td>
+          <td style="font-size:0.85rem;">
+            {% if r.checkin %}{{ r.checkin.strftime('%b %d, %Y') }}{% if r.checkin_time %}<br><span style="color:#64748b;font-size:0.75rem;">{{ r.checkin_time }}</span>{% endif %}{% else %}—{% endif %}
+          </td>
+          <td style="font-size:0.85rem;">
+            {% if r.checkout %}{{ r.checkout.strftime('%b %d, %Y') }}{% if r.checkout_time %}<br><span style="color:#5B8DEF;font-size:0.75rem;">{{ r.checkout_time }}</span>{% endif %}{% else %}—{% endif %}
+          </td>
+          <td style="font-size:0.75rem;color:#64748b;font-family:monospace;">{{ r.confirmation_code }}</td>
+          <td>
+            <form method="post" action="/reservations/{{ r.id }}/cancel" style="margin:0;" onsubmit="return confirm('Cancel this reservation?')">
+              <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+              <button type="submit" style="background:none;border:none;color:#f87171;font-size:0.78rem;cursor:pointer;padding:0.2rem 0.5rem;">Cancel</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="help-text" style="text-align:center;padding:1.5rem;">No reservations yet. Add one above or connect an iCal / PMS to sync automatically.</p>
+  {% endif %}
+</section>
+
 {# Hidden upload forms — submitted programmatically by submitPdf() #}
 <form id="form-upload-rules" method="post" action="/properties/upload-house-rules#knowledge-base" enctype="multipart/form-data" style="display:none">
   <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">

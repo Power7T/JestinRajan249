@@ -252,12 +252,25 @@ def create_action(db: Session, tenant_id: str, action_type: str, params: dict,
 
 
 def _get_pms_adapter(db: Session, tenant_id: str):
-    """Return the first active PMS adapter for this tenant, or None."""
+    """
+    Return the best available PMS adapter for this tenant.
+
+    Priority:
+      1. Active external PMS integration (Hostaway, Guesty, iCal, etc.)
+      2. LocalPMSAdapter — writes directly to HostAI's Reservation table.
+         This is the fallback for hosts with no external PMS, making all
+         agentic actions fully autonomous regardless of tech stack.
+    """
+    from web.pms_local import LocalPMSAdapter
+
     integration = db.query(PMSIntegration).filter_by(
         tenant_id=tenant_id, is_active=True
     ).first()
+
     if not integration:
-        return None, None
+        log.debug("[ACTIONS] No external PMS for %s — using LocalPMSAdapter", tenant_id)
+        return LocalPMSAdapter(db, tenant_id), None
+
     try:
         from web.crypto import decrypt
         from web.pms_base import make_adapter
@@ -269,8 +282,9 @@ def _get_pms_adapter(db: Session, tenant_id: str):
         )
         return adapter, integration
     except Exception as exc:
-        log.error("[ACTIONS] Could not load PMS adapter for tenant %s: %s", tenant_id, exc)
-        return None, integration
+        log.error("[ACTIONS] External PMS adapter failed for %s (%s): %s — falling back to LocalPMSAdapter",
+                  tenant_id, integration.pms_type, exc)
+        return LocalPMSAdapter(db, tenant_id), integration
 
 
 def _parse_hhmm(t: str) -> Optional[time]:

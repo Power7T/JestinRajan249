@@ -3923,6 +3923,19 @@ def properties_page(request: Request, db: Session = Depends(get_db)):
     # may have "3:00 PM" / "11:00 AM" from onboarding defaults which browsers reject.
     ctx["check_in_hhmm"]  = _normalize_hhmm(ctx["cfg"].check_in_time)
     ctx["check_out_hhmm"] = _normalize_hhmm(ctx["cfg"].check_out_time)
+    # Manual reservations — confirmed + upcoming/active
+    from datetime import date as _date
+    ctx["manual_reservations"] = (
+        db.query(Reservation)
+        .filter(
+            Reservation.tenant_id == tenant_id,
+            Reservation.status == "confirmed",
+        )
+        .order_by(Reservation.checkin.desc())
+        .limit(50)
+        .all()
+    )
+    ctx["res_added"] = bool(request.query_params.get("res_added"))
     return templates.TemplateResponse("properties.html", ctx)
 
 
@@ -3987,6 +4000,117 @@ async def properties_save(
     db.commit()
     worker_manager.restart_worker(tenant_id)
     return RedirectResponse("/properties?saved=1", status_code=303)
+
+
+@app.post("/reservations/manual")
+async def reservation_manual_add(
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Let hosts manually add a reservation — for direct bookings, cash stays,
+    or any booking not covered by iCal / PMS sync.
+    """
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    form = await request.form()
+
+    def _f(k):  return (form.get(k) or "").strip()
+    def _i(k):
+        try: return int(form.get(k) or 0)
+        except: return None
+
+    guest_name  = _f("guest_name")
+    if not guest_name:
+        return RedirectResponse("/properties?saved=1&res_error=Guest+name+required", status_code=303)
+
+    # Auto-generate confirmation code if blank
+    conf_code = _f("confirmation_code") or f"MANUAL-{secrets.token_hex(4).upper()}"
+
+    checkin_str  = _f("checkin")
+    checkout_str = _f("checkout")
+    try:
+        checkin_date  = date.fromisoformat(checkin_str)  if checkin_str  else None
+        checkout_date = date.fromisoformat(checkout_str) if checkout_str else None
+    except ValueError:
+        checkin_date = checkout_date = None
+
+    nights = None
+    if checkin_date and checkout_date:
+        nights = max(0, (checkout_date - checkin_date).days)
+
+    payout_raw = _f("payout_usd")
+    try:
+        payout = float(payout_raw) if payout_raw else None
+    except ValueError:
+        payout = None
+
+    existing = db.query(Reservation).filter_by(
+        tenant_id=tenant_id, confirmation_code=conf_code
+    ).first()
+    if existing:
+        # Update in place
+        existing.guest_name    = guest_name
+        existing.guest_phone   = _f("guest_phone") or None
+        existing.unit_identifier = _f("unit_identifier") or None
+        existing.listing_name  = _f("listing_name") or None
+        existing.checkin       = checkin_date
+        existing.checkout      = checkout_date
+        existing.nights        = nights
+        existing.guests_count  = _i("guests_count") or 1
+        existing.payout_usd    = payout
+        existing.status        = "confirmed"
+    else:
+        res = Reservation(
+            tenant_id        = tenant_id,
+            confirmation_code= conf_code,
+            guest_name       = guest_name,
+            guest_phone      = _f("guest_phone") or None,
+            unit_identifier  = _f("unit_identifier") or None,
+            listing_name     = _f("listing_name") or None,
+            checkin          = checkin_date,
+            checkout         = checkout_date,
+            nights           = nights,
+            guests_count     = _i("guests_count") or 1,
+            payout_usd       = payout,
+            status           = "confirmed",
+        )
+        db.add(res)
+
+    db.add(ActivityLog(
+        tenant_id=tenant_id, event_type="manual_reservation_added",
+        message=f"Manual reservation added: {guest_name} ({conf_code})",
+    ))
+    db.commit()
+    return RedirectResponse("/properties?saved=1&res_added=1#manual-reservations", status_code=303)
+
+
+@app.post("/reservations/{res_id}/cancel")
+async def reservation_cancel(
+    res_id: int,
+    request: Request,
+    csrf_token: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Cancel / remove a manual reservation."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+
+    res = db.query(Reservation).filter_by(id=res_id, tenant_id=tenant_id).first()
+    if res:
+        res.status = "cancelled"
+        db.add(ActivityLog(tenant_id=tenant_id, event_type="reservation_cancelled",
+                           message=f"Reservation {res.confirmation_code} cancelled"))
+        db.commit()
+    return RedirectResponse("/properties?saved=1#manual-reservations", status_code=303)
 
 
 @app.get("/communications", response_class=HTMLResponse)

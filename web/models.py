@@ -692,6 +692,8 @@ class Reservation(Base):
     unit_identifier:   Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     checkin:           Mapped[Optional[datetime]] = mapped_column(Date, nullable=True, index=True)
     checkout:          Mapped[Optional[datetime]] = mapped_column(Date, nullable=True, index=True)
+    checkin_time:      Mapped[Optional[str]]      = mapped_column(String(8),  nullable=True)   # HH:MM — set by early check-in actions
+    checkout_time:     Mapped[Optional[str]]      = mapped_column(String(8),  nullable=True)   # HH:MM — set by late checkout actions
     nights:            Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     guests_count:      Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     payout_usd:        Mapped[Optional[float]] = mapped_column(Float, nullable=True)
