@@ -1609,10 +1609,14 @@ def signup_post(
     db.add(tenant)
     db.commit()
     db.refresh(tenant)
-    load_tenant_config(db, tenant.id, create_if_missing=True)
+    # Capture primitive values immediately after refresh, before any call that
+    # may open a sub-session (load_tenant_config) and expire this object.
+    tenant_id_val   = str(tenant.id)
+    tenant_session_v = tenant_session_version(tenant)
+    load_tenant_config(db, tenant_id_val, create_if_missing=True)
     # Send verification email (non-blocking — failure just logs a warning)
     send_verification_email(email, ver_token)
-    token = create_token(tenant.id, tenant_session_version(tenant))
+    token = create_token(tenant_id_val, tenant_session_v)
     is_secure = is_request_secure(request)
     resp = RedirectResponse("/onboarding", status_code=302)
     # MEDIUM severity fix #13: Reduce session timeout from 72h to 2h (TOKEN_HOURS from auth.py)
