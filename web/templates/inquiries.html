@@ -1,0 +1,85 @@
+{% extends "workspace_shell.html" %}
+
+{% block page_title %}Booking Inquiries{% endblock %}
+{% block page_heading %}Booking inquiries{% endblock %}
+{% block page_subtitle %}New people asking about staying — captured from WhatsApp, SMS, voice calls, and your embedded booking widget. HostAI checks availability and quotes them automatically when your PMS supports it.{% endblock %}
+
+{% block workspace_content %}
+<div class="metric-grid">
+  <div class="metric-card">
+    <div class="metric-value">{{ open_inquiries|length }}</div>
+    <div class="metric-label">Open</div>
+    <div class="metric-note">Inquiries needing follow-up.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{{ open_inquiries|selectattr('status', 'equalto', 'quoted')|list|length }}</div>
+    <div class="metric-label">Quoted</div>
+    <div class="metric-note">Availability confirmed, waiting on guest.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{{ recent_closed|selectattr('status', 'equalto', 'booked')|list|length }}</div>
+    <div class="metric-label">Recently booked</div>
+    <div class="metric-note">Inquiries that converted.</div>
+  </div>
+</div>
+
+<section class="form-section">
+  <h2>Embed the booking widget</h2>
+  <p class="help-text">Add this iframe to your website so prospective guests can submit inquiries 24/7.</p>
+  <div class="card">
+    <code style="display:block;background:#0d0e14;padding:0.8rem;border-radius:8px;font-size:0.8rem;color:#aec6ff;word-break:break-all;">&lt;iframe src="{{ app_base_url }}/booking-widget/{{ tenant.id }}" width="400" height="600" style="border:0;"&gt;&lt;/iframe&gt;</code>
+    <p class="help-text" style="margin-top:0.6rem;">
+      <a href="/booking-widget/{{ tenant.id }}" target="_blank" style="color:#5B8DEF;">Preview widget →</a>
+    </p>
+  </div>
+</section>
+
+<section class="form-section">
+  <h2>Open inquiries</h2>
+  {% if not open_inquiries %}
+    <div class="card empty-state"><p>No open inquiries yet.</p></div>
+  {% else %}
+  <div class="card-stack">
+    {% for inq in open_inquiries %}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <div style="flex:1;min-width:240px;">
+          <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.4rem;">
+            <span class="chip">{{ inq.channel | title }}</span>
+            <span class="chip {% if inq.status == 'quoted' %}good{% else %}info{% endif %}">{{ inq.status | upper }}</span>
+            {% if inq.is_available == True %}<span class="chip good">AVAILABLE</span>
+            {% elif inq.is_available == False %}<span class="chip danger">BOOKED</span>{% endif %}
+          </div>
+          <p style="color:#e3e1eb;font-weight:600;">
+            {{ inq.contact_name or inq.contact_phone or inq.contact_email or 'Unknown' }}
+          </p>
+          {% set req = inq.requested_dates_json or {} %}
+          <p style="color:#94a3b8;font-size:0.88rem;">
+            {% if req.get('checkin') %}Check-in: {{ req.checkin }}{% endif %}
+            {% if req.get('checkout') %} &middot; Check-out: {{ req.checkout }}{% endif %}
+            {% if req.get('guests') %} &middot; {{ req.guests }} guest{{ 's' if req.guests > 1 else '' }}{% endif %}
+          </p>
+          {% if inq.contact_phone %}<p style="color:#64748b;font-size:0.8rem;">📱 {{ inq.contact_phone }}</p>{% endif %}
+          {% if inq.contact_email %}<p style="color:#64748b;font-size:0.8rem;">📧 {{ inq.contact_email }}</p>{% endif %}
+          {% if inq.notes %}<p style="color:#94a3b8;font-size:0.85rem;margin-top:0.4rem;font-style:italic;">"{{ inq.notes }}"</p>{% endif %}
+          <p style="color:#64748b;font-size:0.78rem;margin-top:0.4rem;">
+            {{ inq.created_at.strftime('%b %d, %H:%M') if inq.created_at else '' }}
+          </p>
+        </div>
+        <form method="post" action="/inquiries/{{ inq.id }}/status" style="display:flex;flex-direction:column;gap:0.4rem;min-width:160px;">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <select name="status" style="font-size:0.85rem;">
+            <option value="open" {% if inq.status == 'open' %}selected{% endif %}>Open</option>
+            <option value="quoted" {% if inq.status == 'quoted' %}selected{% endif %}>Quoted</option>
+            <option value="booked">Booked ✓</option>
+            <option value="lost">Lost ✗</option>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm">Update</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

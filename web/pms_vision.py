@@ -322,10 +322,201 @@ Rules:
         log.warning("[VISION PMS] Max steps (%d) reached without completing task", max_steps)
         return False
 
-    async def _login(self, page) -> bool:
-        """Navigate to base_url and log in with stored credentials."""
+    # ── Session persistence (Phase 7 — cookie reuse) ─────────────────────
+
+    async def _load_saved_cookies(self, context) -> bool:
+        """Restore cookies from VisionPMSSession if a fresh one exists."""
         try:
+            integration_id = self._meta.get("integration_id")
+            if not integration_id:
+                return False
+            from web.db import SessionLocal
+            from web.models import VisionPMSSession
+            from web.crypto import decrypt
+            with SessionLocal() as db:
+                sess = (
+                    db.query(VisionPMSSession)
+                    .filter(VisionPMSSession.integration_id == integration_id)
+                    .order_by(VisionPMSSession.last_used_at.desc().nullslast())
+                    .first()
+                )
+                if not sess or not sess.cookies_enc:
+                    return False
+                # Skip if expired
+                if sess.valid_until and sess.valid_until.replace(tzinfo=None) < datetime.utcnow():
+                    return False
+                cookies_json = decrypt(sess.cookies_enc)
+                cookies = json.loads(cookies_json)
+                if cookies:
+                    await context.add_cookies(cookies)
+                    log.info("[VISION PMS] restored %d cookies for integration %s", len(cookies), integration_id)
+                    return True
+        except Exception as exc:
+            log.warning("[VISION PMS] cookie restore failed: %s", exc)
+        return False
+
+    async def _save_cookies(self, context) -> None:
+        """Persist current cookies (encrypted) so future tasks skip login."""
+        try:
+            integration_id = self._meta.get("integration_id")
+            if not integration_id:
+                return
+            cookies = await context.cookies()
+            if not cookies:
+                return
+            from web.db import SessionLocal
+            from web.models import VisionPMSSession
+            from web.crypto import encrypt
+            from datetime import timedelta as _td
+            with SessionLocal() as db:
+                sess = (
+                    db.query(VisionPMSSession)
+                    .filter(VisionPMSSession.integration_id == integration_id)
+                    .first()
+                )
+                cookies_enc = encrypt(json.dumps(cookies))
+                if not sess:
+                    sess = VisionPMSSession(
+                        integration_id=integration_id,
+                        tenant_id=self._meta.get("tenant_id", ""),
+                        cookies_enc=cookies_enc,
+                        last_used_at=datetime.utcnow(),
+                        valid_until=datetime.utcnow() + _td(hours=12),
+                    )
+                    db.add(sess)
+                else:
+                    sess.cookies_enc = cookies_enc
+                    sess.last_used_at = datetime.utcnow()
+                    sess.valid_until = datetime.utcnow() + _td(hours=12)
+                    sess.awaiting_otp = False
+                db.commit()
+                log.info("[VISION PMS] saved %d cookies", len(cookies))
+        except Exception as exc:
+            log.warning("[VISION PMS] cookie save failed: %s", exc)
+
+    async def _dismiss_popups(self, page) -> None:
+        """Best-effort popup/modal dismissal."""
+        selectors = (
+            'button:has-text("Got it")', 'button:has-text("OK")',
+            'button:has-text("Accept")', 'button:has-text("Close")',
+            'button:has-text("Dismiss")', '[aria-label="Close"]',
+            '[role="dialog"] button:has-text("Cancel")',
+        )
+        for sel in selectors:
+            try:
+                el = await page.query_selector(sel)
+                if el:
+                    await el.click(timeout=1000)
+                    await page.wait_for_timeout(300)
+            except Exception:
+                pass
+
+    async def _detect_captcha_or_2fa(self, page) -> str:
+        """
+        Return 'captcha' / '2fa' / 'none'.
+        Uses vision + simple selector heuristics.
+        """
+        # Heuristic checks first
+        try:
+            for sel in ('iframe[src*="recaptcha"]', 'iframe[src*="hcaptcha"]',
+                        'div[class*="captcha"]', 'div[id*="captcha"]'):
+                if await page.query_selector(sel):
+                    return "captcha"
+            for sel in ('input[name*="otp"]', 'input[name*="code"]',
+                        'input[autocomplete="one-time-code"]',
+                        'input[name*="verification"]'):
+                if await page.query_selector(sel):
+                    return "2fa"
+        except Exception:
+            pass
+        # Vision fallback (cheap)
+        try:
+            import openai
+            key = await self._get_openrouter_key()
+            if not key:
+                return "none"
+            screenshot = await page.screenshot(type="jpeg", quality=40)
+            img_b64 = base64.b64encode(screenshot).decode()
+            client = openai.OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
+            resp = client.chat.completions.create(
+                model="google/gemini-2.5-flash",
+                messages=[{"role": "user", "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}},
+                    {"type": "text", "text": 'Does this page show a CAPTCHA, 2FA/OTP code prompt, or neither? Respond with ONLY: "captcha", "2fa", or "none".'},
+                ]}],
+                max_tokens=10,
+                temperature=0,
+            )
+            raw = (resp.choices[0].message.content or "").strip().lower().strip('".,')
+            if raw in ("captcha", "2fa", "none"):
+                return raw
+        except Exception:
+            pass
+        return "none"
+
+    async def _notify_host_otp_required(self) -> None:
+        """Mark session as awaiting_otp and alert the host via SMS/WhatsApp."""
+        try:
+            integration_id = self._meta.get("integration_id")
+            tenant_id = self._meta.get("tenant_id", "")
+            if not integration_id or not tenant_id:
+                return
+            from web.db import SessionLocal
+            from web.models import VisionPMSSession, TenantConfig
+            with SessionLocal() as db:
+                sess = (
+                    db.query(VisionPMSSession)
+                    .filter(VisionPMSSession.integration_id == integration_id)
+                    .first()
+                )
+                if sess:
+                    sess.awaiting_otp = True
+                else:
+                    sess = VisionPMSSession(
+                        integration_id=integration_id, tenant_id=tenant_id,
+                        awaiting_otp=True,
+                    )
+                    db.add(sess)
+                db.commit()
+                cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+                if cfg and cfg.sms_notify_number:
+                    try:
+                        from web.app import _send_voice_message
+                        _send_voice_message(
+                            cfg, cfg.sms_notify_number,
+                            f"HostAI needs your 2FA code for {self._pms_name}. Submit it at /vision-pms/{integration_id}/otp",
+                            "sms",
+                        )
+                    except Exception:
+                        pass
+        except Exception as exc:
+            log.warning("[VISION PMS] OTP notify failed: %s", exc)
+
+    async def _login(self, page) -> bool:
+        """
+        Navigate to base_url and log in with stored credentials.
+        Phase 7: skips login if cookies are still valid; handles CAPTCHA / 2FA.
+        """
+        try:
+            # Try cookie-based bypass
+            context = page.context
+            cookies_loaded = await self._load_saved_cookies(context)
+            if cookies_loaded:
+                await page.goto(self._base_url, wait_until="domcontentloaded", timeout=20000)
+                await page.wait_for_timeout(1500)
+                await self._dismiss_popups(page)
+                # If we landed somewhere that isn't a login page, assume success
+                login_indicator = await page.query_selector('input[type="password"]')
+                if not login_indicator:
+                    log.info("[VISION PMS] session reused via cookies")
+                    return True
+                log.info("[VISION PMS] saved cookies expired — full login")
+
+            # Fresh login flow
             await page.goto(self._base_url, wait_until="domcontentloaded", timeout=20000)
+            await page.wait_for_timeout(1000)
+            await self._dismiss_popups(page)
+
             # Try direct field filling first (most login pages)
             try:
                 await page.fill('input[type="email"], input[name*="user"], input[name*="email"], input[id*="user"], input[id*="email"]',
@@ -333,16 +524,66 @@ Rules:
                 await page.fill('input[type="password"]', self._password, timeout=3000)
                 await page.click('button[type="submit"], input[type="submit"], button:has-text("Login"), button:has-text("Sign in")',
                                 timeout=3000)
-                await page.wait_for_timeout(2000)
-                return True
+                await page.wait_for_timeout(2500)
             except Exception:
-                pass
-            # Fall back to vision agent for login
-            login_task = f'Log in with username "{self._username}" and password (already filled, just submit the form or fill credentials)'
-            return await self._agent_loop(page, login_task, max_steps=6)
+                # Fall back to vision agent for login
+                login_task = f'Log in with username "{self._username}" and submit the form (the password is already filled).'
+                await self._agent_loop(page, login_task, max_steps=6)
+
+            await self._dismiss_popups(page)
+
+            # Check for CAPTCHA / 2FA blockers
+            block = await self._detect_captcha_or_2fa(page)
+            if block == "captcha":
+                log.warning("[VISION PMS] CAPTCHA detected — cannot proceed automatically")
+                return False
+            if block == "2fa":
+                log.warning("[VISION PMS] 2FA required — alerting host")
+                await self._notify_host_otp_required()
+                # Poll briefly for an OTP submitted via the API endpoint
+                otp = await self._poll_for_otp()
+                if otp:
+                    try:
+                        await page.fill('input[autocomplete="one-time-code"], input[name*="otp"], input[name*="code"], input[name*="verification"]',
+                                        otp, timeout=2000)
+                        await page.click('button[type="submit"], button:has-text("Verify"), button:has-text("Submit")', timeout=2000)
+                        await page.wait_for_timeout(2000)
+                    except Exception:
+                        pass
+                else:
+                    return False
+
+            # Persist the now-authenticated session
+            await self._save_cookies(context)
+            return True
         except Exception as exc:
             log.error("[VISION PMS] Login failed: %s", exc)
             return False
+
+    async def _poll_for_otp(self, timeout_s: int = 90) -> Optional[str]:
+        """
+        Wait up to timeout_s seconds for the host to submit an OTP code via the API endpoint.
+        The code is stored temporarily in Redis under key `vision-pms-otp:{integration_id}`.
+        """
+        integration_id = self._meta.get("integration_id")
+        if not integration_id:
+            return None
+        try:
+            from web.redis_client import get_redis
+            r = get_redis()
+            if not r:
+                return None
+            key = f"vision-pms-otp:{integration_id}"
+            for _ in range(timeout_s // 3):
+                code = r.get(key)
+                if code:
+                    code_str = code.decode() if isinstance(code, bytes) else str(code)
+                    r.delete(key)
+                    return code_str.strip()
+                await asyncio.sleep(3)
+        except Exception as exc:
+            log.warning("[VISION PMS] OTP polling failed: %s", exc)
+        return None
 
     async def _detect_capabilities(self, page) -> dict:
         """Take a screenshot of the dashboard and identify what the PMS can do."""

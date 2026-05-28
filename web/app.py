@@ -4099,6 +4099,164 @@ async def automations_preferences_save(
     return RedirectResponse("/automations?saved=1#preferences", status_code=303)
 
 
+@app.get("/inquiries", response_class=HTMLResponse)
+def inquiries_page(request: Request, db: Session = Depends(get_db)):
+    """Direct booking inquiries dashboard."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    from web.models import BookingInquiry as _BI
+    open_inquiries = (
+        db.query(_BI)
+        .filter(_BI.tenant_id == tenant_id, _BI.status.in_(("open", "quoted")))
+        .order_by(_BI.created_at.desc())
+        .limit(100).all()
+    )
+    recent_closed = (
+        db.query(_BI)
+        .filter(_BI.tenant_id == tenant_id, _BI.status.in_(("booked", "lost")))
+        .order_by(_BI.updated_at.desc())
+        .limit(20).all()
+    )
+    ctx = _workspace_context(request, db, tenant_id, page_key="inquiries")
+    ctx["open_inquiries"] = open_inquiries
+    ctx["recent_closed"]  = recent_closed
+    return templates.TemplateResponse("inquiries.html", ctx)
+
+
+@app.post("/inquiries/{inquiry_id}/status")
+def inquiries_set_status(inquiry_id: int, request: Request,
+                          status: str = Form(...),
+                          notes: str = Form(""),
+                          csrf_token: str = Form(None),
+                          db: Session = Depends(get_db)):
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    from web.models import BookingInquiry as _BI
+    inquiry = db.query(_BI).filter_by(id=inquiry_id, tenant_id=tenant_id).first()
+    if not inquiry:
+        raise HTTPException(404, "Inquiry not found")
+    if status in ("open", "quoted", "booked", "lost"):
+        inquiry.status = status
+    if notes:
+        inquiry.notes = notes[:1000]
+    inquiry.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return RedirectResponse("/inquiries", status_code=302)
+
+
+@app.get("/booking-widget/{tenant_id}", response_class=HTMLResponse)
+def booking_widget_page(tenant_id: str, request: Request, db: Session = Depends(get_db)):
+    """Public-facing booking widget that hosts can embed on their site."""
+    tenant = db.query(Tenant).filter_by(id=tenant_id, is_active=True).first()
+    if not tenant:
+        raise HTTPException(404, "Not found")
+    cfg = db.query(TenantConfig).filter_by(tenant_id=tenant_id).first()
+    if not cfg:
+        raise HTTPException(404, "Not configured")
+    return templates.TemplateResponse("booking_widget.html", {
+        "request": request,
+        "tenant":  tenant,
+        "cfg":     cfg,
+        "property_name": (cfg.property_names or "").split(",")[0].strip() or tenant.name or "Our property",
+    })
+
+
+@app.post("/api/booking-widget/{tenant_id}/submit")
+async def booking_widget_submit(tenant_id: str, request: Request, db: Session = Depends(get_db)):
+    """Public endpoint that accepts a JSON booking inquiry from the embedded widget."""
+    tenant = db.query(Tenant).filter_by(id=tenant_id, is_active=True).first()
+    if not tenant:
+        raise HTTPException(404, "Not found")
+    body = await request.json()
+    name  = (body.get("name") or "").strip()[:255]
+    email = (body.get("email") or "").strip()[:255]
+    phone = (body.get("phone") or "").strip()[:32]
+    checkin  = (body.get("checkin") or "").strip()[:10]
+    checkout = (body.get("checkout") or "").strip()[:10]
+    guests   = int(body.get("guests") or 1)
+    notes    = (body.get("notes") or "").strip()[:1000]
+    if not (name and (email or phone) and checkin and checkout):
+        raise HTTPException(400, "Missing required fields")
+    from web.models import BookingInquiry as _BI
+    inquiry = _BI(
+        tenant_id=tenant_id,
+        channel="widget",
+        contact_phone=phone or None,
+        contact_email=email or None,
+        contact_name=name,
+        requested_dates_json={"checkin": checkin, "checkout": checkout, "guests": guests},
+        status="open",
+        notes=notes,
+    )
+    db.add(inquiry)
+    db.commit()
+    db.refresh(inquiry)
+    return {"ok": True, "inquiry_id": inquiry.id}
+
+
+@app.get("/vision-pms/{integration_id}/otp", response_class=HTMLResponse)
+def vision_pms_otp_page(integration_id: int, request: Request, db: Session = Depends(get_db)):
+    """Show a small page for the host to submit an OTP code to the vision PMS agent."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    integration = db.query(PMSIntegration).filter_by(id=integration_id, tenant_id=tenant_id).first()
+    if not integration:
+        raise HTTPException(404, "Integration not found")
+    return templates.TemplateResponse("vision_pms_otp.html", {
+        "request": request,
+        "integration": integration,
+    })
+
+
+@app.post("/api/vision-pms/{integration_id}/otp")
+async def vision_pms_otp_submit(integration_id: int, request: Request,
+                                 code: str = Form(...),
+                                 csrf_token: str = Form(None),
+                                 db: Session = Depends(get_db)):
+    """Store the OTP code in Redis for the vision agent to pick up."""
+    try:
+        tenant_id = get_current_tenant_id(request)
+    except HTTPException:
+        return _redirect_login()
+    validate_csrf(request, csrf_token)
+    integration = db.query(PMSIntegration).filter_by(id=integration_id, tenant_id=tenant_id).first()
+    if not integration:
+        raise HTTPException(404, "Integration not found")
+    code = (code or "").strip()
+    if not code or len(code) > 16 or not code.replace("-", "").replace(" ", "").isalnum():
+        raise HTTPException(400, "Invalid code")
+    try:
+        from web.redis_client import get_redis
+        r = get_redis()
+        if r:
+            r.setex(f"vision-pms-otp:{integration_id}", 300, code)  # 5 min TTL
+    except Exception as exc:
+        log.warning("[VISION PMS] OTP store failed: %s", exc)
+    return RedirectResponse(f"/vision-pms/{integration_id}/otp?submitted=1", status_code=302)
+
+
+@app.websocket("/api/calls/stream/{call_id}")
+async def voice_stream_websocket(websocket: WebSocket, call_id: str):
+    """
+    Phase 6 — Twilio Media Streams endpoint for real-time voice.
+    Twilio's <Stream url="wss://.../api/calls/stream/{call_id}"> connects here.
+    """
+    from web.voice_stream import handle_voice_stream
+    try:
+        await handle_voice_stream(websocket, call_id)
+    except WebSocketDisconnect:
+        log.info("[STREAM] client disconnected for call_id=%s", call_id)
+    except Exception as exc:
+        log.error("[STREAM] handler error for %s: %s", call_id, exc, exc_info=True)
+
+
 @app.get("/operations", response_class=HTMLResponse)
 def operations_page(request: Request, db: Session = Depends(get_db)):
     """Show open and recently resolved operations tasks."""
@@ -5718,6 +5876,15 @@ def _handle_guest_inbound_message(tenant_id: str, source: str, reply_to: str, te
     if not is_guest_whitelisted(tenant_id, reply_to, db):
         guest_contact = get_guest_contact_for_phone(tenant_id, reply_to, db)
         if not guest_contact:
+            # Phase 5 — try to handle this as a direct booking inquiry first
+            try:
+                from web.booking_inquiry import handle_inquiry_message
+                if handle_inquiry_message(db, tenant_id, source, reply_to, text, cfg):
+                    log.info(f"[{tenant_id}] Inbound from {reply_to} handled as booking inquiry")
+                    return
+            except Exception as _inq_exc:
+                log.warning(f"[{tenant_id}] booking inquiry handler failed: {_inq_exc}")
+
             # Not a known guest — check if Sales AI should handle this as a pre-booking inquiry
             sales_cfg = db.query(SalesConfig).filter_by(tenant_id=tenant_id, is_enabled=True).first()
             if sales_cfg:
@@ -13679,8 +13846,20 @@ async def handle_incoming_call(request: Request, db: Session = Depends(get_db)):
         else:
             greeting = f"Hello, welcome to {property_name}. How can I help you today?"
 
-        from twilio.twiml.voice_response import VoiceResponse
+        from twilio.twiml.voice_response import VoiceResponse, Connect
         response = VoiceResponse()
+
+        # Phase 6 — if streaming voice is enabled, use Twilio Media Streams (~1s latency)
+        if os.getenv("STREAMING_VOICE_ENABLED", "").lower() in ("1", "true", "yes"):
+            base = (APP_BASE_URL or "").replace("https://", "wss://").replace("http://", "ws://")
+            stream_url = f"{base}/api/calls/stream/{voice_call.id}"
+            connect = Connect()
+            connect.stream(url=stream_url)
+            response.append(connect)
+            log.info("[VOICE] using Media Streams for call %s → %s", voice_call.id, stream_url)
+            return Response(str(response), media_type="application/xml")
+
+        # Fallback: turn-based Gather (no streaming, ~2s latency, no beep)
         response.say(greeting)
         gather = response.gather(
             input="speech",

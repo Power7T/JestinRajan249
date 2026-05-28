@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book your stay — {{ property_name }}</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1b22;
+    color: #e3e1eb;
+  }
+  .widget {
+    max-width: 380px; margin: 0 auto;
+    background: #20212a;
+    border-radius: 16px; padding: 24px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .widget h1 {
+    margin: 0 0 4px; font-size: 1.25rem; font-weight: 700;
+  }
+  .widget .sub {
+    color: #94a3b8; font-size: 0.85rem; margin-bottom: 18px;
+  }
+  label {
+    display: block; font-size: 0.78rem; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.06em; margin: 12px 0 4px;
+  }
+  input, textarea {
+    width: 100%; padding: 10px 12px;
+    background: #0d0e14; color: #e3e1eb;
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    font-size: 0.92rem;
+  }
+  input:focus, textarea:focus { outline: none; border-color: #5B8DEF; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  button {
+    width: 100%; margin-top: 18px;
+    padding: 12px; border: 0; border-radius: 10px;
+    background: linear-gradient(135deg, #5B8DEF, #aec6ff);
+    color: #002e6b; font-weight: 700; font-size: 0.95rem;
+    cursor: pointer; transition: transform 0.15s;
+  }
+  button:hover { transform: scale(1.02); }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  .success {
+    background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3);
+    color: #34d399; padding: 14px; border-radius: 10px; margin-top: 14px;
+    text-align: center;
+  }
+  .error {
+    background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+    color: #f87171; padding: 14px; border-radius: 10px; margin-top: 14px;
+    text-align: center;
+  }
+  .powered { text-align: center; color: #64748b; font-size: 0.72rem; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="widget">
+  <h1>Book your stay</h1>
+  <div class="sub">at {{ property_name }}</div>
+
+  <form id="inquiry-form">
+    <label>Your name</label>
+    <input type="text" name="name" required maxlength="80">
+
+    <div class="row">
+      <div>
+        <label>Email</label>
+        <input type="email" name="email" maxlength="200">
+      </div>
+      <div>
+        <label>Phone</label>
+        <input type="tel" name="phone" maxlength="32">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Check-in</label>
+        <input type="date" name="checkin" required>
+      </div>
+      <div>
+        <label>Check-out</label>
+        <input type="date" name="checkout" required>
+      </div>
+    </div>
+
+    <label>Guests</label>
+    <input type="number" name="guests" min="1" max="20" value="2">
+
+    <label>Anything we should know? (optional)</label>
+    <textarea name="notes" rows="2" maxlength="500"></textarea>
+
+    <button type="submit" id="submit-btn">Request availability</button>
+    <div id="result"></div>
+  </form>
+
+  <div class="powered">Powered by HostAI</div>
+</div>
+
+<script>
+document.getElementById('inquiry-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  var btn = document.getElementById('submit-btn');
+  var result = document.getElementById('result');
+  result.innerHTML = '';
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  var data = {
+    name:     this.name.value.trim(),
+    email:    this.email.value.trim(),
+    phone:    this.phone.value.trim(),
+    checkin:  this.checkin.value,
+    checkout: this.checkout.value,
+    guests:   parseInt(this.guests.value || '1', 10),
+    notes:    this.notes.value.trim(),
+  };
+  if (!data.email && !data.phone) {
+    result.innerHTML = '<div class="error">Please provide an email or phone number.</div>';
+    btn.disabled = false; btn.textContent = 'Request availability';
+    return;
+  }
+  try {
+    var resp = await fetch('/api/booking-widget/{{ tenant.id }}/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (resp.ok) {
+      result.innerHTML = '<div class="success">Thanks! We’ll get back to you shortly with availability and pricing.</div>';
+      btn.style.display = 'none';
+    } else {
+      var msg = 'Something went wrong. Please try again.';
+      try { var j = await resp.json(); msg = j.detail || msg; } catch (e) {}
+      result.innerHTML = '<div class="error">' + msg + '</div>';
+      btn.disabled = false; btn.textContent = 'Request availability';
+    }
+  } catch (err) {
+    result.innerHTML = '<div class="error">Network error — please try again.</div>';
+    btn.disabled = false; btn.textContent = 'Request availability';
+  }
+});
+</script>
+</body>
+</html>
