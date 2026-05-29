@@ -40,9 +40,10 @@ else:
 
 # Map plan_key to PayPal Plan ID (created in PayPal dashboard or via API)
 PAYPAL_PLAN_IDS: dict[str, str] = {
-    "starter":  os.getenv("PAYPAL_PLAN_ID_STARTER", ""),
-    "growth":   os.getenv("PAYPAL_PLAN_ID_GROWTH", ""),
-    "pro":      os.getenv("PAYPAL_PLAN_ID_PRO", ""),
+    "baileys":    os.getenv("PAYPAL_PLAN_ID_BAILEYS",    ""),
+    "meta_cloud": os.getenv("PAYPAL_PLAN_ID_META_CLOUD", ""),
+    "sms":        os.getenv("PAYPAL_PLAN_ID_SMS",        ""),
+    "pro":        os.getenv("PAYPAL_PLAN_ID_PRO",        ""),
 }
 
 if not PAYPAL_CLIENT_ID or not PAYPAL_CLIENT_SECRET:

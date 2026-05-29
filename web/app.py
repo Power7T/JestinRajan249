@@ -321,11 +321,11 @@ def _startup_checks() -> None:
             "This could lead to duplicate subscription events. SET REDIS_URL ASAP."
         )
 
-    # STRIPE_SECRET_KEY must be set for any billing operation.
-    if not os.getenv("STRIPE_SECRET_KEY", ""):
+    # PayPal credentials are required for billing operations.
+    if not os.getenv("PAYPAL_CLIENT_ID", "") or not os.getenv("PAYPAL_CLIENT_SECRET", ""):
         warnings.append(
-            "STRIPE_SECRET_KEY is not set. All billing and subscription endpoints "
-            "will fail at runtime."
+            "PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET not set. "
+            "PayPal subscription endpoints will be unavailable."
         )
 
     # Admin emails must be configured for production
