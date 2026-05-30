@@ -155,7 +155,7 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
     <div class="flex h-full">
 
       <!-- Left: Conversation List -->
-      <div class="w-80 border-r border-white/5 bg-[#0d0e14] flex flex-col overflow-hidden flex-shrink-0">
+      <div id="convList" class="w-full md:w-80 border-r border-white/5 bg-[#0d0e14] flex flex-col overflow-hidden flex-shrink-0 md:flex">
         <div class="px-4 py-3 border-b border-white/5">
           <p class="text-xs font-bold uppercase tracking-widest text-slate-500">
             Conversations
@@ -196,15 +196,18 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
       </div>
 
       <!-- Right: Message Thread -->
-      <div class="flex-1 flex flex-col overflow-hidden bg-[#08090F]" id="detailPanel">
+      <div class="flex-1 flex-col overflow-hidden bg-[#08090F] hidden md:flex" id="detailPanel">
         {% if conversations %}
-        <div class="flex items-center gap-4 px-6 py-4 border-b border-white/5 bg-[#0d0e14]/60 backdrop-blur-sm" id="detailHeader">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold" id="detailAvatar">
+        <div class="flex items-center gap-4 px-4 md:px-6 py-4 border-b border-white/5 bg-[#0d0e14]/60 backdrop-blur-sm" id="detailHeader">
+          <button id="backToList" class="md:hidden flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 text-slate-300 hover:text-white transition-colors flex-shrink-0" onclick="showConvList()">
+            <span class="material-symbols-outlined text-xl">arrow_back</span>
+          </button>
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#aec6ff] to-[#5B8DEF] flex items-center justify-center text-[#002e6b] font-bold flex-shrink-0" id="detailAvatar">
             {{ conversations[0].guest_name[0]|upper if conversations and conversations[0].guest_name else '?' }}
           </div>
-          <div>
-            <h2 class="font-bold text-white" id="detailGuestName">{{ conversations[0].guest_name }}</h2>
-            <p class="text-slate-500 text-xs font-mono" id="detailGuestPhone">{{ conversations[0].guest_phone }}</p>
+          <div class="min-w-0">
+            <h2 class="font-bold text-white truncate" id="detailGuestName">{{ conversations[0].guest_name }}</h2>
+            <p class="text-slate-500 text-xs font-mono truncate" id="detailGuestPhone">{{ conversations[0].guest_phone }}</p>
           </div>
         </div>
         <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-3" id="messageThread">
@@ -739,9 +742,31 @@ body { background: #08090F; font-family: 'Plus Jakarta Sans', sans-serif; color:
   });
 })();
 
+function showConvList() {
+  const list = document.getElementById('convList');
+  const detail = document.getElementById('detailPanel');
+  if (window.innerWidth < 768) {
+    list.classList.remove('hidden');
+    list.style.display = 'flex';
+    detail.classList.add('hidden');
+    detail.style.display = 'none';
+  }
+}
+function showConvDetail() {
+  const list = document.getElementById('convList');
+  const detail = document.getElementById('detailPanel');
+  if (window.innerWidth < 768) {
+    list.classList.add('hidden');
+    list.style.display = 'none';
+    detail.classList.remove('hidden');
+    detail.style.display = 'flex';
+  }
+}
+
 async function selectConversation(element, threadKey, guestName, guestPhone) {
   document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
   element.classList.add('active');
+  showConvDetail();
 
   const nameEl = document.getElementById('detailGuestName');
   const phoneEl = document.getElementById('detailGuestPhone');

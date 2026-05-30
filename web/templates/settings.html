@@ -148,7 +148,7 @@
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <div>
       <label class="block text-xs text-slate-500 mb-1.5 font-medium">Language</label>
-      <select name="default_response_language" class="bg-[#0d0e14] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:border-[#5B8DEF] focus:outline-none transition-colors min-w-[180px]">
+      <select name="default_response_language" class="w-full sm:w-auto bg-[#0d0e14] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:border-[#5B8DEF] focus:outline-none transition-colors sm:min-w-[180px]">
         <option value="en" {% if not cfg.default_response_language or cfg.default_response_language == 'en' %}selected{% endif %}>English</option>
         <option value="es" {% if cfg.default_response_language == 'es' %}selected{% endif %}>Spanish</option>
         <option value="fr" {% if cfg.default_response_language == 'fr' %}selected{% endif %}>French</option>

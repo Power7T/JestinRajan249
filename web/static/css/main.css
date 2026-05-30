@@ -674,7 +674,7 @@ td strong { color: var(--text-1); }
 @media (max-width: 900px)  { .workflow-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 680px) {
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
-.legacy-nav { padding: 0 1rem; }
+  .legacy-nav { padding: 0 1rem; }
   .legacy-nav a { padding: 0 0.5rem; font-size: 0.75rem; }
   .nav-links a:not(.active) { display: none; }
   .container { padding: 1.5rem 1rem 3.5rem; }
@@ -686,6 +686,86 @@ td strong { color: var(--text-1); }
 @media (max-width: 420px) {
   .kpi-grid { grid-template-columns: 1fr 1fr; }
   .legacy-nav a { font-size: 0.72rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE — global fixes (≤ 640px)
+═══════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* All two-column compat-layer form grids collapse to one */
+  .compat-layer .form-row,
+  .compat-layer [style*="grid-template-columns:1fr 1fr"],
+  .compat-layer [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Billing plan grid: shrink minimum so cards stack properly */
+  .compat-layer .billing-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* KPI / analytics rows: 2 columns on mobile instead of overflow */
+  .compat-layer .analytics-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .compat-layer .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Tables: always scrollable horizontally */
+  .compat-layer .card table,
+  .compat-layer table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  /* Page headers stack vertically */
+  .compat-layer .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  /* Card padding reduced on mobile */
+  .compat-layer .card,
+  .compat-layer .form-section {
+    padding: 1rem;
+  }
+
+  /* Selects: always full width on mobile */
+  .compat-layer select,
+  select.min-w-\[180px\] {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Buttons: ensure minimum tap target */
+  .compat-layer .btn {
+    min-height: 44px;
+    padding: 0.55rem 1rem;
+  }
+
+  /* Inline button rows wrap on mobile */
+  .compat-layer .page-actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .compat-layer .page-actions .btn {
+    flex: 1;
+    justify-content: center;
+    min-width: 120px;
+  }
+
+  /* Hub cards (workspace pages) */
+  .hub-card { padding: 1rem; }
+
+  /* Main content area padding */
+  main.md\:ml-\[260px\] {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════

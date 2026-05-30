@@ -251,7 +251,7 @@
     <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
     <div class="card">
       <h3 style="font-size:0.9rem;font-weight:600;color:#e3e1eb;margin-bottom:1rem;">Add reservation</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.75rem;">
         <div>
           <label>Guest name *</label>
           <input type="text" name="guest_name" placeholder="Sarah Johnson" required>
